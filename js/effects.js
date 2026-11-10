@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261110231930";
-import { CARDS, nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261110231930";
-import { E, scriptOf } from "./engine.js?v=20261110231930";
+import { readAura } from "./auras.js?v=20261110232407";
+import { CARDS, nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261110232407";
+import { E, scriptOf } from "./engine.js?v=20261110232407";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -675,7 +675,7 @@ function looseReact(s, x, p, on) {
     const dm = head.trim().match(DEFENDER); if (dm) { const f = defenderFilter(dm); if (!T || T.p !== p || T.z !== "av") return false; if (f && !fits(s, T.x, f)) return false; }
     return true;
   }
-  if (/(?:ฝ่ายตรงข้าม|อีกฝ่าย)\s*ใช้ความสามารถ(?:ของ)?\s*Avatar/.test(head)) return on.kind === "summon";
+  if (/(?:ฝ่ายตรงข้าม|อีกฝ่าย)\s*ใช้ความสามารถ(?:ของ)?\s*Avatar/.test(head)) return on.kind === "summon" || on.kind === "activate";
   if (/^[\s"“”#-]*(?:เทิร์นละครั้ง\s*)?(?:สามารถ)?(?:ใช้(?:การ์ดนี้|การ์ดใบนี้)?ได้)?\s*(?:เมื่อ|ถ้า|หาก|ในช่วง)/.test(t)) return false;
   return true;
 }
