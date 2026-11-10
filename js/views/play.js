@@ -1,21 +1,21 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261110192945";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261110192945";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261110192945";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261110192945";
-import { Arena } from "../arena3d.js?v=20261110192945";
-import { autoEffect, resolveEffect } from "../effects.js?v=20261110192945";
-import { Sfx } from "../sfx.js?v=20261110192945";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261110192945";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261110192945";
-import { readAura } from "../auras.js?v=20261110192945";
-import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261110192945";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261110201727";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261110201727";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261110201727";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261110201727";
+import { Arena } from "../arena3d.js?v=20261110201727";
+import { autoEffect, resolveEffect } from "../effects.js?v=20261110201727";
+import { Sfx } from "../sfx.js?v=20261110201727";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261110201727";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261110201727";
+import { readAura } from "../auras.js?v=20261110201727";
+import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261110201727";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
   return { game: [`เทิร์น ${s.turn} · ${PHASE_TH[s.phase] || s.phase} · ตาของ ${s.P[s.active].name}`, `เด็คเรา: ${me.deckName || "-"} · เด็คคู่แข่ง: ${op.deckName || "-"}`,
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / ")].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261110192945";
+import { allDecks, deckById } from "./decks.js?v=20261110201727";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -322,6 +322,7 @@ function cardView(x) {
   const sc = scriptOf(s, x); const myMain = myMove && s.active === p && s.phase === "main" && !s.trig.length && !s.pend;
   if (sc && sc.handCall && L.z === "hand" && myMain && s.P[p].hand.some((y) => y.i !== x.i && String(E.def(s, y).sy || "").includes("มังกร"))) acts.push(["ทิ้งเพื่ออัญเชิญมังกร (Cost -6)", () => { G.callVia = x.i; draw(); }, "ciel"]);
   if (sc && sc.activate && L.p === p && myMain && x.used !== s.turn && sc.activate.can(E, s, x, L)) acts.push([sc.activate.label, () => doAct({ type: "activate", i: x.i }, p), "ciel"]);
+  if (!sc && L.p === p && myMain && E.ext.acts) for (const a of E.ext.acts(s, x, L)) acts.push(["สั่งใช้: " + a.label, () => doAct({ type: "activate", i: x.i, k: a.k }, p), "ciel"]);
   if (E.untargetable(s, x)) acts.push(["ถูกโจมตีไม่ได้ตอนนี้", () => {}, "sm"]);
   if (mine(L.p) && d.x && L.z !== "hand" && L.z !== "deck" && !sc) acts.push(["สั่งใช้ความสามารถ", () => doAct({ type: "useAbility", i: x.i }, L.p), ""]);
   const stat = [ZONE_TH[L.z], d.t === "M" ? "Magic " + SUB_TH[d.st] : d.t === "T" ? "Token" : "Cost " + (d.c ?? 0), "GEM " + (d.g || 0) + (d.gc ? " (" + d.gc + ")" : ""), d.pw != null || L.z === "av" ? "POWER " + (L.z === "av" || L.z === "cs" ? E.power(s, x) : d.pw || 0) : null, L.z === "av" ? (x.a ? "ตื่น" : "นอน") : null, d.sy ? "Symbol " + d.sy : null].filter(Boolean);
@@ -383,7 +384,7 @@ function handClick(x) {
   if (s.active !== p || s.phase !== "main" || s.trig.length || s.pend) return showHandInspect(x);
   if (d.t === "A" && E.locked(s, p, x)) return toast("หลังใช้ซาร์อึก เกมนี้อัญเชิญได้เฉพาะมังกรหรือผู้ฝึกมังกร", "bad");
   if (d.t === "A" && (E.avatars(s.P[p]) >= 4 || s.P[p].av.length >= 6)) { toast("Avatar Zone เต็มแล้ว (Avatar ได้ 4 ใบ)", "bad"); return showHandInspect(x); }
-  if (d.t === "A" && (scriptOf(s, x) || {}).noHand) { toast("การ์ดใบนี้ลงสนามจากบนมือไม่ได้", "bad"); return showHandInspect(x); }
+  if (d.t === "A" && (E.hooks(s, x) || {}).noHand) { toast("การ์ดใบนี้ลงสนามจากบนมือไม่ได้", "bad"); return showHandInspect(x); }
   if (d.t === "C" && s.P[p].cs.length >= 3) { toast("Construct Zone เต็มแล้ว (3 ใบ)", "bad"); return showHandInspect(x); }
   if (d.t === "A" || d.t === "C") { const auto = E.autoPay(s, p, x.i); if (!auto) { toast(`GEM บนมือไม่พอจ่าย ${d.n} (Cost ${d.c || 0})`); return showHandInspect(x); } G.payFor = x.i; G.pick = auto; return draw(); }
   if (d.t === "M" && d.st === "D") { G.host = x.i; return draw(); }
@@ -415,9 +416,10 @@ function promptBox(s, p) {
     const x = P.hand.find((y) => y.i === G.castFor); const d = x && E.def(s, x);
     const ok = x && (d.st === "R" ? !s.mu[p].R : s.phase === "main" && s.active === p && !s.trig.length && !s.pend && !s.mu[p][d.st]);
     if (!ok) { G.castFor = null; } else {
-      let fx = null, asks = null; try { const r = resolveEffect(s, { i: x.i, c: x.c, when: "cast", seat: p }, [], true); if (r && r.ask) asks = r.ask.prompt; else fx = r; } catch (e) { console.warn(e); } const empty = !s.P[p].av.length && /Avatar[^:]*(ฝ่ายเรา|ของเรา|Zone\s*เรา)|เลือก\s*Avatar/.test(d.x || "");
+      const on = s.rw && s.rw.by !== p ? s.rw : s.pend && s.pend.by !== p ? { kind: "attack", by: s.pend.by, att: s.pend.att, tk: s.pend.tk, ti: s.pend.ti } : null;
+      let fx = null, asks = null; try { const r = resolveEffect(s, { i: x.i, c: x.c, when: "cast", seat: p, ...(d.st === "R" && on ? { on } : {}) }, [], true); if (r && r.ask) asks = r.ask.prompt; else fx = r; } catch (e) { console.warn(e); } const empty = !s.P[p].av.length && /Avatar[^:]*(ฝ่ายเรา|ของเรา|Zone\s*เรา)|เลือก\s*Avatar/.test(d.x || "");
       // React: only inside a matching window; scripted canCast: only when its condition holds
-      const on = s.rw && s.rw.by !== p ? s.rw : s.pend && s.pend.by !== p ? { kind: "attack" } : null; const scx = scriptOf(s, x);
+      const scx = scriptOf(s, x);
       const KIND_TH = { attack: "ตอนฝ่ายตรงข้ามประกาศโจมตี", summon: "ตอนฝ่ายตรงข้ามอัญเชิญ Avatar", cast: "ตอนฝ่ายตรงข้ามใช้ Magic" };
       const block = d.st === "R" ? (!on || !E.reactsFor(s, p, on).includes(x) ? `React ใช้ได้${scx && scx.react ? scx.react.kinds.map((k) => KIND_TH[k]).join(" หรือ ") : "ตอนฝ่ายตรงข้ามทำบางอย่าง"} (และตรงเงื่อนไขบนการ์ด) ตอนนั้นจะมีปุ่มขึ้นให้เอง` : null)
         : scx && scx.canCast && !scx.canCast(E, s, p) ? "ยังไม่ตรงเงื่อนไขการใช้การ์ดใบนี้" : null;
@@ -467,7 +469,7 @@ function promptBox(s, p) {
   }
   if (s.trig.length && !G.tmanual && G.tk === s.trig[0].id) return box("กำลังทำงาน…", h("div", { class: "tiny muted" }, (s.cards[s.trig[0].c] || {}).n || ""));
   if (s.trig.length) {
-    const t = s.trig[0]; const d = s.cards[t.c] || {}; const when = { summon: "จุติ", cast: "ใช้ Magic", life: "LIFE หงาย", death: "คำสั่งเสีย", attack: "เมื่อโจมตี", build: "ก่อสร้าง", manual: "สั่งใช้", activate: "สั่งใช้", paid: "ถูกทิ้งเป็นค่า Cost", milled: "ถูกธรณีสูบ", win: "ชนะการต่อสู้", end: "End Phase", mainStart: "เริ่ม Main Phase" }[t.when] || t.when;
+    const t = s.trig[0]; const d = s.cards[t.c] || {}; const when = { summon: "จุติ", cast: "ใช้ Magic", life: "LIFE หงาย", death: "คำสั่งเสีย", attack: "เมื่อโจมตี", build: "ก่อสร้าง", manual: "สั่งใช้", activate: "สั่งใช้", paid: "ถูกทิ้งเป็นค่า Cost", milled: "ถูกธรณีสูบ", win: "ชนะการต่อสู้", end: "End Phase", mainStart: "เริ่ม Main Phase", attacked: "ถูกโจมตี" }[t.when] || t.when;
     const hint = h("input", { type: "text", placeholder: "บอกชิเอลถ้าต้องเลือกเป้าหมาย เช่น ทำลายพญานาค", "aria-label": "เป้าหมายที่ต้องการ" }); const out = h("div");
     const auto = null;
     return box(`เอฟเฟกต์: ${d.n} (${when})`, h("div", { class: "fx small", style: "max-height:130px;overflow:auto" }, d.x || ""), Ciel.on() ? hint : null, out,

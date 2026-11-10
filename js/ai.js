@@ -1,9 +1,9 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus } from "./engine.js?v=20261110192945";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261110192945";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261110192945";
-import { Data } from "./fb.js?v=20261110192945";
-import { lsGet } from "./util.js?v=20261110192945";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus } from "./engine.js?v=20261110201727";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261110201727";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261110201727";
+import { Data } from "./fb.js?v=20261110201727";
+import { lsGet } from "./util.js?v=20261110201727";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -113,7 +113,7 @@ export const H = {
       const cand = [];
       for (const m of moves) {
         const a = m.a; if (a.type === "battle") continue;
-        if (a.type === "activate") { const L = E.locate(s, a.i); const nm = L ? E.name(s, L.x) : ""; const fx = L ? H.opsScore(s, p, H.preview(s, { i: L.x.i, c: L.x.c, when: "activate", seat: p })) : 0;
+        if (a.type === "activate") { const L = E.locate(s, a.i); const nm = L ? E.name(s, L.x) : ""; const fx = L ? H.opsScore(s, p, H.preview(s, { i: L.x.i, c: L.x.c, when: "activate", seat: p, ...(a.k != null ? { k: a.k } : {}) })) : 0;
           cand.push({ m, sc: /นักท่องเรื่องราว/.test(nm) ? 7 : /มิติมืด/.test(m.d) ? 5 : fx < 0 ? fx : 1.5 + Math.min(6, fx) }); continue; }
         const x = P.hand.find((y) => y.i === a.i); if (!x) continue; const d = E.def(s, x);
         const payLoss = (a.pay || []).reduce((t, i) => t + H.value(s, P.hand.find((y) => y.i === i)), 0);
@@ -167,6 +167,12 @@ export const H = {
       else if (o.op === "attach") { const H2 = E.locate(s, o.on); const L = E.locate(s, o.i); v += H2 && H2.p === p ? (L && L.p !== p && L.z === "av" ? 6 : L && L.z === "av" ? 1.5 : 3) : 0; }
       else if (o.op === "put") { const L = E.locate(s, o.i); v += L ? 2 + E.power(s, L.x) * 0.5 + (o.jt ? 1.5 : 0) : 0; }
       else if (o.op === "toLand") v += 1.5;
+      else if (o.op === "mute") { const L = E.locate(s, o.i); v += L && L.p !== p ? 2.5 + E.power(s, L.x) * 0.3 : -3; }
+      else if (o.op === "control") { const L = E.locate(s, o.i); v += L && L.p !== p ? 4 + E.power(s, L.x) * 0.5 : 0; }
+      else if (o.op === "lifeDamage") v += o.seat === p ? -8 : 7;
+      else if (o.op === "exile") { const L = E.locate(s, o.i); v += L && L.p !== p && L.z === "av" ? 5 + E.power(s, L.x) * 0.6 : 0; }
+      else if (o.op === "negate") v += 4;
+      else if (o.op === "keyword") v += 1.2;
     }
     return v;
   },
