@@ -299,3 +299,31 @@ body.arena-on main{padding:0;max-width:none}
 .hovprev{display:grid;grid-template-columns:120px minmax(0,1fr);gap:12px;align-items:start}
 .hovprev .ccard{width:120px;cursor:default}
 @media (max-width:640px){.cview .ccard.big{max-width:min(58vw,240px)}.cview .acts{position:sticky;top:-20px;z-index:2;padding:8px 0;background:var(--panel-solid,#10142a)}.cview .acts .btn{flex:1;height:46px}}
+/* arena hover preview: big, readable, sized from the screen height */
+.inspector{display:none;position:absolute;left:max(14px,env(safe-area-inset-left,0px));top:50%;transform:translateY(-46%);width:auto;max-width:min(640px,48vw);max-height:calc(100vh - 150px);padding:12px;gap:14px;overflow:hidden;grid-template-columns:auto minmax(220px,310px);align-items:start;pointer-events:none;z-index:9}
+.inspector.show{display:grid}
+.inspector.pinned{pointer-events:auto}
+.inspector>.cimg,.inspector>.tok{height:min(54vh,400px);width:auto;max-width:none;aspect-ratio:388/528;border-radius:12px;display:block;object-fit:cover}
+.inspector>.tok{display:grid;place-items:center;background:var(--panel-2);font:700 1.2rem var(--f-display)}
+.inspector .txt{display:flex;flex-direction:column;gap:8px;min-width:0;max-height:min(54vh,400px);overflow-y:auto;overflow-x:hidden}
+.inspector .txt b{font:700 1.05rem var(--f-display);line-height:1.3}
+.inspector .fx{font-size:.92rem;line-height:1.6}
+@media (max-width:1100px){.inspector.show{display:grid}}
+@media (max-width:760px),(pointer:coarse){.inspector,.inspector.show{display:none}}
+@media (max-width:980px){.inspector{grid-template-columns:auto minmax(180px,250px)}}
+/* match panel never scrolls sideways; compact on short screens */
+.matchp{overflow-x:hidden;overflow-y:auto}
+.handzone{height:clamp(140px,30vh,210px)}
+@media (max-height:700px){
+  .matchp{top:calc(110px + env(safe-area-inset-top,0px));padding:10px;gap:8px;width:240px;max-height:calc(100vh - 124px)}
+  .matchp .turnline b{font-size:1.15rem} .matchp .piles b{font-size:.95rem} .matchp .glog{max-height:90px}
+  .oppbar{top:calc(62px + env(safe-area-inset-top,0px));padding:6px 12px} .hint{top:calc(110px + env(safe-area-inset-top,0px))}
+  .prompt{bottom:calc(150px + env(safe-area-inset-bottom,0px));padding:10px 12px;gap:8px;max-height:calc(100vh - 290px);overflow:auto}
+}
+@media (max-height:700px) and (min-width:761px){
+  body.arena-on .top{display:none}
+  body.arena-on .oppbar{top:calc(8px + env(safe-area-inset-top,0px))}
+  body.arena-on .hint{top:calc(58px + env(safe-area-inset-top,0px))}
+  body.arena-on .matchp{top:calc(10px + env(safe-area-inset-top,0px));max-height:calc(100vh - 24px)}
+  body.arena-on .inspector{max-height:calc(100vh - 40px)}
+}

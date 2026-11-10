@@ -2,6 +2,7 @@
 import { card, resolveArt, colorHex, corsUrl } from "./cards.js";
 import { E } from "./engine.js";
 import { h } from "./util.js";
+import { Sfx } from "./sfx.js";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -23,7 +24,7 @@ function mount(container) {
   const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 200);
   const loader = new THREE.TextureLoader(); loader.setCrossOrigin("anonymous");
   const tex = (u, srgb = true) => { const t = loader.load(u); if (srgb) t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; return t; };
-  const FX = {}; ["magic_02", "magic_04", "spark_05", "spark_06", "slash_02", "circle_05", "smoke_03", "light_02", "star_06", "trace_01", "flare_01"].forEach((n) => (FX[n] = tex("assets/fx/" + n + ".png")));
+  const FX = {}; ["magic_02", "magic_04", "magic_05", "spark_05", "spark_06", "slash_02", "circle_05", "smoke_03", "light_02", "star_06", "trace_01", "flare_01", "twirl_02"].forEach((n) => (FX[n] = tex("assets/fx/" + n + ".png")));
   R = { container, canvas, renderer, scene, camera, loader, FX, meshes: new Map(), texCache: new Map(), labels: new Map(), queue: Promise.resolve(), lastEv: 0, camBase: new THREE.Vector3(0, 11, 9.6), look: new THREE.Vector3(0, 0, 0.4), off: new THREE.Vector3(), alive: true, onHover: null, onClick: null, hovered: null, view: 0 };
 
   scene.add(new THREE.HemisphereLight(0x6f86c9, 0x120c08, 0.55));
@@ -72,7 +73,7 @@ function mount(container) {
     const portrait = w / hh < 0.9; const k = portrait ? 1 : Math.min(1.45, Math.max(1, 820 / hh, 1250 / w));
     R.camBase.set(0, portrait ? 17.5 : 11.2 * k, portrait ? 12.5 : 9.6 * k); R.look.set(0, 0, portrait ? 1.9 : 0.4); camera.fov = portrait ? 50 : 38; camera.updateProjectionMatrix();
     if (R.composer) R.composer.setSize(w, hh);
-    document.documentElement.style.setProperty("--handDrop", hh < 700 ? "-80px" : "-44px");
+    document.documentElement.style.setProperty("--handDrop", hh < 620 ? "-28px" : hh < 760 ? "-40px" : "-44px");
   };
   addEventListener("resize", R.resize); R.resize();
   const ray = new THREE.Raycaster(); const ptr = new THREE.Vector2();
@@ -86,7 +87,7 @@ function mount(container) {
     const prev = R.meshes.get(R.hovered); if (prev && !prev.busy && !prev.sel) gsap.to(prev.grp.position, { y: prev.restY, duration: 0.2 });
     R.hovered = p; canvas.style.cursor = p != null ? "pointer" : "default";
     const m = R.meshes.get(p); if (m && !m.busy) gsap.to(m.grp.position, { y: m.restY + 0.32, duration: 0.2 });
-    if (R.onHover && p != null && p !== "life") R.onHover(p);
+    if (R.onHover) R.onHover(p != null && p !== "life" ? p : null);
   });
   canvas.addEventListener("click", (e) => { const p = pick(e); if (p != null && R.onClick) R.onClick(p); });
   const clock = new THREE.Clock();
@@ -186,6 +187,22 @@ function pillar(pos, color) {
   gsap.to(m.material, { opacity: 0.8, duration: 0.15 }); gsap.to(m.scale, { x: 0.2, z: 0.2, duration: 0.6, ease: "power2.in" });
   gsap.to(m.material, { opacity: 0, duration: 0.4, delay: 0.3, onComplete: () => R && R.scene.remove(m) });
 }
+// flat glowing decal on the floor that spins and fades
+function decal(map, pos, color, size, dur = 1.1, spin = 1.5) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map, color, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
+  m.rotation.x = -Math.PI / 2; m.position.set(pos.x, 0.07, pos.z); m.scale.setScalar(size * 0.4); R.scene.add(m);
+  gsap.to(m.scale, { x: size, y: size, z: size, duration: dur * 0.6, ease: "power2.out" }); gsap.to(m.rotation, { z: spin, duration: dur });
+  gsap.to(m.material, { opacity: 0, duration: dur * 0.6, delay: dur * 0.4, onComplete: () => { R && R.scene.remove(m); m.geometry.dispose(); m.material.dispose(); } });
+}
+// each card colour gets its own flavour: red fire, blue water, green nature, purple dark magic
+export function colorFx(pos, co, big = 1) {
+  if (!R || reduce) return; const c = colorHex(co); const p = pos.clone().setY(0.3);
+  if (co === "แดง") { burst(p, { n: 26 * big, map: R.FX.spark_05, color: 0xff7a2a, size: 0.45, spread: 1.6, up: 3.4, dur: 1 }); burst(p, { n: 6, map: R.FX.flare_01, color: 0xffb04a, size: 1.4, spread: 0.8, up: 1.2, dur: 0.6 }); }
+  else if (co === "ฟ้า") { decal(R.FX.magic_04, pos, 0x5fb6ff, 4.6 * big, 1.2, -2); shockwave(pos, 0x7fd0ff, 5.5 * big); setTimeout(() => R && shockwave(pos, 0x3d8fe0, 4 * big), 160); burst(p, { n: 18 * big, map: R.FX.star_06, color: 0xbfe6ff, size: 0.35, spread: 2, up: 1.6 }); }
+  else if (co === "เขียว") { decal(R.FX.twirl_02, pos, 0x5fe08a, 4.2 * big, 1.3, 3); burst(p, { n: 22 * big, map: R.FX.spark_06, color: 0x8dff9e, size: 0.4, spread: 1.8, up: 2.6, dur: 1.1 }); }
+  else if (co === "ม่วง") { decal(R.FX.magic_05, pos, 0xb47bff, 4.8 * big, 1.4, 2.5); burst(p, { n: 12, map: R.FX.smoke_03, color: 0x7a4bc9, size: 1.6, spread: 1.4, up: 1.2, dur: 1.3 }); burst(p, { n: 14 * big, map: R.FX.spark_05, color: 0xd9b8ff, size: 0.35, spread: 2, up: 2 }); }
+  else burst(p, { color: c });
+}
 export function banner(t, s) {
   let b = document.querySelector(".banner"); if (!b) { b = h("div", { class: "banner" }, h("div", { class: "band" }, h("b"), h("span"))); document.body.append(b); }
   b.querySelector("b").textContent = t; b.querySelector("span").textContent = s || ""; const band = b.querySelector(".band");
@@ -248,13 +265,14 @@ function sync(s, V, drops) {
     if (fresh) {
       const drop = true;
       m.grp.scale.setScalar(L.scale * 1.25); m.grp.position.set(L.pos.x, drop ? 7 : L.pos.y, L.pos.z + 1.5); m.grp.rotation.set(-0.6, rotY, 0.4);
-      if (drops.has(i)) pillar(L.pos, L.side === "me" ? 0xffc35a : 0xff4a52);
+      const co = E.def(s, L.x).co; const cHex = co ? colorHex(co) : (L.side === "me" ? 0xffc35a : 0xff4a52);
+      if (drops.has(i)) { pillar(L.pos, cHex); Sfx.play("summon", { color: co }); }
       m.busy = true;
       gsap.timeline({ onComplete: () => { m.busy = false; } })
         .to(m.grp.position, { x: L.pos.x, y: L.pos.y, z: L.pos.z, duration: 0.55, ease: "power4.in" }, 0.1)
         .to(m.grp.rotation, { x: 0, z: 0, duration: 0.55, ease: "power3.in" }, 0.1)
         .to(m.grp.scale, { x: L.scale, y: L.scale, z: L.scale, duration: 0.55, ease: "power3.in" }, 0.1)
-        .add(() => { if (drops.has(i)) { shockwave(L.pos, L.side === "me" ? 0xffc35a : 0xff4a52); burst(L.pos.clone().setY(0.3), { color: L.side === "me" ? 0xffc35a : 0xff6a70 }); shake(0.16); } }, 0.65);
+        .add(() => { if (drops.has(i)) { shockwave(L.pos, cHex); colorFx(L.pos, co); shake(0.16); } }, 0.65);
     } else if (!m.busy) {
       gsap.to(m.grp.position, { x: L.pos.x, y: m.sel ? m.restY + 0.4 : L.pos.y, z: L.pos.z, duration: 0.4, ease: "power2.out" });
       gsap.to(m.grp.rotation, { y: rotY, duration: 0.45, ease: "power2.inOut" }); gsap.to(m.grp.scale, { x: L.scale, y: L.scale, z: L.scale, duration: 0.3 });
@@ -269,31 +287,35 @@ async function animateEvent(ev, prev, s, V) {
     const m = R.meshes.get(ev.att); if (!m) return;
     const from = m.grp.position.clone(); let to = ev.tk === "life" ? new THREE.Vector3(0, 0.6, mineSide(ev.by) ? -4.7 : 5.3) : pos(ev.ti); if (!to) return;
     const hit = from.clone().add(to.clone().sub(from).multiplyScalar(0.82)); m.busy = true;
+    const aco = (s.cards[(E.locate(s, ev.att) || { x: {} }).x.c] || {}).co; const tint = aco ? colorHex(aco) : 0xfff1c9; Sfx.play("declare");
     await new Promise((res) => gsap.timeline({ onComplete: res })
       .to(m.grp.position, { y: 1.3, duration: 0.22, ease: "power2.out" }).to(m.glow.material, { opacity: 1, duration: 0.2 }, "<")
       .to(m.grp.position, { x: hit.x, z: hit.z, y: 0.6, duration: 0.26, ease: "power4.in" })
       .add(() => {
-        const sl = sprite(R.FX.slash_02, 0xfff1c9, 3.6, hit.clone().setY(1)); sl.material.rotation = Math.random() * 2;
+        Sfx.play("clash"); const sl = sprite(R.FX.slash_02, tint, 3.6, hit.clone().setY(1)); sl.material.rotation = Math.random() * 2;
         gsap.fromTo(sl.scale, { x: 0.5, y: 0.5 }, { x: 4.2, y: 4.2, duration: 0.25, ease: "power3.out" }); gsap.to(sl.material, { opacity: 0, duration: 0.35, delay: 0.1, onComplete: () => R && R.scene.remove(sl) });
-        burst(hit.clone().setY(0.8), { n: 24, color: 0xffd27a, spread: 2.8, size: 0.55 }); shockwave(hit, 0xff8a4a, 5); shake(0.42, 0.6); flash("rgba(255,240,210,.5)", 0.45);
+        burst(hit.clone().setY(0.8), { n: 24, color: 0xffd27a, spread: 2.8, size: 0.55 }); shockwave(hit, aco ? tint : 0xff8a4a, 5); if (aco) colorFx(hit, aco, 0.6); shake(0.42, 0.6); flash("rgba(255,240,210,.5)", 0.45);
       })
       .to(m.grp.position, { x: from.x, y: from.y, z: from.z, duration: 0.42, ease: "power2.out" }, "+=0.1").to(m.glow.material, { opacity: 0.2, duration: 0.4 }, "<")
       .add(() => { m.busy = false; }));
   } else if (ev.k === "life") {
-    const mine = mineSide(ev.p); flash(mine ? "rgba(255,40,60,.5)" : "rgba(255,200,90,.35)", 0.5);
+    const mine = mineSide(ev.p); Sfx.play("life"); flash(mine ? "rgba(255,40,60,.5)" : "rgba(255,200,90,.35)", 0.5);
     popText(new THREE.Vector3(0, 1.2, mine ? 5.2 : -4.7), "LIFE −1", "#ff4d55");
     burst(new THREE.Vector3(0, 1, mine ? 5.2 : -4.7), { n: 26, color: 0xff6a70, spread: 2.2 });
   } else if (ev.k === "destroy") {
-    const p = pos(ev.i); if (p) { popText(p.clone().setY(1), "BREAK", "#ff4d55"); burst(p.clone().setY(0.6), { n: 20, map: R.FX.spark_05, color: 0xff7a4a, size: 0.4, spread: 2.4 }); }
+    Sfx.play("destroy"); const p = pos(ev.i); if (p) { popText(p.clone().setY(1), "BREAK", "#ff4d55"); burst(p.clone().setY(0.6), { n: 20, map: R.FX.spark_05, color: 0xff7a4a, size: 0.4, spread: 2.4 }); }
   } else if (ev.k === "cast") {
-    pillar(new THREE.Vector3(0, 0, mineSide(ev.p) ? 3.9 : -4.4), ev.st === "L" ? 0x8fb0ff : 0xc9a2ff); burst(new THREE.Vector3(0, 0.6, -0.2), { n: 16, map: R.FX.star_06, color: 0xbfd0ff, spread: 3 });
-    const d = s.cards[(E.locate(s, ev.i) || { x: { c: "" } }).x.c]; if (d) popText(new THREE.Vector3(0, 1.4, -0.2), d.n, "#8fb0ff");
+    const d = s.cards[(E.locate(s, ev.i) || { x: { c: "" } }).x.c]; const mco = d && d.co; const mpos = new THREE.Vector3(0, 0, mineSide(ev.p) ? 3.9 : -4.4);
+    Sfx.play(ev.st === "L" ? "land" : "cast", { color: mco });
+    pillar(mpos, mco ? colorHex(mco) : ev.st === "L" ? 0x8fb0ff : 0xc9a2ff); burst(new THREE.Vector3(0, 0.6, -0.2), { n: 16, map: R.FX.star_06, color: 0xbfd0ff, spread: 3 });
+    if (ev.st === "L") decal(R.FX.magic_02, new THREE.Vector3(0, 0, -0.2), mco ? colorHex(mco) : 0x8fb0ff, 9, 1.8, 1.2); else if (mco) colorFx(mpos, mco, 0.8);
+    if (d) popText(new THREE.Vector3(0, 1.4, -0.2), d.n, "#8fb0ff");
   } else if (ev.k === "turn") {
-    mood(mineSide(ev.p)); banner(mineSide(ev.p) ? "YOUR TURN" : s.P[ev.p].name, `เทิร์น ${ev.t}`); await sleepMs(500);
+    mood(mineSide(ev.p)); Sfx.play("turn", { mine: mineSide(ev.p) }); banner(mineSide(ev.p) ? "YOUR TURN" : s.P[ev.p].name, `เทิร์น ${ev.t}`); await sleepMs(500);
   } else if (ev.k === "battle") {
-    banner("BATTLE PHASE", ""); gsap.fromTo(R.div.material, { opacity: 1 }, { opacity: 0.65, duration: 1 });
+    Sfx.play("battle"); banner("BATTLE PHASE", ""); gsap.fromTo(R.div.material, { opacity: 1 }, { opacity: 0.65, duration: 1 });
   } else if (ev.k === "over") {
-    banner(ev.w === V ? "VICTORY" : "DEFEAT", ""); flash(ev.w === V ? "rgba(255,210,120,.5)" : "rgba(80,0,10,.6)", 0.6);
+    Sfx.play(ev.w === V ? "win" : "lose"); banner(ev.w === V ? "VICTORY" : "DEFEAT", ""); flash(ev.w === V ? "rgba(255,210,120,.5)" : "rgba(80,0,10,.6)", 0.6);
   }
 }
 const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms));

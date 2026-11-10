@@ -4,6 +4,7 @@ import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError } from "../engine.js";
 import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js";
 import { Arena } from "../arena3d.js";
 import { autoEffect } from "../effects.js";
+import { Sfx } from "../sfx.js";
 import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js";
 import { Views, cardBtn, showCard, avatarEl } from "../ui.js";
 import { allDecks, deckById } from "./decks.js";
@@ -82,7 +83,7 @@ Views.play = {
     const stage = h("div", { id: "arena" }); const hud = h("div", { class: "hud" }); G.hud = hud;
     root.replaceChildren(stage, h("div", { class: "vign" }), hud);
     try { Arena.mount(stage); } catch (e) { console.warn("3D off", e); }
-    Arena.setHover((i) => { G.hover = i; drawInspector(); });
+    Arena.setHover((i) => { if (G.hover === i) return; G.hover = i; drawInspector(); });
     Arena.setClick(fieldClick);
     Arena.update(G.s, view(), { reset: true });
     draw(); drive();
@@ -223,7 +224,7 @@ function crystals(P, opp, prevKey) {
   return h("div", { class: "crys", role: "img", "aria-label": `LIFE เหลือ ${5 - now} จาก 5` }, [0, 1, 2, 3, 4].map((k) => h("i", { class: "cry" + (opp ? " opp" : "") + (k < now ? " gone" : "") + (k < now && k >= prev ? " now" : "") + (crit ? " crit" : "") })));
 }
 function draw() {
-  if (!G || !G.hud || !G.s) return; const s = G.s; const V = view(); const me = s.P[V], op = s.P[1 - V]; const p = whoActs(s);
+  if (!G || !G.hud || !G.s) return; if (G.hoverHand != null && !G.s.P[view()].hand.some((x) => x.i === G.hoverHand)) G.hoverHand = null; const s = G.s; const V = view(); const me = s.P[V], op = s.P[1 - V]; const p = whoActs(s);
   const myTurn = p != null && mine(p);
   const hint = s.phase === "over" ? (s.winner === V ? "ชนะ! " : s.winner == null ? "เสมอ · " : "แพ้ · ") + s.reason
     : G.thinking || (p == null ? "" : !mine(p) ? `รอ ${s.P[p].name}…` : s.phase === "mull" ? "เลือกการ์ดที่จะเปลี่ยน หรือเก็บมือเดิม" : s.trig.length ? "มีเอฟเฟกต์ต้องจัดการ" : s.pend ? "ถูกโจมตี เลือกการตอบโต้" : s.phase === "main" ? "Main Phase · แตะการ์ดบนมือเพื่อเล่น" : s.phase === "battle" ? (G.att ? "เลือกเป้าหมายบนสนาม" : "Battle · เลือก Avatar ที่ตื่นเพื่อโจมตี") : s.phase === "end" && s.need ? `ทิ้งการ์ด ${s.need} ใบ` : "");
@@ -252,7 +253,7 @@ function draw() {
       E.critical(me) ? h("span", { class: "chip bad" }, "สาหัส! ถูกตี LIFE อีกครั้งจะแพ้") : null,
       h("div", { class: "piles" }, pile(me, "deck", "Deck"), pile(me, "hell", "นรก"), pile(me, "dark", "มิติมืด")),
       h("div", { class: "row" }, ...turnButtons(s, p)),
-      h("div", { class: "row hidem" }, h("button", { class: "btn sm ciel", disabled: s.phase === "over", onclick: coach }, "ชิเอลแนะนำ"), h("button", { class: "btn sm", disabled: s.phase === "over", onclick: tools }, "เครื่องมือ"), h("button", { class: "btn sm", onclick: () => openPile(op, "hell") }, "นรกคู่แข่ง")),
+      h("div", { class: "row hidem" }, h("button", { class: "btn sm ciel", disabled: s.phase === "over", onclick: coach }, "ชิเอลแนะนำ"), h("button", { class: "btn sm", disabled: s.phase === "over", onclick: tools }, "เครื่องมือ"), h("button", { class: "btn sm", onclick: () => openPile(op, "hell") }, "นรกคู่แข่ง"), h("button", { class: "btn sm", "aria-pressed": Sfx.on ? "true" : "false", onclick: () => { Sfx.toggle(); Sfx.play("click"); draw(); } }, Sfx.on ? "🔊 เสียง" : "🔇 เสียง")),
       G.coach ? h("div", { class: "coachbox" }, G.coach) : null,
       h("div", { class: "glog", "aria-live": "polite" }, s.log.slice(-30).reverse().map((l) => h("div", { class: l.s === V ? "mine" : "" }, l.m)))),
     handZone(s, V, p), promptBox(s, p),
@@ -273,6 +274,7 @@ function gameMenu(s, V) {
   openSheet((api) => [
     h("div", { class: "row" }, ...[[me, "deck", "Deck"], [me, "hell", "นรกเรา"], [me, "dark", "มิติมืดเรา"], [op, "hell", "นรกคู่แข่ง"]].map(([P, z, t]) => h("button", { class: "btn sm", onclick: () => { api.close(); openPile(P, z); } }, `${t} ${P[z].length}`))),
     h("div", { class: "row" }, h("button", { class: "btn sm ciel", disabled: s.phase === "over", onclick: () => { api.close(); coach().then(() => G && G.coach && openSheet(h("div", { class: "coachbox" }, G.coach), { title: "ชิเอลแนะนำ" })); } }, "ชิเอลแนะนำ"), h("button", { class: "btn sm", disabled: s.phase === "over", onclick: () => { api.close(); tools(); } }, "เครื่องมือ"),
+      h("button", { class: "btn sm", onclick: (e) => { Sfx.toggle(); Sfx.play("click"); e.currentTarget.textContent = Sfx.on ? "🔊 เสียงเปิด" : "🔇 เสียงปิด"; } }, Sfx.on ? "🔊 เสียงเปิด" : "🔇 เสียงปิด"),
       h("button", { class: "btn sm danger", onclick: () => { api.close(); s.phase === "over" ? exitGame() : confirmBox("ออกจากสนาม? เกมที่ค้างจะเก็บไว้ให้เล่นต่อ", "ออก", exitGame); } }, "ออกจากสนาม")),
     G.coach ? h("div", { class: "coachbox" }, G.coach) : null,
     h("div", { class: "eyebrow" }, "บันทึกเกม"), h("div", { class: "glog", style: "max-height:44vh" }, s.log.slice(-40).reverse().map((l) => h("div", { class: l.s === V ? "mine" : "" }, l.m)))], { title: `เทิร์น ${s.turn} · ${s.P[s.active].name}` });
@@ -308,32 +310,38 @@ function turnButtons(s, p) {
   if (s.phase === "battle") return [h("button", { class: "btn gold sm", onclick: () => doAct({ type: "end" }, p) }, "จบเทิร์น"), G.att ? h("button", { class: "btn sm", onclick: () => { G.att = null; draw(); } }, "ยกเลิกการเลือก") : null];
   return [];
 }
+// desktop: big hover preview (image + readable text side by side); pinned to the selected card otherwise
 function drawInspector() {
-  const el = document.getElementById("insp"); if (!el || !G) return; const s = G.s; const i = G.hover ?? G.sel; const L = i != null && E.locate(s, i);
-  if (!L) { el.replaceChildren(h("div", { class: "eyebrow" }, "ตรวจการ์ด"), h("div", { class: "small muted" }, "ชี้หรือแตะการ์ดบนสนามเพื่อดูรายละเอียด")); return; }
-  const d = E.def(s, L.x); const c = d.im != null ? card(d.im) : null;
-  el.replaceChildren(c ? artImg(c) : h("div", { class: "fx" }, "Token " + d.n), h("b", { style: "font-family:var(--f-display)" }, d.n),
-    h("div", { class: "row small" }, h("span", { class: "chip" }, ZONE_TH[L.z]), d.t === "A" || d.t === "T" || d.t === "C" ? h("span", { class: "chip gold num" }, "POWER " + E.power(s, L.x)) : null, L.z === "av" ? h("span", { class: "chip" }, L.x.a ? "ตื่น" : "นอน") : null, (L.x.kw || []).map((k) => h("span", { class: "chip good" }, k))),
-    d.x ? h("div", { class: "fx small", style: "max-height:180px;overflow:auto" }, d.x) : null,
-    mine(L.p) && d.x && L.z !== "hand" ? h("button", { class: "btn sm", onclick: () => doAct({ type: "useAbility", i: L.x.i }, L.p) }, "สั่งใช้ความสามารถ") : null);
+  const el = document.getElementById("insp"); if (!el || !G) return; const s = G.s;
+  const hi = G.hoverHand != null ? G.hoverHand : G.hover ?? G.sel; const L = hi != null && E.locate(s, hi);
+  if (!L) { el.className = "inspector glass"; el.replaceChildren(); return; }
+  const x = L.x, d = E.def(s, x); const c = d.im != null ? card(d.im) : null; const pinned = G.hoverHand == null && G.hover == null;
+  const stat = [L.z === "hand" ? null : ZONE_TH[L.z], d.t === "M" ? "Magic " + SUB_TH[d.st] : d.t === "T" ? "Token" : "Cost " + (d.c ?? 0), "GEM " + (d.g || 0) + (d.gc ? " (" + d.gc + ")" : ""), d.t === "A" || d.t === "T" || d.t === "C" ? "POWER " + (L.z === "av" || L.z === "cs" ? E.power(s, x) : d.pw || 0) : null, L.z === "av" ? (x.a ? "ตื่น" : "นอน") : null, d.sy ? d.sy : null].filter(Boolean);
+  el.className = "inspector glass show" + (pinned ? " pinned" : "");
+  el.replaceChildren(c ? artImg(c) : h("div", { class: "tok" }, "Token"),
+    h("div", { class: "txt" }, h("b", null, d.n), h("div", { class: "row", style: "gap:5px" }, stat.map((t) => h("span", { class: "chip" + (/^POWER/.test(t) ? " gold" : "") }, t)), (x.kw || []).map((k) => h("span", { class: "chip good" }, k))),
+      d.x ? h("div", { class: "fx" }, d.x) : h("div", { class: "muted small" }, "ไม่มีข้อความความสามารถ"),
+      pinned && mine(L.p) && d.x && L.z !== "hand" ? h("button", { class: "btn sm", onclick: () => doAct({ type: "useAbility", i: x.i }, L.p) }, "สั่งใช้ความสามารถ") : null,
+      pinned ? h("button", { class: "btn sm", onclick: () => { G.sel = null; Arena.select(null); drawInspector(); } }, "ปิด") : null));
 }
 function handZone(s, V, p) {
   const P = s.P[V]; const n = P.hand.length; const row = compact(); const zone = h("div", { class: row ? "handzone handrow" : "handzone", "aria-label": "การ์ดบนมือ" });
-  const w = Math.min(760, innerWidth * 0.92); const cw = innerWidth < 760 ? 92 : 128; const gap = Math.min(cw * 0.78, (w - cw) / Math.max(1, n - 1));
+  const w = Math.min(760, innerWidth * 0.92); const cw = Math.round(Math.max(86, Math.min(128, innerHeight * 0.19))); const gap = Math.min(cw * 0.78, (w - cw) / Math.max(1, n - 1));
   const sel = G.pick || []; const canPlay = p != null && mine(p) && p === V;
   P.hand.forEach((x, k) => {
     const d = E.def(s, x); const off = k - (n - 1) / 2; const c = d.im != null ? card(d.im) : null;
-    const b = h("button", { class: "hcard" + (sel.includes(x.i) ? " sel" : ""), "aria-label": `${d.n} ${TYPE_TH[d.t]} GEM ${d.g || 0}`, style: row ? "" : `left:${w / 2 - cw / 2 + off * gap}px;transform:translateY(${Math.abs(off) * Math.abs(off) * 2.2 + (sel.includes(x.i) ? -26 : 0)}px) rotate(${off * 3.2}deg);z-index:${k}` },
+    const b = h("button", { class: "hcard" + (sel.includes(x.i) ? " sel" : ""), "aria-label": `${d.n} ${TYPE_TH[d.t]} GEM ${d.g || 0}`, style: row ? "" : `width:${cw}px;left:${w / 2 - cw / 2 + off * gap}px;transform:translateY(${Math.abs(off) * Math.abs(off) * 2.2 + (sel.includes(x.i) ? -26 : 0)}px) rotate(${off * 3.2}deg);z-index:${k}` },
       c ? artImg(c) : null, h("span", { class: "gem" }, (d.t === "M" ? SUB_TH[d.st][0] : "C" + (d.c ?? 0)) + " · G" + (d.g || 0)),
       touchy() ? h("span", { class: "zoom", role: "button", "aria-label": "ดูการ์ด " + d.n, onclick: (e) => { e.stopPropagation(); cardView(x); } }, "⤢") : null);
     b.addEventListener("mouseenter", () => { G.hover = null; showHandInspect(x); });
+    b.addEventListener("mouseleave", () => { G.hoverHand = null; drawInspector(); });
     b.addEventListener("click", () => { const sel = G.payFor || s.phase === "mull" || (s.phase === "end" && s.need) || G.host; if (touchy() && !sel) return cardView(x); handClick(x); });
     if (!canPlay) b.classList.add("dim");
     zone.append(b);
   });
   return zone;
 }
-function showHandInspect(x) { const el = document.getElementById("insp"); if (!el) return; const d = E.def(G.s, x); const c = card(d.im); el.replaceChildren(artImg(c), h("b", null, d.n), h("div", { class: "small muted" }, cardLine(c, 0).split(" : ")[0].replace(c.n + " ", "")), d.x ? h("div", { class: "fx small", style: "max-height:200px;overflow:auto" }, d.x) : null); }
+function showHandInspect(x) { G.hoverHand = x.i; drawInspector(); }
 function handClick(x) {
   const s = G.s, p = whoActs(s), V = view(); if (p == null || !mine(p)) return showHandInspect(x);
   const d = E.def(s, x);
