@@ -1,13 +1,13 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261110162653";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261110162653";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261110162653";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261110162653";
-import { Arena } from "../arena3d.js?v=20261110162653";
-import { autoEffect, resolveEffect } from "../effects.js?v=20261110162653";
-import { Sfx } from "../sfx.js?v=20261110162653";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261110162653";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261110162653";
-import { allDecks, deckById } from "./decks.js?v=20261110162653";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261110165422";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261110165422";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261110165422";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261110165422";
+import { Arena } from "../arena3d.js?v=20261110165422";
+import { autoEffect, resolveEffect } from "../effects.js?v=20261110165422";
+import { Sfx } from "../sfx.js?v=20261110165422";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261110165422";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261110165422";
+import { allDecks, deckById } from "./decks.js?v=20261110165422";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -325,7 +325,10 @@ function exitGame() { const over = G && G.s && G.s.phase === "over"; stopGame(ov
 function turnButtons(s, p) {
   if (s.phase === "over") return [h("button", { class: "btn gold sm", onclick: () => { stopGame(true); location.hash = "#play"; } }, "กลับหน้าเตรียมเกม"), h("a", { class: "btn sm", href: "#history", onclick: () => stopGame(true) }, "ดูประวัติ")];
   if (p == null || !mine(p) || s.trig.length || s.pend || s.phase === "mull") return [];
-  if (s.phase === "main") return [h("button", { class: "btn gold sm", onclick: () => doAct({ type: "battle" }, p) }, s.turn === 1 ? "จบเทิร์น" : "ไป Battle"), h("button", { class: "btn sm", onclick: () => doAct({ type: "end" }, p) }, "จบเทิร์น")];
+  if (s.phase === "main") { // abilities used from hell / the dark zone have no card on the table to tap, so offer them here
+    const far = [...s.P[p].hell, ...s.P[p].dark].filter((x) => { const sc = scriptOf(s, x); return sc && sc.activate && x.used !== s.turn && sc.activate.can(E, s, x, E.locate(s, x.i)); }).slice(0, 3);
+    return [h("button", { class: "btn gold sm", onclick: () => doAct({ type: "battle" }, p) }, s.turn === 1 ? "จบเทิร์น" : "ไป Battle"), h("button", { class: "btn sm", onclick: () => doAct({ type: "end" }, p) }, "จบเทิร์น"),
+      ...far.map((x) => h("button", { class: "btn ciel sm", title: scriptOf(s, x).activate.label, onclick: () => doAct({ type: "activate", i: x.i }, p) }, `สั่งใช้ ${E.name(s, x)} (${ZONE_TH[E.locate(s, x.i).z]})`))]; }
   if (s.phase === "battle") return [h("button", { class: "btn gold sm", onclick: () => doAct({ type: "end" }, p) }, "จบเทิร์น"), G.att ? h("button", { class: "btn sm", onclick: () => { G.att = null; draw(); } }, "ยกเลิกการเลือก") : null];
   return [];
 }
@@ -400,6 +403,13 @@ function promptBox(s, p) {
     const ok = x && (d.st === "R" ? !s.mu[p].R : s.phase === "main" && s.active === p && !s.trig.length && !s.pend && !s.mu[p][d.st]);
     if (!ok) { G.castFor = null; } else {
       let fx = null, asks = null; try { const r = resolveEffect(s, { i: x.i, c: x.c, when: "cast", seat: p }, [], true); if (r && r.ask) asks = r.ask.prompt; else fx = r; } catch (e) { console.warn(e); } const empty = !s.P[p].av.length && /Avatar[^:]*(ฝ่ายเรา|ของเรา|Zone\s*เรา)|เลือก\s*Avatar/.test(d.x || "");
+      // React: only inside a matching window; scripted canCast: only when its condition holds
+      const on = s.rw && s.rw.by !== p ? s.rw : s.pend && s.pend.by !== p ? { kind: "attack" } : null; const scx = scriptOf(s, x);
+      const KIND_TH = { attack: "ตอนฝ่ายตรงข้ามประกาศโจมตี", summon: "ตอนฝ่ายตรงข้ามอัญเชิญ Avatar", cast: "ตอนฝ่ายตรงข้ามใช้ Magic" };
+      const block = d.st === "R" ? (!on || !E.reactsFor(s, p, on).includes(x) ? `React ใช้ได้${scx && scx.react ? scx.react.kinds.map((k) => KIND_TH[k]).join(" หรือ ") : "ตอนฝ่ายตรงข้ามทำบางอย่าง"} (และตรงเงื่อนไขบนการ์ด) ตอนนั้นจะมีปุ่มขึ้นให้เอง` : null)
+        : scx && scx.canCast && !scx.canCast(E, s, p) ? "ยังไม่ตรงเงื่อนไขการใช้การ์ดใบนี้" : null;
+      if (block) return box(`${d.n}`, h("div", { class: "fx small", style: "max-height:120px;overflow:auto" }, d.x || ""), h("div", { class: "small", style: "color:var(--warn)" }, block),
+        h("div", { class: "row" }, h("button", { class: "btn", onclick: () => { G.castFor = null; draw(); } }, "ปิด")));
       return box(`ใช้ ${SUB_TH[d.st]} Magic: ${d.n}?`, h("div", { class: "fx small", style: "max-height:120px;overflow:auto" }, d.x || "ไม่มีข้อความ"),
         asks ? h("div", { class: "small", style: "color:#8ee3b2" }, "ใช้แล้วจะให้เลือก: " + asks) : fx ? h("div", { class: "small", style: "color:#8ee3b2" }, fx.explain) : h("div", { class: "tiny muted" }, "ระบบอ่านผลเองไม่ได้ ใช้แล้วจะให้เลือกว่าจะให้ชิเอลจัดการหรือจัดการเอง"),
         empty ? h("div", { class: "small", style: "color:var(--warn)" }, "ระวัง: ตอนนี้ยังไม่มี Avatar ฝ่ายเราบนสนาม ผลของการ์ดนี้อาจไม่มีเป้าหมาย") : null,
@@ -444,7 +454,7 @@ function promptBox(s, p) {
   }
   if (s.trig.length && !G.tmanual && G.tk === s.trig[0].id) return box("กำลังทำงาน…", h("div", { class: "tiny muted" }, (s.cards[s.trig[0].c] || {}).n || ""));
   if (s.trig.length) {
-    const t = s.trig[0]; const d = s.cards[t.c] || {}; const when = { summon: "จุติ", cast: "ใช้ Magic", life: "LIFE หงาย", death: "คำสั่งเสีย", attack: "เมื่อโจมตี", build: "ก่อสร้าง", manual: "สั่งใช้" }[t.when] || t.when;
+    const t = s.trig[0]; const d = s.cards[t.c] || {}; const when = { summon: "จุติ", cast: "ใช้ Magic", life: "LIFE หงาย", death: "คำสั่งเสีย", attack: "เมื่อโจมตี", build: "ก่อสร้าง", manual: "สั่งใช้", activate: "สั่งใช้", paid: "ถูกทิ้งเป็นค่า Cost" }[t.when] || t.when;
     const hint = h("input", { type: "text", placeholder: "บอกชิเอลถ้าต้องเลือกเป้าหมาย เช่น ทำลายพญานาค", "aria-label": "เป้าหมายที่ต้องการ" }); const out = h("div");
     const auto = null;
     return box(`เอฟเฟกต์: ${d.n} (${when})`, h("div", { class: "fx small", style: "max-height:130px;overflow:auto" }, d.x || ""), Ciel.on() ? hint : null, out,
