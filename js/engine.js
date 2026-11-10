@@ -1,7 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId } from "./cards.js?v=20261110165422";
-import { SCRIPTS } from "./scripts.js?v=20261110165422";
-import { newId, clone } from "./util.js?v=20261110165422";
+import { card, kwHas, SUB_TH, CARDS, baseId } from "./cards.js?v=20261110170239";
+import { readAura } from "./auras.js?v=20261110170239";
+import { SCRIPTS } from "./scripts.js?v=20261110170239";
+import { newId, clone } from "./util.js?v=20261110170239";
 export const ZONES = ["deck", "hand", "av", "mg", "cs", "hell", "dark", "life"];
 export const ZONE_TH = { deck: "Deck", hand: "มือ", av: "Avatar Zone", mg: "Magic Zone", cs: "Construct Zone", hell: "นรก", dark: "มิติมืด", life: "LIFE", land: "Land Magic" };
 export const PHASE_TH = { mull: "เปลี่ยนมือ", draw: "Draw", main: "Main", battle: "Battle", end: "End", over: "จบเกม" };
@@ -15,6 +16,8 @@ export function scriptOf(s, x) {
   return scriptBase.m.get(baseId(d.im)) || null;
 }
 const FIELD = ["av", "cs", "mg"];
+export const END_RE = /อัตโนมัติ\s*ใน(?:ช่วง|ทุกๆ)?\s*End Phase(\s*(?:ของ)?\s*เรา)?/;
+export const MAIN_RE = /อัตโนมัติ\s*(?:เมื่อ|ใน)?(?:ช่วง)?\s*เริ่ม(?:ต้น)?\s*Main Phase\s*(?:ของ)?\s*เรา/;
 function fieldCards(s) { const out = []; for (let p = 0; p < 2; p++) for (const z of FIELD) for (const x of s.P[p][z]) out.push({ x, L: { p, z } }); if (s.land) out.push({ x: s.land, L: { p: s.land.o, z: "land" } }); return out; }
 export const E = {
   ev(s, o) { s.evc = (s.evc || 0) + 1; (s.ev = s.ev || []).push({ id: s.evc, ...o }); if (s.ev.length > 40) s.ev.shift(); },
@@ -30,7 +33,8 @@ export const E = {
     for (const P of s.P) for (const m of P.mg) if (m.on === x.i) mb += modBonus(E.def(s, m).x);
     const tn = x.tn ? Object.values(x.tn).reduce((a, b) => a + b, 0) : 0;
     let au = 0; const me = E.locate(s, x.i);
-    if (me && me.z === "av") for (const { x: src, L } of fieldCards(s)) { const sc = scriptOf(s, src); if (sc && sc.aura) for (const a of sc.aura(E, s, src, L)) if (a.seat === me.p && a.test(x)) au += a.n; }
+    if (me && me.z === "av") for (const { x: src, L } of fieldCards(s)) { const sc = scriptOf(s, src); const ra = sc && sc.aura ? null : !src.mute && readAura(E.def(s, src));
+      const list = sc && sc.aura ? sc.aura(E, s, src, L) : ra ? ra.run(E, s, src, L) : []; for (const a of list) if (a.seat === me.p && a.test(x)) au += a.n; }
     return Math.max(0, (x.zero ? 0 : d.pw || 0) + (x.pm || 0) + (x.tm || 0) + tn + mb + au);
   },
   costOf(s, p, x) { // Cost after continuous reductions (e.g. ซาร์อึก)
@@ -83,10 +87,18 @@ export const E = {
     if (!E.draw(s, p, n)) return;
     s.phase = "main";
     if (s.later && s.later.length) { const now = s.later.filter((l) => l.seat === p); s.later = s.later.filter((l) => l.seat !== p); for (const l of now) { E.log(s, p, l.why || "เอฟเฟกต์ที่รอ Main Phase นี้"); E.ops(s, l.ops, p); } }
+    for (const { x, L } of fieldCards(s)) if (L.p === p && !x.mute && (MAIN_RE.test(String(E.def(s, x).x || "")) || (scriptOf(s, x) || {}).mainStart)) E.addTrig(s, p, x, "mainStart"); // "อัตโนมัติ เมื่อเริ่ม Main Phase เรา :"
   },
   nextTurn(s) {
     s.need = 0; s.phase = "end";
     for (const { x, L } of fieldCards(s)) { const sc = scriptOf(s, x); if (sc && sc.endPhase) { const ops = sc.endPhase(E, s, x, L); if (ops.length) { E.log(s, L.p, `เอฟเฟกต์ End Phase: ${E.name(s, x)}`); E.ops(s, ops, L.p); } } }
+    if (s.phase === "over") return;
+    // printed "อัตโนมัติ ในช่วง End Phase (ของเรา) :" abilities become triggers resolved before the turn passes
+    for (const { x, L } of fieldCards(s)) { if (x.mute || (scriptOf(s, x) || {}).endPhase) continue; const m = String(E.def(s, x).x || "").match(END_RE); if (m && (!m[1] || L.p === s.active)) E.addTrig(s, L.p, x, "end"); }
+    if (s.trig.length) { s.endWait = true; return; }
+    E.finishTurn(s);
+  },
+  finishTurn(s) {
     for (const q of [0, 1]) for (const x of [...s.P[q].av]) if (x.back != null) { const k = s.P[q].av.indexOf(x); s.P[q].av.splice(k, 1); const back = x.back; delete x.back; s.P[back].av.push(x); E.log(s, back, `${E.name(s, x)} กลับไปอยู่กับเจ้าของ`); }
     for (const q of [0, 1]) for (const x of s.P[q].av) { delete x.guard; if (x.muteEnd != null && x.muteEnd <= s.turn) { delete x.mute; delete x.zero; delete x.muteEnd; } }
     if (s.phase === "over") return;
@@ -307,6 +319,7 @@ export const E = {
         else { if (act.explain) E.log(s, p, `เอฟเฟกต์ ${nm}: ${act.explain}`); s.cur = t.c; try { E.ops(s, act.ops || [], p); } finally { delete s.cur; } }
         if (t.toHell) { const L = E.locate(s, t.i); if (L && L.z === "mg") { s.P[L.p].mg.splice(L.idx, 1); s.P[L.x.o].hell.push(L.x); } }
         if (s.pend && !s.trig.length && s.pend.resolved) s.pend = null;
+        if (s.endWait && !s.trig.length && s.phase === "end") { delete s.endWait; E.finishTurn(s); }
         return;
       }
       case "op": { E.ops(s, act.ops || [], p); return; }

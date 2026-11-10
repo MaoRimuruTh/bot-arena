@@ -446,6 +446,27 @@ Object.assign(SCRIPTS, {
       return { explain: `ทิ้ง ${c.E.name(c.s, d)}${t ? ` · ยึด ${c.E.name(c.s, t)} จนจบเทิร์น` : ""}`, ops: [{ op: "discard", seat: c.seat, iids: [d.i] }, ...(t ? [{ op: "control", i: t.i, seat: c.seat, until: "turn", asleep: true }] : [])] }; } } },
 });
 
+// ===================== timed abilities (End Phase / start of Main Phase) =====================
+const mineEnd = (s, L) => s.active === L.p;
+Object.assign(SCRIPTS, {
+  // โลกิ: every End Phase it moves to the other side
+  "BT03-023": { endPhase: (E, s, x, L) => (L.z === "av" && E.avatars(s.P[1 - L.p]) < 4 ? [{ op: "control", i: x.i, seat: 1 - L.p }] : []) },
+  // ศาสตราจารย์วานร: 3+ วานร on our field → draw 2
+  "BT08-041": { endPhase: (E, s, x, L) => (L.z === "av" && s.P[L.p].av.filter((y) => nm(E, s, y, "วานร")).length >= 3 ? [{ op: "draw", seat: L.p, n: 2 }] : []) },
+  // ม้าเฉียว: back to hand at our End Phase unless another green ขุนพล {ต่างชาติ} is with it
+  "BT10-049": { endPhase: (E, s, x, L) => (L.z === "av" && mineEnd(s, L) && !s.P[L.p].av.some((y) => y.i !== x.i && nm(E, s, y, "ขุนพล") && E.def(s, y).co === "เขียว" && sy(E, s, y, "ต่างชาติ")) ? [{ op: "move", i: x.i, to: "hand" }] : []) },
+  // ฟูมะ: exiled at our End Phase, comes back at the start of our next Main Phase
+  "BT11-010": { endPhase: (E, s, x, L) => (L.z === "av" && mineEnd(s, L) ? [{ op: "exile", i: x.i }, { op: "later", seat: L.p, ops: [{ op: "put", i: x.i }], why: "ฟูมะกลับจากมิติมืด" }] : []) },
+  // อินาริ: draw 1, +1 per 15 cards in our hell
+  "CC02-016": { endPhase: (E, s, x, L) => (L.z === "av" && mineEnd(s, L) ? [{ op: "draw", seat: L.p, n: 1 + Math.floor(s.P[L.p].hell.length / 15) }] : []) },
+  // พาลี: destroy every enemy Avatar with the lowest Cost
+  "SD09-004": { mainStart: (c) => { const O = c.s.P[1 - c.seat].av.filter((x) => !x.tok); if (!O.length) return { explain: "ฝ่ายตรงข้ามไม่มี Avatar", ops: [] };
+    const lo = Math.min(...O.map((x) => c.E.def(c.s, x).c || 0)); const t = O.filter((x) => (c.E.def(c.s, x).c || 0) === lo);
+    return { explain: `ทำลาย Avatar Cost ${lo}: ${t.map((x) => c.E.name(c.s, x)).join(", ")}`, ops: t.map((x) => ({ op: "destroy", i: x.i, why: "พาลี" })) }; } },
+  // นินจินแมน: draw one per Modification it wears
+  "BT02-020": { mainStart: (c) => { const n = c.self ? [0, 1].flatMap((q) => c.s.P[q].mg).filter((m) => m.on === c.self.i).length : 0; return { explain: `จั่ว ${n} ใบ`, ops: n ? [{ op: "draw", seat: c.seat, n }] : [] }; } },
+});
+
 // ===================== React cards (answer windows) =====================
 // react.kinds: "summon" (an Avatar was summoned), "cast" (a Magic was used), "attack" (we are being attacked)
 // The trigger carries the window as c.t.on = { kind, by, i } or { kind:"attack", by, att, tk, ti }.

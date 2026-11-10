@@ -1,11 +1,12 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { E, scriptOf } from "./engine.js?v=20261110165422";
+import { E, scriptOf } from "./engine.js?v=20261110170239";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ยกเว้น|ไม่ได้ชื่อ|ที่ไม่ใช่|ที่สุด|กี่ใบ|ก่อสร้าง|สวม|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|\d\)|ลูกเต๋า|สูงสุด|ถ้า|หาก|เลือกปฏิบัติ|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|ได้รับ|เปลี่ยนชื่อ|สวมใส่|ควบคุม|Token|โทเคน|เทิร์นถัดไป|ครั้งถัดไป|เลือก\s*1\s*อย่าง|ทั้งหมดบนมือ|เปิดเผย|แสดง/;
 // the trigger keyword must start an ability ("จุติ :" / "จุติ (…) :" / "จุติ ทิ้งการ์ด… :"), not appear inside one ("อัญเชิญ จุติ Avatar")
-const KEYS = { summon: /(?<!อัญเชิญ\s*|แบบ\s*|ทำการ\s*)จุติ(?=\s*(?:\(|:|ทิ้ง|เลือก|เซ่นไหว้))/, death: /(?<!ได้รับ\s*["“]?\s*)คำสั่งเสีย(?=\s*(?:\(|:))/, life: /ถูกหงายจากการโจมตี/, attack: /เมื่อ\s*Avatar\s*(?:ใบนี้|ตัวนี้)\s*โจมตี/ };
+const KEYS = { summon: /(?<!อัญเชิญ\s*|แบบ\s*|ทำการ\s*)จุติ(?=\s*(?:\(|:|ทิ้ง|เลือก|เซ่นไหว้))/, death: /(?<!ได้รับ\s*["“]?\s*)คำสั่งเสีย(?=\s*(?:\(|:))/, life: /ถูกหงายจากการโจมตี/, attack: /เมื่อ\s*Avatar\s*(?:ใบนี้|ตัวนี้)\s*โจมตี/,
+  end: /อัตโนมัติ\s*ใน(?:ช่วง|ทุกๆ)?\s*End Phase(?:\s*(?:ของ)?\s*เรา)?/, mainStart: /อัตโนมัติ\s*(?:เมื่อ|ใน)?(?:ช่วง)?\s*เริ่ม(?:ต้น)?\s*Main Phase\s*(?:ของ)?\s*เรา/ };
 const VERBS = [/จั่วการ์ด/, /ธรณีสูบ/, /ทำลาย/, /POWER\s*[+\-−–]/, /สภาพนอน/, /สภาพตื่น/];
 
 // pull "head : body" for the ability that this trigger fires
@@ -100,7 +101,8 @@ function sentence(s, t, p, self, ctx) {
     ops.push({ op: "search", seat: p, ...f, to, ...(got ? { take: got.i } : {}) }); say.push(got ? `ค้น ${E.name(s, got)} จาก Deck` : `ค้น ${f.name || f.symbol || "การ์ด"} จาก Deck`);
   } else if (/POWER\s*([+\-−–])\s*(\d+)/.test(t)) {
     const m = t.match(/POWER\s*([+\-−–])\s*(\d+)/); const v = (m[1] === "+" ? 1 : -1) * +m[2];
-    const temp = /Draw Phase ถัดไป/.test(t) ? "next" : /จนจบเทิร์น|จนจบการต่อสู้|เทิร์นนี้/.test(t) || ctx.when === "cast" || ctx.when === "attack" ? true : null;
+    let temp = /Draw Phase (?:ถัดไป|ต่อไป)/.test(t) ? "next" : /จนจบเทิร์น|จนจบการต่อสู้|เทิร์นนี้/.test(t) || ctx.when === "cast" || ctx.when === "attack" ? true : null;
+    if (temp == null && (ctx.when === "end" || ctx.when === "mainStart") && !/จนถึง|จนกว่า/.test(t)) temp = false; // a printed timed boost stays
     if (temp == null) return false; // continuous wording: leave it
     const f = filterOf(t); let tgt;
     if (self && (/ใบนี้|ตัวนี้/.test(t) || (!/เลือก|ฝ่าย|ทุกใบ|Avatar|\{/.test(t.split("POWER")[0]) && v > 0))) tgt = [self];

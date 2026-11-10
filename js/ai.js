@@ -1,9 +1,9 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus } from "./engine.js?v=20261110165422";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261110165422";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261110165422";
-import { Data } from "./fb.js?v=20261110165422";
-import { lsGet } from "./util.js?v=20261110165422";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus } from "./engine.js?v=20261110170239";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261110170239";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261110170239";
+import { Data } from "./fb.js?v=20261110170239";
+import { lsGet } from "./util.js?v=20261110170239";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -209,7 +209,7 @@ const OP_DOC = `รูปแบบผล (ops) ที่ระบบรองร
 {"op":"control","i":ID,"seat":S} ยึดการควบคุม | {"op":"note","text":"บันทึกผลที่ระบบทำให้ไม่ได้ เช่นผลต่อเนื่อง"} | {"op":"win","seat":S}`;
 export async function cielResolve(s, trig, hint) {
   const x = E.locate(s, trig.i); const d = s.cards[trig.c] || {};
-  const when = { summon: "ถูกอัญเชิญ (จุติ)", cast: "ถูกใช้", life: "LIFE ถูกหงายจากการโจมตี", death: "ถูกทำลายลงนรก (คำสั่งเสีย)", attack: "โจมตี", build: "ถูกก่อสร้าง", manual: "ผู้เล่นสั่งใช้ความสามารถ" }[trig.when] || trig.when;
+  const when = { summon: "ถูกอัญเชิญ (จุติ)", cast: "ถูกใช้", life: "LIFE ถูกหงายจากการโจมตี", death: "ถูกทำลายลงนรก (คำสั่งเสีย)", attack: "โจมตี", build: "ถูกก่อสร้าง", manual: "ผู้เล่นสั่งใช้ความสามารถ", end: "ถึงช่วง End Phase", mainStart: "เริ่ม Main Phase ของเรา", milled: "ถูกธรณีสูบลงนรก", paid: "ถูกทิ้งเป็นค่า Cost", win: "ชนะการต่อสู้" }[trig.when] || trig.when;
   const doc = OP_DOC.replace("${S0}", s.P[0].name).replace("${S1}", s.P[1].name);
   const prompt = `คุณคือชิเอล ผู้ตัดสินเอฟเฟกต์การ์ด Battle of Talingchan ให้ทำตามข้อความการ์ดอย่างถูกต้องตามกติกา\n${RULES}\n\nสถานะเกม (มุมมองผู้ควบคุมเอฟเฟกต์ seat ${trig.seat}):\n${stateText(s, trig.seat)}\n\nเอฟเฟกต์ที่ต้องจัดการ: การ์ด #${trig.i} "${d.n}" (${x ? ZONE_TH[x.z] : "ออกจากสนามแล้ว"}) เหตุการณ์: ${when}${trig.exact ? " · จ่าย GEM พอดีกับ Cost" : ""}\nข้อความการ์ด: ${d.x}\n${hint ? "\nผู้เล่นระบุเป้าหมาย/ความต้องการ: " + hint + "\n" : ""}\n${doc}\n\nกติกาการตอบ:\n- ทำเฉพาะส่วนที่เหตุการณ์นี้กระตุ้น ถ้าเงื่อนไขไม่ครบให้ ops ว่าง\n- ถ้าต้องเลือกเป้าหมาย ให้เลือกที่ดีที่สุดสำหรับผู้ควบคุมเอฟเฟกต์ เว้นแต่ผู้เล่นระบุไว้\n- ความสามารถต่อเนื่องที่ระบบคำนวณเองไม่ได้ ให้ใส่ power/keyword ที่เกี่ยวข้อง หรือ note อธิบาย\nตอบ JSON เท่านั้น: {"explain":"สรุปผลเป็นภาษาไทย 1-2 ประโยค","ops":[...]}`;
   const r = await askJSON(prompt, { tier: "default" });
