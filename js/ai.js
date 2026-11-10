@@ -1,10 +1,10 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261111015639";
-import { plain } from "./persona.js?v=20261111015639";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261111015639";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261111015639";
-import { Data } from "./fb.js?v=20261111015639";
-import { lsGet } from "./util.js?v=20261111015639";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261111021559";
+import { plain } from "./persona.js?v=20261111021559";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261111021559";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261111021559";
+import { Data } from "./fb.js?v=20261111021559";
+import { lsGet } from "./util.js?v=20261111021559";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -188,7 +188,7 @@ export const H = {
     const on = s.rw && s.rw.by !== q ? s.rw : s.pend && s.pend.by !== q ? { kind: "attack", by: s.pend.by, att: s.pend.att, tk: s.pend.tk, ti: s.pend.ti } : null; if (!on) return null;
     let best = null;
     for (const x of E.reactsFor(s, q, on)) {
-      const r = H.preview(s, { i: x.i, c: x.c, when: "cast", seat: q, on }); let v = H.opsScore(s, q, r);
+      const r = H.preview(s, { i: x.i, c: x.c, when: E.def(s, x).t === "M" ? "cast" : "handReact", seat: q, on }); let v = H.opsScore(s, q, r);
       if (r && r.ops.some((o) => o.op === "cancelAttack")) v += 3;
       { const sc = scriptOf(s, x); if (sc && sc.react && sc.react.botV) v += sc.react.botV(E, s, q, on, x) || 0; }
       if (on.kind === "attack") { const A = E.locate(s, on.att); const T = on.tk === "av" ? E.locate(s, on.ti) : null; const ap = A ? E.power(s, A.x) + (s.pend.bonus || 0) : 0;
