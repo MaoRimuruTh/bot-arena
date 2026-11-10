@@ -824,3 +824,105 @@ Object.assign(SCRIPTS, {
   // ด่านเฮาโลก๋วน: the opponent cannot use สามัคคี · our purple ขุนพล POWER +1
   "SD07-020": { noUnite: true, aura: (E, s, src, L) => (L.z === "cs" ? [{ seat: L.p, test: (x) => E.named(s, x, "ขุนพล") && E.colors(s, x).includes("ม่วง"), n: 1 }] : []) },
 });
+
+// ---------- Starter Deck 08: รัททาทุย ----------
+const rat = (E, s, x) => isAv(E, s, x) && sy(E, s, x, "รัททาทุย");
+const ratDef = (d) => !!d && d.t === "A" && String(d.sy || "").includes("รัททาทุย");
+const ratCon = (E, s, x) => E.def(s, x).t === "C" && sy(E, s, x, "รัททาทุย");
+// the printed Cost 1 · GEM 1 · POWER 1 รัททาทุย (พาหะ, โป๊ …)
+const mini = (E, s, x) => { const d = E.def(s, x); return rat(E, s, x) && d.c === 1 && d.g === 1 && d.pw === 1; };
+const freeAv = (E, s, p) => Math.max(0, Math.min(4 - E.avatars(s.P[p]), 6 - s.P[p].av.length));
+// summon up to `max` of those from the Deck and/or hell (o.min1: at least one; o.shuffle: shuffle the Deck if one came from it)
+function callMini(c, zones, max, label, o = {}) {
+  const { E, s, seat: p } = c; const P = s.P[p]; const n = Math.min(max, freeAv(E, s, p));
+  const pool = () => [...(zones.includes("deck") ? uniq(E, s, P.deck.filter((y) => mini(E, s, y) && !got.includes(y))) : []), ...(zones.includes("hell") ? uniq(E, s, [...P.hell].reverse().filter((y) => mini(E, s, y) && !got.includes(y))) : [])];
+  const got = []; if (!n) return { explain: "Avatar Zone เต็ม", ops: [] };
+  for (let k = 0; k < n; k++) { const t = c.choose(pool(), 1, k ? `${label} (เพิ่มได้อีก ${n - k} ใบ)` : label, { optional: k > 0 || !o.min1 })[0]; if (!t) break; got.push(t); }
+  if (!got.length) return { explain: pool().length ? "ไม่อัญเชิญ" : "ไม่มีรัททาทุย Cost 1 GEM 1 POWER 1 ให้อัญเชิญ", ops: [] };
+  const fromDeck = got.some((y) => P.deck.includes(y)); const ops = got.map((y) => ({ op: "put", i: y.i })); if (o.shuffle && fromDeck) ops.push({ op: "shuffle", seat: p });
+  return { explain: `อัญเชิญ ${got.map((y) => `${E.name(s, y)} จาก${P.deck.includes(y) ? " Deck" : "นรก"}`).join(", ")}${o.shuffle && fromDeck ? " แล้วสับ Deck" : ""}`, ops };
+}
+const miniReady = (E, s, p, zones) => freeAv(E, s, p) > 0 && zones.some((z) => (z === "deck" ? s.P[p].deck : s.P[p].hell).some((y) => mini(E, s, y)));
+// ไพรมอล: once per turn, instead of leaving the field, 5 รัททาทุย cards from our hell are exiled
+const primalSave = (E, s, x, L) => { const P = s.P[L.p]; const pool = P.hell.filter((y) => sy(E, s, y, "รัททาทุย")); if (pool.length < 5) return false;
+  const pick = [...pool].sort((a, b) => (mini(E, s, a) ? 1 : 0) - (mini(E, s, b) ? 1 : 0) || worth(E, s, a) - worth(E, s, b)).slice(0, 5);
+  E.log(s, L.p, `${E.name(s, x)} เนรเทศรัททาทุยในนรก 5 ใบ แล้วไม่ออกจากสนาม`); E.ops(s, pick.map((y) => ({ op: "move", i: y.i, to: "dark" })), L.p); return true; };
+Object.assign(SCRIPTS, {
+  // ไพรมอล รัททาทุย: once per turn summon a Cost 1 GEM 1 POWER 1 รัททาทุย from Deck or hell · stays on the field by exiling 5 รัททาทุย from hell (once per turn) ·
+  // when it attacks, may sacrifice another รัททาทุย of ours to wake up
+  "SD08-001": { activate: { label: "อัญเชิญรัททาทุย Cost 1 GEM 1 POWER 1 จาก Deck หรือนรก", can: (E, s, x, L) => L.z === "av" && s.phase === "main" && miniReady(E, s, L.p, ["deck", "hell"]),
+      run: (c) => callMini(c, ["deck", "hell"], 1, "เลือกรัททาทุย Cost 1 GEM 1 POWER 1 จาก Deck หรือนรกที่จะอัญเชิญ", { min1: true, shuffle: true }) },
+    wouldDestroy: primalSave, wouldLeave: primalSave,
+    attack: (c) => { const { E, s, seat: p, self: x } = c; if (!x) return { explain: "ไม่อยู่บนสนาม", ops: [] };
+      const pool = s.P[p].av.filter((y) => y.i !== x.i && rat(E, s, y)).sort((a, b) => worth(E, s, a) - worth(E, s, b)); if (!pool.length) return { explain: "ไม่มีรัททาทุยใบอื่นให้เซ่นไหว้", ops: [] };
+      const t = c.choose(s.P[p].bot ? pool.filter((y) => (E.def(s, y).c || 0) <= 2) : pool, 1, "ไพรมอล รัททาทุย: เซ่นไหว้รัททาทุยฝ่ายเรา 1 ใบ เพื่อกลับเป็นสภาพตื่น (ไม่ใช้ก็ได้)", { optional: true })[0];
+      return t ? { explain: `เซ่นไหว้ ${E.name(s, t)} · ${E.name(s, x)} กลับเป็นสภาพตื่น`, ops: [{ op: "destroy", i: t.i, why: "เซ่นไหว้" }, { op: "wake", i: x.i }] } : { explain: "ไม่ใช้ความสามารถ", ops: [] }; } },
+  // รัททาทุย พาหะ: the Avatar fighting it gets POWER -1 (the 50-copy deck rule is in the card data)
+  "SD08-002": { foeBattle: () => -1 },
+  // โดมรัททาทุย: sacrifice it and show a รัททาทุย Construct from the hand: build that Construct
+  "SD08-003": { activate: { label: "เซ่นไหว้ใบนี้ แสดง Construct รัททาทุยจากมือ แล้วก่อสร้าง", can: (E, s, x, L) => L.z === "av" && s.phase === "main" && s.P[L.p].cs.length < 3 && s.P[L.p].hand.some((y) => ratCon(E, s, y) && !s.P[L.p].cs.some((z) => E.name(s, z) === E.name(s, y))),
+    run: (c) => { const { E, s, seat: p, self: x } = c; const P = s.P[p]; if (!x) return { explain: "ไม่อยู่บนสนาม", ops: [] };
+      const t = c.choose(uniq(E, s, P.hand.filter((y) => ratCon(E, s, y) && !P.cs.some((z) => E.name(s, z) === E.name(s, y)))).sort((a, b) => (E.def(s, b).c || 0) - (E.def(s, a).c || 0)), 1, "แสดง Construct รัททาทุยจากมือที่จะก่อสร้าง", { exact: true })[0];
+      return t ? { explain: `เซ่นไหว้ ${E.name(s, x)} · แสดงแล้วก่อสร้าง ${E.name(s, t)}`, ops: [{ op: "destroy", i: x.i, why: "เซ่นไหว้" }, { op: "move", i: t.i, to: "cs", seat: p }] } : { explain: "ไม่มี Construct รัททาทุยบนมือ", ops: [] }; } } },
+  // รัททาทุยกินซาก: once per turn exile any number of different-name รัททาทุย Avatars from our hell: POWER +1 each until end of turn
+  "SD08-005": { activate: { label: "เนรเทศรัททาทุยในนรก (ชื่อไม่ซ้ำ): POWER +1 ต่อใบ", can: (E, s, x, L) => L.z === "av" && s.phase === "main" && s.P[L.p].hell.some((y) => rat(E, s, y)),
+    run: (c) => { const { E, s, seat: p, self: x } = c; const P = s.P[p]; if (!x) return { explain: "ไม่อยู่บนสนาม", ops: [] }; const names = uniq(E, s, [...P.hell].reverse().filter((y) => rat(E, s, y)));
+      const keep = P.av.some((y) => E.named(s, y, "ไพรมอล รัททาทุย")) ? 5 : 0; const spare = P.hell.filter((y) => sy(E, s, y, "รัททาทุย")).length - keep;
+      const pick = c.choose(names, P.bot ? Math.max(0, Math.min(names.length, spare)) : names.length, "เลือก Avatar รัททาทุยในนรก (ชื่อไม่ซ้ำกัน) ที่จะเนรเทศ: POWER +1 ต่อใบ", { optional: true });
+      return pick.length ? { explain: `เนรเทศ ${pick.length} ใบ: ${E.name(s, x)} POWER +${pick.length} จนจบเทิร์น`, ops: [...pick.map((y) => ({ op: "move", i: y.i, to: "dark" })), { op: "power", i: x.i, n: pick.length, temp: true }] } : { explain: "ไม่เนรเทศ", ops: [] }; } } },
+  // ตุ๊กตารัททาทุย: pays only for รัททาทุย (read from the text) · paid for a รัททาทุย: summon a Cost 1 GEM 1 POWER 1 รัททาทุย from the Deck
+  "SD08-010": { paidFor: (d) => ratDef(d), paid: (c) => callMini(c, ["deck"], 1, "ตุ๊กตารัททาทุย: เลือกรัททาทุย Cost 1 GEM 1 POWER 1 จาก Deck ที่จะอัญเชิญ", { min1: true }) },
+  // กรุงโรมใน 1 วัน: up to 2 non-Only Constructs from our hell with total Cost 5 or less are built
+  "SD08-012": { canCast: (E, s, p) => s.P[p].cs.length < 3 && s.P[p].hell.some((y) => E.def(s, y).t === "C" && !E.def(s, y).o1 && (E.def(s, y).c || 0) <= 5 && !s.P[p].cs.some((z) => E.name(s, z) === E.name(s, y))),
+    cast: (c) => { const { E, s, seat: p } = c; const P = s.P[p]; const free = 3 - P.cs.length;
+      const pool = (budget, not) => uniq(E, s, [...P.hell].reverse().filter((y) => E.def(s, y).t === "C" && !E.def(s, y).o1 && (E.def(s, y).c || 0) <= budget && !P.cs.some((z) => E.name(s, z) === E.name(s, y)) && !(not && E.name(s, y) === E.name(s, not))));
+      const cost = (y) => E.def(s, y).c || 0; let best = null; const p1 = pool(5);
+      for (const a of p1) { const rest = free >= 2 ? pool(5 - cost(a), a) : []; const b = rest.sort((u, v) => cost(v) - cost(u))[0]; const v = cost(a) + (b ? cost(b) : 0) + 0.1 * cost(a); if (!best || v > best.v) best = { v, a }; }
+      const a = c.choose(best ? [best.a, ...p1.filter((y) => y !== best.a)] : p1, 1, "เลือก Construct (ไม่ใช่ Only #1) จากนรกที่จะก่อสร้าง · Cost รวมไม่เกิน 5", { exact: true })[0]; if (!a) return { explain: "ไม่มี Construct ในนรกที่ตรงเงื่อนไข", ops: [] };
+      const b = free >= 2 ? c.choose(pool(5 - cost(a), a).filter((y) => y.i !== a.i).sort((u, v) => cost(v) - cost(u)), 1, `เลือก Construct ใบที่ 2 (Cost ไม่เกิน ${5 - cost(a)}) หรือไม่เลือก`, { optional: true })[0] : null;
+      const list = [a, b].filter(Boolean); return { explain: `ก่อสร้าง ${list.map((y) => E.name(s, y)).join(" และ ")} จากนรก`, ops: list.map((y) => ({ op: "move", i: y.i, to: "cs", seat: p })) }; } },
+  // เลือกมันสำหรับพวก จน !!!: an Avatar of Cost 5 or less (not Only #1) to the hand: 1) from hell or 2) from the Deck · both when 4+ of our LIFE are flipped and more than theirs
+  "SD08-013": { cast: (c) => { const { E, s, seat: p } = c; const P = s.P[p], O = s.P[1 - p]; const up = (Q) => Q.life.filter((x) => x.up).length; const both = up(P) >= 4 && up(P) > up(O);
+    const ok = (y) => E.def(s, y).t === "A" && (E.def(s, y).c || 0) <= 5 && !E.def(s, y).o1;
+    const hellPool = uniq(E, s, [...P.hell].reverse().filter(ok)).sort(byPw(E, s)), deckPool = uniq(E, s, P.deck.filter(ok)).sort(byPw(E, s));
+    const pw = (y) => (y ? E.def(s, y).pw || 0 : -1);
+    const m = both ? 2 : c.mode(["1) Avatar Cost 5 หรือต่ำกว่า (ไม่ใช่ Only #1) จากนรกขึ้นมือ", "2) Avatar Cost 5 หรือต่ำกว่า (ไม่ใช่ Only #1) จาก Deck ขึ้นมือ แล้วสับ Deck"], "เลือกมันสำหรับพวก จน !!!: เลือกปฏิบัติ", pw(hellPool[0]) >= pw(deckPool[0]) ? 0 : 1);
+    const ops = [], say = both ? ["LIFE เราหงาย 4 ใบขึ้นไปและมากกว่าฝ่ายตรงข้าม: ทำทั้งสองข้อ"] : [];
+    if (m !== 1) { const t = c.choose(hellPool, 1, "เลือก Avatar Cost 5 หรือต่ำกว่าจากนรกขึ้นมือ")[0]; if (t) { ops.push({ op: "move", i: t.i, to: "hand" }); say.push(`${E.name(s, t)} จากนรกขึ้นมือ`); } else say.push("ไม่มี Avatar ในนรกที่ตรงเงื่อนไข"); }
+    if (m !== 0) { const t = c.choose(deckPool, 1, "เลือก Avatar Cost 5 หรือต่ำกว่าจาก Deck ขึ้นมือ")[0]; if (t) { ops.push({ op: "search", seat: p, take: t.i, to: "hand" }); say.push(`${E.name(s, t)} จาก Deck ขึ้นมือ`); } else say.push("ไม่มี Avatar ใน Deck ที่ตรงเงื่อนไข"); ops.push({ op: "shuffle", seat: p }); }
+    return { explain: say.join(" · "), ops }; } },
+  // แพร่พันธ์ุทันใจ: discard any number of รัททาทุย Avatars from the hand, then summon a รัททาทุย Avatar from the Deck whose Cost is at most the total Cost discarded
+  "SD08-014": { canCast: (E, s, p) => freeAv(E, s, p) > 0 && s.P[p].deck.some((y) => rat(E, s, y)),
+    cast: (c) => { const { E, s, seat: p } = c; const P = s.P[p]; const cost = (y) => E.def(s, y).c || 0;
+      const hand = P.hand.filter((y) => y.i !== c.t.i && rat(E, s, y)); const deck = uniq(E, s, P.deck.filter((y) => rat(E, s, y)));
+      // bots: the best Avatar whose Cost the least valuable discards can cover
+      let plan = { v: -3, use: [], t: null }; // the card is already cast: take the best trade unless it is clearly bad
+      for (const t of deck) { if (cost(t) === 0) { const v = worth(E, s, t); if (v > plan.v) plan = { v, use: [], t }; continue; }
+        let bestUse = null; for (let m = 1; m < 1 << Math.min(hand.length, 8); m++) { const use = hand.filter((_, k) => m & (1 << k)); const sum = use.reduce((a, y) => a + cost(y), 0); if (sum < cost(t)) continue; const loss = use.reduce((a, y) => a + worth(E, s, y), 0); if (!bestUse || loss < bestUse.loss) bestUse = { use, loss }; }
+        if (bestUse) { const v = worth(E, s, t) - bestUse.loss * 0.6; if (v > plan.v) plan = { v, use: bestUse.use, t }; } }
+      const order = [...plan.use, ...hand.filter((y) => !plan.use.includes(y))];
+      const dis = c.choose(order, P.bot ? plan.use.length : hand.length, "แพร่พันธ์ุทันใจ: เลือกรัททาทุยบนมือที่จะทิ้ง (กี่ใบก็ได้)", { optional: true }); const sum = dis.reduce((a, y) => a + cost(y), 0);
+      const cands = deck.filter((y) => cost(y) <= sum).sort((a, b) => (b === plan.t) - (a === plan.t) || worth(E, s, b) - worth(E, s, a));
+      const t = freeAv(E, s, p) > 0 ? c.choose(cands, 1, `เลือกรัททาทุยจาก Deck ที่จะอัญเชิญ (Cost ไม่เกิน ${sum})`, { exact: true })[0] : null;
+      const ops = dis.length ? [{ op: "discard", seat: p, iids: dis.map((y) => y.i) }] : []; if (t) ops.push({ op: "put", i: t.i });
+      return { explain: `ทิ้ง ${dis.length} ใบ (Cost รวม ${sum})${t ? ` · อัญเชิญ ${E.name(s, t)} จาก Deck` : " · ไม่มีรัททาทุยใน Deck ที่ Cost ไม่เกินนั้น"}`, ops }; } },
+  // รัททาท่วม (React): one of our รัททาทุย Avatars was destroyed: summon 1-2 Cost 1 GEM 1 POWER 1 รัททาทุย from the Deck, then shuffle
+  "SD08-015": { react: { kinds: ["destroyed"], can: (E, s, p, on) => { const L = E.locate(s, on.i); return on.p === p && !!L && rat(E, s, L.x) && miniReady(E, s, p, ["deck"]); } },
+    cast: (c) => callMini(c, ["deck"], 2, "รัททาท่วม: เลือกรัททาทุย Cost 1 GEM 1 POWER 1 จาก Deck ที่จะอัญเชิญ", { min1: true, shuffle: true }) },
+  // นวมรัททาทุย: worn only by รัททาทุย · POWER +1 for each รัททาทุย Avatar on our side
+  "SD08-016": { modOnly: (E, s, host) => rat(E, s, host), worn: (E, s, m, host) => { const L = E.locate(s, host.i); return L ? s.P[L.p].av.filter((y) => rat(E, s, y)).length : 0; } },
+  // พิภพรัททาทุย (Land): while every Avatar of ours is รัททาทุย we may control 6 of them · our attacking รัททาทุย POWER +2 until the fight ends
+  "SD08-017": { cap6: (E, s, x) => rat(E, s, x), aura: (E, s, src, L) => (L.z === "land" && s.pend && s.pend.by === L.p ? [{ seat: L.p, test: (x) => x.i === s.pend.att && rat(E, s, x), n: 2 }] : []) },
+  // รังรักรัททาทุย: when built, and once per turn: summon a Cost 1 GEM 1 POWER 1 รัททาทุย from the Deck, then shuffle
+  "SD08-018": { build: (c) => callMini(c, ["deck"], 1, "รังรักรัททาทุย: เลือกรัททาทุย Cost 1 GEM 1 POWER 1 จาก Deck ที่จะอัญเชิญ", { min1: true, shuffle: true }),
+    activate: { label: "อัญเชิญรัททาทุย Cost 1 GEM 1 POWER 1 จาก Deck", can: (E, s, x, L) => L.z === "cs" && s.phase === "main" && miniReady(E, s, L.p, ["deck"]),
+      run: (c) => callMini(c, ["deck"], 1, "เลือกรัททาทุย Cost 1 GEM 1 POWER 1 จาก Deck ที่จะอัญเชิญ", { min1: true, shuffle: true }) } },
+  // วงล้อรัททาทุย: our Cost 1 GEM 1 POWER 1 รัททาทุย POWER +1
+  "SD08-019": { aura: (E, s, src, L) => (L.z === "cs" ? [{ seat: L.p, test: (x) => mini(E, s, x), n: 1 }] : []) },
+  // บ่อหมัก รัททาทุย: discarded as Cost for a รัททาทุย Avatar: it is built · once per turn, when a รัททาทุย Avatar of ours is destroyed: draw 1
+  "SD08-020": { paidFor: (d) => ratDef(d), paid: (c) => { const { E, s, seat: p } = c; const L = E.locate(s, c.t.i); const P = s.P[p];
+      if (!L || L.z !== "hell") return { explain: "การ์ดไม่อยู่ในนรกแล้ว", ops: [] }; if (P.cs.length >= 3 || P.cs.some((z) => E.name(s, z) === E.name(s, L.x))) return { explain: "Construct Zone เต็มหรือมีชื่อนี้แล้ว", ops: [] };
+      return { explain: `ก่อสร้าง ${E.name(s, L.x)} จากนรก`, ops: [{ op: "move", i: L.x.i, to: "cs", seat: p }] }; },
+    allyOk: (E, s, y, Ly, x) => Ly.z === "cs" && y.used !== s.turn && rat(E, s, x),
+    allyDeath: (c) => { const { s, self: y } = c; if (!y || y.used === s.turn) return { explain: "ใช้ไปแล้วในเทิร์นนี้", ops: [] }; return { explain: "รัททาทุยฝ่ายเราถูกทำลาย: จั่ว 1 ใบ", ops: [{ op: "used", i: y.i }, { op: "draw", seat: c.seat, n: 1 }] }; } },
+});

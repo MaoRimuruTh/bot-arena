@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261110221909";
-import { CARDS, nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261110221909";
-import { E, scriptOf } from "./engine.js?v=20261110221909";
+import { readAura } from "./auras.js?v=20261110223558";
+import { CARDS, nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261110223558";
+import { E, scriptOf } from "./engine.js?v=20261110223558";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -66,6 +66,10 @@ function filterOf(t) {
   const lc = t.match(/Cost\s*(?:น้อยกว่า|ต่ำกว่า)\s*(\d+)/); if (lc) f.maxCost = +lc[1] - 1;
   const mp = t.match(/POWER\s*(?:ไม่เกิน)\s*(\d+)/); if (mp) f.maxPower = +mp[1];
   const lp = t.match(/POWER\s*(?:น้อยกว่า|ต่ำกว่า)\s*(\d+)/); if (lp) f.maxPower = +lp[1] - 1;
+  // exact values: "ที่มี Cost 1 Gem 1 POWER 1"
+  if (f.maxCost == null && f.minCost == null) { const ec = t.match(/Cost\s*(\d+)(?!\s*(?:\d|หรือ|ขึ้นไป|ลงมา|ใบ))/); if (ec) f.cost = +ec[1]; }
+  if (f.minGem == null) { const eg = t.match(/GEM\s*(\d+)(?!\s*(?:\d|หรือ|ขึ้นไป|ลงมา|ใบ))/i); if (eg) f.gem = +eg[1]; }
+  if (f.maxPower == null) { const ep = t.match(/POWER\s*(\d+)(?!\s*(?:\d|หรือ|ขึ้นไป|ลงมา|ใบ))/); if (ep) f.power = +ep[1]; }
   const co = t.match(/สี(แดง|ฟ้า|เขียว|ม่วง)/); if (co) f.color = co[1];
   // "A or B" mixes we can't express (a list of quoted names is fine, and so is "from the hand or the Deck")
   if (/หรือ/.test(t.replace(/["”]\s*,?\s*หรือ\s*["“]/g, '" "').replace(/(?:Deck|นรก|มือ)(?:\s*(?:ฝ่าย|ของ)?เรา)?\s*หรือ\s*(?:จาก)?\s*(?:ใน)?\s*(?:บน)?\s*(?:Deck|นรก|มือ)/g, " ").replace(/บนสุด\s*หรือ\s*(?:ล่างสุด|ใต้)/g, " "))) f.bad = true;
@@ -87,6 +91,9 @@ function fitsD(d, f, pw = () => d.pw || 0, on = false) {
   if (f.maxCost != null && (d.c || 0) > f.maxCost) return false;
   if (f.minCost != null && (d.c || 0) < f.minCost) return false;
   if (f.minGem != null && (d.g || 0) < f.minGem) return false;
+  if (f.cost != null && (d.c || 0) !== f.cost) return false;
+  if (f.gem != null && (d.g || 0) !== f.gem) return false;
+  if (f.power != null && pw() !== f.power) return false;
   if (f.maxPower != null && pw() > f.maxPower) return false;
   if (f.color && !colorIs(d, f.color, on)) return false;
   if (f.text && !String(d.x || "").includes(f.text)) return false;
@@ -281,7 +288,7 @@ function sentence(s, t, p, self, ctx) {
     else {
       const anySide = !OPP.test(t) && /บนสนาม(?!\s*(?:ฝ่าย)?เรา)|บน\s*Avatar Zone(?!\s*(?:ฝ่าย|ของ)?เรา)/.test(t) && !/ฝ่ายเรา|ของเรา|ใบนี้|ตัวนี้/.test(t);
       if ((!OPP.test(t) && !anySide) || /นรก|Deck|มือ|Magic Zone|มิติมืด/.test(t)) return false;
-      const f = f0; if (/Cost|POWER/.test(t) && f.maxCost == null && f.maxPower == null && f.minCost == null) return false;
+      const f = f0; if (/Cost|POWER/.test(t) && f.maxCost == null && f.maxPower == null && f.minCost == null && f.cost == null && f.power == null) return false;
       const all = /ทุกใบ|ทั้งหมด/.test(t); const hm = howMany(t); const n = all ? 99 : hm.n;
       const cands = (/Construct/.test(t) ? O.cs.filter((x) => fits(s, x, f)) : f.type === "M" ? [...O.mg, ...(s.land && s.land.o === 1 - p ? [s.land] : [])].filter((x) => typed(x, f)) : /การ์ด(?:บนสนาม)?\s*\d/.test(t) && !/Avatar/.test(t) ? [...oppAv({ ...f, type: null }), ...O.cs] : oppAv(f));
       if (anySide && !all) cands.push(...P.av.filter((x) => typed(x, f) && !(self && x.i === self.i)).sort((a, b) => val(s, a) - val(s, b)));
@@ -440,6 +447,8 @@ export function reactTiming(text) {
   if ((m = t.match(DEFENDER))) { const f = defenderFilter(m); if (f === false) return null; return { kinds: ["attack"], mine: true, f, rest: t.slice(m[0].length) }; }
   if ((m = t.match(/^เมื่อ(?:มี)?\s*Avatar\s*(?:ถูก)?อัญเชิญ(?:ลง(?:มา)?)?\s*(?:บน\s*(?:สนาม|Avatar Zone))?\s*/))) return { kinds: ["summon"], rest: t.slice(m[0].length) };
   if ((m = t.match(/^เมื่อ\s*(?:ฝ่ายตรงข้าม|อีกฝ่าย)\s*(?:ใช้|ใช้งาน)\s*(?:การ์ด\s*)?(?:Magic(?:\s*Card)?|\{magic\})\s*/i))) return { kinds: ["cast"], rest: t.slice(m[0].length) };
+  // "เมื่อ Avatar (…) ฝ่ายเรา/บนสนามของเรา ถูกทำลาย(จากการต่อสู้)" — after one of ours was destroyed
+  if ((m = t.match(/^เมื่อ\s*Avatar\s*(.{0,60}?)\s*(?:(?:บน|ใน)\s*(?:สนาม|Avatar Zone)\s*)?(?:ฝ่าย|ของ)?\s*เรา\s*ถูกทำลาย(\s*จากการต่อสู้)?(?:\s*สามารถใช้การ์ดใบนี้ได้)?\s*/))) { const w = m[1].replace(/(?:บน|ใน)\s*(?:สนาม|Avatar Zone)\s*(?:ของ)?\s*$/, "").trim(); const f = w ? filterOf(w) : null; if (f && f.bad) return null; return { kinds: ["destroyed"], dead: true, fight: !!m[2], f, rest: t.slice(m[0].length) }; }
   return null;
 }
 
@@ -653,6 +662,7 @@ E.ext.acts = (s, x, L) => {
 function looseReact(s, x, p, on) {
   const t = String(E.def(s, x).x || ""); const head = t.split(/[:：]/)[0];
   const T = on.kind === "attack" && on.tk !== "life" ? E.locate(s, on.ti) : null; const A = on.kind === "attack" ? E.locate(s, on.att) : null;
+  if (on.kind === "destroyed") return on.p === p && /ถูกทำลาย/.test(head) && !/จะ\s*ถูกทำลาย/.test(head) && (!/จากการต่อสู้/.test(head) || !!on.fight);
   if (/กำลังต่อสู้|ทำการต่อสู้/.test(head)) return on.kind === "attack" && on.tk === "av";
   if (/จะ(?:ถูกทำลาย|ออกจาก)/.test(head)) {
     if (on.kind === "attack") return !!(A && T && T.p === p && (/Cons?t[r]?uct/i.test(head) ? T.z === "cs" : T.z === "av") && E.power(s, A.x) + ((s.pend && s.pend.bonus) || 0) >= E.power(s, T.x));
@@ -674,6 +684,7 @@ E.ext.react = (s, x, p, on, asPlayer) => {
   if (!rt.kinds.includes(on.kind)) return false;
   if (rt.life && on.tk !== "life") return false;
   if (rt.mine) { const T = on.tk === "av" ? E.locate(s, on.ti) : null; if (!T || T.p !== p || (rt.f && !fits(s, T.x, rt.f))) return false; }
+  if (rt.dead) { const L = E.locate(s, on.i); if (on.p !== p || !L || (rt.fight && !on.fight) || (rt.f && !fits(s, L.x, rt.f))) return false; }
   if (asPlayer || !s.P[p].bot) return true; // players resolve it themselves if the effect is unreadable
   const r = quiet(() => autoEffect(s, { i: x.i, c: x.c, when: "cast", seat: p, on }, makeCtx(s, { i: x.i, c: x.c, seat: p }))); return !!(r && !r.fail && r.ops.length);
 };
