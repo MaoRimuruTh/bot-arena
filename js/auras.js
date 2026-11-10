@@ -51,6 +51,7 @@ function parse(seg) {
   t = t.replace(/ตราบเท่าที่อยู่บน\s*Avatar\s*Zone/g, " ");
   if (/(?:ในช่วง|ใน)\s*Battle Phase\s*(?:ฝ่าย)?เรา/.test(t)) { spec.when = "myBattle"; t = t.replace(/(?:ในช่วง|ใน)\s*Battle Phase\s*(?:ฝ่าย)?เรา/, " "); }
   else if (/(?:ในช่วง|ใน)\s*Battle Phase/.test(t)) { spec.when = "battle"; t = t.replace(/(?:ในช่วง|ใน)\s*Battle Phase/, " "); }
+  if (/ที่(?:สั่ง|ประกาศ)โจมตี\s*(?:จนจบการต่อสู้(?:นั้น)?)?/.test(t)) { spec.atk = true; t = t.replace(/ที่(?:สั่ง|ประกาศ)โจมตี\s*(?:จนจบการต่อสู้(?:นั้น)?)?/, " "); }
   if (/ในเทิร์นฝ่ายตรงข้าม/.test(t)) { spec.when = "oppTurn"; t = t.replace(/ในเทิร์นฝ่ายตรงข้าม/, " "); }
   else if (/ในเทิร์น(?:ของ)?เรา/.test(t)) { spec.when = "myTurn"; t = t.replace(/ในเทิร์น(?:ของ)?เรา/, " "); }
   const hasM = t.match(/(?:ตราบเท่าที่|ถ้า)\s*(?:บน\s*)?Avatar Zone\s*(?:ฝ่าย)?เรา\s*มี\s*(?:Avatar\s*)?((?:["“][^"”]+["”]|\{\s*[Ss]ymbol[^}]+\})(?:\s*ใบอื่น)?)/);
@@ -80,9 +81,11 @@ function parse(seg) {
   if (!/ใบนี้|ตัวนี้/.test(target) || /ใบอื่น/.test(target)) {
     const f = filterOf(target); if (f.bad) return null; if (textHas) f.text = textHas;
     const opp = /ฝ่ายตรงข้าม|อีกฝ่าย/.test(target); const ours = /ฝ่ายเรา|ของเรา|Zone\s*เรา|สนามเรา|ทุกใบของเรา/.test(target);
-    if (!opp && !ours) return null;
+    const both = !opp && !ours && (/บนสนาม|ทุกใบ|ทั้งหมด/.test(target) || spec.atk); // "every … on the field": both players
+    if (!opp && !ours && !both) return null;
     if (!named(f) && !/ทุกใบ/.test(target)) return null;
-    return { ...spec, kind: "group", n, f, side: opp ? "opp" : "mine", other: /ใบอื่น/.test(target) };
+    if (f.names) f.names = f.names.flatMap((x) => x.split(/\s*,\s*/)).filter(Boolean);
+    return { ...spec, kind: "group", n, f, side: opp ? "opp" : both ? "both" : "mine", other: /ใบอื่น/.test(target) };
   }
   return null;
 }
@@ -91,12 +94,15 @@ function describe(sp) {
   const sign = (n) => (n > 0 ? "+" : "") + n;
   const what = [sp.n ? `POWER ${sign(sp.n)}` : "", sp.kw ? "ได้รับ " + sp.kw.join(" ") : ""].filter(Boolean).join(" · ");
   if (sp.kind === "self") return `${w}ใบนี้ ${what}`;
-  if (sp.kind === "group") return `${w}${sp.side === "opp" ? "ฝ่ายตรงข้าม" : "ฝ่ายเรา"}${sp.other ? " (ใบอื่น)" : ""} ${what}`;
+  if (sp.kind === "group") return `${w}${sp.side === "opp" ? "ฝ่ายตรงข้าม" : sp.side === "both" ? "ทั้งสองฝ่าย" : "ฝ่ายเรา"}${sp.other ? " (ใบอื่น)" : ""}${sp.atk ? " ตอนสั่งโจมตี" : ""} ${what}`;
   return `${w}ใบนี้ POWER +${sp.per} ต่อจำนวนที่นับได้`;
 }
 export function readAura(def) {
-  const text = def && def.x; if (!text || !/ต่อเนื่อง/.test(text)) return null;
-  const key = (def.t || "") + "|" + text; if (cache.has(key)) return cache.get(key);
+  let text = def && def.x; if (!text) return null;
+  const key = (def.t || "") + (def.st || "") + "|" + text; if (cache.has(key)) return cache.get(key);
+  // a Land Magic's plain lines ("POWER +1 ให้ Avatar … ทุกใบ") work for as long as it stays on the field
+  if (def.t === "M" && def.st === "L") text = String(text).split(/\n+/).map((l) => (/^\s*(?:ต่อเนื่อง|อัตโนมัติ|เทิร์นละครั้ง|สั่งใช้|เลือกปฏิบัติ|#|\[|-|\d\s*[).])/.test(l) || !l.trim() || /[:：]/.test(l) ? l : "ต่อเนื่อง " + l.trim())).join("\n");
+  if (!/ต่อเนื่อง/.test(text)) { cache.set(key, null); return null; }
   const zone = ON_FIELD[def.t] || (def.t === "M" && def.st === "L" ? "land" : null);
   // skip abilities that are only granted in some situation ({red "ต่อเนื่อง …"} / "ได้รับ …")
   const ms = [...String(text).matchAll(/ต่อเนื่อง/g)].map((m) => m.index);
@@ -118,7 +124,7 @@ function run(E, s, src, L, specs, zone) {
     if (sp.has) { const pool = sp.has.any ? [...s.P[p].av, ...s.P[p].cs, ...s.P[p].mg, ...(s.land && s.land.o === p ? [s.land] : [])] : s.P[p].av;
       if (!pool.some((x) => x.i !== (sp.has.other ? src.i : -1) && (sp.has.any ? sp.has.f.names.some((n) => String(E.def(s, x).n || "").includes(n)) : fits(E, s, x, sp.has.f)))) continue; }
     if (sp.kind === "self") { if (zone === "av") res.push({ seat: p, test: (x) => x.i === src.i, n: sp.n, kw: sp.kw }); continue; }
-    if (sp.kind === "group") { res.push({ seat: sp.side === "opp" ? 1 - p : p, test: (x) => !(sp.other && x.i === src.i) && (sp.f && named(sp.f) ? fits(E, s, x, sp.f) : true), n: sp.n, kw: sp.kw }); continue; }
+    if (sp.kind === "group") { for (const seat of sp.side === "both" ? [0, 1] : [sp.side === "opp" ? 1 - p : p]) res.push({ seat, test: (x) => !(sp.other && x.i === src.i) && (!sp.atk || (!!s.pend && s.pend.att === x.i)) && (sp.f && named(sp.f) ? fits(E, s, x, sp.f) : true), n: sp.n, kw: sp.kw }); continue; }
     if (sp.kind === "count" && zone === "av") {
       let k = 0; const c = sp.count;
       if (c.worn) k = [...s.P[0].mg, ...s.P[1].mg].filter((m) => m.on === src.i && (!c.mod || E.def(s, m).st === "D") && (!c.name || String(E.def(s, m).n || "").includes(c.name))).length;
@@ -131,6 +137,17 @@ function run(E, s, src, L, specs, zone) {
   }
   return res;
 }
+
+// POWER a Modification gives the Avatar wearing it: { n, f } (f = which Avatars get it), or null
+const mcache = new Map();
+export function modPower(def) {
+  const text = def && def.x; if (!text) return null; if (mcache.has(text)) return mcache.get(text); let out = null;
+  for (const l of String(text).split(/\n/)) { if (/ถ้า|หาก|เมื่อ|ในช่วง|ใน Battle|ตราบ|ต่อจำนวน|ตามจำนวน/.test(l.split(/POWER/)[0])) continue; let m;
+    if ((m = l.match(/POWER\s*\+\s*(\d+)\s*ให้\s*Avatar\s*(.*?)\s*ที่(?:ถูก)?สวมใส่/))) { const f = filterOf(m[2]); out = { n: +m[1], f: named(f) ? f : null }; break; }
+    if ((m = l.match(/^\s*(?:Avatar\s*)?(.*?)\s*ที่(?:ถูก)?สวมใส่(?:การ์ด(?:ใบ)?นี้)?\s*(?:จะ)?\s*(?:ได้รับ\s*)?POWER\s*\+\s*(\d+)/))) { const f = filterOf(m[1]); out = { n: +m[2], f: named(f) ? f : null }; break; } }
+  mcache.set(text, out); return out;
+}
+export const modPowerFor = (E, s, m, host) => { const r = modPower(E.def(s, m)); return r && (!r.f || fitsDef(E.def(s, host), r.f)) ? r.n : 0; };
 
 // ---------- static rules printed on a card (no timing): who it may pay for / be worn by, cannot attack, … ----------
 // traits(def) → null or an object shaped like the hand-written script hooks, so the engine can use either one

@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP). Kenney particle textures and Poly Haven stone are CC0.
-import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261110210951";
-import { E } from "./engine.js?v=20261110210951";
-import { h } from "./util.js?v=20261110210951";
-import { Sfx } from "./sfx.js?v=20261110210951";
+import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261110212450";
+import { E } from "./engine.js?v=20261110212450";
+import { h } from "./util.js?v=20261110212450";
+import { Sfx } from "./sfx.js?v=20261110212450";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 

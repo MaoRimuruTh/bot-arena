@@ -533,3 +533,40 @@ Object.assign(SCRIPTS, {
 });
 SCRIPTS["SD07-017"] = SCRIPTS["BT01-040"]; // same card, slightly different wording
 Object.assign(SCRIPTS["BT06-052"], { millBy: "god", milled: (c) => ({ explain: "เสียงเรียกแห่งวัลฮัลลากลับขึ้นมือ", ops: [{ op: "move", i: c.self.i, to: "hand" }] }) });
+
+// ---------- Starter Decks: cards the text reader cannot express ----------
+const TRIO = ["กุ่ย", "ฮอล", "นาย"];
+const trioPool = (E, s, p, n) => [...s.P[p].hand, ...s.P[p].av].filter((x) => isAv(E, s, x) && !x.tok && E.name(s, x).includes(n));
+const cheapFirst = (E, s) => (a, b) => (E.def(s, a).c || 0) + (E.def(s, a).pw || 0) - (E.def(s, b).c || 0) - (E.def(s, b).pw || 0);
+Object.assign(SCRIPTS, {
+  // ระเบิด Very Fat Man: send one each of กุ่ย, ฮอล and นาย (hand and/or field) to hell : destroy every enemy Avatar
+  "SD02-016": { react: { kinds: ["attack", "summon", "cast"], can: (E, s, p) => TRIO.every((n) => trioPool(E, s, p, n).length) && s.P[1 - p].av.length > 0 },
+    cast: (c) => { const { E, s, seat: p } = c; const picks = [];
+      for (const n of TRIO) { const x = c.choose(trioPool(E, s, p, n).filter((y) => !picks.includes(y)).sort(cheapFirst(E, s)), 1, `ค่าใช้จ่าย: เลือก "${n}" จากมือหรือสนามที่จะส่งลงนรก`, { exact: true })[0]; if (!x) return { explain: `ไม่มี "${n}" ให้ส่งลงนรก ใช้การ์ดนี้ไม่ได้`, ops: [] }; picks.push(x); }
+      const foes = s.P[1 - p].av;
+      return { explain: `ส่ง ${picks.map((x) => E.name(s, x)).join(", ")} ลงนรก · ทำลาย Avatar ฝ่ายตรงข้ามทุกใบ`, ops: [...picks.map((x) => ({ op: "move", i: x.i, to: "hell" })), ...foes.map((x) => ({ op: "destroy", i: x.i, why: "ระเบิด Very Fat Man" }))] }; } },
+  // สละเพื่อนเพื่อช่วยเพื่อน: send one กุ่ย / ฮอล / นาย (hand or field) to hell : return one Avatar on the field to its owner's hand
+  "SD02-019": { react: { kinds: ["attack", "summon", "cast"], can: (E, s, p) => TRIO.some((n) => trioPool(E, s, p, n).length) && (s.P[0].av.length + s.P[1].av.length) > 0 },
+    cast: (c) => { const { E, s, seat: p } = c; const pool = [...new Set(TRIO.flatMap((n) => trioPool(E, s, p, n)))].sort(cheapFirst(E, s));
+      const cost = c.choose(pool, 1, "ค่าใช้จ่าย: เลือก กุ่ย / ฮอล / นาย จากมือหรือสนามที่จะส่งลงนรก", { exact: true })[0]; if (!cost) return { explain: "ไม่มี กุ่ย / ฮอล / นาย ให้ส่งลงนรก", ops: [] };
+      const tg = [...s.P[1 - p].av.filter((x) => !x.tok).sort((a, b) => E.power(s, b) - E.power(s, a)), ...s.P[p].av.filter((x) => !x.tok && x.i !== cost.i)];
+      const t = c.choose(tg, 1, "เลือก Avatar บนสนามที่จะกลับขึ้นมือ")[0];
+      return { explain: `ส่ง ${E.name(s, cost)} ลงนรก${t ? ` · ${E.name(s, t)} กลับขึ้นมือ` : " · ไม่มี Avatar ให้เลือก"}`, ops: [{ op: "move", i: cost.i, to: "hell" }, ...(t ? [{ op: "move", i: t.i, to: "hand" }] : [])] }; } },
+  // นายนิรยบาล อ้วน: when an ability of our cards (other than อ้วน) mills our Deck, 2 more cards are milled
+  "SD03-004": { millMore: (E, s, y, L, { seat, by, src }) => (L.z === "av" && by === L.p && seat === L.p && src && !String(src.n || "").includes("นายนิรยบาล อ้วน") ? 2 : 0) },
+  // บัญชีหนังหมา: take a นายนิรยบาล (Cost 4 or less) from the Deck; that name can no longer be paid as Cost this game
+  "SD03-017": { cast: (c) => { const { E, s, seat: p } = c; const seen = new Set();
+    const cands = s.P[p].deck.filter((x) => isAv(E, s, x) && E.name(s, x).includes("นายนิรยบาล") && (E.def(s, x).c || 0) <= 4).filter((x) => { const n = E.name(s, x); if (seen.has(n)) return false; seen.add(n); return true; }).sort((a, b) => (E.def(s, b).c || 0) - (E.def(s, a).c || 0));
+    const t = c.choose(cands, 1, "เลือก นายนิรยบาล Cost 4 หรือต่ำกว่า จาก Deck ขึ้นมือ")[0];
+    return t ? { explain: `นำ ${E.name(s, t)} ขึ้นมือ · ชื่อนี้ใช้เป็น Cost ไม่ได้จนจบเกม`, ops: [{ op: "search", seat: p, take: t.i, to: "hand" }, { op: "banPay", seat: p, name: E.name(s, t) }] } : { explain: "ไม่มี นายนิรยบาล Cost 4 หรือต่ำกว่าใน Deck", ops: [{ op: "shuffle", seat: p }] }; } },
+  // หอกแหลมแทงทุกวัน: when milled, if no Modification was used this turn, it may be used from hell
+  "SD03-018": { millBy: "any", milled: (c) => { const { E, s, seat: p } = c; if (s.mu[p].D) return { explain: "เทิร์นนี้ใช้ Modification Magic ไปแล้ว ใช้จากนรกไม่ได้", ops: [] };
+    const host = c.choose([...s.P[p].av].sort((a, b) => (sy(E, s, b, "นรก") ? 1 : 0) - (sy(E, s, a, "นรก") ? 1 : 0) || E.power(s, b) - E.power(s, a)), 1, "หอกแหลมแทงทุกวัน ถูกธรณีสูบ: เลือก Avatar ที่จะสวมใส่ (หรือไม่ใช้)", { optional: true })[0];
+    return host ? { explain: `ใช้จากนรก สวมใส่ให้ ${E.name(s, host)}`, ops: [{ op: "attach", i: c.self.i, on: host.i }, { op: "mu", seat: p, k: "D" }] } : { explain: "ไม่ใช้จากนรก", ops: [] }; } },
+  // จิ้มมันเลย จิ้ม!: when an Avatar is summoned, discard a {นรก} Avatar with Cost ≥ it : mill 2 and destroy that Avatar
+  "SD03-020": { react: { kinds: ["summon"], can: (E, s, p, on) => { const L = E.locate(s, on.i); return !!L && L.z === "av" && s.P[p].hand.some((x) => isAv(E, s, x) && sy(E, s, x, "นรก") && (E.def(s, x).c || 0) >= (E.def(s, L.x).c || 0)); } },
+    cast: (c) => { const { E, s, seat: p } = c; const L = E.locate(s, onTarget(c).i); if (!L || L.z !== "av") return { explain: "เป้าหมายหายไปแล้ว", ops: [] };
+      const pool = s.P[p].hand.filter((x) => isAv(E, s, x) && sy(E, s, x, "นรก") && (E.def(s, x).c || 0) >= (E.def(s, L.x).c || 0)).sort(cheapFirst(E, s));
+      const d = c.choose(pool, 1, `ค่าใช้จ่าย: ทิ้ง Avatar นรก ที่ Cost ${E.def(s, L.x).c || 0} ขึ้นไป`, { exact: true })[0]; if (!d) return { explain: "ไม่มี Avatar นรก ที่ Cost พอให้ทิ้ง", ops: [] };
+      return { explain: `ทิ้ง ${E.name(s, d)} · ธรณีสูบ 2 ใบ · ทำลาย ${E.name(s, L.x)}`, ops: [{ op: "discard", seat: p, iids: [d.i] }, { op: "mill", seat: p, n: 2 }, { op: "destroy", i: L.x.i, why: "จิ้มมันเลย จิ้ม!" }] }; } },
+});

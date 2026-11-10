@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId } from "./cards.js?v=20261110210951";
-import { readAura, traits } from "./auras.js?v=20261110210951";
-import { SCRIPTS } from "./scripts.js?v=20261110210951";
-import { newId, clone } from "./util.js?v=20261110210951";
+import { card, kwHas, SUB_TH, CARDS, baseId } from "./cards.js?v=20261110212450";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261110212450";
+import { SCRIPTS } from "./scripts.js?v=20261110212450";
+import { newId, clone } from "./util.js?v=20261110212450";
 export const ZONES = ["deck", "hand", "av", "mg", "cs", "hell", "dark", "life"];
 export const ZONE_TH = { deck: "Deck", hand: "มือ", av: "Avatar Zone", mg: "Magic Zone", cs: "Construct Zone", hell: "นรก", dark: "มิติมืด", life: "LIFE", land: "Land Magic" };
 export const PHASE_TH = { mull: "เปลี่ยนมือ", draw: "Draw", main: "Main", battle: "Battle", end: "End", over: "จบเกม" };
@@ -44,7 +44,7 @@ export const E = {
   magicInHell: (s, p) => s.P[p].hell.filter((x) => E.def(s, x).t === "M").length,
   power(s, x) {
     const d = E.def(s, x); let mb = 0;
-    for (const P of s.P) for (const m of P.mg) if (m.on === x.i) mb += modBonus(E.def(s, m).x);
+    for (const P of s.P) for (const m of P.mg) if (m.on === x.i) mb += modBonus(E.def(s, m).x) || modPowerFor(E, s, m, x);
     const tn = x.tn ? Object.values(x.tn).reduce((a, b) => a + b, 0) : 0;
     let au = 0; const me = E.locate(s, x.i);
     if (me && me.z === "av") for (const { x: src, L } of fieldCards(s)) { const sc = scriptOf(s, src); const ra = sc && sc.aura ? null : !src.mute && readAura(E.def(s, src));
@@ -166,6 +166,7 @@ export const E = {
       const x = P.hand.find((y) => y.i === i); if (!x) return { ok: false, err: "การ์ดจ่ายต้องอยู่บนมือ" };
       const d = E.def(s, x); const g = d.g || 0;
       if (g <= 0) return { ok: false, err: `${d.n} มี GEM 0 ใช้จ่ายไม่ได้` };
+      if (s.ban && s.ban[p].includes(d.n)) return { ok: false, err: `${d.n} ใช้เป็น Cost ไม่ได้ (ผลของการ์ดที่ใช้ไปแล้ว)` };
       if (d.gc && targetDef.co && d.gc !== targetDef.co && !(traits(targetDef) || {}).anyColor) return { ok: false, err: `GEM สี${d.gc} จ่ายให้การ์ดสี${targetDef.co} ไม่ได้` };
       { const sc = hk(s, x); if (sc && sc.payOnly && !sc.payOnly(targetDef)) return { ok: false, err: `${d.n} ใช้จ่ายได้เฉพาะการ์ดที่กำหนดเท่านั้น` }; }
       total += g;
@@ -177,7 +178,7 @@ export const E = {
   autoPay(s, p, i, costOverride, exclude = []) {
     const P = s.P[p]; const tgt = P.hand.find((x) => x.i === i); if (!tgt) return null;
     const td = E.def(s, tgt); const cost = costOverride != null ? costOverride : E.costOf(s, p, tgt); if (cost === 0) return [];
-    const el = P.hand.filter((x) => x.i !== i && !exclude.includes(x.i)).filter((x) => { const d = E.def(s, x); const sc = hk(s, x); return (d.g || 0) > 0 && !(d.gc && td.co && d.gc !== td.co && !(traits(td) || {}).anyColor) && !(sc && sc.payOnly && !sc.payOnly(td)); }).slice(0, 12);
+    const el = P.hand.filter((x) => x.i !== i && !exclude.includes(x.i)).filter((x) => { const d = E.def(s, x); const sc = hk(s, x); return (d.g || 0) > 0 && !(s.ban && s.ban[p].includes(d.n)) && !(d.gc && td.co && d.gc !== td.co && !(traits(td) || {}).anyColor) && !(sc && sc.payOnly && !sc.payOnly(td)); }).slice(0, 12);
     const val = (x) => { const d = E.def(s, x); return d.t === "A" ? (d.pw || 0) + (d.c || 0) * 0.6 + (d.o1 ? 20 : 0) : d.t === "C" ? 4 : 2.2; };
     let best = null;
     for (let m = 1; m < 1 << el.length; m++) {
@@ -308,7 +309,7 @@ export const E = {
         E.log(s, p, `${E.name(s, x)} (POWER ${E.power(s, x) + bonus}) โจมตี ${tName}${sup.length ? ` · ผู้ช่วย ${sup.length} ใบ +${bonus}` : ""}`);
         { const sc = scriptOf(s, x); const ax = E.def(s, x).x || "";
           if (sc ? sc.attack && (!sc.storyOnly || x.story) : E.ext.trig ? E.ext.trig(ax, "attack") : /เมื่อ\s*(?:Avatar\s*|การ์ด)?(?:ใบนี้|ตัวนี้)?\s*(?:ประกาศ)?โจมตี|เมื่อโจมตี/.test(ax)) E.addTrig(s, p, x, "attack"); }
-        if (act.tk === "av") { const T = E.locate(s, act.ti).x; if (!scriptOf(s, T) && (E.ext.trig ? E.ext.trig(E.def(s, T).x, "attacked") : ATTACKED_RE.test(E.def(s, T).x || ""))) E.addTrig(s, 1 - p, T, "attacked"); }
+        if (act.tk === "av") { const T = E.locate(s, act.ti).x; if (scriptOf(s, T) && scriptOf(s, T).attacked && !T.mute) E.addTrig(s, 1 - p, T, "attacked"); if (!scriptOf(s, T) && (E.ext.trig ? E.ext.trig(E.def(s, T).x, "attacked") : ATTACKED_RE.test(E.def(s, T).x || ""))) E.addTrig(s, 1 - p, T, "attacked"); }
         return;
       }
       case "respond": {
@@ -416,7 +417,9 @@ export const E = {
     switch (o.op) {
       case "draw": { E.draw(s, seat, n); E.log(s, seat, `${s.P[seat].name} จั่ว ${n} ใบ`); return; }
       case "mill": {
-        const P = s.P[seat]; const k = Math.min(n, P.deck.length); const got = P.deck.splice(0, k);
+        // "when our cards' abilities mill, mill N more" (นายนิรยบาล อ้วน)
+        let more = 0; if (!o.plain) for (const { x: y, L: Ly } of fieldCards(s)) { const sy = y.mute ? null : scriptOf(s, y); if (sy && sy.millMore) more += sy.millMore(E, s, y, Ly, { seat, by, src: s.cards[o.src || s.cur] || null }) || 0; }
+        const P = s.P[seat]; const k = Math.min(n + more, P.deck.length); const got = P.deck.splice(0, k);
         for (const x of got) { const sc = o.virus && scriptOf(s, x); if (sc && sc.virusExile) P.dark.push(x); else P.hell.push(x); }
         { // cards that react to being milled: millBy "any", or "god" = by a purple {เทพ} Avatar or a Magic card
           const src = s.cards[o.src || s.cur] || null; const byGod = !!src && (src.t === "M" || (["A", "T"].includes(src.t) && String(src.sy || "").includes("เทพ") && src.co === "ม่วง"));
@@ -497,6 +500,7 @@ export const E = {
       case "handToDeck": { const P = s.P[seat]; const n0 = P.hand.length; P.deck.push(...P.hand.splice(0)); E.shuffle(s, P.deck); E.log(s, seat, `${P.name} นำการ์ดบนมือ ${n0} ใบกลับเข้า Deck แล้วสับ`); return; }
       case "resume": { if (o.t && o.t.c != null) s.trig.unshift({ id: newId(), ...o.t }); return; } // the rest of an effect that had to wait for its first steps
       case "mu": { s.mu[seat][o.k] = true; return; }
+      case "banPay": { s.ban = s.ban || [[], []]; if (!s.ban[seat].includes(o.name)) s.ban[seat].push(o.name); E.log(s, by, `${o.name} ใช้เป็น Cost ในการอัญเชิญไม่ได้จนจบเกม`); return; }
       case "millKill": { // ซีเกิร์ด: mill n, then destroy enemy Avatars with total Cost ≤ base + (named cards milled)
         const P = s.P[seat]; const top = P.deck.slice(0, Math.min(n, P.deck.length)); E.op(s, { op: "mill", seat, n, src: o.src }, by);
         const k = top.filter((x) => String(E.def(s, x).n || "").includes(o.name || "")).length; let budget = (o.base | 0) + k;
