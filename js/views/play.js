@@ -1,13 +1,13 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261110160417";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261110160417";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261110160417";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261110160417";
-import { Arena } from "../arena3d.js?v=20261110160417";
-import { autoEffect, resolveEffect } from "../effects.js?v=20261110160417";
-import { Sfx } from "../sfx.js?v=20261110160417";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261110160417";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261110160417";
-import { allDecks, deckById } from "./decks.js?v=20261110160417";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261110161750";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261110161750";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261110161750";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261110161750";
+import { Arena } from "../arena3d.js?v=20261110161750";
+import { autoEffect, resolveEffect } from "../effects.js?v=20261110161750";
+import { Sfx } from "../sfx.js?v=20261110161750";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261110161750";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261110161750";
+import { allDecks, deckById } from "./decks.js?v=20261110161750";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -421,6 +421,7 @@ function promptBox(s, p) {
   }
   if (s.trig.length && G.ask && G.tk === s.trig[0].id) {
     const t = s.trig[0]; const d = s.cards[t.c] || {}; const a = G.ask; const sel = G.askSel || [];
+    if (a.modes) return box(`${d.n}: ${a.prompt}`, h("div", { class: "opts" }, a.modes.map((t, k) => h("button", { class: "btn sm", onclick: () => { G.tpicks[a.idx] = [k]; G.ask = null; humanTrig(G.s, p); } }, t))));
     const need = Math.min(a.n, a.options.length); const show = a.reveal || a.options;
     const okN = a.optional ? sel.length <= need : sel.length === need;
     return box(`${d.n}: ${a.prompt}`, h("div", { class: "tiny muted" }, a.reveal ? "การ์ดที่เปิดดู (ใบที่เลือกไม่ได้จะจางไว้)" : `เลือก ${need} ใบ${a.optional ? " หรือไม่เลือกก็ได้" : ""}`),

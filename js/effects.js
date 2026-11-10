@@ -1,7 +1,7 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { E, scriptOf } from "./engine.js?v=20261110160417";
+import { E, scriptOf } from "./engine.js?v=20261110161750";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ยกเว้น|ไม่ได้ชื่อ|ที่ไม่ใช่|ที่สุด|กี่ใบ|ก่อสร้าง|สวม|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|\d\)|ลูกเต๋า|สูงสุด|ถ้า|หาก|เลือกปฏิบัติ|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|ได้รับ|เปลี่ยนชื่อ|สวมใส่|ควบคุม|Token|โทเคน|เทิร์นถัดไป|ครั้งถัดไป|เลือก\s*1\s*อย่าง|ทั้งหมดบนมือ|เปิดเผย|แสดง/;
 // the trigger keyword must start an ability ("จุติ :" / "จุติ (…) :" / "จุติ ทิ้งการ์ด… :"), not appear inside one ("อัญเชิญ จุติ Avatar")
@@ -15,8 +15,9 @@ function clause(text, when) {
   if (when === "cast") rest = t;
   else {
     const key = KEYS[when]; if (!key) return null;
-    const i = t.search(key); if (i < 0) return null;
-    rest = t.slice(i).replace(key, "");
+    const i = t.search(key);
+    if (i < 0) { if (when === "life") rest = t; else return null; } // LIFE cards often skip the "ถูกหงาย…" wording
+    else rest = t.slice(i).replace(key, "");
   }
   rest = rest.split(/\n\s*\n|\n(?=\s*(?:เทิร์นละครั้ง|เทิรน์ละครั้ง|ต่อเนื่อง|อัตโนมัติ|สั่งใช้|คำสั่งเสีย|จุติ|\[|#))/)[0];
   rest = rest.split(/\s(?=ต่อเนื่อง|เทิร์นละครั้ง|เทิรน์ละครั้ง|อัตโนมัติ|คำสั่งเสีย\s*[(:]|จุติ\s*[(:]|\[Link|#)/)[0];
@@ -176,7 +177,10 @@ export function makeCtx(s, t, picks = [], interactive = false) {
       if (picks[idx] !== undefined) return picks[idx].map((i) => cands.find((x) => x.i === i)).filter(Boolean);
       if (!interactive || (!o.optional && !o.reveal && cands.length <= n)) return cands.slice(0, n);
       throw { ask: { idx, prompt, options: cands.map((x) => x.i), n, optional: !!o.optional, exact: !!o.exact, reveal: o.reveal || null } };
-    } };
+    },
+    // pick one of several written options (เลือกปฏิบัติ); bots take `best`
+    mode(labels, prompt, best = 0) { const idx = k++; if (picks[idx] !== undefined) return picks[idx][0]; if (!interactive) return best; throw { ask: { idx, prompt, modes: labels, options: [], n: 1 } }; },
+  };
   const L = E.locate(s, t.i); ctx.self = L ? L.x : null;
   return ctx;
 }

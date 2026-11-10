@@ -1,9 +1,9 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus } from "./engine.js?v=20261110160417";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261110160417";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261110160417";
-import { Data } from "./fb.js?v=20261110160417";
-import { lsGet } from "./util.js?v=20261110160417";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus } from "./engine.js?v=20261110161750";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261110161750";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261110161750";
+import { Data } from "./fb.js?v=20261110161750";
+import { lsGet } from "./util.js?v=20261110161750";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -113,6 +113,7 @@ export const H = {
       const cand = [];
       for (const m of moves) {
         const a = m.a; if (a.type === "battle") continue;
+        if (a.type === "activate") { const L = E.locate(s, a.i); const nm = L ? E.name(s, L.x) : ""; cand.push({ m, sc: /นักท่องเรื่องราว/.test(nm) ? 7 : /มิติมืด/.test(m.d) ? 5 : 2.5 }); continue; }
         const x = P.hand.find((y) => y.i === a.i); if (!x) continue; const d = E.def(s, x);
         const payLoss = (a.pay || []).reduce((t, i) => t + H.value(s, P.hand.find((y) => y.i === i)), 0);
         let sc = -99;
@@ -129,6 +130,7 @@ export const H = {
       return moves.find((m) => m.a.type === "battle");
     }
     if (s.phase === "battle") {
+      const tr = moves.find((m) => m.a.type === "activate" && /แปลงร่าง/.test(m.d)); if (tr) return tr; // transform before attacking
       const atk = moves.filter((m) => m.a.type === "attack").map((m) => {
         const x = E.locate(s, m.a.i).x; const ap = E.power(s, x);
         if (m.a.tk === "life") return { m, score: 50 + (E.critical(O) ? 100 : 0) };
