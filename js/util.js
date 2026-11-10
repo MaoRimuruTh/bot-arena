@@ -1,3 +1,7 @@
+// replaceChildren/append turn null into the text "null"; skip empty values everywhere in the app
+for (const P of [Element.prototype, DocumentFragment.prototype]) for (const m of ["replaceChildren", "append"]) {
+  const orig = P[m]; P[m] = function (...kids) { return orig.apply(this, kids.flat(9).filter((x) => x != null && x !== false)); };
+}
 export const $ = (s, r = document) => r.querySelector(s);
 export const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 export function h(tag, attrs, ...kids) {
