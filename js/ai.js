@@ -1,9 +1,9 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus } from "./engine.js?v=20261110155219";
-import { autoEffect } from "./effects.js?v=20261110155219";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261110155219";
-import { Data } from "./fb.js?v=20261110155219";
-import { lsGet } from "./util.js?v=20261110155219";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus } from "./engine.js?v=20261110160417";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261110160417";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261110160417";
+import { Data } from "./fb.js?v=20261110160417";
+import { lsGet } from "./util.js?v=20261110160417";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -116,11 +116,12 @@ export const H = {
         const x = P.hand.find((y) => y.i === a.i); if (!x) continue; const d = E.def(s, x);
         const payLoss = (a.pay || []).reduce((t, i) => t + H.value(s, P.hand.find((y) => y.i === i)), 0);
         let sc = -99;
-        if (a.type === "summon") { const fx = d.x && /จุติ/.test(d.x) ? H.opsScore(s, p, autoEffect(s, { i: x.i, c: x.c, when: "summon", seat: p, exact: true })) : 0; sc = (d.pw || 0) + 2 + Math.max(0, fx) - payLoss * 0.45 + (P.av.length < 2 ? 3 : 0); }
+        if (a.type === "summon") { const fx = d.x && /จุติ/.test(d.x) ? H.opsScore(s, p, H.preview(s, { i: x.i, c: x.c, when: "summon", seat: p, exact: true })) : 0; sc = (d.pw || 0) + 2 + Math.max(0, fx) - payLoss * 0.45 + (P.av.length < 2 ? 3 : 0); }
         else if (a.type === "build") sc = 3 - payLoss * 0.3;
         else if (a.type === "cast" && d.st === "L") sc = s.land ? -1 : 2.5;
         else if (a.type === "cast" && d.st === "D") { const host = P.av.find((y) => y.i === a.on); const b = modBonus(d.x); sc = b > 0 && host ? b + (host.a ? 1.5 : 0) + E.power(s, host) * 0.1 : -1; }
-        else if (a.type === "cast" && d.st === "N") sc = H.opsScore(s, p, autoEffect(s, { i: x.i, c: x.c, when: "cast", seat: p }));
+        else if (a.type === "cast" && d.st === "N") sc = H.opsScore(s, p, H.preview(s, { i: x.i, c: x.c, when: "cast", seat: p }));
+        if (a.via != null) sc += 4; // ซาร์อึก: a dragon for almost nothing
         cand.push({ m, sc });
       }
       cand.sort((a, b) => b.sc - a.sc);
@@ -147,6 +148,7 @@ export const H = {
     }
     return null;
   },
+  preview(s, t) { try { const r = resolveEffect(s, t); return r && r.ops ? r : null; } catch { return null; } },
   // value of an auto-read effect for player p (rough, used to decide whether to cast/summon)
   opsScore(s, p, r) {
     if (!r) return -1; let v = 0;
@@ -163,7 +165,7 @@ export const H = {
     return v;
   },
   // resolve an effect without AI: read it if possible, otherwise skip
-  trig(s, t) { const r = autoEffect(s, t); return r ? { type: "trig", id: t.id, explain: r.explain, ops: r.ops } : { type: "trig", id: t.id, skip: true }; },
+  trig(s, t) { let r = null; try { r = resolveEffect(s, t); } catch (e) { console.warn(e); } return r && r.ops ? { type: "trig", id: t.id, explain: r.explain, ops: r.ops } : { type: "trig", id: t.id, skip: true }; },
   discard(s, p) { const P = s.P[p]; return [...P.hand].sort((a, b) => H.value(s, a) - H.value(s, b)).slice(0, s.need).map((x) => x.i); },
 };
 

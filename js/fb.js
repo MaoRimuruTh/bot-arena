@@ -1,4 +1,4 @@
-import { firebaseConfig, FB_VERSION } from "./config.js?v=20261110155219";
+import { firebaseConfig, FB_VERSION } from "./config.js?v=20261110160417";
 const base = `https://www.gstatic.com/firebasejs/${FB_VERSION}/`;
 const { initializeApp } = await import(base + "firebase-app.js");
 const A = await import(base + "firebase-auth.js");
@@ -42,7 +42,7 @@ export const saveProfile = (patch) => F.updateDoc(F.doc(db, "users", Me.uid), pa
 export const watchMe = (cb) => F.onSnapshot(F.doc(db, "users", Me.uid), (s) => { Me.profile = s.data(); cb(Me.profile); }, () => {});
 
 // ---------- live data ----------
-export const Data = { decks: [], matches: [], owned: {}, users: [], meta: {}, ready: { decks: false, matches: false }, listeners: new Set() };
+export const Data = { decks: [], matches: [], owned: {}, skins: {}, users: [], meta: {}, ready: { decks: false, matches: false }, listeners: new Set() };
 const emit = () => Data.listeners.forEach((f) => { try { f(); } catch (e) { console.error(e); } });
 const unsubs = [];
 export function startData() {
@@ -50,6 +50,7 @@ export function startData() {
   unsubs.push(F.onSnapshot(F.collection(db, "decks"), (s) => { Data.decks = s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)); Data.ready.decks = true; emit(); }, (e) => { console.warn(e); Data.ready.decks = true; emit(); }));
   unsubs.push(F.onSnapshot(F.query(F.collection(db, "matches"), F.where("uid", "==", Me.uid)), (s) => { Data.matches = s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (b.at || 0) - (a.at || 0)); Data.ready.matches = true; emit(); }, (e) => { console.warn(e); Data.ready.matches = true; emit(); }));
   unsubs.push(F.onSnapshot(F.doc(db, "users", Me.uid, "private", "owned"), (s) => { Data.owned = (s.exists() && s.data().cards) || {}; emit(); }, () => {}));
+  unsubs.push(F.onSnapshot(F.doc(db, "users", Me.uid, "private", "skins"), (s) => { Data.skins = (s.exists() && s.data().cards) || {}; emit(); }, () => {}));
   unsubs.push(F.onSnapshot(F.doc(db, "meta", "config"), (s) => { Data.meta = (s.exists() && s.data()) || {}; emit(); }, () => {}));
   if (Me.profile && Me.profile.role === "owner") unsubs.push(F.onSnapshot(F.collection(db, "users"), (s) => { Data.users = s.docs.map((d) => ({ id: d.id, ...d.data() })); emit(); }, () => {}));
 }
@@ -61,6 +62,8 @@ export async function saveDeck(deck) {
 export const deleteDeck = (id) => F.deleteDoc(F.doc(db, "decks", id));
 let ownTimer = null;
 export function saveOwned() { clearTimeout(ownTimer); ownTimer = setTimeout(() => F.setDoc(F.doc(db, "users", Me.uid, "private", "owned"), { cards: Data.owned, updatedAt: Date.now() }).catch((e) => console.warn(e)), 700); }
+let skinTimer = null;
+export function saveSkins() { clearTimeout(skinTimer); skinTimer = setTimeout(() => F.setDoc(F.doc(db, "users", Me.uid, "private", "skins"), { cards: Data.skins, updatedAt: Date.now() }).catch((e) => console.warn(e)), 500); }
 export const saveMatch = (id, body) => F.setDoc(F.doc(db, "matches", id), body);
 export const setUserStatus = (uid, status) => F.updateDoc(F.doc(db, "users", uid), { status });
 export const setMeta = (patch) => F.setDoc(F.doc(db, "meta", "config"), patch, { merge: true });

@@ -1,12 +1,12 @@
-import { h, lsGet, lsSet } from "../util.js?v=20261110155219";
-import { CARDS, isBase, COLORS, setCode, ownedOf } from "../cards.js?v=20261110155219";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261110155219";
+import { h, lsGet, lsSet } from "../util.js?v=20261110160417";
+import { CARDS, isBase, COLORS, setCode, ownedOf, isSpecialArt } from "../cards.js?v=20261110160417";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261110160417";
 
 export const LibState = lsGet("bot.libFilter", { q: "", t: "", co: "", c: "", set: "", rare: "", sy: "", variants: false, owned: false });
 export function filterCards(f) {
   const q = (f.q || "").trim().toLowerCase();
   return CARDS.filter((c) => {
-    if (!f.variants && !isBase(c)) return false;
+    if (f.special) { if (!isSpecialArt(c)) return false; } else if (!f.variants && !isBase(c)) return false;
     if (f.t && (f.t.length === 1 ? c.t !== f.t : !(c.t === "M" && c.st === f.t.slice(1)))) return false;
     if (f.co && (f.co === "none" ? !!c.co : c.co !== f.co)) return false;
     if (f.c !== "" && f.c != null) { const v = c.t === "M" ? null : c.c; if (f.c === "7" ? !(v >= 7) : v !== +f.c) return false; }
@@ -33,6 +33,7 @@ export function filterBar(f, onChange, pfx = "") {
     sel("rare", "ความหายาก", "rare", [["", "ทุกความหายาก"], ...["C", "R", "SR", "UR", "SCR", "USEC", "PR", "CBR"].map((r) => [r, r])]),
     h("div", { class: "row small" },
       h("label", { class: "chk" }, h("input", { type: "checkbox", id: pfx + "var", checked: f.variants, onchange: (e) => { f.variants = e.target.checked; onChange(); } }), "รวมภาพพิเศษ"),
+      h("label", { class: "chk" }, h("input", { type: "checkbox", id: pfx + "sp", checked: f.special, onchange: (e) => { f.special = e.target.checked; onChange(); } }), "✦ เฉพาะภาพพิเศษ"),
       h("label", { class: "chk" }, h("input", { type: "checkbox", id: pfx + "own", checked: f.owned, onchange: (e) => { f.owned = e.target.checked; onChange(); } }), "เฉพาะที่มี")));
 }
 Views.library = {

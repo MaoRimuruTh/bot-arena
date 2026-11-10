@@ -10,4 +10,5 @@ for f in list((root / "js").rglob("*.js")):
     if n != s: f.write_text(n, encoding="utf-8")
 h = root / "index.html"; s = h.read_text(encoding="utf-8")
 s = re.sub(r'(src="js/main\.js|href="css/app\.css)(?:\?v=[\w.-]+)?"', lambda m: f'{m.group(1)}?v={v}"', s)
-h.write_text(s, encoding="utf-8"); print("stamped", v)
+h.write_text(s, encoding="utf-8")
+(root / "version.json").write_text('{"v":"%s"}\n' % v, encoding="utf-8"); print("stamped", v)

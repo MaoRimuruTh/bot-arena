@@ -1,7 +1,7 @@
-import { h, openSheet, holo } from "./util.js?v=20261110155219";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf } from "./cards.js?v=20261110155219";
-import { Data, saveOwned } from "./fb.js?v=20261110155219";
-import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261110155219";
+import { h, openSheet, holo } from "./util.js?v=20261110160417";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf } from "./cards.js?v=20261110160417";
+import { Data, saveOwned, saveSkins } from "./fb.js?v=20261110160417";
+import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261110160417";
 
 export function cardBtn(id, opts = {}) {
   const c = card(id); const b = h("button", { class: "ccard" + (opts.cls ? " " + opts.cls : ""), type: "button", "aria-label": c ? c.n : "การ์ด", title: c ? c.n : "", onclick: opts.onclick });
@@ -35,13 +35,24 @@ export function showCard(id, extra) {
       h("div", { class: "stack" }, cardInfo(c), c.x ? h("div", { class: "fx" }, c.x) : h("div", { class: "muted small" }, "ไม่มีข้อความความสามารถ"), c.ex ? h("div", { class: "small muted" }, c.ex) : null,
         h("div", { class: "row" }, h("span", { class: "muted small" }, "ฉันมีจริง"), h("button", { class: "mini", "aria-label": "ลด", onclick: () => { setOwned(c.i, Math.max(0, ownedOf(c.i) - 1)); own.textContent = ownedOf(c.i); } }, "−"), own, h("button", { class: "mini", "aria-label": "เพิ่ม", onclick: () => { setOwned(c.i, ownedOf(c.i) + 1); own.textContent = ownedOf(c.i); } }, "+")),
         others.length ? h("div", { class: "stack", style: "gap:6px" }, h("div", { class: "eyebrow" }, "ชื่อเดียวกันแต่คนละใบ · นับรวมโควตาชื่อ"), h("div", { class: "pick" }, others.map((v) => cardBtn(v.i, { badge: v.p, onclick: () => { api.close(); showCard(v.i, extra); } })))) : null,
-        variants.length ? h("div", { class: "stack", style: "gap:6px" }, h("div", { class: "eyebrow" }, "ภาพอื่นของใบนี้"), h("div", { class: "pick" }, variants.map((v) => cardBtn(v.i, { badge: v.r, onclick: () => { api.close(); showCard(v.i, extra); } })))) : null,
+        skinPicker(c, api, extra),
         extra ? extra(c, api) : null,
         c.t === "A" ? h("div", { class: "row" },
           h("button", { class: "btn ciel sm", onclick: async (e) => { const b = e.currentTarget; if (!Ciel.on()) { aceBox.replaceChildren(h("div", { class: "muted small" }, aiErr({ code: "no_key" }))); return; } b.disabled = true; aceBox.replaceChildren(h("span", { class: "muted small" }, "ชิเอลกำลังประเมิน…")); try { const r = await cielAceCheck(c); aceBox.replaceChildren(aceView(r)); } catch (err) { aceBox.replaceChildren(h("div", { class: "muted small" }, aiErr(err))); } b.disabled = false; } }, "ประเมินเป็นเอซ"),
           h("a", { class: "btn sm", href: "#decks/ace/" + c.i, onclick: () => api.close() }, "จัดเด็ครอบใบนี้")) : null, aceBox))];
   }, { title: c.n, sub: `${TYPE_TH[c.t]} · ${c.p}`, wide: true });
 }
+// choose which print of this card is shown everywhere (decks, hand, 3D arena)
+function skinPicker(c, api, extra) {
+  const all = variantsOf(c); if (all.length < 2) return null; const b = baseId(c.i);
+  const cur = Data.skins[String(b)] != null ? +Data.skins[String(b)] : b;
+  return h("div", { class: "stack", style: "gap:6px" }, h("div", { class: "eyebrow" }, `สกินการ์ด · ${all.length} ภาพ`),
+    h("div", { class: "pick" }, all.map((v) => h("div", { class: "stack", style: "gap:4px" },
+      h("button", { class: "ccard" + (cur === v.i ? " sel" : ""), "aria-label": `${v.n} ${v.r}`, onclick: () => { api.close(); showCard(v.i, extra); } }, artImgRaw(v), h("span", { class: "badge" }, v.r)),
+      cur === v.i ? h("span", { class: "chip gold", style: "justify-content:center" }, "ใช้อยู่") : h("button", { class: "btn sm", onclick: () => { if (v.i === b) delete Data.skins[String(b)]; else Data.skins[String(b)] = v.i; saveSkins(); api.close(); showCard(v.i, extra); } }, "ใช้ภาพนี้")))));
+}
+// art of exactly this print (ignores the player's skin choice)
+function artImgRaw(v) { const saved = Data.skins[String(baseId(v.i))]; if (saved == null) return artImg(v); delete Data.skins[String(baseId(v.i))]; const im = artImg(v); Data.skins[String(baseId(v.i))] = saved; return im; }
 function aceView(r) {
   const parts = (r.partners || []).map(card).filter(Boolean);
   return h("div", { class: "panel stack" }, h("div", { class: "row" }, h("span", { class: "chip " + (/[SA]/.test(r.rating) ? "good" : "warn") }, "ระดับเอซ " + (r.rating || "?")), h("span", { class: "small" }, r.why || "")),

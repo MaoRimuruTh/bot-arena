@@ -1,13 +1,13 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261110155219";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261110155219";
-import { loadCards, CARDS, isBase } from "./cards.js?v=20261110155219";
-import { Views, avatarEl } from "./ui.js?v=20261110155219";
-import { Ciel } from "./ai.js?v=20261110155219";
-import "./views/library.js?v=20261110155219";
-import "./views/decks.js?v=20261110155219";
-import "./views/lab.js?v=20261110155219";
-import "./views/history.js?v=20261110155219";
-import "./views/play.js?v=20261110155219";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261110160417";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261110160417";
+import { loadCards, CARDS, isBase } from "./cards.js?v=20261110160417";
+import { Views, avatarEl } from "./ui.js?v=20261110160417";
+import { Ciel } from "./ai.js?v=20261110160417";
+import "./views/library.js?v=20261110160417";
+import "./views/decks.js?v=20261110160417";
+import "./views/lab.js?v=20261110160417";
+import "./views/history.js?v=20261110160417";
+import "./views/play.js?v=20261110160417";
 
 const root = $("#view");
 let current = null, cardsReady = false;
@@ -125,6 +125,20 @@ Data.listeners.add(() => {
   if (!cardsReady || !current) return;
   clearTimeout(refreshT); refreshT = setTimeout(() => { const v = Views[current]; if (v && v.refresh && !document.querySelector(".scrim")) v.refresh(root, parse().parts); }, 120);
 });
+
+// ---------- auto update: check for a newer deploy every 2 minutes ----------
+const APP_V = (import.meta.url.match(/\?v=(\w+)/) || [])[1];
+async function checkUpdate() {
+  if (!APP_V) return;
+  try {
+    const r = await fetch("version.json?t=" + Date.now(), { cache: "no-store" }); if (!r.ok) return; const { v } = await r.json();
+    if (!v || v === APP_V) return;
+    const busyNow = document.body.classList.contains("arena-on") || /^#decks\/(edit|new)/.test(location.hash) || document.querySelector(".scrim");
+    if (!busyNow) return location.reload();
+    if (!document.querySelector(".upd")) document.body.append(h("div", { class: "upd glass", role: "status" }, h("span", null, "มีเวอร์ชันใหม่ของเว็บ"), h("button", { class: "btn gold sm", onclick: () => location.reload() }, "โหลดเลย"), h("button", { class: "btn sm", onclick: (e) => e.currentTarget.parentElement.remove() }, "ไว้ก่อน")));
+  } catch {}
+}
+setInterval(checkUpdate, 120000); addEventListener("visibilitychange", () => { if (!document.hidden) checkUpdate(); });
 
 // ---------- boot ----------
 let meUnsub = null, booted = false;

@@ -327,3 +327,4 @@ body.arena-on main{padding:0;max-width:none}
   body.arena-on .matchp{top:calc(10px + env(safe-area-inset-top,0px));max-height:calc(100vh - 24px)}
   body.arena-on .inspector{max-height:calc(100vh - 40px)}
 }
+.upd{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:60;display:flex;align-items:center;gap:10px;padding:10px 14px;font-size:.86rem}

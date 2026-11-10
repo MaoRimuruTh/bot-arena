@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261110155219";
-import { h } from "./util.js?v=20261110155219";
-import { Data } from "./fb.js?v=20261110155219";
+import { CARD_SOURCE } from "./config.js?v=20261110160417";
+import { h } from "./util.js?v=20261110160417";
+import { Data } from "./fb.js?v=20261110160417";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -52,16 +52,21 @@ export function imgUrls(c) {
   const f = folders[setCode(c)] || ""; const b = (Data.meta && Data.meta.imgBase) || CARD_SOURCE.imgBase;
   return [`${b}${f}${c.p}-${c.r}.png`, `${b}${f}${c.p}.png`, `${b}${c.p}-${c.r}.png`, `${b}${c.p}.png`];
 }
+// skins: the player can pick any alternate print of a card as the art shown everywhere
+export function skinOf(c) { if (!c || c.b != null) return c; const v = Data.skins && Data.skins[String(c.i)]; const s = v != null ? CARDS[+v] : null; return s && (s.b === c.i || s.i === c.i) ? s : c; }
+export const variantsOf = (c) => { const b = c.b != null ? c.b : c.i; return CARDS.filter((x) => x.i === b || x.b === b); };
+export const isSpecialArt = (c) => c.b != null || ["SCR", "CBR", "USEC"].includes(c.r);
 const goodUrl = new Map();
 export function artUrl(c) { return goodUrl.get(c.i) || imgUrls(c)[0]; }
 export function artImg(c, cls = "cimg", alt) {
-  const urls = imgUrls(c); let k = urls.indexOf(goodUrl.get(c.i)); if (k < 0) k = 0;
+  c = skinOf(c); const urls = imgUrls(c); let k = urls.indexOf(goodUrl.get(c.i)); if (k < 0) k = 0;
   const img = h("img", { class: cls, src: urls[k], alt: alt ?? c.n, loading: "lazy", decoding: "async", draggable: "false" });
   img.addEventListener("load", () => goodUrl.set(c.i, img.src));
   img.addEventListener("error", () => { k++; if (k < urls.length) img.src = urls[k]; });
   return img;
 }
 export function resolveArt(c) {
+  c = skinOf(c);
   if (goodUrl.has(c.i)) return Promise.resolve(goodUrl.get(c.i));
   const urls = imgUrls(c);
   return new Promise((res) => {
