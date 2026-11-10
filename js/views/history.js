@@ -1,6 +1,6 @@
-import { h, openSheet, fmtDate, busy } from "../util.js?v=20261110215040";
-import { Data } from "../fb.js?v=20261110215040";
-import { Views } from "../ui.js?v=20261110215040";
+import { h, openSheet, fmtDate, busy } from "../util.js?v=20261110220552";
+import { Data } from "../fb.js?v=20261110220552";
+import { Views } from "../ui.js?v=20261110220552";
 
 const MODE_TH = { bot: "บอท", friend: "เพื่อน", solo: "สองฝั่ง" };
 Views.history = {

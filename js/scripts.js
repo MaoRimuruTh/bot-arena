@@ -670,3 +670,71 @@ Object.assign(SCRIPTS, {
       const t = c.choose(cands, 1, "เลือก Land Magic บึงทมิฬ จาก Deck")[0];
       return t ? { explain: `ส่ง ${E.name(s, c.self)} ลงนรก · วาง ${E.name(s, t)} บน Land Magic Zone`, ops: [{ op: "move", i: c.self.i, to: "hell" }, { op: "toLand", i: t.i }, { op: "shuffle", seat: p }, { op: "mu", seat: p, k: "L" }] } : { explain: "ไม่มี Land บึงทมิฬ ใน Deck", ops: [] }; } } },
 });
+
+// ---------- Starter Deck 06: ค่ายบางระจัน ----------
+const CAMP = "ค่ายบางระจัน";
+const camp = (E, s, p) => s.P[p].cs.some((y) => E.named(s, y, CAMP));
+const campText = (E, s, x) => isAv(E, s, x) && String(E.def(s, x).x || "").includes(CAMP);
+const worth = (E, s, x) => { const d = E.def(s, x); return (d.pw || 0) + (d.c || 0) * 0.6 + (d.o1 ? 10 : 0); };
+const cheapCard = (E, s) => (a, b) => worth(E, s, a) - worth(E, s, b);
+Object.assign(SCRIPTS, {
+  // จัน หนวดเขี้ยว: POWER +1 while we are in critical state · when destroyed while we control the camp: back into the Deck, shuffle, draw 1
+  "SD06-001": { aura: (E, s, src, L) => (L.z === "av" && E.critical(s.P[L.p]) ? [{ seat: L.p, test: (x) => x.i === src.i, n: 1 }] : []),
+    death: (c) => { const { E, s, seat: p } = c; if (!camp(E, s, p)) return { explain: `ไม่ได้ควบคุม ${CAMP} ความสามารถไม่ทำงาน`, ops: [] }; const L = E.locate(s, c.t.i); if (!L || L.z !== "hell") return { explain: "การ์ดไม่อยู่ในนรกแล้ว", ops: [] };
+      return { explain: `${E.name(s, L.x)} กลับเข้า Deck แล้วสับ · จั่ว 1 ใบ`, ops: [{ op: "move", i: L.x.i, to: "deckBottom" }, { op: "shuffle", seat: p }, { op: "draw", seat: p, n: 1 }] }; } },
+  // อิน สไนเปอร์: using เตะไข่ (attacking LIFE while the opponent still has Avatars) destroys one of our Avatars
+  "SD06-002": { attack: (c) => { const { E, s, seat: p, self: x } = c; if (!(s.pend && s.pend.tk === "life" && s.P[1 - p].av.length)) return { explain: "ไม่ได้ใช้เตะไข่", ops: [] };
+    const t = c.choose([...s.P[p].av].sort((a, b) => (a.i === x.i ? 1 : 0) - (b.i === x.i ? 1 : 0) || worth(E, s, a) - worth(E, s, b)), 1, "ใช้เตะไข่: เลือก Avatar ฝ่ายเราที่จะถูกทำลาย", { exact: true })[0];
+    return t ? { explain: `ใช้เตะไข่: ทำลาย ${E.name(s, t)} ฝ่ายเรา`, ops: [{ op: "destroy", i: t.i, why: "ผลของเตะไข่" }] } : { explain: "ไม่มี Avatar ให้ทำลาย", ops: [] }; } },
+  // ทองเหม็น ขวานคลั่ง: cannot attack LIFE unless we control the camp (its attack bonus is read from the text)
+  "SD06-003": { noLife: (E, s, x) => { const L = E.locate(s, x.i); return !!L && !camp(E, s, L.p); } },
+  // พันเรือง ผู้พิทักษ์ไร้พ่าย: while we control the camp, it may be destroyed instead of another Avatar of ours with "ค่ายบางระจัน" in its text
+  "SD06-005": { saveOther: (E, s, y, Ly, x, L) => (Ly.z === "av" && L.z === "av" && x.i !== y.i && campText(E, s, x) && camp(E, s, Ly.p) && worth(E, s, x) > worth(E, s, y)
+    ? { why: `${E.name(s, y)} ถูกทำลายแทน ${E.name(s, x)}`, ops: [{ op: "destroy", i: y.i, why: "ทำลายแทน", noSave: true }] } : null) },
+  // อาจารย์ธรรมโชติ: once per turn, when our camp would be destroyed by an Avatar ability or a Magic, it goes from hand / Avatar Zone to the bottom of the Deck instead
+  "SD06-007": { saveOther: (E, s, y, Ly, x, L, info) => (["hand", "av"].includes(Ly.z) && L.z === "cs" && E.named(s, x, CAMP) && !info.fight && y.used !== s.turn
+    ? { why: `${E.name(s, y)} กลับเข้าใต้ Deck · ${E.name(s, x)} ไม่ถูกทำลาย`, ops: [{ op: "used", i: y.i }, { op: "move", i: y.i, to: "deckBottom" }] } : null) },
+  // บุญช่วย ควายรักชาติ: once per turn, goes onto another Avatar of ours; the wearer gets POWER +1 (+2 while we control the camp)
+  "SD06-008": { activate: { label: "ไปสวมใส่ให้ Avatar ใบอื่นของเรา", can: (E, s, x, L) => L.z === "av" && s.phase === "main" && s.P[L.p].av.some((y) => y.i !== x.i),
+      run: (c) => { const { E, s, self: x } = c; const h = c.choose(s.P[c.seat].av.filter((y) => y.i !== x.i).sort((a, b) => E.power(s, b) - E.power(s, a)), 1, `เลือก Avatar ที่ ${E.name(s, x)} จะไปสวมใส่`)[0];
+        return h ? { explain: `${E.name(s, x)} ไปสวมใส่ให้ ${E.name(s, h)}`, ops: [{ op: "attach", i: x.i, on: h.i }] } : { explain: "ไม่มี Avatar ให้สวมใส่", ops: [] }; } },
+    worn: (E, s, m, host) => { const L = E.locate(s, host.i); return L && camp(E, s, L.p) ? 2 : 1; } },
+  // วิญญาณวีรชน: discard 1 : a camp Avatar from our hell is summoned (จุติ); at the end of the opponent's next turn it is sent to hell
+  "SD06-013": { canCast: (E, s, p) => s.P[p].hand.length >= 2 && s.P[p].hell.some((x) => campText(E, s, x)) && E.avatars(s.P[p]) < 4 && s.P[p].av.length < 6,
+    cast: (c) => { const { E, s, seat: p } = c; const P = s.P[p];
+      const pay = c.choose([...P.hand].filter((x) => x.i !== c.t.i).sort(cheapCard(E, s)), 1, "ค่าใช้จ่าย: ทิ้งการ์ดบนมือ 1 ใบ", { exact: true })[0]; if (!pay) return { explain: "ไม่มีการ์ดบนมือให้ทิ้ง", ops: [] };
+      const t = c.choose([...P.hell].reverse().filter((x) => campText(E, s, x)).sort(byPw(E, s)), 1, `เลือก Avatar ที่มี "${CAMP}" ในนรกที่จะอัญเชิญ`)[0]; if (!t) return { explain: `ไม่มี Avatar ที่มี "${CAMP}" ในนรก`, ops: [] };
+      return { explain: `ทิ้ง ${E.name(s, pay)} · อัญเชิญ ${E.name(s, t)} แบบจุติ · จบเทิร์นถัดไปของฝ่ายตรงข้ามจะถูกส่งลงนรก`,
+        ops: [{ op: "discard", seat: p, iids: [pay.i] }, { op: "put", i: t.i, jt: true }, { op: "atEnd", turn: s.turn + (s.active === p ? 1 : 2), ops: [{ op: "move", i: t.i, to: "hell", onlyFrom: "av" }], why: `${E.name(s, t)} (วิญญาณวีรชน) ถูกส่งลงนรก` }] }; } },
+  // ไปเลยมอนตี้ (React): the attacker gets POWER -2 for every card on our field and in our hand
+  "SD06-014": { react: { kinds: ["attack"] }, cast: (c) => { const { E, s, seat: p } = c; const on = onTarget(c); const A = E.locate(s, on.att); if (!A) return { explain: "ผู้โจมตีหายไปแล้ว", ops: [] };
+    const P = s.P[p]; const n = P.av.length + P.cs.length + P.mg.filter((m) => m.i !== c.t.i).length + (s.land && s.land.o === p ? 1 : 0) + P.hand.length;
+    return { explain: `การ์ดบนสนามและบนมือเรา ${n} ใบ: ${E.name(s, A.x)} POWER -${2 * n} จนจบเทิร์น`, ops: [{ op: "power", i: A.x.i, n: -2 * n, temp: true }] }; } },
+  // ปืนใหญ่ไทยประดิษฐ์ (React): the opponent summons and we control a camp Avatar: destroy one camp Avatar of ours and one Avatar of theirs
+  "SD06-015": { react: { kinds: ["summon"], can: (E, s, p) => s.P[p].av.some((x) => campText(E, s, x)) && s.P[1 - p].av.length > 0 },
+    cast: (c) => { const { E, s, seat: p } = c; const mine = c.choose(s.P[p].av.filter((x) => campText(E, s, x)).sort(cheapCard(E, s)), 1, `เลือก Avatar ที่มี "${CAMP}" ฝ่ายเราที่จะทำลาย`)[0];
+      const theirs = c.choose(s.P[1 - p].av.filter((x) => !E.untargetable(s, x)).sort((a, b) => worth(E, s, b) - worth(E, s, a)), 1, "เลือก Avatar ฝ่ายตรงข้ามที่จะทำลาย")[0];
+      return mine && theirs ? { explain: `ทำลาย ${E.name(s, mine)} และ ${E.name(s, theirs)}`, ops: [{ op: "destroy", i: mine.i, why: "ปืนใหญ่ไทยประดิษฐ์" }, { op: "destroy", i: theirs.i, why: "ปืนใหญ่ไทยประดิษฐ์" }] } : { explain: "ไม่มีเป้าหมายครบ", ops: [] }; } },
+  // ดาบใบข้าว X: when the wearer destroys an opposing Avatar in a fight: draw 1 (worn only by camp Avatars: printed rule)
+  "SD06-017": { hostWin: (c) => ({ explain: "Avatar ที่สวมใส่ชนะการต่อสู้: จั่ว 1 ใบ", ops: [{ op: "draw", seat: c.seat, n: 1 }] }) },
+  // ค่ายบางระจัน: our camp Avatars get POWER +1, โล่มนุษย์ and สามัคคี · when it is destroyed, every Avatar on our Avatar Zone is sent to hell
+  "SD06-018": { aura: (E, s, src, L) => (L.z === "cs" ? [{ seat: L.p, test: (x) => campText(E, s, x), n: 1, kw: ["โล่มนุษย์", "สามัคคี"] }] : []),
+    death: (c) => { const { E, s, seat: p } = c; const all = [...s.P[p].av]; return { explain: `${CAMP} ถูกทำลาย: ส่ง Avatar ทุกใบบน Avatar Zone เราลงนรก (${all.length} ใบ)`, ops: all.map((x) => ({ op: "move", i: x.i, to: "hell" })) }; } },
+  // วัดคู่บ้านคู่เมือง: our Constructs' scout abilities look at 2 more cards
+  "SD06-019": { scoutMore: (E, s, y, Ly, src) => (Ly.z === "cs" && src && src.t === "C" ? 2 : 0) },
+  // กำแพงด่านสุดท้าย: once per turn, when our LIFE is flipped and we have no Avatar: discard 1 : scout 1 (more with วัดคู่บ้านคู่เมือง);
+  // camp Avatars Cost 4 or less among them are summoned, the other cards go to the hand
+  "SD06-020": { lifeFlip: (c) => { const { E, s, seat: p, self: x } = c; const P = s.P[p]; if (x.used === s.turn) return { explain: "ใช้ไปแล้วในเทิร์นนี้", ops: [] };
+    if (P.av.length) return { explain: "มี Avatar บน Avatar Zone เรา ความสามารถไม่ทำงาน", ops: [] }; if (!P.hand.length || !P.deck.length) return { explain: "ไม่มีการ์ดให้ทิ้งหรือ Deck หมด", ops: [] };
+    const pay = c.choose([...P.hand].sort(cheapCard(E, s)), 1, "กำแพงด่านสุดท้าย: ทิ้งการ์ดบนมือ 1 ใบเพื่อสอดแนม (หรือไม่ใช้)", { optional: true })[0]; if (!pay) return { explain: "ไม่ใช้ความสามารถ", ops: [] };
+    const top = P.deck.slice(0, Math.min(P.deck.length, 1 + E.scoutBonus(s, p, E.def(s, x)))); const ops = [{ op: "used", i: x.i }, { op: "discard", seat: p, iids: [pay.i] }, { op: "scoutShow", seat: p, ids: top.map((y) => y.i) }]; let room = 4 - E.avatars(P); const say = [];
+    for (const y of top) { const d = E.def(s, y); if (d.t === "A" && campText(E, s, y) && (d.c || 0) <= 4 && room > 0) { ops.push({ op: "put", i: y.i }); room--; say.push(`อัญเชิญ ${E.name(s, y)}`); } else { ops.push({ op: "move", i: y.i, to: "hand" }); say.push(`${E.name(s, y)} ขึ้นมือ`); } }
+    return { explain: `ทิ้ง ${E.name(s, pay)} · สอดแนม ${top.length} ใบ: ${say.join(", ")}`, ops }; } },
+});
+
+// ---------- cards from Ciel's decks ----------
+Object.assign(SCRIPTS, {
+  // น้ำซุปชาบู: POWER +3 (read from the text) · after the wearer attacks it does not wake up until the end of our next End Phase
+  "CC01-048": { hostAttack: (c) => { const { E, s } = c; const H = c.self.on != null ? E.locate(s, c.self.on) : null;
+    return H ? { explain: `${E.name(s, H.x)} จะไม่เปลี่ยนเป็นสภาพตื่นจนจบ End Phase ถัดไปของเรา`, ops: [{ op: "noWake", i: H.x.i, until: s.turn + 2 }] } : { explain: "ไม่ได้สวมใส่อยู่", ops: [] }; } },
+});
