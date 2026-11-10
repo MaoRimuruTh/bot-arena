@@ -1,7 +1,7 @@
-import { h, openSheet, holo } from "./util.js?v=20261110171156";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt } from "./cards.js?v=20261110171156";
-import { Data, saveOwned, saveSkins, saveFavs } from "./fb.js?v=20261110171156";
-import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261110171156";
+import { h, openSheet, holo, toast, fmtDate } from "./util.js?v=20261110171526";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt, priceOf, setCode } from "./cards.js?v=20261110171526";
+import { Data, saveOwned, saveSkins, saveFavs, savePrices } from "./fb.js?v=20261110171526";
+import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261110171526";
 
 export function cardBtn(id, opts = {}) {
   const c = card(id); const b = h("button", { class: "ccard" + (opts.cls ? " " + opts.cls : ""), type: "button", "aria-label": c ? c.n : "การ์ด", title: c ? c.n : "", onclick: opts.onclick });
@@ -36,12 +36,34 @@ export function showCard(id, extra) {
       h("div", { class: "stack" }, favButton(c), cardInfo(c), c.x ? h("div", { class: "fx" }, c.x) : h("div", { class: "muted small" }, "ไม่มีข้อความความสามารถ"), c.ex ? h("div", { class: "small muted" }, c.ex) : null,
         h("div", { class: "row" }, h("span", { class: "muted small" }, "ฉันมีจริง"), h("button", { class: "mini", "aria-label": "ลด", onclick: () => { setOwned(c.i, Math.max(0, ownedOf(c.i) - 1)); own.textContent = ownedOf(c.i); } }, "−"), own, h("button", { class: "mini", "aria-label": "เพิ่ม", onclick: () => { setOwned(c.i, ownedOf(c.i) + 1); own.textContent = ownedOf(c.i); } }, "+")),
         others.length ? h("div", { class: "stack", style: "gap:6px" }, h("div", { class: "eyebrow" }, "ชื่อเดียวกันแต่คนละใบ · นับรวมโควตาชื่อ"), h("div", { class: "pick" }, others.map((v) => cardBtn(v.i, { badge: v.p, onclick: () => { api.close(); showCard(v.i, extra); } })))) : null,
-        skinPicker(c, api, extra),
+        skinPicker(c, api, extra), priceBox(c),
         extra ? extra(c, api) : null,
         c.t === "A" ? h("div", { class: "row" },
           h("button", { class: "btn ciel sm", onclick: async (e) => { const b = e.currentTarget; if (!Ciel.on()) { aceBox.replaceChildren(h("div", { class: "muted small" }, aiErr({ code: "no_key" }))); return; } b.disabled = true; aceBox.replaceChildren(h("span", { class: "muted small" }, "ชิเอลกำลังประเมิน…")); try { const r = await cielAceCheck(c); aceBox.replaceChildren(aceView(r)); } catch (err) { aceBox.replaceChildren(h("div", { class: "muted small" }, aiErr(err))); } b.disabled = false; } }, "ประเมินเป็นเอซ"),
           h("a", { class: "btn sm", href: "#decks/ace/" + c.i, onclick: () => api.close() }, "จัดเด็ครอบใบนี้")) : null, aceBox))];
   }, { title: c.n, sub: `${TYPE_TH[c.t]} · ${c.p}`, wide: true });
+}
+// market check: which box each print comes from, links to look the card up, and prices the player noted down
+const SRC = ["TCG Thailand", "Shopee", "ร้านการ์ด", "กลุ่ม Facebook", "อื่นๆ"];
+function priceBox(c) {
+  const prints = variantsOf(c); const q = encodeURIComponent(c.n);
+  const box = h("div", { class: "panel stack", style: "gap:8px" });
+  const draw = () => {
+    const last = priceOf(c); const hist = ((Data.prices[favKey(c)] || {}).h || []).slice(-5).reverse();
+    const inp = h("input", { type: "number", min: "0", step: "1", inputmode: "numeric", placeholder: "ราคา (บาท)", "aria-label": "ราคาที่เห็น (บาท)", style: "width:120px" });
+    const src = h("select", { "aria-label": "เห็นราคาจากที่ไหน" }, SRC.map((s) => h("option", { value: s }, s)));
+    box.replaceChildren(h("div", { class: "eyebrow" }, "เทียบราคาตลาด · ข้อมูลอ้างอิง ไม่มีการซื้อขายในเว็บนี้"),
+      h("div", { class: "small" }, h("b", null, "มาจาก: "), prints.map((v) => `${setCode(v)} ${v.r}${v.dr ? " (" + v.dr + ")" : ""}`).join(" · ")),
+      h("div", { class: "row", style: "gap:6px" },
+        h("a", { class: "btn sm", href: `https://www.tcgthailand.com/product?search=${q}&page=1`, target: "_blank", rel: "noopener noreferrer" }, "เช็คราคาที่ TCG Thailand ↗"),
+        h("a", { class: "btn sm", href: `https://shopee.co.th/search?keyword=${encodeURIComponent(c.n + " battle of talingchan")}`, target: "_blank", rel: "noopener noreferrer" }, "ค้นใน Shopee ↗")),
+      h("div", { class: "tiny muted" }, `ภาพ ${c.r} ใบนี้ (${c.p})${c.r === "SCR" ? " · ในตลาดมักเรียก SCR ว่า SEC" : ""} · ราคาต่างกันมากตามความหายากและสภาพการ์ด`),
+      last ? h("div", { class: "row small" }, h("span", { class: "chip gold num" }, `฿${last.p.toLocaleString()}`), h("span", { class: "muted" }, `จดล่าสุด ${fmtDate(last.at)} · ${last.src || ""}`)) : h("div", { class: "small muted" }, "ยังไม่ได้จดราคาใบนี้"),
+      h("div", { class: "row", style: "gap:6px" }, inp, src, h("button", { class: "btn sm gold", onclick: async () => { const p = Math.round(+inp.value); if (!(p >= 0) || inp.value === "") return toast("ใส่ราคาเป็นตัวเลขก่อน");
+        const k = favKey(c); const e = Data.prices[k] || { h: [] }; e.h = [...(e.h || []), { p, at: Date.now(), src: src.value }].slice(-12); Data.prices[k] = e; await savePrices(); toast(`จดราคา ${c.n} ${c.r} ฿${p}`); draw(); } }, "จดราคา")),
+      hist.length > 1 ? h("div", { class: "tiny muted" }, "ประวัติ: " + hist.map((x) => `฿${x.p} (${fmtDate(x.at)})`).join(" · ")) : null);
+  };
+  draw(); return box;
 }
 // ♥ favourite: Ciel can build a deck from these, and a favourite special art becomes the card's skin
 export function toggleFav(c) {

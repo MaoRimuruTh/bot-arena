@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261110171156";
-import { h } from "./util.js?v=20261110171156";
-import { Data } from "./fb.js?v=20261110171156";
+import { CARD_SOURCE } from "./config.js?v=20261110171526";
+import { h } from "./util.js?v=20261110171526";
+import { Data } from "./fb.js?v=20261110171526";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -61,6 +61,10 @@ export const SkinCtx = { on: true }; // skins show only on the deck pages and in
 export function skinOf(c) { if (!c || c.b != null || !SkinCtx.on) return c; const v = Data.skins && Data.skins[String(c.i)]; const s = v != null ? CARDS[+v] : null; return s && (s.b === c.i || s.i === c.i) ? s : c; }
 export const variantsOf = (c) => { const b = c.b != null ? c.b : c.i; return CARDS.filter((x) => x.i === b || x.b === b); };
 export const favKey = (c) => c.p + "-" + c.r;
+// latest noted price of exactly this print+rarity: { p, at, src } or null
+export const priceOf = (c) => { const e = c && Data.prices && Data.prices[favKey(c)]; return e && e.h && e.h.length ? e.h[e.h.length - 1] : null; };
+// best known price for a card when buying it: this print first, else the cheapest noted print of the same card
+export function buyPrice(c) { const own = priceOf(c); if (own) return { ...own, c }; let best = null; for (const v of variantsOf(c)) { const p = priceOf(v); if (p && (!best || p.p < best.p)) best = { ...p, c: v }; } return best; }
 export const isFav = (c) => !!(c && Data.favs && Data.favs[favKey(c)]);
 export const favCards = () => Object.keys((Data && Data.favs) || {}).map((k) => CARDS.find((c) => favKey(c) === k)).filter(Boolean);
 export const isSpecialArt = (c) => c.b != null || ["SCR", "CBR", "USEC"].includes(c.r);

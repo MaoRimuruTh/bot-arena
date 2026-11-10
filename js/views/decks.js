@@ -1,12 +1,12 @@
-import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261110171156";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, starterDecks, ownedOf, cardLine, favCards, variantsOf, isSpecialArt } from "../cards.js?v=20261110171156";
-import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261110171156";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261110171156";
-import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261110171156";
-import { filterBar, filterCards } from "./library.js?v=20261110171156";
-import { openingOdds, simGame } from "./lab.js?v=20261110171156";
-import { freeBuild } from "../builder.js?v=20261110171156";
-import { CIEL_DECKS } from "../cieldecks.js?v=20261110171156";
+import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261110171526";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, starterDecks, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261110171526";
+import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261110171526";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261110171526";
+import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261110171526";
+import { filterBar, filterCards } from "./library.js?v=20261110171526";
+import { openingOdds, simGame } from "./lab.js?v=20261110171526";
+import { freeBuild } from "../builder.js?v=20261110171526";
+import { CIEL_DECKS } from "../cieldecks.js?v=20261110171526";
 
 // Ciel's theme decks: print codes → card ids (resolved once the card data is loaded)
 let cielCache = null;
@@ -252,9 +252,13 @@ export function openAnalysis(d) {
 export function openShopping(d) {
   const list = shoppingList(d).filter((x) => x.miss > 0); const bySet = {};
   for (const x of list) { const k = setName(x.c) + " (" + setCode(x.c) + ")"; (bySet[k] = bySet[k] || []).push(x); }
-  openSheet(() => list.length ? [h("div", { class: "muted small" }, `ขาด ${list.reduce((a, x) => a + x.miss, 0)} ใบ จาก ${list.length} รายการ · นับจากการ์ดที่บันทึกว่ามีในคลังการ์ด · ราคาตลาดจะเพิ่มทีหลัง`),
-    ...Object.entries(bySet).map(([k, xs]) => h("div", { class: "stack", style: "gap:6px" }, h("div", { class: "eyebrow" }, k), h("div", { class: "scroll-x" }, h("table", { class: "t" }, h("thead", null, h("tr", null, ...["การ์ด", "ความหายาก", "ต้องใช้", "มี", "ขาด", "อัตราออก"].map((t) => h("th", null, t)))),
-      h("tbody", null, xs.map((x) => h("tr", null, h("td", null, h("a", { href: "#", onclick: (e) => { e.preventDefault(); showCard(x.c.i); } }, x.c.n)), h("td", { class: "num" }, x.c.r), h("td", { class: "num" }, x.need), h("td", { class: "num" }, x.have), h("td", { class: "num" }, h("b", { style: "color:var(--warn)" }, x.miss)), h("td", { class: "small" }, x.c.dr || "-"))))))))]
+  let sum = 0, unknown = 0; for (const x of list) { const p = buyPrice(x.c); if (p) sum += p.p * x.miss; else unknown++; }
+  openSheet(() => list.length ? [h("div", { class: "muted small" }, `ขาด ${list.reduce((a, x) => a + x.miss, 0)} ใบ จาก ${list.length} รายการ · นับจากการ์ดที่บันทึกว่ามีในคลังการ์ด`),
+    h("div", { class: "statrow" }, h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "ประมาณจากราคาที่จดไว้"), h("b", { class: "num", style: "color:var(--gold-hi)" }, "฿" + sum.toLocaleString())),
+      h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "ยังไม่มีราคา"), h("b", { class: "num" }, unknown + " รายการ"))),
+    h("div", { class: "tiny muted" }, "กดชื่อการ์ดเพื่อเช็คราคาที่ TCG Thailand หรือ Shopee แล้วจดราคาไว้ ยอดรวมจะคำนวณให้เอง (ข้อมูลอ้างอิง ไม่มีการซื้อขายในเว็บนี้)"),
+    ...Object.entries(bySet).map(([k, xs]) => h("div", { class: "stack", style: "gap:6px" }, h("div", { class: "eyebrow" }, k), h("div", { class: "scroll-x" }, h("table", { class: "t" }, h("thead", null, h("tr", null, ...["การ์ด", "ความหายาก", "ต้องใช้", "มี", "ขาด", "อัตราออก", "ราคาที่จด"].map((t) => h("th", null, t)))),
+      h("tbody", null, xs.map((x) => h("tr", null, h("td", null, h("a", { href: "#", onclick: (e) => { e.preventDefault(); showCard(x.c.i); } }, x.c.n)), h("td", { class: "num" }, x.c.r), h("td", { class: "num" }, x.need), h("td", { class: "num" }, x.have), h("td", { class: "num" }, h("b", { style: "color:var(--warn)" }, x.miss)), h("td", { class: "small" }, x.c.dr || "-"), h("td", { class: "num small" }, (() => { const p = buyPrice(x.c); return p ? `฿${p.p.toLocaleString()}${p.c.i !== x.c.i ? " (" + p.c.r + ")" : ""}` : "-"; })()))))))))]
     : h("div", { class: "empty" }, "มีครบทุกใบแล้ว"), { title: "รายการต้องซื้อ: " + d.name, wide: true });
 }
 function openImport(d, done) {
