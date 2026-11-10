@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261110212450";
-import { h } from "./util.js?v=20261110212450";
-import { Data } from "./fb.js?v=20261110212450";
+import { CARD_SOURCE } from "./config.js?v=20261110215040";
+import { h } from "./util.js?v=20261110215040";
+import { Data } from "./fb.js?v=20261110215040";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -33,6 +33,39 @@ export function kwHas(t, k) { t = String(t || ""); for (let i = t.indexOf(k); i 
 
 const TYPE = { Avatar: "A", Magic: "M", Construct: "C", Life: "L", Token: "T" };
 const SUB = { Normal: "N", Modification: "D", React: "R", Land: "L" };
+// Subtypes that are wrong in the official data: the card text (and reprints of the same card) show the real one
+const DATA_FIX = { "SD05-014": { st: "L" }, "SD05-020": { st: "R" }, "SD06-014": { st: "R" }, "ODY1-064": { st: "R" } };
+
+// ---------- names, Symbols and colours a card counts as ----------
+// "#Avatar ใบนี้ถือว่ามีชื่อ "รถถัง"" · "#การ์ดใบนี้นับเป็นชื่อ บึงทมิฬ" · "#Avatar ใบนี้ นับว่าเป็น {Symbol สัตว์} ด้วย" ·
+// "#Avatar ใบนี้ถือว่าเป็น Avatar สีม่วง ด้วย" · "ต่อเนื่อง ตราบเท่าที่ Avatar ใบนี้อยู่ในสนาม จะนับว่าเป็น "บึงทมิฬ People" ด้วย" (F = only on the field)
+const sp1 = (t) => String(t || "").replace(/\s+/g, " ").trim();
+const FIELD_RULE = /^ต่อเนื่อง\s*ตราบเท่า(?:ที่)?\s*(?:Avatar|การ์ด)?\s*(?:ใบนี้)?\s*อยู่\s*(?:บน|ใน)\s*(?:Avatar Zone|สนาม)\s*/;
+export function aliasOf(text) {
+  const al = {}; const add = (k, v) => { v = sp1(v); if (v && !(al[k] = al[k] || []).includes(v)) al[k].push(v); };
+  for (const seg of String(text || "").split(/\n|(?=#)/)) {
+    const l = sp1(seg); const hash = /^#/.test(l); const field = FIELD_RULE.test(l); if (!hash && !field) continue;
+    const body = field ? l.replace(FIELD_RULE, "") : l; if (/ถ้า|หาก|เมื่อ|จนกว่า|Gem|GEM|Cost|ใส่การ์ด|ในเด็ค|ใน Deck/.test(body)) continue;
+    const F = field ? "F" : ""; let m;
+    // (a closing quote is sometimes missing at the very end of the text)
+    if ((m = body.match(/(?:ถือว่ามีชื่อ(?:ว่า)?|นับเป็นชื่อ|นับว่าเป็นชื่อ|นับว่าเป็น|ถือว่าเป็น)\s*((?:["“'‘][^"”'’]+(?:["”'’]|$)\s*(?:และ|,|หรือ)?\s*)+)/))) for (const q of m[1].matchAll(/["“'‘]([^"”'’]+)(?:["”'’]|$)/g)) add("an" + F, q[1]);
+    else if ((m = body.match(/(?:ถือว่ามีชื่อ(?:ว่า)?|นับเป็นชื่อ|นับว่าเป็นชื่อ)\s+([^"“{\s][^#]*?)\s*(?:ด้วย)?\s*$/))) add("an" + F, m[1]);
+    for (const q of body.matchAll(/(?:นับเป็น|นับว่าเป็น|ถือว่าเป็น)\s*(?:Avatar\s*)?\{\s*[Ss]ymbol\s*:?\s*([^}]+?)\s*\}/g)) add("asy" + F, q[1]);
+    if ((m = body.match(/นับเป็น\s*Symbol\s+([^\s{}]+)/))) add("asy" + F, m[1]);
+    if (/นับเป็นทุก\s*Symbol/.test(body)) al["allSy" + F] = true;
+    for (const q of body.matchAll(/(?:ถือว่าเป็น|นับว่าเป็น|นับเป็น)\s*(?:Avatar\s*)?สี(แดง|ฟ้า|เขียว|ม่วง)/g)) add("aco" + F, q[1]);
+    if (/ถือเป็น\s*Avatar\s*ทุกสี/.test(body)) al["allCo" + F] = true;
+  }
+  return Object.keys(al).length ? al : null;
+}
+// matching helpers (on = the card is on the field, where "while on the field" rules count too)
+export const nameText = (d, on) => { const a = d && d.al; return sp1([d && d.n, ...((a && a.an) || []), ...((on && a && a.anF) || [])].filter(Boolean).join(" | ")); };
+export const syText = (d, on) => { const a = d && d.al; return [d && d.sy, ...((a && a.asy) || []), ...((on && a && a.asyF) || [])].filter(Boolean).join(" | "); };
+export const allSy = (d, on) => !!(d && d.al && (d.al.allSy || (on && d.al.allSyF)));
+export const colorIs = (d, c, on) => !!d && (d.co === c || !!(d.al && (d.al.allCo || (on && d.al.allCoF) || (d.al.aco || []).includes(c) || (on && (d.al.acoF || []).includes(c)))));
+export const hasFieldAlias = (d) => !!(d && d.al && (d.al.anF || d.al.asyF || d.al.acoF || d.al.allSyF || d.al.allCoF));
+export const normName = sp1;
+
 function transform(raw) {
   // same card = same name and type, and either the same print code or the same text once spacing,
   // line breaks and slashes are ignored (special-art reprints often re-wrap the text)
@@ -48,6 +81,8 @@ function transform(raw) {
     if (c.symbol) e.sy = c.symbol; if (c.color) e.co = c.color; if (c.gemColor) e.gc = c.gemColor; if (c.customLimit) e.lim = c.customLimit;
     if (c.soi != null) e.so = c.soi; if (c.dropRate) e.dr = c.dropRate; if (c.creator) e.ar = c.creator;
     if (c.ex === "Only #1") e.o1 = 1; else if (c.ex === "โดนใจ") e.fl = "dj"; else if (c.ex === "ลำเอียง") e.fl = "le"; else if (c.ex) e.ex = c.ex;
+    if (DATA_FIX[c.print]) Object.assign(e, DATA_FIX[c.print]);
+    { const al = aliasOf(e.x); if (al) e.al = al; }
     out.push(e);
   });
   return out;

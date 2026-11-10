@@ -1,10 +1,10 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus } from "./engine.js?v=20261110212450";
-import { plain } from "./persona.js?v=20261110212450";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261110212450";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261110212450";
-import { Data } from "./fb.js?v=20261110212450";
-import { lsGet } from "./util.js?v=20261110212450";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus } from "./engine.js?v=20261110215040";
+import { plain } from "./persona.js?v=20261110215040";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261110215040";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261110215040";
+import { Data } from "./fb.js?v=20261110215040";
+import { lsGet } from "./util.js?v=20261110215040";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -164,7 +164,7 @@ export const H = {
       else if (o.op === "destroy") { const L = E.locate(s, o.i); v += L ? (L.p === p ? -6 : 5 + E.power(s, L.x) * 0.6) : 0; }
       else if (o.op === "move" && o.to === "hand") { const L = E.locate(s, o.i); v += L && L.p !== p ? 4 : -2; }
       else if (o.op === "power") { const L = E.locate(s, o.i); v += L ? ((L.p === p) === (o.n > 0) ? Math.abs(o.n) * (s.turn > 1 ? 0.8 : 0.3) : -Math.abs(o.n)) : 0; }
-      else if (o.op === "wake") { const L = E.locate(s, o.i); v += L && L.p !== p && !o.v ? 2 : 0.5; }
+      else if (o.op === "wake") { const L = E.locate(s, o.i); const mine = L && L.p === p; v += !L ? 0 : o.v === false ? (mine ? -2 : 2) : mine ? (L.x.a ? 0 : 2) : -2; }
       else if (["search", "scout", "fromHell"].includes(o.op)) v += 2.5;
       else if (o.op === "discard") v -= 1.6 * (o.iids || []).length;
       else if (o.op === "attach") { const H2 = E.locate(s, o.on); const L = E.locate(s, o.i); v += H2 && H2.p === p ? (L && L.p !== p && L.z === "av" ? 6 : L && L.z === "av" ? 1.5 : 3) : 0; }

@@ -1,6 +1,7 @@
 // Free reader for continuous POWER effects ("ต่อเนื่อง ... POWER +N").
 // Conservative like effects.js: anything it can't express exactly is ignored (returns no aura).
 // readAura(def) -> null or { desc, run(E, s, src, L) -> [{ seat, test(x), n }] }
+import { nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261110215040";
 const cache = new Map();
 
 const ON_FIELD = { A: "av", T: "av", C: "cs" };
@@ -18,15 +19,15 @@ function filterOf(t) {
 }
 const named = (f) => !!(f.symbol || f.names || f.color || f.cost != null || f.text);
 function fits(E, s, x, f) {
-  const d = E.def(s, x); if (!["A", "T"].includes(d.t)) return false;
-  if (f.symbol && !String(d.sy || "").includes(f.symbol)) return false;
-  if (f.names && !f.names.some((n) => String(d.n || "").includes(n))) return false;
-  if (f.color && d.co !== f.color) return false;
+  const d = E.def(s, x); if (!["A", "T"].includes(d.t)) return false; const on = hasFieldAlias(d) && E.onField(s, x);
+  if (f.symbol && !allSy(d, on) && !syText(d, on).includes(f.symbol)) return false;
+  if (f.names && !f.names.some((n) => nameText(d, on).includes(normName(n)))) return false;
+  if (f.color && !colorIs(d, f.color, on)) return false;
   if (f.cost != null && (d.c || 0) !== f.cost) return false;
   if (f.text && !String(d.x || "").includes(f.text)) return false;
   return true;
 }
-const fitsDef = (d, f) => !(f.symbol && !String(d.sy || "").includes(f.symbol)) && !(f.names && !f.names.some((n) => String(d.n || "").includes(n))) && !(f.color && d.co !== f.color) && !(f.text && !String(d.x || "").includes(f.text));
+const fitsDef = (d, f, on = false) => !(f.symbol && !allSy(d, on) && !syText(d, on).includes(f.symbol)) && !(f.names && !f.names.some((n) => nameText(d, on).includes(normName(n)))) && !(f.color && !colorIs(d, f.color, on)) && !(f.text && !String(d.x || "").includes(f.text));
 // one "ต่อเนื่อง" clause → aura spec or null
 function parse(seg) {
   let t = seg.replace(/\{red\s*/gi, "").replace(/\s+/g, " ").trim();
@@ -158,7 +159,7 @@ export function traits(def) {
   const o = {}; let m; const line = (re) => String(text).split(/\n/).find((l) => re.test(l) && !/ถ้า|ตราบ|เมื่อ|ยกเว้น|จนกว่า|หาก/.test(l));
   if ((m = text.match(/ใช้เป็น\s*Cost\s*(?:ใน)?(?:การ)?อัญเชิญ\s*ได้เฉพาะ\s*([^\n\]]+?)\s*เท่านั้น/))) { const f = quoted(m[1]); if (f) o.payOnly = (d) => ["A", "T"].includes(d.t) && fitsDef(d, f); }
   if (def.t === "M" && def.st === "D") {
-    if ((m = text.match(/สวมใส่ได้(?:เฉพาะ|แค่)\s*([^\n]+?)\s*เท่านั้น/))) { const f = quoted(m[1]); if (f) o.modOnly = (E, s, host) => fitsDef(E.def(s, host), f); }
+    if ((m = text.match(/สวมใส่ได้(?:เฉพาะ|แค่)\s*([^\n]+?)\s*เท่านั้น/))) { const f = quoted(m[1]); if (f) o.modOnly = (E, s, host) => fitsDef(E.def(s, host), f, true); }
     const kl = line(new RegExp(`ที่(?:ถูก)?สวมใส่(?:การ์ด(?:ใบ)?นี้)?\\s*(?:จะ)?\\s*ได้รับ\\s*(?:ความสามารถ\\s*)?["“]?\\s*(?:${KWS})`)); if (kl) o.modKw = kl.slice(kl.search(/ได้รับ/)).split(/POWER/)[0].match(new RegExp(KWS, "g"));
     if (/เมื่อ\s*Avatar\s*(?:["“][^"”]+["”]\s*)?ที่สวมใส่(?:การ์ด(?:ใบ)?นี้)?\s*จะถูกทำลาย\s*:?\s*(?:สามารถ)?\s*ทำลายการ์ดใบนี้\s*แทน/.test(text)) o.shield = true;
   }
@@ -172,6 +173,7 @@ export function traits(def) {
     if (/ไม่สามารถลงสนามจากบนมือ|ลงสนามจากบนมือไม่ได้/.test(text)) o.noHand = true;
     if (/ควบคุม[^\n]*?(?:ใน|บน)\s*Avatar Zone\s*ได้เพียง\s*1\s*ใบ/.test(text)) o.uniq = true;
     if (/ถือเป็น\s*Avatar\s*ทุกสี/.test(text)) o.anyColor = true;
+    if (/ไม่สามารถใช้\s*Avatar\s*ชื่อซ้ำกัน\s*(?:ใน)?(?:การ)?สวมใส่/.test(text)) o.uniqWear = true;
   }
   const out = Object.keys(o).length ? o : null; tcache.set(key, out); return out;
 }

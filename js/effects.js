@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261110212450";
-import { CARDS } from "./cards.js?v=20261110212450";
-import { E, scriptOf } from "./engine.js?v=20261110212450";
+import { readAura } from "./auras.js?v=20261110215040";
+import { CARDS, nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261110215040";
+import { E, scriptOf } from "./engine.js?v=20261110215040";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -70,20 +70,21 @@ function filterOf(t) {
 const seatOf = (t, p) => (/ผู้เล่นทุกคน|ทั้งสองฝ่าย|ทุกฝ่าย|ทั้ง\s*2\s*ฝ่าย/.test(t) ? [p, 1 - p] : /ฝ่ายตรงข้าม|อีกฝ่าย/.test(t) ? [1 - p] : [p]);
 const num = (t, re, d = 1) => { const m = t.match(re); return m ? +m[1] : d; };
 const val = (s, x) => E.power(s, x) + (E.def(s, x).c || 0) * 0.5 + (E.def(s, x).o1 ? 6 : 0);
-const fits = (s, x, f) => fitsD(E.def(s, x), f, () => E.power(s, x));
-function fitsD(d, f, pw = () => d.pw || 0) {
-  if (f.symbol && !String(d.sy || "").includes(f.symbol)) return false;
-  if (f.symbols && !f.symbols.some((y) => String(d.sy || "").includes(y))) return false;
-  if (f.name && !String(d.n || "").includes(f.name)) return false;
-  if (f.names && !f.names.some((n) => String(d.n || "").includes(n))) return false;
-  if (f.notName && String(d.n || "").includes(f.notName)) return false;
+const fits = (s, x, f) => { const d = E.def(s, x); return fitsD(d, f, () => E.power(s, x), hasFieldAlias(d) && E.onField(s, x)); };
+function fitsD(d, f, pw = () => d.pw || 0, on = false) {
+  const nm = nameText(d, on); const syt = syText(d, on); const anySy = allSy(d, on);
+  if (f.symbol && !anySy && !syt.includes(f.symbol)) return false;
+  if (f.symbols && !anySy && !f.symbols.some((y) => syt.includes(y))) return false;
+  if (f.name && !nm.includes(normName(f.name))) return false;
+  if (f.names && !f.names.some((n) => nm.includes(normName(n)))) return false;
+  if (f.notName && nm.includes(normName(f.notName))) return false;
   if (f.notOnly && d.o1) return false;
   if (f.st && d.st !== f.st) return false;
   if (f.maxCost != null && (d.c || 0) > f.maxCost) return false;
   if (f.minCost != null && (d.c || 0) < f.minCost) return false;
   if (f.minGem != null && (d.g || 0) < f.minGem) return false;
   if (f.maxPower != null && pw() > f.maxPower) return false;
-  if (f.color && d.co !== f.color) return false;
+  if (f.color && !colorIs(d, f.color, on)) return false;
   if (f.text && !String(d.x || "").includes(f.text)) return false;
   if (f.type && d.t !== f.type && !(f.type === "A" && d.t === "T") && f.strict) return false;
   return true;
@@ -249,7 +250,7 @@ function sentence(s, t, p, self, ctx) {
     ops.push(to === "av" ? { op: "put", i: me.i } : to === "cs" ? { op: "move", i: me.i, to: "cs", seat: p } : to === "hand" ? { op: "move", i: me.i, to: "hand" } : { op: "move", i: me.i, to: "deckBottom" }); if (to === "deck") ops.push({ op: "shuffle", seat: p });
     say.push(`${E.name(s, me)} ${to === "av" ? "ลงสนาม" : to === "cs" ? "ถูกก่อสร้าง" : to === "hand" ? "ขึ้นมือ" : "กลับเข้า Deck"}`);
   } else if (/ยกเลิก/.test(t)) {
-    if (t.replace(/ยกเลิก(?:การโจมตี|ผล|ความสามารถ|การใช้(?:งาน)?)(?:ของ)?(?:การ์ด|Magic(?:\s*Card)?)?(?:ใบ)?(?:นั้น|ครั้งนั้น)?/, "").replace(/[\s.]/g, "").length > 2) return false; // something else is going on in this sentence
+    if (t.replace(/ยกเลิก\s*(?:การโจมตี|ผล|ความสามารถ|การใช้(?:งาน)?)\s*(?:ของ)?\s*(?:การ์ด|Magic(?:\s*Card)?)?\s*(?:ใบ)?\s*(?:นั้น|ครั้งนั้น)?/, "").replace(/[\s.]/g, "").length > 2) return false; // something else is going on in this sentence
     if (/การโจมตี/.test(t) && ref.cancel) { ops.push({ op: "cancelAttack" }); say.push("ยกเลิกการโจมตี"); }
     else if (/ผล|ความสามารถ|การใช้/.test(t) && ref.magic != null) { ops.push({ op: "negate", i: ref.magic }); say.push("ยกเลิกผลของการ์ดนั้น"); }
     else return false;
@@ -315,7 +316,8 @@ function sentence(s, t, p, self, ctx) {
     const to = /อัญเชิญ|Avatar Zone/.test(t) ? "av" : /ขึ้นมือ/.test(t) ? "hand" : /บนสุด/.test(t) ? "top" : "deck"; const jt = to === "av" && /อัญเชิญ\s*(?:พอดี\s*)?จุติ/.test(t);
     const cands = [...P.hell].reverse().filter((x) => typed(x, f)).sort((a, b) => val(s, b) - val(s, a));
     if (ctx.deferred) { ops.push({ op: "fromHell", seat: p, ...f, to }); say.push("นำการ์ดจากนรก"); }
-    else { const got = ctx.choose(cands, to === "av" ? Math.min(hm.n, Math.max(0, 4 - E.avatars(P))) || 1 : hm.n, `เลือกการ์ดจากนรก${hm.n > 1 ? ` (${hm.upTo ? "สูงสุด " : ""}${hm.n} ใบ)` : ""}`, { optional: hm.upTo });
+    else if (to === "av" && Math.min(4 - E.avatars(P), 6 - P.av.length) <= 0) say.push("Avatar Zone เต็ม อัญเชิญจากนรกไม่ได้");
+    else { const got = ctx.choose(cands, to === "av" ? Math.min(hm.n, 4 - E.avatars(P), 6 - P.av.length) : hm.n, `เลือกการ์ดจากนรก${hm.n > 1 ? ` (${hm.upTo ? "สูงสุด " : ""}${hm.n} ใบ)` : ""}`, { optional: hm.upTo });
       if (!got.length) say.push("ไม่มีการ์ดในนรกที่ตรงเงื่อนไข");
       for (const x of got) ops.push(to === "av" ? { op: "put", i: x.i, jt } : to === "hand" ? { op: "move", i: x.i, to: "hand" } : { op: "move", i: x.i, to: to === "top" ? "deckTop" : "deckBottom" });
       if (got.length && to === "deck") ops.push({ op: "shuffle", seat: p });
@@ -335,7 +337,7 @@ function sentence(s, t, p, self, ctx) {
     const pm = t.match(/POWER\s*([+\-−–])\s*(\d+)/); if (pm) for (const x of tgt) ops.push({ op: "power", i: x.i, n: (pm[1] === "+" ? 1 : -1) * +pm[2], temp: true });
   } else if (/POWER\s*([+\-−–])\s*(\d+)/.test(t)) {
     const m = t.match(/POWER\s*([+\-−–])\s*(\d+)/); const times = num(t, /POWER\s*[+\-−–]\s*\d+\s*(\d+)\s*ครั้ง/, 1); const v = (m[1] === "+" ? 1 : -1) * +m[2] * Math.min(times, 9);
-    let temp = /Draw Phase (?:ถัดไป|ต่อไป)|จนจบเทิร์น(?:ถัดไป)?\s*(?:ของ)?\s*(?:ฝ่ายตรงข้าม|อีกฝ่าย)/.test(t) ? "next" : /จนจบเทิร์น|จนจบการต่อสู้|เทิร์นนี้/.test(t) || ["cast", "attack", "attacked", "activate", "win", "summon", "death", "life", "paid", "milled"].includes(ctx.when) ? true : null;
+    let temp = /Draw Phase (?:ถัดไป|ต่อไป)|จนจบเทิร์น(?:ถัดไป)?\s*(?:ของ)?\s*(?:ฝ่ายตรงข้าม|อีกฝ่าย)/.test(t) ? "next" : /จนจบการต่อสู้/.test(t) ? "fight" : /จนจบเทิร์น|เทิร์นนี้/.test(t) || ["cast", "attack", "attacked", "activate", "win", "summon", "death", "life", "paid", "milled"].includes(ctx.when) ? true : null;
     if (temp == null && (ctx.when === "end" || ctx.when === "mainStart") && !/จนถึง|จนกว่า/.test(t)) temp = false; // a printed timed boost stays
     if (temp == null) return false; // continuous wording: leave it
     const f = f0; let tgt; const rc = refCard();
@@ -399,13 +401,22 @@ export function activations(text) {
   actCache.set(t, out); return out;
 }
 // when a React Magic may be used, read from its first words: { kinds, mine, f, rest }
+// "เมื่อ Avatar "X" / {Symbol X} / รถถัง (ฝ่ายเรา) ตกเป็นเป้าหมายการโจมตี / ถูกโจมตี / ต่อสู้": one of OUR Avatars (of that kind) is attacked
+const WHO = String.raw`(?:["“][^"”]+["”]|\{\s*[Ss]ymbol[^}]+\})(?:\s*(?:หรือ|,)\s*(?:["“][^"”]+["”]|\{\s*[Ss]ymbol[^}]+\}))*`;
+const DEFENDER = new RegExp(String.raw`^เมื่อ\s*Avatar\s*(?:(?:ฝ่าย|ของ)?เรา\s*)?(?:(${WHO})\s*|([^\s"“{:]{2,30}?)\s*)?(?:ที่อยู่\s*)?(?:บน\s*(?:Avatar Zone|สนาม)\s*)?(?:(?:ฝ่าย|ของ)?เรา\s*)?(?:ตก)?(?:เป็นเป้าหมาย(?:ของ)?(?:การ)?โจมตี|ถูกโจมตี|เป็นเป้าโจมตี|ต่อสู้)\s*`);
+// the filter for the attacked Avatar: null = any of ours, false = a name the reader does not know
+function defenderFilter(m) {
+  if (m[1]) { const f = filterOf("Avatar " + m[1].replace(/\s*(?:หรือ|,)\s*/g, " ")); const names = [...m[1].matchAll(/["“]([^"”]+)["”]/g)].map((q) => q[1].trim()); if (names.length > 1) { f.names = names; delete f.name; } delete f.bad; return f; }
+  if (m[2]) { const w = m[2].trim(); if (/^(?:ใบนี้|ตัวนี้|ใบใด|ใด|ทุกใบ|ที่|ใบ|ฝ่ายเรา|ของเรา)$/.test(w) || !nameKnown(w)) return false; return { name: w }; }
+  return null;
+}
 export function reactTiming(text) {
   const t = cutAbility(String(text || ""), true); let m;
   if ((m = t.match(/^(?:ใช้ได้)?เมื่อ\s*(?:ฝ่ายตรงข้าม|อีกฝ่าย)\s*(?:ประกาศ|สั่ง)?\s*โจมตี\s*/))) return { kinds: ["attack"], rest: t.slice(m[0].length) };
   if ((m = t.match(/^เมื่อ\s*Avatar\s*(?:ของ)?(?:ฝ่ายตรงข้าม|อีกฝ่าย)\s*(?:ประกาศ)?โจมตี\s*(เข้ามา(?:ที่)?\s*LIFE(?:\s*Card)?\s*)?/))) return { kinds: ["attack"], life: !!m[1], rest: t.slice(m[0].length) };
   if ((m = t.match(/^เมื่อ\s*(?:ฝ่ายตรงข้าม|อีกฝ่าย)\s*อัญเชิญ\s*Avatar\s*/))) return { kinds: ["summon"], rest: t.slice(m[0].length) };
   if ((m = t.match(/^เมื่อมีการ(?:สั่ง)?ใช้\s*Magic(?:\s*Card)?\s*/i))) return { kinds: ["cast"], rest: t.slice(m[0].length) };
-  if ((m = t.match(/^เมื่อ\s*Avatar\s*((?:["“][^"”]+["”]|\{\s*[Ss]ymbol[^}]+\})\s*)?(?:บน\s*(?:Avatar Zone|สนาม)\s*)?(?:(?:ฝ่าย|ของ)?เรา\s*)?(?:เป็นเป้าหมาย(?:ของ)?การโจมตี|ถูกโจมตี|เป็นเป้าโจมตี|ต่อสู้)\s*/))) return { kinds: ["attack"], mine: true, f: m[1] ? filterOf("Avatar " + m[1]) : null, rest: t.slice(m[0].length) };
+  if ((m = t.match(DEFENDER))) { const f = defenderFilter(m); if (f === false) return null; return { kinds: ["attack"], mine: true, f, rest: t.slice(m[0].length) }; }
   if ((m = t.match(/^เมื่อ(?:มี)?\s*Avatar\s*(?:ถูก)?อัญเชิญ(?:ลง(?:มา)?)?\s*(?:บน\s*(?:สนาม|Avatar Zone))?\s*/))) return { kinds: ["summon"], rest: t.slice(m[0].length) };
   if ((m = t.match(/^เมื่อ\s*(?:ฝ่ายตรงข้าม|อีกฝ่าย)\s*(?:ใช้|ใช้งาน)\s*(?:การ์ด\s*)?(?:Magic(?:\s*Card)?|\{magic\})\s*/i))) return { kinds: ["cast"], rest: t.slice(m[0].length) };
   return null;
@@ -618,7 +629,12 @@ function looseReact(s, x, p, on) {
     if (on.kind === "attack") return !!(A && T && T.p === p && (/Cons?t[r]?uct/i.test(head) ? T.z === "cs" : T.z === "av") && E.power(s, A.x) + ((s.pend && s.pend.bonus) || 0) >= E.power(s, T.x));
     const L = E.locate(s, on.i); return !!L && /ทำลาย|เนรเทศ|ลงนรก|ออกจาก/.test(E.def(s, L.x).x || "");
   }
-  if (/เป็นเป้า|ถูกโจมตี|โจมตีเข้ามา|ประกาศโจมตี/.test(head)) return on.kind === "attack";
+  if (/เป็นเป้า|ถูกโจมตี|โจมตีเข้ามา|ประกาศโจมตี/.test(head)) {
+    if (on.kind !== "attack") return false;
+    // a named or {Symbol} Avatar of ours must be the one attacked ("เมื่อ Avatar รถถังเป็นเป้าโจมตี")
+    const dm = head.trim().match(DEFENDER); if (dm) { const f = defenderFilter(dm); if (!T || T.p !== p || T.z !== "av") return false; if (f && !fits(s, T.x, f)) return false; }
+    return true;
+  }
   if (/(?:ฝ่ายตรงข้าม|อีกฝ่าย)\s*ใช้ความสามารถ(?:ของ)?\s*Avatar/.test(head)) return on.kind === "summon";
   if (/^[\s"“”#-]*(?:เทิร์นละครั้ง\s*)?(?:สามารถ)?(?:ใช้(?:การ์ดนี้|การ์ดใบนี้)?ได้)?\s*(?:เมื่อ|ถ้า|หาก|ในช่วง)/.test(t)) return false;
   return true;
