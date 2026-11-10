@@ -1,10 +1,10 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261111035449";
-import { plain } from "./persona.js?v=20261111035449";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261111035449";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261111035449";
-import { Data } from "./fb.js?v=20261111035449";
-import { lsGet } from "./util.js?v=20261111035449";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261111040633";
+import { plain } from "./persona.js?v=20261111040633";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261111040633";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261111040633";
+import { Data } from "./fb.js?v=20261111040633";
+import { lsGet, clone } from "./util.js?v=20261111040633";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -96,6 +96,34 @@ export function stateText(s, view, opts = {}) {
 
 // ===== heuristic bot =====
 export const H = {
+  look: 4, // how many of the best-looking main-phase options get played out on a copy before choosing (0 = off)
+  lookAtk: false, // play attacks out too (off: it made the bots too timid in testing)
+  // how good the table looks for p (used by the one-step lookahead): board, hand, LIFE still face down, Deck running out
+  evalBoard(s, p) {
+    if (s.phase === "over") return s.winner === p ? 999 : -999;
+    const side = (q) => { const P = s.P[q]; let v = 0;
+      for (const x of P.av) { const d = E.def(s, x); v += E.power(s, x) + (d.c || 0) * 0.45 + (x.a ? 0.35 : 0) + (d.o1 ? 2 : 0); }
+      for (const x of P.cs) v += 1.4 + E.power(s, x) * 0.3;
+      for (const m of P.mg) if (m.on != null) { const d = E.def(s, m); v += ["A", "T"].includes(d.t) ? 1 + (d.c || 0) * 0.45 : 0.5; } // a worn Avatar (โอตะ …) is safe and can come back
+      v += P.hand.length * 1.05;
+      const down = P.life.filter((y) => !y.up).length; v += down * 2.4 + (down === 0 ? -5 : 0);
+      if (P.deck.length < 5) v -= (5 - P.deck.length) * 1.5;
+      return v; };
+    return side(p) - side(1 - p);
+  },
+  // play a move on a copy of the game, let both sides finish what it starts, and return how much better the table got for p.
+  // The copy hides the other player's hand (no peeking at their React cards) and shuffles p's own Deck (no peeking at the top).
+  lookahead(s, p, a) {
+    let t; try { t = clone({ ...s, log: [], ev: [] }); } catch { return null; }
+    try { t.P[1 - p].hand = []; E.shuffle(t, t.P[p].deck); const before = H.evalBoard(t, p); E.apply(t, a, p);
+      for (let n = 0; n < 90 && t.phase !== "over"; n++) {
+        if (t.rw) { const q = 1 - t.rw.by; E.apply(t, (q === p && H.react(t, q)) || { type: "pass" }, q); continue; }
+        if (t.trig.length) { const tr = t.trig[0]; E.apply(t, H.trig(t, tr), tr.seat); continue; }
+        if (t.pend && t.pend.by === p) { const q = 1 - p; const m = H.pick(t, q); E.apply(t, m ? m.a : { type: "respond" }, q); continue; }
+        break; }
+      return H.evalBoard(t, p) - before;
+    } catch { return null; }
+  },
   value(s, x) { const d = E.def(s, x); return d.t === "A" ? (d.pw || 0) + (d.c || 0) * 0.5 + (d.o1 ? 10 : 0) : d.t === "C" ? 3 : 2; },
   mulligan(s, p) {
     const P = s.P[p]; const cheap = P.hand.filter((x) => { const d = E.def(s, x); return d.t === "A" && (d.c || 0) <= 3; });
@@ -134,6 +162,10 @@ export const H = {
         cand.push({ m, sc });
       }
       cand.sort((a, b) => b.sc - a.sc);
+      if (H.look && cand.length) { const top = cand.filter((z) => z.sc > -20).slice(0, H.look);
+        for (const z of top) z.lv = H.lookahead(s, p, z.m.a);
+        const ranked = top.filter((z) => z.lv != null).map((z) => ({ ...z, tot: z.lv + z.sc * 0.25 })).sort((a, b) => b.tot - a.tot);
+        if (ranked.length) return ranked[0].tot >= 0.9 || (ranked[0].sc >= 1.5 && ranked[0].lv > -1) ? ranked[0].m : moves.find((m) => m.a.type === "battle"); }
       if (cand.length && cand[0].sc >= 1.5) return cand[0].m;
       return moves.find((m) => m.a.type === "battle");
     }
@@ -153,6 +185,8 @@ export const H = {
         if (ap === tp) return { m, score: tp >= ap && E.def(s, t).c >= E.def(s, x).c ? 5 : -2 };
         return { m, score: -10 };
       }).filter((z) => z.score > 0).sort((a, b) => b.score - a.score);
+      if (H.look && H.lookAtk && atk.length) { const top = atk.slice(0, H.look + 1).map((z) => ({ ...z, lv: H.lookahead(s, p, z.m.a) })).filter((z) => z.lv != null);
+        if (top.length) { top.sort((a, b) => b.lv + b.score * 0.02 - (a.lv + a.score * 0.02)); if (top[0].lv > 0.3) return top[0].m; return moves.find((m) => m.a.type === "end") || moves.find((m) => m.a.type === "attack"); } }
       if (atk.length) return atk[0].m;
       return moves.find((m) => m.a.type === "end") || moves.find((m) => m.a.type === "attack"); // a forced attacker must still attack
     }

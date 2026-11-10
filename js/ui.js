@@ -1,8 +1,8 @@
-import { h, openSheet, holo, toast, fmtDate } from "./util.js?v=20261111035449";
-import { fxText } from "./fxtext.js?v=20261111035449";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt, priceOf, setCode } from "./cards.js?v=20261111035449";
-import { Data, saveOwned, saveSkins, saveFavs, savePrices } from "./fb.js?v=20261111035449";
-import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261111035449";
+import { h, openSheet, holo, toast, fmtDate } from "./util.js?v=20261111040633";
+import { fxText } from "./fxtext.js?v=20261111040633";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt, priceOf, setCode } from "./cards.js?v=20261111040633";
+import { Data, saveOwned, saveSkins, saveFavs, savePrices } from "./fb.js?v=20261111040633";
+import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261111040633";
 
 export function cardBtn(id, opts = {}) {
   const c = card(id); const b = h("button", { class: "ccard" + (opts.cls ? " " + opts.cls : ""), type: "button", "aria-label": c ? c.n : "การ์ด", title: c ? c.n : "", onclick: opts.onclick });
