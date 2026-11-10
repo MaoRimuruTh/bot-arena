@@ -1,22 +1,22 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111021559";
-import { fxText } from "../fxtext.js?v=20261111021559";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111021559";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261111021559";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111021559";
-import { Arena } from "../arena3d.js?v=20261111021559";
-import { autoEffect, resolveEffect } from "../effects.js?v=20261111021559";
-import { Sfx } from "../sfx.js?v=20261111021559";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261111021559";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111021559";
-import { readAura, traits } from "../auras.js?v=20261111021559";
-import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261111021559";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111023353";
+import { fxText } from "../fxtext.js?v=20261111023353";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111023353";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111023353";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111023353";
+import { Arena } from "../arena3d.js?v=20261111023353";
+import { autoEffect, resolveEffect } from "../effects.js?v=20261111023353";
+import { Sfx } from "../sfx.js?v=20261111023353";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261111023353";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111023353";
+import { readAura, traits } from "../auras.js?v=20261111023353";
+import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261111023353";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
   return { game: [`เทิร์น ${s.turn} · ${PHASE_TH[s.phase] || s.phase} · ตาของ ${s.P[s.active].name}`, `เด็คเรา: ${me.deckName || "-"} · เด็คคู่แข่ง: ${op.deckName || "-"}`,
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / ")].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261111021559";
+import { allDecks, deckById } from "./decks.js?v=20261111023353";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -342,7 +342,8 @@ function cardView(x) {
   if (G.host && L.z === "av") acts.push(["สวมใส่ให้ใบนี้", () => { const host = G.host; G.host = null; doAct({ type: "cast", i: host, on: x.i }, V); }, "gold"]);
   const sc = scriptOf(s, x); const myMain = myMove && s.active === p && s.phase === "main" && !s.trig.length && !s.pend;
   if (sc && sc.handCall && L.z === "hand" && myMain && s.P[p].hand.some((y) => y.i !== x.i && String(E.def(s, y).sy || "").includes("มังกร"))) acts.push(["ทิ้งเพื่ออัญเชิญมังกร (Cost -6)", () => { G.callVia = x.i; draw(); }, "ciel"]);
-  if (sc && sc.activate && L.p === p && myMain && x.used !== s.turn && sc.activate.can(E, s, x, L)) acts.push([sc.activate.label, () => doAct({ type: "activate", i: x.i }, p), "ciel"]);
+  const myBattle = myMove && s.active === p && s.phase === "battle" && !s.trig.length && !s.pend && !s.rw;
+  if (sc && sc.activate && L.p === p && (myMain || (myBattle && sc.activate.battle)) && x.used !== s.turn && sc.activate.can(E, s, x, L)) acts.push([sc.activate.label, () => doAct({ type: "activate", i: x.i }, p), "ciel"]);
   if (!sc && L.p === p && myMain && E.ext.acts) for (const a of E.ext.acts(s, x, L)) acts.push(["สั่งใช้: " + a.label, () => doAct({ type: "activate", i: x.i, k: a.k }, p), "ciel"]);
   if (E.untargetable(s, x)) acts.push(["ถูกโจมตีไม่ได้ตอนนี้", () => {}, "sm"]);
   if (mine(L.p) && d.x && L.z !== "hand" && L.z !== "deck" && !sc) acts.push(["สั่งใช้ความสามารถ", () => doAct({ type: "useAbility", i: x.i }, L.p), ""]);
@@ -360,10 +361,12 @@ function turnButtons(s, p) {
   if (s.phase === "over") return [h("button", { class: "btn gold sm", onclick: () => { stopGame(true); location.hash = "#play"; } }, "กลับหน้าเตรียมเกม"), h("a", { class: "btn sm", href: "#history", onclick: () => stopGame(true) }, "ดูประวัติ")];
   if (p == null || !mine(p) || s.trig.length || s.pend || s.phase === "mull") return [];
   if (s.phase === "main") { // abilities used from hell / the dark zone have no card on the table to tap, so offer them here
-    const far = [...s.P[p].hand, ...s.P[p].hell, ...s.P[p].dark].filter((x) => { const sc = scriptOf(s, x); return sc && sc.activate && x.used !== s.turn && sc.activate.can(E, s, x, E.locate(s, x.i)); }).slice(0, 3);
+    const far = [...s.P[p].hand, ...s.P[p].hell, ...s.P[p].dark, ...uniqDeckActs(s, s.P[p])].filter((x) => { const sc = scriptOf(s, x); return sc && sc.activate && x.used !== s.turn && sc.activate.can(E, s, x, E.locate(s, x.i)); }).slice(0, 4);
     return [h("button", { class: "btn gold sm", onclick: () => doAct({ type: "battle" }, p) }, s.turn === 1 ? "จบเทิร์น" : "ไป Battle Phase"), s.turn === 1 ? null : h("button", { class: "btn sm", onclick: () => doAct({ type: "end" }, p) }, "จบเทิร์นเลย"),
       ...far.map((x) => h("button", { class: "btn ciel sm", title: scriptOf(s, x).activate.label, onclick: () => doAct({ type: "activate", i: x.i }, p) }, `สั่งใช้ ${E.name(s, x)} (${ZONE_TH[E.locate(s, x.i).z]})`))]; }
-  if (s.phase === "battle") return [h("button", { class: "btn gold sm", onclick: () => doAct({ type: "end" }, p) }, "จบเทิร์น"), G.att ? h("button", { class: "btn sm", onclick: () => { G.att = null; draw(); } }, "ยกเลิกการเลือก") : null];
+  if (s.phase === "battle") { const far = [...s.P[p].hand, ...s.P[p].hell, ...s.P[p].dark, ...s.P[p].mg].filter((x) => { const sc = scriptOf(s, x); return sc && sc.activate && sc.activate.battle && x.used !== s.turn && sc.activate.can(E, s, x, E.locate(s, x.i)); }).slice(0, 3);
+    return [h("button", { class: "btn gold sm", onclick: () => doAct({ type: "end" }, p) }, "จบเทิร์น"), G.att ? h("button", { class: "btn sm", onclick: () => { G.att = null; draw(); } }, "ยกเลิกการเลือก") : null,
+      ...far.map((x) => h("button", { class: "btn ciel sm", title: scriptOf(s, x).activate.label, onclick: () => doAct({ type: "activate", i: x.i }, p) }, `สั่งใช้ ${E.name(s, x)} (${ZONE_TH[E.locate(s, x.i).z]})`))]; }
   return [];
 }
 // desktop: big hover preview (image + readable text side by side); pinned to the selected card otherwise
@@ -479,7 +482,7 @@ function promptBox(s, p) {
       h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => { const ids = G.pick || []; G.pick = null; doAct({ type: "mull", iids: ids }, p); } }, n ? `เปลี่ยน ${n} ใบ` : "เก็บมือเดิม")));
   }
   if (s.rw && s.rw.by !== p) {
-    const L = E.locate(s, s.rw.i); const what = s.rw.kind === "battle" ? "เข้าสู่ Battle Phase" : L ? `${s.rw.kind === "summon" ? "อัญเชิญ" : s.rw.kind === "activate" ? "ใช้ความสามารถของ" : s.rw.kind === "react" ? "ใช้ React" : "ใช้ Magic"} ${E.name(s, L.x)}` : "เล่นการ์ด";
+    const L = E.locate(s, s.rw.i); const what = s.rw.kind === "battle" ? "เข้าสู่ Battle Phase" : s.rw.kind === "handed" ? "นำการ์ดจาก Deck ขึ้นมือ" : L ? `${s.rw.kind === "summon" ? "อัญเชิญ" : s.rw.kind === "activate" ? "ใช้ความสามารถของ" : s.rw.kind === "react" ? "ใช้ React" : "ใช้ Magic"} ${E.name(s, L.x)}` : "เล่นการ์ด";
     const rs = E.reactsFor(s, p, s.rw);
     return box(s.rw.kind === "destroyed" ? `${L ? E.name(s, L.x) : "Avatar"} ของคุณถูกทำลาย · จะใช้ React ไหม?` : `${s.P[s.rw.by].name} ${what} · จะใช้ React ตอบโต้ไหม?`, L ? h("div", { class: "row small" }, h("button", { class: "btn sm", onclick: () => cardView(L.x) }, "ดูการ์ดนั้น")) : null,
       h("div", { class: "opts" }, rs.map((x) => h("button", { class: "btn sm gold", onclick: () => doAct({ type: "cast", i: x.i }, p) }, "ใช้ " + E.name(s, x)))),
