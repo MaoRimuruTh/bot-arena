@@ -1,12 +1,13 @@
-import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261110203939";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, starterDecks, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261110203939";
-import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261110203939";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261110203939";
-import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261110203939";
-import { filterBar, filterCards } from "./library.js?v=20261110203939";
-import { openingOdds, simGame } from "./lab.js?v=20261110203939";
-import { freeBuild } from "../builder.js?v=20261110203939";
-import { CIEL_DECKS } from "../cieldecks.js?v=20261110203939";
+import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261110204819";
+import { fxText } from "../fxtext.js?v=20261110204819";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, starterDecks, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261110204819";
+import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261110204819";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261110204819";
+import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261110204819";
+import { filterBar, filterCards } from "./library.js?v=20261110204819";
+import { openingOdds, simGame } from "./lab.js?v=20261110204819";
+import { freeBuild } from "../builder.js?v=20261110204819";
+import { CIEL_DECKS } from "../cieldecks.js?v=20261110204819";
 
 // Ciel's theme decks: print codes → card ids (resolved once the card data is loaded)
 let cielCache = null;
@@ -145,7 +146,7 @@ Views.decks = {
     const ms = Data.matches.filter((m) => m.deckId === d.id); const w = ms.filter((m) => m.result === "win").length;
     const preview = h("div", { class: "stack", style: "gap:10px" });
     const showPrev = (c) => preview.replaceChildren(h("div", { class: "row", style: "align-items:flex-start;gap:14px;flex-wrap:nowrap" }, holo(h("div", { class: "ccard", style: "width:150px;flex:none;cursor:default" }, artImg(c))),
-      h("div", { class: "stack", style: "gap:6px;min-width:0" }, h("b", { style: "font-family:var(--f-display)" }, c.n), h("div", { class: "small muted" }, cardLine(c, 0).split(" : ")[0].replace(c.n + " ", "")), h("div", { class: "small", style: "line-height:1.55;max-height:150px;overflow:auto" }, c.x || ""))));
+      h("div", { class: "stack", style: "gap:6px;min-width:0" }, h("b", { style: "font-family:var(--f-display)" }, c.n), h("div", { class: "small muted" }, cardLine(c, 0).split(" : ")[0].replace(c.n + " ", "")), fxText(c.x || "", "small bare", "max-height:190px;overflow:auto"))));
     if (ace) showPrev(ace);
     const groups = {}; for (const e of deckEntries(d).sort((a, b) => (a.c.t > b.c.t ? 1 : a.c.t < b.c.t ? -1 : (a.c.c ?? 99) - (b.c.c ?? 99)))) { const k = e.c.t === "M" ? "MAGIC" : TYPE_TH[e.c.t].toUpperCase(); (groups[k] = groups[k] || []).push(e); }
     const isAce = (i) => (d.ace || []).map(Number).includes(+i);
@@ -213,7 +214,7 @@ Views.decks = {
     const side = h("div", { class: "stack" });
     // hover preview that stays on screen (sticky column): see a card without clicking it
     const hov = h("div", { class: "panel hovprev" }, h("div", { class: "muted small", style: "grid-column:1/-1" }, "ชี้เมาส์ที่การ์ดเพื่อดูรูปใหญ่และข้อความ"));
-    const showHov = (c) => hov.replaceChildren(holo(h("div", { class: "ccard" }, artImg(c))), h("div", { class: "stack", style: "gap:5px;min-width:0" }, h("b", { style: "font-family:var(--f-display)" }, c.n), h("div", { class: "tiny muted" }, cardLine(c, 0).split(" : ")[0].replace(c.n + " ", "") + " · " + c.p), h("div", { class: "small", style: "line-height:1.55;max-height:170px;overflow:auto;white-space:pre-wrap" }, c.x || "ไม่มีข้อความความสามารถ")));
+    const showHov = (c) => hov.replaceChildren(holo(h("div", { class: "ccard" }, artImg(c))), h("div", { class: "stack", style: "gap:5px;min-width:0" }, h("b", { style: "font-family:var(--f-display)" }, c.n), h("div", { class: "tiny muted" }, cardLine(c, 0).split(" : ")[0].replace(c.n + " ", "") + " · " + c.p), fxText(c.x || "ไม่มีข้อความความสามารถ", "small bare", "max-height:200px;overflow:auto")));
     const hasCards = () => deckCount(d) > 0 || d.life.length > 0;
     this.drawSide = () => {
       const v = validateDeck(d); const st = deckStats(d); const isAce = (id) => (d.ace || []).map(Number).includes(+id);
