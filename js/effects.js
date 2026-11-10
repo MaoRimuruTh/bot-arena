@@ -1,13 +1,14 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { E, scriptOf } from "./engine.js?v=20261110205016";
+import { CARDS } from "./cards.js?v=20261110205821";
+import { E, scriptOf } from "./engine.js?v=20261110205821";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
 const KWGRANT = new RegExp(`ได้รับ\\s*(?:ความสามารถ\\s*)?["“]?\\s*(${KWS})`);
 // the trigger keyword must start an ability ("จุติ :" / "จุติ (…) :" / "จุติ ทิ้งการ์ด… :"), not appear inside one ("อัญเชิญ จุติ Avatar")
-const KEYS = { summon: /(?<!อัญเชิญ\s*|แบบ\s*|ทำการ\s*|พอดี\s*)จุติ(?=\s*(?:\(|:|ทิ้ง|เลือก|เซ่นไหว้|ถ้า|สอดแนม|ธรณีสูบ|เนรเทศ|หงาย))/, death: /(?<!ได้รับ\s*["“]?\s*)คำสั่งเสีย(?=\s*(?:\(|:))/, life: /ถูกหงายจากการโจมตี/,
+const KEYS = { summon: /(?<!อัญเชิญ\s*(?:พอดี\s*)?|แบบ\s*|ทำการ\s*|ความสามารถ\s*)จุติ(?=\s*(?:\(|:|\{red|ทิ้ง|เลือก|เซ่นไหว้|ถ้า|สอดแนม|ธรณีสูบ|เนรเทศ|หงาย|นำ|แสดง|ส่ง|ทำลาย|และ\s*บน))/, death: /(?<!ได้รับ\s*["“]?\s*|ความสามารถ\s*)คำสั่งเสีย(?=\s*(?:\(|:|\{red))/, life: /ถูกหงายจากการโจมตี/,
   attack: /เมื่อ\s*(?:Avatar\s*|การ์ด\s*)?(?:ใบนี้|ตัวนี้|นี้)?\s*(?:ประกาศ|สั่ง)?โจมตี/, attacked: /เมื่อ\s*(?:Avatar|การ์ด)\s*(?:ใบนี้|ตัวนี้)\s*(?:ถูกโจมตี|ถูกเล็งเป็นเป้าหมาย(?:การ)?โจมตี|(?:ตก)?เป็นเป้าหมาย(?:ของ)?การโจมตี)/,
   win: /เมื่อ\s*(?:Avatar|การ์ด)\s*(?:ใบนี้|ตัวนี้)\s*ทำลาย\s*Avatar\s*(?:ของ)?\s*(?:ฝ่ายตรงข้าม|อีกฝ่าย)\s*จากการต่อสู้\s*(?:สำเร็จ)?/,
   paid: /(?:เมื่อ|ถ้า)\s*(?:(?:การ์ด|Avatar)\s*(?:ใบนี้|นี้)\s*)?ถูก(?:ใช้)?(?:ทิ้ง)?\s*(?:เป็น)?\s*(?:ค่า)?\s*Cost\s*(?:ให้กับ|ให้|ในการ|เพื่อ)?\s*(?:อัญเชิญ)?/,
@@ -29,20 +30,20 @@ function keyAt(t, key) {
 // pull "head : body" for the ability that this trigger fires
 function clause(text, when) {
   const t = String(text || "").replace(/\r/g, "");
-  let rest;
+  let rest; let exactOnly = false; // "พอดี จุติ : …" only works when the Cost was paid with exactly that much GEM
   if (when === "cast") rest = t;
   else {
     const key = KEYS[when]; if (!key) return null;
     const m = keyAt(t, key);
     if (!m) { if (when === "life") rest = t; else return null; } // LIFE cards often skip the "ถูกหงาย…" wording
-    else rest = t.slice(m.index + m[0].length);
+    else { rest = t.slice(m.index + m[0].length); if (when === "summon" && /พอดี\s*(?:\{red\s*)?(?:\([^)]*\)\s*\}?)?[\s\-•]*$/.test(t.slice(0, m.index))) exactOnly = true; }
   }
-  rest = cutAbility(rest, when === "cast" || when === "life");
+  rest = cutAbility(rest, when === "cast" || when === "life").replace(/^\s*\{red\s*\([^{}]*\)\s*\}/, "");
   const k = rest.indexOf(":");
-  return k >= 0 ? { head: rest.slice(0, k).trim(), body: rest.slice(k + 1).trim() } : { head: "", body: rest };
+  return k >= 0 ? { head: rest.slice(0, k).trim(), body: rest.slice(k + 1).trim(), exactOnly } : { head: "", body: rest, exactOnly };
 }
 function filterOf(t) {
-  const f = {};
+  const f = {}; t = String(t).replace(/\{\s*[Ss]ymbol\s*:\s*/g, "{Symbol ");
   if (/(?:ที่ไม่ใช่|ยกเว้น)\s*\{only\}|ไม่ใช่\s*Only\s*#?1/i.test(t)) { f.notOnly = true; t = t.replace(/(?:ที่ไม่ใช่|ไม่ใช่|ยกเว้น)\s*(?:\{only\}|Only\s*#?1)/gi, " "); }
   const nn = t.match(/(?:ที่ไม่ใช่|ที่ไม่ได้ชื่อ|ไม่ได้ชื่อ|ยกเว้น|ชื่อไม่ซ้ำกับ)\s*["“]?([^"”,]+?)["”]?(?=\s+\d+\s*ใบ|\s+จาก|\s+ใน|\s+บน|\s+ลง|\s+ขึ้น|\s*$)/);
   if (nn) { f.notName = nn[1].trim(); t = t.replace(nn[0], " "); }
@@ -82,7 +83,99 @@ function fitsD(d, f, pw = () => d.pw || 0) {
   if (f.minGem != null && (d.g || 0) < f.minGem) return false;
   if (f.maxPower != null && pw() > f.maxPower) return false;
   if (f.color && d.co !== f.color) return false;
+  if (f.text && !String(d.x || "").includes(f.text)) return false;
+  if (f.type && d.t !== f.type && !(f.type === "A" && d.t === "T") && f.strict) return false;
   return true;
+}
+
+// ---------- สอดแนม: show the top cards, take what the text names, put the rest where it says ----------
+const SC_REST = /การ์ด(?:ใบ)?(?:อื่น\s*ๆ?\s*)?ที่เหลือ(?:ทั้งหมด)?|(?:ใบ|ส่วน)?ที่เหลือ(?:ทั้งหมด)?|การ์ดใบอื่น(?:\s*ๆ)?/;
+const SC_TAIL = /\s(?=ถ้า|หาก|หลังจากนั้น(?!\s*(?:สับ|(?:นำ)?(?:การ์ด)?(?:ใบ)?ที่เหลือ|เรียง))|จากนั้น(?!\s*(?:สับ|(?:นำ)?(?:การ์ด)?(?:ใบ)?ที่เหลือ|เรียง))|โดย(?:นับ|ถือ)|#|Avatar\s*(?:ใบ)?ที่(?:ถูก)?(?:อัญเชิญ|เลือก)|การ์ด(?:ใบ)?ที่(?:เลือก|นำ|อัญเชิญ)|และ\s*(?:จั่ว|ทำลาย|ธรณีสูบ|ทำความเสียหาย))/;
+// where the cards that were not taken go: bottom / shuffle / top / hell / dark, or null when the wording is not understood
+function scoutWhere(t) {
+  const left = t.replace(/นำ|ส่ง|ทิ้ง|ใส่|วาง|เก็บ|ไว้|เข้า|ลง|คืน|กลับ|ไป|ใน|ที่|ใต้|สุด|ของ|ล่าง|บน|กอง|Deck|เด็ค|นรก|มิติมืด|เนรเทศ|ฝ่าย|เรา|ตนเอง|แล้ว|และ|จากนั้น|สับ|เรียง|ลำดับ|ตามใจ|ชอบ|ใหม่|ได้|ให้|ทั้งหมด|ตาม|ใด|ก็|เดิม|ต้องการ|ยัง|การ์ด|ทุกใบ|ใบนั้น|นั้น|หรือ|เลือก|[\s.,:]/gi, "");
+  if (left.length > 1) return null;
+  if (/บนสุด\s*หรือ\s*(?:ล่างสุด|ใต้)|(?:ล่างสุด|ใต้)\s*(?:สุด)?\s*หรือ\s*บนสุด/.test(t)) return "choice";
+  if (/สับ/.test(t)) return "shuffle";
+  if (/ใต้|ล่างสุด/.test(t)) return "bottom";
+  if (/บนสุด|บน\s*Deck|เดิม/.test(t)) return "top";
+  if (/เนรเทศ|มิติมืด/.test(t)) return "dark";
+  if (/นรก|ทิ้ง/.test(t)) return "hell";
+  if (/กลับ(?:เข้า)?\s*Deck/.test(t)) return "shuffle";
+  return null;
+}
+const SC_STRIP = /เลือก|สามารถ|นำ|อัญเชิญ|จุติ|การ์ด|ใบนั้น|ที่เป็น|ที่มี|ที่|ชื่อ|จาก(?:ใน)?(?:ที่)?\s*สอดแนม(?:เจอ|ได้|มา)?|สอดแนม|ขึ้นมือ|กลับ|ลง(?:บน|ใน|มา|สู่)?|บน|ไว้|มา|ไป|สนาม|Avatar Zone|Constr?u?ct Zone|Magic Zone|ฝ่ายเรา|ของเรา|เรา|ก่อสร้าง|ทำการ|ทิ้ง|นรก|เนรเทศ|มิติมืด|และ|แล้ว|ให้|ได้|จำนวน|สูงสุด|ไม่เกิน|กี่ใบก็ได้|ทั้งหมด|ทุกใบ|\d+\s*ใบ|ใบ|Avatar|Magic(?:\s*Card)?|Construct|Modification|Normal|React|Land|Cost\s*\d+\s*(?:หรือ\s*(?:ต่ำกว่า|น้อยกว่า))?|Cost\s*(?:ไม่เกิน|น้อยกว่า|ต่ำกว่า)\s*\d+|POWER\s*(?:ไม่เกิน)?\s*\d+(?:\s*หรือ\s*(?:ต่ำกว่า|น้อยกว่า))?|สี(?:แดง|ฟ้า|เขียว|ม่วง)|["“][^"”]*["”]|\{[^}]*\}|[\s:,.()]/g;
+let knownNames = null;
+const nameKnown = (n) => { if (!knownNames || knownNames.n !== CARDS.length) knownNames = { n: CARDS.length, list: [...new Set(CARDS.map((c) => c.n))] }; return n.length >= 2 && knownNames.list.some((x) => x.includes(n)); };
+// the card(s) a scout may take: one filter, or several joined with "หรือ"; null when the wording is not understood
+function scoutFilter(text, selfDef) {
+  let t = text; const extra = {};
+  if (/ชื่อไม่ซ้ำกัน|ชื่อ(?:ที่)?(?:แตก)?ต่างกัน|คนละชื่อ/.test(t)) { extra.distinct = true; t = t.replace(/(?:ที่)?(?:มี)?ชื่อไม่ซ้ำกัน|(?:ที่)?ชื่อ(?:ที่)?(?:แตก)?ต่างกัน|คนละชื่อ/g, " "); }
+  let m = t.match(/ที่มี\s*["“]([^"”]+)["”]\s*(?:อยู่)?ใน\s*Text\s*Box/i); if (m) { extra.text = m[1].trim(); t = t.replace(m[0], " "); }
+  m = t.match(/(?:ที่)?(?:มี)?สีเดียวกัน(?:กัน)?(?:กับ|เหมือน)?\s*(?:Avatar|การ์ด)\s*(?:ใบ|ตัว)?นี้/); if (m) { if (!selfDef || !selfDef.co) return null; extra.color = selfDef.co; t = t.replace(m[0], " "); }
+  const one = (part, base) => {
+    const f = filterOf(part); if (f.bad) return null;
+    if (!(f.name || f.names || f.symbol || f.symbols)) { const bare = part.replace(SC_STRIP, " ").replace(/\s+/g, " ").trim(); if (bare) { if (base && base.symbolish) f.symbol = bare; else if (nameKnown(bare)) f.name = bare; else return null; } }
+    return f;
+  };
+  let list;
+  const whole = one(t);
+  if (whole) list = [whole];
+  else { const parts = t.split(/\s*(?:และ\/)?หรือ\s*/); if (parts.length < 2 || parts.length > 4) return null; list = [];
+    for (let k = 0; k < parts.length; k++) { const prev = list[k - 1]; const f = one(parts[k], prev && { symbolish: !!(prev.symbol || prev.symbols) && !prev.name && !prev.names }); if (!f) return null; list.push(f); }
+    const last = list[list.length - 1]; for (const f of list) { if (!f.type && list[0].type) f.type = list[0].type; for (const k of ["maxCost", "minCost", "maxPower", "notOnly"]) if (f[k] == null && last[k] != null) f[k] = last[k]; } }
+  for (const f of list) { Object.assign(f, extra.text ? { text: extra.text } : {}, extra.color ? { color: extra.color } : {}); }
+  return { list, distinct: !!extra.distinct };
+}
+function readScout(s, body, p, self, ctx, trig) {
+  let t = body.replace(/\{red\s*(?:\([^{}]*\))?\s*\}/g, " ").replace(/^(สอดแนม)\s*\([^)]*\)/, "$1").replace(/\s+/g, " ").trim();
+  let m = t.match(/^สอดแนม\s*(?:Deck\s*(?:ของ)?(ฝ่ายตรงข้าม|อีกฝ่าย)\s*)?(\d+)\s*ใบ(?:\s*(?:ของ|จาก)\s*Deck\s*(?:ของ)?(อีกฝ่าย|ฝ่ายตรงข้าม|ฝ่ายเรา|เรา))?\s*[:：]?\s*/); if (!m) return null;
+  const seat = m[1] || (m[3] && OPP.test(m[3])) ? 1 - p : p; const n = +m[2]; t = t.slice(m[0].length);
+  const D = s.P[seat]; const top = D.deck.slice(0, n); const ids = top.map((x) => x.i); const ops = [], say = [];
+  const meDef = ctx.me ? E.def(s, ctx.me) : trig.i === -1 ? { co: "-" } : null;
+  const whereOf = (txt) => { const w = scoutWhere(txt); return w === "choice" ? (ctx.mode(["วางไว้บนสุดของ Deck", "นำไปไว้ล่างสุดของ Deck"], `สอดแนม ${n} ใบ: การ์ดที่เหลือ`, 0) === 0 ? "top" : "bottom") : w; };
+  const tail = (rest) => { // what the text says after the scout itself: read later if possible, otherwise left for the player
+    rest = rest.replace(/^[\s.,]+/, "").trim(); if (!rest) return true;
+    const base = { i: trig.i, c: trig.c, when: trig.when, seat: trig.seat, ...(trig.k != null ? { k: trig.k } : {}), ...(trig.on ? { on: trig.on } : {}) };
+    const dry = makeCtx(s, trig); dry.ref = ctx.ref; dry.when = ctx.when; dry.me = ctx.me; let ok = null; try { ok = readClause(s, rest, p, self, dry, { ...trig, dry: true, part: 0 }); } catch { ok = null; }
+    ops.push({ op: "resume", t: ok ? { ...base, tail: rest } : { ...base, manualRest: rest } }); say.push(ok ? "แล้วทำส่วนที่เหลือต่อ" : "ส่วนที่เหลือของข้อความต้องทำเอง"); return true;
+  };
+  const moveOp = (x, to) => (to === "av" ? { op: "put", i: x.i, jt: /อัญเชิญ\s*(?:พอดี\s*)?จุติ/.test(t) } : to === "cs" ? { op: "move", i: x.i, to: "cs", seat: p } : to === "attach" ? { op: "attach", i: x.i, on: self.i } : to === "dark" ? { op: "exile", i: x.i } : { op: "move", i: x.i, to });
+  const TO_TH = { av: "อัญเชิญ", cs: "ก่อสร้าง", attach: "นำมาสวมใส่", dark: "เนรเทศ", hell: "ส่งลงนรก", hand: "นำขึ้นมือ" };
+  const dest = (x) => (/สวม/.test(x) ? (self && /(?:Avatar|การ์ด)\s*(?:ใบ|ตัว)?นี้/.test(x) ? "attach" : null) : /ก่อสร้าง|Constr?u?ct\s*Zone/i.test(x) ? "cs" : /อัญเชิญ|Avatar\s*Zone|ลงสนาม/.test(x) ? (/ขึ้นมือ/.test(x) ? null : "av") : /ขึ้นมือ/.test(x) ? "hand" : /เนรเทศ|มิติมืด/.test(x) ? "dark" : /นรก|ทิ้ง/.test(x) ? "hell" : null);
+  // "if it is X do this, otherwise do that" on a single scouted card
+  if (n === 1 && (m = t.match(/^ถ้า(?:การ์ด)?(?:ที่สอดแนม|ใบนั้น|นั้น)?\s*(?:เป็น|คือ)\s*(.+?)\s+(?:ให้|สามารถ)?\s*((?:อัญเชิญ|นำ|ส่ง|ทิ้ง|ก่อสร้าง|เนรเทศ).*?)\s*(?:แต่\s*)?ถ้า(?:ไม่ใช่|ไม่เป็น|เป็นการ์ดอื่น|เป็นอย่างอื่น)\s*(?:ให้\s*)?(.+)$/))) {
+    const F = scoutFilter(m[1], meDef); const to = dest(m[2]); const cut = m[3].split(SC_TAIL); if (!F || !to || !scoutWhere(cut[0])) return null; const where = whereOf(cut[0]);
+    const x = top[0]; ops.push({ op: "scoutShow", seat, ids });
+    if (!x) say.push("Deck หมด ไม่มีการ์ดให้สอดแนม");
+    else if (F.list.some((f) => fitsD(E.def(s, x), { ...f, strict: true })) && !(to === "av" && seat === p && (E.avatars(s.P[p]) >= 4 || s.P[p].av.length >= 6))) { ops.push(seat === p || to === "hell" || to === "dark" ? moveOp(x, to) : { op: "move", i: x.i, to: "hell" }); say.push(`สอดแนมเจอ ${E.name(s, x)} · ${TO_TH[to]}`); }
+    else { ops.push({ op: "scoutRest", seat, ids, rest: where }); say.push(`สอดแนมเจอ ${E.name(s, x)} ไม่ตรงเงื่อนไข`); }
+    tail(cut.slice(1).join(" ")); return { ops, say };
+  }
+  if (seat !== p) return null;
+  // "<take something> … การ์ดที่เหลือ <where>"
+  // "then put those cards …" with nothing taken: every scouted card is a card that is left
+  const allRest = t.match(/^(?:หลังจากนั้น|จากนั้น|แล้ว)?\s*(?:เลือก)?\s*(?:นำ)?\s*การ์ด(?:ใบ)?(?:นั้น|ที่\s*สอดแนม|เหล่านั้น|ทั้งหมด)\s*/);
+  const k = allRest ? 0 : t.search(SC_REST); let pick = allRest ? "" : k >= 0 ? t.slice(0, k) : t; let after = allRest ? t.slice(allRest[0].length) : k >= 0 ? t.slice(k).replace(SC_REST, "") : ""; let where = "bottom"; let rest = "";
+  if (k >= 0) { const cut = after.split(SC_TAIL); if (!scoutWhere(cut[0])) return null; where = whereOf(cut[0]); rest = cut.slice(1).join(" "); }
+  else { const cut = pick.split(SC_TAIL); pick = cut[0]; rest = cut.slice(1).join(" "); }
+  pick = pick.replace(/[\s:,.]+$/, "").replace(/\s*(?:และ|แล้ว)?\s*(?:นำ|ส่ง|ทิ้ง|ให้)?\s*$/, "").trim();
+  ops.push({ op: "scoutShow", seat, ids });
+  if (!pick) { ops.push({ op: "scoutRest", seat, ids, rest: where }); say.push(`สอดแนม ${n} ใบ`); tail(rest); return { ops, say }; }
+  if (!/^(?:สามารถ\s*)?(?:เลือก|นำ|อัญเชิญ|ก่อสร้าง|เนรเทศ|ทิ้ง|ส่ง)/.test(pick) || /อีก\s*\d+\s*ใบ|และ\/หรือ|อย่างละ|ฝ่ายตรงข้าม|อีกฝ่าย|POWER\s*[+\-]|เท่ากับ/.test(pick)) return null;
+  const to = dest(pick); if (!to) return null;
+  const F = scoutFilter(pick, meDef); if (!F) return null;
+  const all = /กี่ใบก็ได้|ทั้งหมด|ทุกใบ/.test(pick); const hm = howMany(pick.replace(/จาก(?:ใน)?(?:ที่)?\s*สอดแนม/g, " ")); let want = all ? 99 : hm.n; const optional = all || hm.upTo || /สามารถ/.test(pick);
+  let cands = top.filter((x) => F.list.some((f) => fitsD(E.def(s, x), { ...f, strict: true })) && !(F.list[0].other && self && x.i === self.i)).sort((a, b) => val(s, b) - val(s, a));
+  if (F.distinct) { const seen = new Set(); cands = cands.filter((x) => { const nm = E.def(s, x).n; if (seen.has(nm)) return false; seen.add(nm); return true; }); }
+  if (to === "av") { const P = s.P[p]; const free = Math.max(0, Math.min(4 - E.avatars(P), 6 - P.av.length)); cands = cands.filter((x) => E.def(s, x).t === "A"); want = Math.min(want, free); }
+  if (to === "cs") { cands = cands.filter((x) => E.def(s, x).t === "C" && !s.P[p].cs.some((y) => E.name(s, y) === E.def(s, x).n)); want = Math.min(want, 3 - s.P[p].cs.length); }
+  want = Math.min(want, cands.length);
+  const got = want > 0 ? ctx.choose(cands, want, `สอดแนม ${n} ใบ: เลือกการ์ดที่จะ${TO_TH[to]}${want > 1 ? ` (${optional ? "สูงสุด " : ""}${want} ใบ)` : ""}`, { optional, reveal: ids }) : [];
+  for (const x of got) ops.push(moveOp(x, to));
+  ops.push({ op: "scoutRest", seat, ids, rest: where });
+  say.push(got.length ? `สอดแนม ${n} ใบ · ${TO_TH[to]} ${got.map((x) => E.name(s, x)).join(", ")}` : `สอดแนม ${n} ใบ ไม่ได้การ์ดที่ตรงเงื่อนไข`);
+  tail(rest); return { ops, say };
 }
 // the card a "when used as Cost for …" ability asks for: 0 = any card, a filter, or null when unreadable
 const paidFilter = (head) => { const h = String(head || "").trim(); if (!h) return 0; const f = filterOf(h); if (f.bad || !(f.name || f.names || f.symbol || f.symbols || f.color)) return null; if (h.replace(/Avatar|การ์ด|["“][^"”]*["”]|\{[^}]*\}|สี(?:แดง|ฟ้า|เขียว|ม่วง)|ที่มี|ที่เป็น|หรือ|,|\s/g, "").length > 2) return null; return f; };
@@ -383,6 +476,7 @@ function readClause(s, text, p, self, ctx, trig) {
   const k = text.indexOf(":"); let head = k >= 0 ? text.slice(0, k).trim() : "", body = k >= 0 ? text.slice(k + 1).trim() : text.trim();
   const ops = [], say = [];
   const modes = /เลือกปฏิบัติ|เลือก\s*1\s*อย่าง/.test(head) || /^(?:เลือกปฏิบัติ\s*:?\s*)?1\s*[).]\s/.test(body); head = head.replace(/เลือกปฏิบัติ|เลือก\s*1\s*อย่าง/g, "").trim(); body = body.replace(/^เลือกปฏิบัติ\s*:?\s*/, "");
+  if (head && !trig.part && /^สอดแนม/.test(head) && !/^สอดแนม\s*(?:\([^)]*\)\s*)?\d+\s*ใบ$/.test(head)) { const r = readScout(s, head, p, self, ctx, trig); if (r && !r.ops.some((o) => o.op === "resume")) { ops.push(...r.ops); say.push(...r.say); head = ""; } }
   if (head && !trig.part) { const h = readHead(s, head, p, self, ctx, trig, body); if (!h) return why("head: " + head);
     if (h.fail) { if (!trig.dry) { const d = readClause(s, body.replace(/^/, modes ? "เลือกปฏิบัติ : " : ""), p, self, makeCtx(s, trig), { ...trig, dry: true }); if (!d) return null; } return h; }
     ops.push(...h.ops); say.push(...h.say); if (h.merge) body = h.merge + " " + (/นรก/.test(h.merge) ? body.replace(/^(อัญเชิญ|นำ)\s*(?:Avatar|การ์ด)?\s*(?:ใบ|ตัว)?(?:นั้น|ที่เลือก)/, "$1") : body); }
@@ -397,6 +491,8 @@ function readClause(s, text, p, self, ctx, trig) {
   body = body.replace(/ถ้า\s*(?:นำ(?:ขึ้นมือ)?|อัญเชิญ|เลือก)(?:มา)?\s*จาก(?:ใน)?\s*Deck\s*(?:ให้|ต้อง)?\s*สับ\s*Deck(?:\s*ด้วย)?/g, " ").trim();
   // "ใน Main Phase ถัดไป …": the whole effect is resolved then (with the choices made then), not now
   const later = /^ใน\s*main\s*phase\s*ถัดไป\s*/i.test(body) && !trig.now; body = body.replace(/^ใน\s*main\s*phase\s*ถัดไป\s*/i, "");
+  body = body.replace(/\{red\s*\}/g, " ").replace(/\s{2,}/g, " ").trim();
+  if (/^สอดแนม/.test(body) && !later && !(trig.part > 0)) { const r = readScout(s, body, p, self, ctx, trig); if (r) return { ops: [...ops, ...r.ops], say: [...say, ...r.say] }; }
   if (BAIL.test(body)) return why("bail: " + body.match(BAIL)[0]); if (/ได้รับ/.test(body) && !KWGRANT.test(body)) return why("bail: ได้รับ");
   const parts = body.split(/\s*(?:จากนั้น|หลังจากนั้น|แล้ว(?=\s*(?:จั่ว|สับ|นำ))|\s\/\s|และ(?=\s*(?:จั่ว|ทำลาย|ธรณีสูบ|สับ|ยกเลิก|ทำความเสียหาย|เปลี่ยน|นำ(?!\s*(?:ขึ้นมือ|กลับขึ้นมือ|มา|ไป|ลง))|อัญเชิญ(?!\s*ลง)|เนรเทศ|เลือก))|\s(?=เลือก\s*Avatar))\s*/).map((x) => x.trim()).filter(Boolean);
   if (!parts.length) return null;
@@ -420,6 +516,8 @@ export function autoEffect(s, trig, ctx = makeCtx(s, trig)) {
   if (when === "mod" || when === "build" || when === "manual") return null;
   const p = trig.seat; const L = E.locate(s, trig.i); const self = L && (L.z === "av" || L.z === "cs") ? L.x : null;
   let text; ctx.when = when; ctx.ref = {}; ctx.me = L ? L.x : null;
+  if (trig.manualRest) return null; // the part of an effect the reader could not understand: the player finishes it
+  if (trig.tail) { const r = readClause(s, trig.tail, p, self, ctx, { ...trig, tail: null }); if (!r) return null; if (r.fail) return { explain: r.fail, ops: [], fail: true }; return { explain: "อ่านอัตโนมัติ: " + (r.say.join(" · ") || "ไม่มีผลเพิ่ม"), ops: r.ops }; }
   if (when === "activate") { const a = activations(d.x)[trig.k | 0]; if (!a || a.where !== "field" || a.timed) return null; text = a.text; }
   else if (when === "cast" && d.st === "R") { const rt = reactTiming(d.x); if (!rt) return null; text = rt.rest.replace(/^:\s*/, ""); const on = trig.on || {};
     ctx.ref = on.kind === "attack" ? { att: on.att, that: rt.mine ? on.ti : on.att, cancel: true } : on.kind === "summon" ? { that: on.i } : on.kind === "cast" ? { magic: on.i } : {}; }
@@ -427,6 +525,7 @@ export function autoEffect(s, trig, ctx = makeCtx(s, trig)) {
     if (pf && td && !fitsD(td, pf)) return { explain: "การ์ดที่อัญเชิญไม่ตรงเงื่อนไขของความสามารถ", ops: [], fail: true }; text = cl.body; }
   else if (when === "milled") { const cl = clause(d.x, "milled"); if (!cl) return null; text = cl.head ? cl.head + " : " + cl.body : cl.body; }
   else { const cl = clause(d.x, when); if (!cl) return null; text = cl.head ? cl.head + " : " + cl.body : cl.body;
+    if (cl.exactOnly && !trig.exact) return { explain: "ไม่ได้จ่าย GEM พอดีกับ Cost ความสามารถนี้ไม่ทำงาน", ops: [], fail: true };
     if ((when === "attack" || when === "attacked" || when === "win") && s.pend) ctx.ref = when === "attacked" ? { att: s.pend.att, that: s.pend.att } : { that: s.pend.tk === "av" ? s.pend.ti : null }; }
   const r = readClause(s, text, p, self, ctx, trig); if (!r) return null;
   if (r.fail) return { explain: r.fail, ops: [], fail: true };
@@ -438,7 +537,7 @@ function cardVal(s, x) { const d = E.def(s, x); return d.t === "A" ? (d.pw || 0)
 // coverage helper for the lab: how many cards' triggered texts can be read
 export function readable(c, when, extra = {}) { const s = { cards: { x: { n: c.n, x: c.x, st: c.st, t: c.t } }, P: [{ av: [], cs: [], mg: [], hand: [], hell: [], deck: [], dark: [], life: [] }, { av: [], cs: [], mg: [], hand: [], hell: [], deck: [], dark: [], life: [] }], land: null };
   if (when === "cast" && c.st === "R" && !extra.on) { const rt = reactTiming(c.x); if (!rt) return false; extra = { on: { kind: rt.kinds[0], att: -1, ti: -1, i: -1, tk: "av" } }; }
-  try { return !!autoEffect(s, { c: "x", i: -1, when, seat: 0, exact: true, ...extra }); } catch { return false; } }
+  try { const r = autoEffect(s, { c: "x", i: -1, when, seat: 0, exact: true, ...extra }); return !!r && !(r.ops || []).some((o) => o.op === "resume" && o.t && o.t.manualRest); } catch { return false; } }
 
 // --- choices -------------------------------------------------------------------------
 // ctx.choose(cands, n, prompt, opts) returns the chosen cards. Bots (interactive=false) take

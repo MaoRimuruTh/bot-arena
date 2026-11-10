@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId } from "./cards.js?v=20261110205016";
-import { readAura, traits } from "./auras.js?v=20261110205016";
-import { SCRIPTS } from "./scripts.js?v=20261110205016";
-import { newId, clone } from "./util.js?v=20261110205016";
+import { card, kwHas, SUB_TH, CARDS, baseId } from "./cards.js?v=20261110205821";
+import { readAura, traits } from "./auras.js?v=20261110205821";
+import { SCRIPTS } from "./scripts.js?v=20261110205821";
+import { newId, clone } from "./util.js?v=20261110205821";
 export const ZONES = ["deck", "hand", "av", "mg", "cs", "hell", "dark", "life"];
 export const ZONE_TH = { deck: "Deck", hand: "มือ", av: "Avatar Zone", mg: "Magic Zone", cs: "Construct Zone", hell: "นรก", dark: "มิติมืด", life: "LIFE", land: "Land Magic" };
 export const PHASE_TH = { mull: "เปลี่ยนมือ", draw: "Draw", main: "Main", battle: "Battle", end: "End", over: "จบเกม" };
@@ -518,6 +518,17 @@ export const E = {
         P.deck.push(...top);
         if (got) { if (o.to === "av" && E.avatars(P) < 4 && P.av.length < 6 && E.def(s, got).t === "A") { P.av.push(got); E.ev(s, { k: "summon", i: got.i, p: seat }); } else P.hand.push(got); }
         E.log(s, seat, `สอดแนม ${top.length + (got ? 1 : 0)} ใบ${got ? ` · นำ ${E.name(s, got)} ${o.to === "av" ? "ลงสนาม" : "ขึ้นมือ"}` : " · ไม่พบการ์ดที่ตรงเงื่อนไข"} · ที่เหลือไว้ใต้ Deck`); return;
+      }
+      case "scoutShow": { const P = s.P[seat]; const xs = (o.ids || []).map((i) => P.deck.find((x) => x.i === i)).filter(Boolean); E.log(s, by, `สอดแนม${seat !== by ? " Deck ฝ่ายตรงข้าม" : ""} ${xs.length} ใบ: ${xs.map((x) => E.name(s, x)).join(", ") || "ไม่มีการ์ด"}`); return; }
+      case "scoutRest": { // the scouted cards that were not taken: bottom (default) / shuffle / top / hell / dark
+        const P = s.P[seat]; const left = (o.ids || []).map((i) => P.deck.find((x) => x.i === i)).filter(Boolean); if (!left.length) return;
+        if (o.rest === "top") { E.log(s, by, `การ์ดที่เหลือ ${left.length} ใบ วางไว้บน Deck ตามเดิม`); return; }
+        for (const x of left) P.deck.splice(P.deck.indexOf(x), 1);
+        if (o.rest === "hell") { P.hell.push(...left); E.log(s, by, `การ์ดที่เหลือ ${left.length} ใบ ลงนรก: ${left.map((x) => E.name(s, x)).join(", ")}`); }
+        else if (o.rest === "dark") { P.dark.push(...left); E.log(s, by, `การ์ดที่เหลือ ${left.length} ใบ ถูกเนรเทศ`); }
+        else if (o.rest === "shuffle") { P.deck.push(...left); E.shuffle(s, P.deck); E.log(s, by, `การ์ดที่เหลือ ${left.length} ใบ กลับเข้า Deck แล้วสับ`); }
+        else { P.deck.push(...left); E.log(s, by, `การ์ดที่เหลือ ${left.length} ใบ ไว้ใต้ Deck`); }
+        return;
       }
       case "fromHell": {
         const P = s.P[seat]; const k = o.take != null ? [...P.hell].reverse().findIndex((x) => x.i === o.take) : [...P.hell].reverse().findIndex((x) => matchCard(E.def(s, x), o)); if (k < 0) { E.log(s, seat, "ไม่พบการ์ดที่ตรงเงื่อนไขในนรก"); return; }
