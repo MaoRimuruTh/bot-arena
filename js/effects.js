@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261110230417";
-import { CARDS, nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261110230417";
-import { E, scriptOf } from "./engine.js?v=20261110230417";
+import { readAura } from "./auras.js?v=20261110231930";
+import { CARDS, nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261110231930";
+import { E, scriptOf } from "./engine.js?v=20261110231930";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -79,7 +79,7 @@ function filterOf(t) {
 const seatOf = (t, p) => (/ผู้เล่นทุกคน|ทั้งสองฝ่าย|ทุกฝ่าย|ทั้ง\s*2\s*ฝ่าย/.test(t) ? [p, 1 - p] : /ฝ่ายตรงข้าม|อีกฝ่าย/.test(t) ? [1 - p] : [p]);
 const num = (t, re, d = 1) => { const m = t.match(re); return m ? +m[1] : d; };
 const val = (s, x) => E.power(s, x) + (E.def(s, x).c || 0) * 0.5 + (E.def(s, x).o1 ? 6 : 0);
-const fits = (s, x, f) => { const d = E.def(s, x); return fitsD(d, f, () => E.power(s, x), hasFieldAlias(d) && E.onField(s, x), () => E.costNow(s, x)); };
+const fits = (s, x, f) => { let d = E.def(s, x); const so = E.syOver(s, x); if (so) { d = { ...d, sy: so }; delete d.al; } return fitsD(d, f, () => E.power(s, x), hasFieldAlias(d) && E.onField(s, x), () => E.costNow(s, x)); };
 function fitsD(d, f, pw = () => d.pw || 0, on = false, cst = () => d.c || 0) {
   const nm = nameText(d, on); const syt = syText(d, on); const anySy = allSy(d, on);
   if (f.symbol && !anySy && !syt.includes(f.symbol)) return false;
