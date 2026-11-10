@@ -1,9 +1,9 @@
-import { h, busy, lsGet, lsSet } from "../util.js?v=20261110181529";
-import { card, deckEntries, deckToList, validateDeck, TYPE_TH } from "../cards.js?v=20261110181529";
-import { E } from "../engine.js?v=20261110181529";
-import { H } from "../ai.js?v=20261110181529";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261110181529";
-import { allDecks } from "./decks.js?v=20261110181529";
+import { h, busy, lsGet, lsSet } from "../util.js?v=20261110192945";
+import { card, deckEntries, deckToList, validateDeck, TYPE_TH } from "../cards.js?v=20261110192945";
+import { E } from "../engine.js?v=20261110192945";
+import { H } from "../ai.js?v=20261110192945";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261110192945";
+import { allDecks } from "./decks.js?v=20261110192945";
 
 // exact hypergeometric: P(at least one of k copies within m cards from a deck of N)
 function atLeastOne(N, k, m) { if (k <= 0) return 0; if (m >= N) return 1; let p = 1; for (let i = 0; i < m; i++) p *= (N - k - i) / (N - i); return 1 - Math.max(0, p); }

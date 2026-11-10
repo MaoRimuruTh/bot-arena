@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261110181529";
-import { h } from "./util.js?v=20261110181529";
-import { Data } from "./fb.js?v=20261110181529";
+import { CARD_SOURCE } from "./config.js?v=20261110192945";
+import { h } from "./util.js?v=20261110192945";
+import { Data } from "./fb.js?v=20261110192945";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -41,8 +41,9 @@ export async function loadCards() {
   const r = await fetch(url, { cache: "default" });
   if (!r.ok) throw new Error("card data " + r.status);
   CARDS = transform(await r.json());
-  CARDS.byName = new Map();
+  CARDS.byName = new Map(); keyIndex = null;
   for (const c of CARDS) { if (!CARDS.byName.has(c.n)) CARDS.byName.set(c.n, []); CARDS.byName.get(c.n).push(c); }
+  if (Data.refreshSkins) Data.refreshSkins(); // saved skins are stored by print code: map them onto this card list
   return CARDS;
 }
 export const card = (i) => CARDS[+i];
@@ -56,6 +57,14 @@ export function imgUrls(c) {
   const f = folders[setCode(c)] || ""; const b = (Data.meta && Data.meta.imgBase) || CARD_SOURCE.imgBase;
   return [`${b}${f}${c.p}-${c.r}.png`, `${b}${f}${c.p}.png`, `${b}${c.p}-${c.r}.png`, `${b}${c.p}.png`];
 }
+// stable keys for saved skins: print code + rarity of the base card → print code + rarity of the chosen art
+let keyIndex = null;
+const byKey = (k) => { if (!keyIndex) { keyIndex = new Map(); for (const c of CARDS) keyIndex.set(c.p + "-" + c.r, c); } return keyIndex.get(k); };
+Data.skinCodec = {
+  ready: () => CARDS.length > 0,
+  encode: (map) => { const out = {}; for (const [b, v] of Object.entries(map || {})) { const B = CARDS[+b], V = CARDS[+v]; if (B && V) out[B.p + "-" + B.r] = V.p + "-" + V.r; } return out; },
+  decode: (prints) => { const out = {}; for (const [kb, kv] of Object.entries(prints || {})) { const B = byKey(kb), V = byKey(kv); if (!B || !V) continue; const base = B.b != null ? B.b : B.i; if ((V.b != null ? V.b : V.i) !== base || V.i === base) continue; out[String(base)] = V.i; } return out; },
+};
 // skins: the player can pick any alternate print of a card as the art shown everywhere
 export const SkinCtx = { on: true }; // skins show only on the deck pages and in the arena (set by the router)
 export function skinOf(c) { if (!c || c.b != null || !SkinCtx.on) return c; const v = Data.skins && Data.skins[String(c.i)]; const s = v != null ? CARDS[+v] : null; return s && (s.b === c.i || s.i === c.i) ? s : c; }

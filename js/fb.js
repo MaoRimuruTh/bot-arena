@@ -1,4 +1,4 @@
-import { firebaseConfig, FB_VERSION } from "./config.js?v=20261110181529";
+import { firebaseConfig, FB_VERSION } from "./config.js?v=20261110192945";
 const base = `https://www.gstatic.com/firebasejs/${FB_VERSION}/`;
 const { initializeApp } = await import(base + "firebase-app.js");
 const A = await import(base + "firebase-auth.js");
@@ -50,7 +50,7 @@ export function startData() {
   unsubs.push(F.onSnapshot(F.collection(db, "decks"), (s) => { Data.decks = s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)); Data.ready.decks = true; emit(); }, (e) => { console.warn(e); Data.ready.decks = true; emit(); }));
   unsubs.push(F.onSnapshot(F.query(F.collection(db, "matches"), F.where("uid", "==", Me.uid)), (s) => { Data.matches = s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (b.at || 0) - (a.at || 0)); Data.ready.matches = true; emit(); }, (e) => { console.warn(e); Data.ready.matches = true; emit(); }));
   unsubs.push(F.onSnapshot(F.doc(db, "users", Me.uid, "private", "owned"), (s) => { Data.owned = (s.exists() && s.data().cards) || {}; emit(); }, () => {}));
-  unsubs.push(F.onSnapshot(F.doc(db, "users", Me.uid, "private", "skins"), (s) => { Data.skins = (s.exists() && s.data().cards) || {}; emit(); }, () => {}));
+  unsubs.push(F.onSnapshot(F.doc(db, "users", Me.uid, "private", "skins"), (s) => { Data.skinDoc = s.exists() ? s.data() : null; Data.refreshSkins(); emit(); }, () => {}));
   unsubs.push(F.onSnapshot(F.doc(db, "users", Me.uid, "private", "favs"), (s) => { Data.favs = (s.exists() && s.data().cards) || {}; emit(); }, () => {}));
   unsubs.push(F.onSnapshot(F.doc(db, "users", Me.uid, "private", "prices"), (s) => { Data.prices = (s.exists() && s.data().cards) || {}; emit(); }, () => {}));
   unsubs.push(F.onSnapshot(F.doc(db, "meta", "config"), (s) => { Data.meta = (s.exists() && s.data()) || {}; emit(); }, () => {}));
@@ -64,8 +64,19 @@ export async function saveDeck(deck) {
 export const deleteDeck = (id) => F.deleteDoc(F.doc(db, "decks", id));
 let ownTimer = null;
 export function saveOwned() { clearTimeout(ownTimer); ownTimer = setTimeout(() => F.setDoc(F.doc(db, "users", Me.uid, "private", "owned"), { cards: Data.owned, updatedAt: Date.now() }).catch((e) => console.warn(e)), 700); }
+// Skins are saved by print code ("BT09-042-UR" → "BT09-042-SCR") so they survive updates to the official card
+// data; in memory they stay a map of card index → card index. cards.js provides the codec once cards are loaded.
+Data.skinDoc = null; Data.skinCodec = null;
+Data.refreshSkins = () => {
+  const doc = Data.skinDoc, codec = Data.skinCodec, ready = codec && codec.ready();
+  if (!doc) { Data.skins = {}; return; }
+  if (doc.prints) { if (ready) Data.skins = codec.decode(doc.prints); return; } // wait for the card data before decoding
+  Data.skins = doc.cards || {}; // old format (card indexes): convert it once, while the indexes still match
+  if (ready && Object.keys(Data.skins).length) saveSkins();
+};
 let skinTimer = null;
-export function saveSkins() { clearTimeout(skinTimer); skinTimer = setTimeout(() => F.setDoc(F.doc(db, "users", Me.uid, "private", "skins"), { cards: Data.skins, updatedAt: Date.now() }).catch((e) => console.warn(e)), 500); }
+export function saveSkins() { clearTimeout(skinTimer); skinTimer = setTimeout(() => { const c = Data.skinCodec; const body = c && c.ready() ? { prints: c.encode(Data.skins), updatedAt: Date.now() } : { cards: Data.skins, updatedAt: Date.now() };
+  F.setDoc(F.doc(db, "users", Me.uid, "private", "skins"), body).catch((e) => console.warn(e)); }, 500); }
 let favTimer = null; // favourite cards, keyed by "print-rarity" so the list survives card-data updates
 export function saveFavs() { clearTimeout(favTimer); favTimer = setTimeout(() => F.setDoc(F.doc(db, "users", Me.uid, "private", "favs"), { cards: Data.favs, updatedAt: Date.now() }).catch((e) => console.warn(e)), 400); }
 // prices the player noted down from shops / marketplaces (reference only — nothing is bought or sold here)
