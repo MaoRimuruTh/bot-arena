@@ -1,14 +1,14 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261110172114";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261110172114";
-import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261110172114";
-import { Views, avatarEl } from "./ui.js?v=20261110172114";
-import { Ciel } from "./ai.js?v=20261110172114";
-import "./views/library.js?v=20261110172114";
-import "./views/decks.js?v=20261110172114";
-import "./views/lab.js?v=20261110172114";
-import "./views/history.js?v=20261110172114";
-import "./views/ask.js?v=20261110172114";
-import "./views/play.js?v=20261110172114";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261110181529";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261110181529";
+import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261110181529";
+import { Views, avatarEl } from "./ui.js?v=20261110181529";
+import { Ciel } from "./ai.js?v=20261110181529";
+import "./views/library.js?v=20261110181529";
+import "./views/decks.js?v=20261110181529";
+import "./views/lab.js?v=20261110181529";
+import "./views/history.js?v=20261110181529";
+import "./views/ask.js?v=20261110181529";
+import "./views/play.js?v=20261110181529";
 
 const root = $("#view");
 let current = null, cardsReady = false;
@@ -117,6 +117,7 @@ function route() {
   if (current && current !== tab && Views[current].leave) Views[current].leave();
   current = tab; SkinCtx.on = tab === "decks" || tab === "play";
   document.querySelectorAll("#nav a").forEach((a) => (a.dataset.tab === tab ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
+  { const cur = document.querySelector('#nav a[aria-current="page"]'); if (cur && cur.scrollIntoView && innerWidth <= 700) cur.scrollIntoView({ block: "nearest", inline: "nearest" }); }
   try { Views[tab].render(root, parts); } catch (e) { console.error(e); root.replaceChildren(h("div", { class: "empty" }, "หน้านี้มีปัญหา: " + e.message)); }
   if (!document.body.classList.contains("arena-on")) scrollTo(0, 0);
 }

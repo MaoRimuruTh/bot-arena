@@ -330,3 +330,18 @@ body.arena-on main{padding:0;max-width:none}
   body.arena-on .inspector{max-height:calc(100vh - 40px)}
 }
 .upd{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:60;display:flex;align-items:center;gap:10px;padding:10px 14px;font-size:.86rem}
+/* when a prompt is open (pay / choose / confirm) keep it on top and move the card preview out of its way */
+.prompt{z-index:10}
+body:has(.prompt) .inspector{top:calc(80px + env(safe-area-inset-top,0px));transform:none;max-width:min(560px,40vw)}
+body:has(.prompt) .inspector>.cimg,body:has(.prompt) .inspector>.tok{height:min(34vh,260px)}
+body:has(.prompt) .inspector .txt{max-height:min(34vh,260px)}
+/* phone header: logo + profile on one row, the menu as one swipeable row underneath */
+@media (max-width:700px){
+  .top-in{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;min-height:0;padding-block:6px}
+  .top-in .me{margin-left:0;justify-self:end;grid-row:1;grid-column:2}
+  .top-in .logo{grid-row:1;grid-column:1}
+  .nav{grid-row:2;grid-column:1/-1;flex-wrap:nowrap;overflow-x:auto;min-width:0;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin:0 -4px}
+  .nav::-webkit-scrollbar{display:none}
+  .nav a{white-space:nowrap;padding:6px 11px;flex:none}
+}
+table.t th{white-space:nowrap}

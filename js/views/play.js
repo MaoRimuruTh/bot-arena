@@ -1,21 +1,21 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261110172114";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261110172114";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261110172114";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261110172114";
-import { Arena } from "../arena3d.js?v=20261110172114";
-import { autoEffect, resolveEffect } from "../effects.js?v=20261110172114";
-import { Sfx } from "../sfx.js?v=20261110172114";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261110172114";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261110172114";
-import { readAura } from "../auras.js?v=20261110172114";
-import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261110172114";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261110181529";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261110181529";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261110181529";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261110181529";
+import { Arena } from "../arena3d.js?v=20261110181529";
+import { autoEffect, resolveEffect } from "../effects.js?v=20261110181529";
+import { Sfx } from "../sfx.js?v=20261110181529";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261110181529";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261110181529";
+import { readAura } from "../auras.js?v=20261110181529";
+import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261110181529";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
   return { game: [`เทิร์น ${s.turn} · ${PHASE_TH[s.phase] || s.phase} · ตาของ ${s.P[s.active].name}`, `เด็คเรา: ${me.deckName || "-"} · เด็คคู่แข่ง: ${op.deckName || "-"}`,
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / ")].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261110172114";
+import { allDecks, deckById } from "./decks.js?v=20261110181529";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -382,6 +382,9 @@ function handClick(x) {
   if (d.t === "M" && d.st === "R") { G.castFor = x.i; return draw(); }
   if (s.active !== p || s.phase !== "main" || s.trig.length || s.pend) return showHandInspect(x);
   if (d.t === "A" && E.locked(s, p, x)) return toast("หลังใช้ซาร์อึก เกมนี้อัญเชิญได้เฉพาะมังกรหรือผู้ฝึกมังกร", "bad");
+  if (d.t === "A" && (E.avatars(s.P[p]) >= 4 || s.P[p].av.length >= 6)) { toast("Avatar Zone เต็มแล้ว (Avatar ได้ 4 ใบ)", "bad"); return showHandInspect(x); }
+  if (d.t === "A" && (scriptOf(s, x) || {}).noHand) { toast("การ์ดใบนี้ลงสนามจากบนมือไม่ได้", "bad"); return showHandInspect(x); }
+  if (d.t === "C" && s.P[p].cs.length >= 3) { toast("Construct Zone เต็มแล้ว (3 ใบ)", "bad"); return showHandInspect(x); }
   if (d.t === "A" || d.t === "C") { const auto = E.autoPay(s, p, x.i); if (!auto) { toast(`GEM บนมือไม่พอจ่าย ${d.n} (Cost ${d.c || 0})`); return showHandInspect(x); } G.payFor = x.i; G.pick = auto; return draw(); }
   if (d.t === "M" && d.st === "D") { G.host = x.i; return draw(); }
   if (d.t === "M") { G.castFor = x.i; return draw(); } // always confirm before a Magic goes off
