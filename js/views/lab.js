@@ -21,7 +21,7 @@ export function simGame(dA, dB, seed) {
   for (const p of [0, 1]) E.apply(s, { type: "mull", iids: H.mulligan(s, p) }, p);
   for (let step = 0; step < 4000 && s.phase !== "over"; step++) {
     try {
-      if (s.trig.length) { const t = s.trig[0]; E.apply(s, { type: "trig", id: t.id, skip: true }, t.seat); continue; }
+      if (s.trig.length) { const t = s.trig[0]; E.apply(s, H.trig(s, t), t.seat); continue; }
       if (s.pend) { const p = 1 - s.pend.by; const m = H.pick(s, p); E.apply(s, m ? m.a : { type: "respond" }, p); continue; }
       const p = s.active;
       if (s.phase === "end" && s.need) { E.apply(s, { type: "discard", iids: H.discard(s, p) }, p); continue; }
@@ -56,7 +56,7 @@ Views.lab = {
       };
       roll();
     };
-    simBox.append(h("div", { class: "eyebrow" }, "จำลองบอทชนบอท"), h("div", { class: "small muted" }, "ใช้บอทพื้นฐาน เล่นตามกติกา Rule Book แต่ข้ามเอฟเฟกต์ข้อความการ์ด ใช้ดูเส้น Cost และพลังพื้นฐานของเด็ค"),
+    simBox.append(h("div", { class: "eyebrow" }, "จำลองบอทชนบอท"), h("div", { class: "small muted" }, "ใช้บอทฟรี เล่นตามกติกา Rule Book และอ่านเอฟเฟกต์การ์ดที่พบบ่อยได้เอง (การ์ดที่ซับซ้อนจะถูกข้าม) ใช้ดูเส้น Cost และพลังของเด็คแบบคร่าวๆ"),
       h("div", { class: "row" }, h("span", { class: "small" }, "ชน"), sel("b"), h("select", { "aria-label": "จำนวนเกม", onchange: (e) => { LabState.n = +e.target.value; lsSet("bot.lab", LabState); } }, [50, 100, 300].map((n) => h("option", { value: n, selected: n === LabState.n }, n + " เกม"))),
         h("button", { class: "btn gold", onclick: async (e) => {
           const btn = e.currentTarget; btn.disabled = true; const out = simBox.querySelector(".simout");

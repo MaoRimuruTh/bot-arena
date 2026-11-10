@@ -1,5 +1,6 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH } from "./engine.js";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus } from "./engine.js";
+import { autoEffect } from "./effects.js";
 import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js";
 import { Data } from "./fb.js";
 import { lsGet } from "./util.js";
@@ -108,11 +109,22 @@ export const H = {
       return moves[0];
     }
     if (s.phase === "main") {
-      const sum = moves.filter((m) => m.a.type === "summon").map((m) => ({ m, d: E.def(s, P.hand.find((x) => x.i === m.a.i)) }));
-      sum.sort((a, b) => (b.d.pw || 0) - (a.d.pw || 0) || (b.d.c || 0) - (a.d.c || 0));
-      if (sum.length && P.hand.length - 1 - sum[0].m.a.pay.length >= 0) return sum[0].m;
-      const build = moves.find((m) => m.a.type === "build"); if (build) return build;
-      const land = moves.find((m) => m.a.type === "cast" && !s.land && E.def(s, P.hand.find((x) => x.i === m.a.i)).st === "L"); if (land) return land;
+      // score every playable option; the best one above a small threshold is played, otherwise go to battle
+      const cand = [];
+      for (const m of moves) {
+        const a = m.a; if (a.type === "battle") continue;
+        const x = P.hand.find((y) => y.i === a.i); if (!x) continue; const d = E.def(s, x);
+        const payLoss = (a.pay || []).reduce((t, i) => t + H.value(s, P.hand.find((y) => y.i === i)), 0);
+        let sc = -99;
+        if (a.type === "summon") { const fx = d.x && /จุติ/.test(d.x) ? H.opsScore(s, p, autoEffect(s, { i: x.i, c: x.c, when: "summon", seat: p, exact: true })) : 0; sc = (d.pw || 0) + 2 + Math.max(0, fx) - payLoss * 0.45 + (P.av.length < 2 ? 3 : 0); }
+        else if (a.type === "build") sc = 3 - payLoss * 0.3;
+        else if (a.type === "cast" && d.st === "L") sc = s.land ? -1 : 2.5;
+        else if (a.type === "cast" && d.st === "D") { const host = P.av.find((y) => y.i === a.on); const b = modBonus(d.x); sc = b > 0 && host ? b + (host.a ? 1.5 : 0) + E.power(s, host) * 0.1 : -1; }
+        else if (a.type === "cast" && d.st === "N") sc = H.opsScore(s, p, autoEffect(s, { i: x.i, c: x.c, when: "cast", seat: p }));
+        cand.push({ m, sc });
+      }
+      cand.sort((a, b) => b.sc - a.sc);
+      if (cand.length && cand[0].sc >= 1.5) return cand[0].m;
       return moves.find((m) => m.a.type === "battle");
     }
     if (s.phase === "battle") {
@@ -122,6 +134,11 @@ export const H = {
         const t = E.locate(s, m.a.ti).x; const tp = E.power(s, t);
         if (m.a.tk === "cs") return { m, score: ap > tp ? 8 : -5 };
         if (ap > tp) return { m, score: 20 + tp };
+        if (m.a.tk === "av") { // can สามัคคี / แทงหลัง helpers turn this into a win?
+          const helpers = P.av.filter((y) => y.a && y.i !== x.i && (E.kw(s, y, "สามัคคี") || E.kw(s, y, "แทงหลัง"))).map((y) => ({ i: y.i, b: E.kw(s, y, "สามัคคี") ? E.power(s, y) : 1 })).sort((a, b) => a.b - b.b);
+          let bonus = 0; const sup = []; for (const hlp of helpers) { if (ap + bonus > tp) break; bonus += hlp.b; sup.push(hlp.i); }
+          if (ap + bonus > tp) return { m: { ...m, a: { ...m.a, sup } }, score: 14 + tp - sup.length * 2 };
+        }
         if (ap === tp) return { m, score: tp >= ap && E.def(s, t).c >= E.def(s, x).c ? 5 : -2 };
         return { m, score: -10 };
       }).filter((z) => z.score > 0).sort((a, b) => b.score - a.score);
@@ -130,6 +147,23 @@ export const H = {
     }
     return null;
   },
+  // value of an auto-read effect for player p (rough, used to decide whether to cast/summon)
+  opsScore(s, p, r) {
+    if (!r) return -1; let v = 0;
+    for (const o of r.ops) {
+      if (o.op === "draw") v += o.seat === p ? (s.P[p].hand.length < 7 ? 1.5 : 0.3) * (o.n || 1) : -1.2 * (o.n || 1);
+      else if (o.op === "mill") v += o.seat === p ? -0.2 * (o.n || 1) : 0.3 * (o.n || 1);
+      else if (o.op === "destroy") { const L = E.locate(s, o.i); v += L ? (L.p === p ? -6 : 5 + E.power(s, L.x) * 0.6) : 0; }
+      else if (o.op === "move" && o.to === "hand") { const L = E.locate(s, o.i); v += L && L.p !== p ? 4 : -2; }
+      else if (o.op === "power") { const L = E.locate(s, o.i); v += L ? ((L.p === p) === (o.n > 0) ? Math.abs(o.n) * (s.turn > 1 ? 0.8 : 0.3) : -Math.abs(o.n)) : 0; }
+      else if (o.op === "wake") { const L = E.locate(s, o.i); v += L && L.p !== p && !o.v ? 2 : 0.5; }
+      else if (["search", "scout", "fromHell"].includes(o.op)) v += 2.5;
+      else if (o.op === "discard") v -= 1.6 * (o.iids || []).length;
+    }
+    return v;
+  },
+  // resolve an effect without AI: read it if possible, otherwise skip
+  trig(s, t) { const r = autoEffect(s, t); return r ? { type: "trig", id: t.id, explain: r.explain, ops: r.ops } : { type: "trig", id: t.id, skip: true }; },
   discard(s, p) { const P = s.P[p]; return [...P.hand].sort((a, b) => H.value(s, a) - H.value(s, b)).slice(0, s.need).map((x) => x.i); },
 };
 

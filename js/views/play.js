@@ -3,6 +3,7 @@ import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB
 import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError } from "../engine.js";
 import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js";
 import { Arena } from "../arena3d.js";
+import { autoEffect } from "../effects.js";
 import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js";
 import { Views, cardBtn, showCard, avatarEl } from "../ui.js";
 import { allDecks, deckById } from "./decks.js";
@@ -169,8 +170,8 @@ async function drive() {
     if (s.phase === "mull") a = { type: "mull", iids: H.mulligan(s, p) };
     else if (s.trig.length) {
       const t = s.trig[0];
-      if (G.brain === "ciel") { G.thinking = "ชิเอลกำลังอ่านเอฟเฟกต์ " + (s.cards[t.c] || {}).n; draw(); try { const r = await cielResolve(s, t); a = { type: "trig", id: t.id, ...r }; } catch (e) { a = { type: "trig", id: t.id, skip: true }; toast(aiErr(e), "bad"); } }
-      else a = { type: "trig", id: t.id, skip: true };
+      if (G.brain === "ciel") { G.thinking = "ชิเอลกำลังอ่านเอฟเฟกต์ " + (s.cards[t.c] || {}).n; draw(); try { const r = await cielResolve(s, t); a = { type: "trig", id: t.id, ...r }; } catch (e) { a = H.trig(s, t); toast(aiErr(e), "bad"); } }
+      else a = H.trig(s, t);
     } else if (s.phase === "end" && s.need) a = { type: "discard", iids: H.discard(s, p) };
     else {
       let m = null;
@@ -316,8 +317,11 @@ function promptBox(s, p) {
   if (s.trig.length) {
     const t = s.trig[0]; const d = s.cards[t.c] || {}; const when = { summon: "จุติ", cast: "ใช้ Magic", life: "LIFE หงาย", death: "คำสั่งเสีย", attack: "เมื่อโจมตี", build: "ก่อสร้าง", manual: "สั่งใช้" }[t.when] || t.when;
     const hint = h("input", { type: "text", placeholder: "บอกชิเอลถ้าต้องเลือกเป้าหมาย เช่น ทำลายพญานาค", "aria-label": "เป้าหมายที่ต้องการ" }); const out = h("div");
+    const auto = autoEffect(s, t);
     return box(`เอฟเฟกต์: ${d.n} (${when})`, h("div", { class: "fx small", style: "max-height:130px;overflow:auto" }, d.x || ""), Ciel.on() ? hint : null, out,
+      auto ? h("div", { class: "small", style: "color:#8ee3b2" }, auto.explain) : h("div", { class: "tiny muted" }, "การ์ดนี้ซับซ้อนเกินกว่าที่ระบบอ่านเองได้ ใช้ชิเอลหรือจัดการเองด้วยเครื่องมือ"),
       h("div", { class: "row" },
+        auto ? h("button", { class: "btn gold sm", onclick: () => doAct({ type: "trig", id: t.id, explain: auto.explain, ops: auto.ops }, p) }, "ใช้ผลอัตโนมัติ") : null,
         h("button", { class: "btn ciel", disabled: !Ciel.on(), title: Ciel.on() ? "" : "ต้องใส่ API key", onclick: async (e) => { const btn = e.currentTarget; btn.disabled = true; out.replaceChildren(busy("ชิเอลกำลังอ่านการ์ด…")); try { const r = await cielResolve(s, t, hint.value); out.replaceChildren(h("div", { class: "small" }, r.explain || "ไม่มีผลที่ต้องทำ"), h("div", { class: "row" }, h("button", { class: "btn gold sm", onclick: () => doAct({ type: "trig", id: t.id, ...r }, p) }, "ใช้ผลนี้"))); } catch (err) { out.replaceChildren(h("div", { class: "small muted" }, aiErr(err))); } btn.disabled = false; } }, "ให้ชิเอลจัดการ"),
         h("button", { class: "btn sm", onclick: tools }, "จัดการเอง"), h("button", { class: "btn sm", onclick: () => doAct({ type: "trig", id: t.id, skip: false, ops: [], explain: "จัดการด้วยมือแล้ว" }, p) }, "เสร็จแล้ว"), h("button", { class: "btn sm", onclick: () => doAct({ type: "trig", id: t.id, skip: true }, p) }, "ข้าม")));
   }

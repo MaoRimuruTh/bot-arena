@@ -13,7 +13,12 @@ export const E = {
   name: (s, x) => E.def(s, x).n,
   log(s, seat, m) { s.log.push({ t: s.turn, s: seat, m }); if (s.log.length > 400) s.log.splice(0, s.log.length - 400); },
   kw(s, x, k) { const d = E.def(s, x); return kwHas(d.x, k) || (x.kw || []).includes(k); },
-  power(s, x) { const d = E.def(s, x); return Math.max(0, (d.pw || 0) + (x.pm || 0) + (x.tm || 0)); },
+  power(s, x) {
+    const d = E.def(s, x); let mb = 0;
+    for (const P of s.P) for (const m of P.mg) if (m.on === x.i) mb += modBonus(E.def(s, m).x);
+    const tn = x.tn ? Object.values(x.tn).reduce((a, b) => a + b, 0) : 0;
+    return Math.max(0, (d.pw || 0) + (x.pm || 0) + (x.tm || 0) + tn + mb);
+  },
   locate(s, i) {
     for (let p = 0; p < 2; p++) for (const z of ZONES) { const idx = s.P[p][z].findIndex((x) => x.i === i); if (idx >= 0) return { p, z, idx, x: s.P[p][z][idx] }; }
     if (s.land && s.land.i === i) return { p: s.land.o, z: "land", idx: 0, x: s.land };
@@ -50,6 +55,7 @@ export const E = {
     s.turn++; s.active = p; s.phase = "draw"; s.mu = [{}, {}]; E.ev(s, { k: "turn", p, t: s.turn });
     for (const q of [0, 1]) for (const x of s.P[q].av) x.tm = 0;
     for (const x of s.P[p].av) x.a = true;
+    for (const q of [0, 1]) for (const x of s.P[q].av) if (x.tn) { delete x.tn[p]; if (!Object.keys(x.tn).length) delete x.tn; } // "until our next Draw Phase" bonuses end
     const P = s.P[p]; const n = P.hand.length < 3 ? 3 - P.hand.length : 1;
     E.log(s, p, `เทิร์น ${s.turn} · ${P.name} จั่ว ${n} ใบ`);
     if (!E.draw(s, p, n)) return;
@@ -69,7 +75,7 @@ export const E = {
     if (L.z === "av") for (const q of [0, 1]) { const att = s.P[q].mg.filter((m) => m.on === x.i); for (const m of att) { s.P[q].mg.splice(s.P[q].mg.indexOf(m), 1); delete m.on; s.P[m.o].hell.push(m); E.log(s, m.o, `${E.name(s, m)} หลุดลงนรก (Avatar ที่สวมใส่ออกจากสนาม)`); } }
     if (L.z === "mg" && x.on) delete x.on;
     if (x.tok && to !== "av") { E.log(s, L.p, `Token ${E.name(s, x)} ถูกนำออกจากเกม`); return null; }
-    x.a = true; x.pm = 0; x.tm = 0; delete x.kw; if (to !== "life") delete x.up;
+    x.a = true; x.pm = 0; x.tm = 0; delete x.kw; delete x.tn; if (to !== "life") delete x.up;
     const owner = x.o; const ctl = seatOverride != null ? seatOverride : (L.z === "land" ? owner : L.p);
     const dest = { hand: owner, hell: owner, dark: owner, deckTop: owner, deckBottom: owner, life: seatOverride != null ? seatOverride : owner }[to];
     if (to === "deckTop") s.P[dest].deck.unshift(x);
@@ -305,8 +311,8 @@ export const E = {
       case "power": {
         const L = E.locate(s, o.i); if (!L) throw new RuleError("ไม่พบการ์ด");
         const v = Math.max(-20, Math.min(20, o.n | 0));
-        if (o.temp === false) L.x.pm = (L.x.pm || 0) + v; else L.x.tm = (L.x.tm || 0) + v;
-        E.log(s, by, `${E.name(s, L.x)} POWER ${v >= 0 ? "+" : ""}${v}${o.temp === false ? "" : " จนจบเทิร์น"} (ตอนนี้ ${E.power(s, L.x)})`); return;
+        if (o.temp === false) L.x.pm = (L.x.pm || 0) + v; else if (o.temp === "next") { L.x.tn = L.x.tn || {}; L.x.tn[by] = (L.x.tn[by] || 0) + v; } else L.x.tm = (L.x.tm || 0) + v;
+        E.log(s, by, `${E.name(s, L.x)} POWER ${v >= 0 ? "+" : ""}${v}${o.temp === false ? "" : o.temp === "next" ? " จนถึง Draw Phase ถัดไป" : " จนจบเทิร์น"} (ตอนนี้ ${E.power(s, L.x)})`); return;
       }
       case "wake": { const L = E.locate(s, o.i); if (!L) throw new RuleError("ไม่พบการ์ด"); L.x.a = o.v !== false; E.log(s, by, `${E.name(s, L.x)} ${L.x.a ? "ตื่น" : "นอน"}`); return; }
       case "keyword": { const L = E.locate(s, o.i); if (!L) throw new RuleError("ไม่พบการ์ด"); L.x.kw = [...new Set([...(L.x.kw || []), String(o.k).slice(0, 20)])]; E.log(s, by, `${E.name(s, L.x)} ได้รับ ${o.k}`); return; }
@@ -327,11 +333,28 @@ export const E = {
       case "shuffle": { E.shuffle(s, s.P[seat].deck); E.log(s, seat, "สับ Deck"); return; }
       case "search": {
         const P = s.P[seat]; const q = String(o.name || "");
-        const k = P.deck.findIndex((x) => E.name(s, x).includes(q) || (o.symbol && E.def(s, x).sy === o.symbol));
+        const k = P.deck.findIndex((x) => (q || o.names || o.symbol || o.type || o.maxCost != null) && matchCard(E.def(s, x), o));
         if (k < 0) { E.shuffle(s, P.deck); E.log(s, seat, `ค้นหา "${q}" ไม่พบ · สับ Deck`); return; }
         const x = P.deck.splice(k, 1)[0]; const to = o.to === "av" ? "av" : "hand";
         if (to === "av") { if (E.avatars(P) >= 4 || P.av.length >= 6) { P.hand.push(x); } else P.av.push(x); } else P.hand.push(x);
         E.shuffle(s, P.deck); E.log(s, seat, `ค้นหา ${E.name(s, x)} จาก Deck → ${ZONE_TH[to]} · สับ Deck`); return;
+      }
+      case "scout": { // look at the top n, take the first card matching the filter, the rest go to the bottom
+        const P = s.P[seat]; const top = P.deck.splice(0, Math.min(n, P.deck.length)); const k = top.findIndex((x) => matchCard(E.def(s, x), o));
+        let got = null; if (k >= 0) got = top.splice(k, 1)[0];
+        P.deck.push(...top);
+        if (got) { if (o.to === "av" && E.avatars(P) < 4 && P.av.length < 6 && E.def(s, got).t === "A") { P.av.push(got); E.ev(s, { k: "summon", i: got.i, p: seat }); } else P.hand.push(got); }
+        E.log(s, seat, `สอดแนม ${top.length + (got ? 1 : 0)} ใบ${got ? ` · นำ ${E.name(s, got)} ${o.to === "av" ? "ลงสนาม" : "ขึ้นมือ"}` : " · ไม่พบการ์ดที่ตรงเงื่อนไข"} · ที่เหลือไว้ใต้ Deck`); return;
+      }
+      case "fromHell": {
+        const P = s.P[seat]; const k = [...P.hell].reverse().findIndex((x) => matchCard(E.def(s, x), o)); if (k < 0) { E.log(s, seat, "ไม่พบการ์ดที่ตรงเงื่อนไขในนรก"); return; }
+        const x = P.hell.splice(P.hell.length - 1 - k, 1)[0];
+        if (o.to === "av" && E.avatars(P) < 4 && P.av.length < 6 && E.def(s, x).t === "A") { x.a = true; P.av.push(x); E.ev(s, { k: "summon", i: x.i, p: seat }); }
+        else if (o.to === "deck") { P.deck.push(x); E.shuffle(s, P.deck); } else P.hand.push(x);
+        E.log(s, seat, `นำ ${E.name(s, x)} จากนรก${o.to === "av" ? "ลงสนาม" : o.to === "deck" ? "กลับเข้า Deck" : "ขึ้นมือ"}`); return;
+      }
+      case "discard": { // chosen discard (used for "ทิ้งการ์ดบนมือ N ใบ" costs)
+        const P = s.P[seat]; for (const i of o.iids || []) { const k = P.hand.findIndex((x) => x.i === i); if (k >= 0) { const x = P.hand.splice(k, 1)[0]; P.hell.push(x); E.log(s, seat, `ทิ้ง ${E.name(s, x)} ลงนรก`); } } return;
       }
       case "discardRandom": { const P = s.P[seat]; for (let k = 0; k < n && P.hand.length; k++) { const j = Math.floor(E.rnd(s) * P.hand.length); const x = P.hand.splice(j, 1)[0]; P.hell.push(x); E.log(s, seat, `ทิ้งแบบสุ่ม ${E.name(s, x)}`); } return; }
       case "control": { const L = E.locate(s, o.i); if (!L || L.z !== "av") throw new RuleError("ควบคุมได้เฉพาะ Avatar บนสนาม"); const t = o.seat === 0 || o.seat === 1 ? o.seat : 1 - L.p; const P = s.P[t]; if (E.avatars(P) >= 4 || P.av.length >= 6) throw new RuleError("Avatar Zone เต็ม"); s.P[L.p].av.splice(L.idx, 1); P.av.push(L.x); E.log(s, by, `${s.P[t].name} ได้ควบคุม ${E.name(s, L.x)}`); return; }
@@ -341,6 +364,24 @@ export const E = {
     }
   },
 };
+// card filter used by search/scout/fromHell: {name, symbol, type: "A"|"M"|"C", color, maxCost}
+export function matchCard(d, o) {
+  if (o.name && !String(d.n || "").includes(o.name)) return false;
+  if (o.names && !o.names.some((n) => String(d.n || "").includes(n))) return false;
+  if (o.symbol && !String(d.sy || "").includes(o.symbol)) return false;
+  if (o.type && d.t !== o.type) return false;
+  if (o.color && d.co !== o.color) return false;
+  if (o.maxCost != null && (d.c || 0) > o.maxCost) return false;
+  return true;
+}
+// POWER bonus a Modification gives the Avatar wearing it ("Avatar ที่สวมใส่การ์ดใบนี้ POWER +N")
+const mbCache = new Map();
+export function modBonus(t) {
+  if (!t) return 0; if (mbCache.has(t)) return mbCache.get(t);
+  let v = 0; const line = t.split(/\n/).find((l) => /สวมใส่การ์ดใบนี้/.test(l) && /POWER\s*\+\s*\d+/.test(l));
+  if (line) { const head = line.slice(0, line.search(/POWER\s*\+/)); if (!/ถ้า|หาก|เมื่อ|ในช่วง|ใน Battle/.test(head)) { const m = line.match(/POWER\s*\+\s*(\d+)/); v = +m[1]; } }
+  mbCache.set(t, v); return v;
+}
 export function act(s, a, p) { const n = clone(s); E.apply(n, a, p); return n; }
 
 // legal moves for AI/coach
