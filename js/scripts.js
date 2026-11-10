@@ -315,7 +315,7 @@ const weakOtaFirst = (E, s) => (a, b) => (E.def(s, a).pw || 0) - (E.def(s, b).pw
 const bestIdol = (c, except) => c.s.P[c.seat].av.filter((x) => idol(c.E, c.s, x) && (!except || x.i !== except)).sort((a, b) => otaOn(c.E, c.s, a).length - otaOn(c.E, c.s, b).length || c.E.power(c.s, b) - c.E.power(c.s, a));
 const destroyOtaCost = (c, n) => c.choose(myOta(c.E, c.s, c.seat).sort(weakOtaFirst(c.E, c.s)), n, `ค่าความสามารถ: เลือกโอตะที่สวมใส่ให้ไอดอลเพื่อทำลาย (${n} ใบ)`, { exact: true });
 // the two-mode ability every โอตะ Avatar has: go onto an idol, or come back down to the Avatar Zone
-const otaku = (extra = {}) => ({ ...extra,
+const otaku = (extra = {}) => ({ botHold: (E, s, x, p) => (s.P[p].av.some((h) => idol(E, s, h)) ? 1 : -2), ...extra, // the bot brings fans out only when an idol is there to wear them
   activate: { label: "โอตะ: สวมใส่ให้ไอดอล / ลงจากการสวมใส่",
     can: (E, s, x, L) => (L.z === "av" && s.P[L.p].av.some((h) => h.i !== x.i && idol(E, s, h))) || (L.z === "mg" && x.on && !s.P[L.p].bot && E.avatars(s.P[L.p]) < 4),
     run: (c) => { const L = c.E.locate(c.s, c.self.i);
