@@ -95,6 +95,8 @@ const uniq = (E, s, list) => { const seen = new Set(); return list.filter((x) =>
 const strongFirst = (E, s) => (a, b) => E.power(s, b) - E.power(s, a);
 function traveller(bonus, drawOnExile) {
   return {
+    // the bot keeps a traveller in hand until a story form is there to turn into (unless the board is empty)
+    botHold: (E, s, x, p) => (s.P[p].hand.some((y) => story(E, s, y) && (E.def(s, y).c || 0) === 6) ? 1.5 : s.P[p].av.length ? -3 : 0),
     activate: {
       label: "แปลงร่างเป็นเรื่องราว (Cost 6 จากมือ)", battle: true,
       can: (E, s, x, L) => L.z === "av" && s.P[L.p].hand.some((y) => story(E, s, y) && (E.def(s, y).c || 0) === 6),
@@ -106,6 +108,8 @@ function traveller(bonus, drawOnExile) {
     },
   };
 }
+// a story form is only worth keeping in the opening hand next to a traveller that can bring it out
+const storyKeep = (E, s, x, hand) => hand.some((y) => nm(E, s, y, "นักท่องเรื่องราว"));
 const virusMill = (c, n) => { const top = [0, 1].flatMap((q) => c.s.P[q].deck.slice(0, n)); return { ops: [0, 1].map((q) => ({ op: "mill", seat: q, n, virus: true })), avatars: top.filter((x) => isAv(c.E, c.s, x)).length }; };
 const fromDark = {
   label: "อัญเชิญจากมิติมืด (ทิ้งการ์ดบนมือ 2 ใบ)",
@@ -117,7 +121,7 @@ Object.assign(SCRIPTS, {
   "BT09-042": traveller(0, true),   // นักท่องเรื่องราว ขวัญตา: draws 1 when exiled from the field
   "BT11-048": traveller(1, false),  // นักท่องเรื่องราว มายา: the summoned story gets POWER +1
   // ขวัญตา เรื่องราว ราชาแห่งนาค
-  "BT09-043": {
+  "BT09-043": { mullKeep: storyKeep,
     aura: (E, s, src, L) => (src.story && L.z === "av" ? [{ seat: L.p, test: (x) => x.i === src.i, n: Math.floor(E.magicInHell(s, L.p) / 2) }] : []),
     activate: { label: "ทิ้ง 1 ใบ: นำ Skill จากนรกขึ้นมือ",
       can: (E, s, x, L) => x.story && L.z === "av" && s.P[L.p].hand.length > 0 && s.P[L.p].hell.some((y) => skill(E, s, y)),
@@ -126,26 +130,26 @@ Object.assign(SCRIPTS, {
         return { explain: `ทิ้ง ${c.E.name(c.s, d)} · นำ ${c.E.name(c.s, k)} ขึ้นมือ`, ops: [{ op: "discard", seat: c.seat, iids: [d.i] }, { op: "move", i: k.i, to: "hand" }] }; } },
   },
   // ขวัญตา เรื่องราว ครุฑเจ้าเวหา
-  "BT09-044": { storyOnly: true,
+  "BT09-044": { mullKeep: storyKeep, storyOnly: true,
     attack: (c) => { if (!c.self || !c.self.story) return { explain: "ไม่ได้มาจากนักท่องเรื่องราว", ops: [] };
       const k = c.choose(uniq(c.E, c.s, c.s.P[c.seat].deck.filter((y) => skill(c.E, c.s, y))), 1, "นำ Skill จาก Deck ลงนรก (เพิ่ม Magic ในนรก)", { optional: true })[0];
       return k ? { explain: `ส่ง ${c.E.name(c.s, k)} จาก Deck ลงนรก แล้วสับ`, ops: [{ op: "move", i: k.i, to: "hell" }, { op: "shuffle", seat: c.seat }] } : { explain: "ไม่ส่ง Skill ลงนรก", ops: [] }; },
   },
   // มายา เรื่องราว เทพเจ้าสายฟ้า
-  "BT11-049": { storyOnly: true,
+  "BT11-049": { mullKeep: storyKeep, storyOnly: true,
     summon: (c) => { if (!c.self || !c.self.story) return { explain: "ไม่ได้มาจากนักท่องเรื่องราว", ops: [] };
       const k = c.choose(uniq(c.E, c.s, c.s.P[c.seat].deck.filter((y) => skill(c.E, c.s, y))), 1, "เลือก Skill จาก Deck ขึ้นมือ")[0];
       return k ? { explain: `นำ ${c.E.name(c.s, k)} ขึ้นมือ แล้วสับ Deck`, ops: [{ op: "search", seat: c.seat, take: k.i, to: "hand" }] } : { explain: "ไม่มี Skill ใน Deck", ops: [] }; },
     onMagic: (E, s, x, L) => (x.story && L.z === "av" && x.used !== "m" + s.turn ? ((x.used = "m" + s.turn), [{ op: "power", i: x.i, n: 1, temp: true }]) : []),
   },
   // ขวัญตา เรื่องราว ตำนานอมตะ: mill 2 instead of being destroyed; survives if both are Magic
-  "BT12-048": {
+  "BT12-048": { mullKeep: storyKeep,
     wouldDestroy: (E, s, x, L) => { if (!x.story) return false; const P = s.P[L.p]; const two = P.deck.slice(0, 2);
       E.ops(s, [{ op: "mill", seat: L.p, n: 2 }], L.p); const ok = two.length === 2 && two.every((y) => isMagic(E, s, y));
       E.log(s, L.p, ok ? `${E.name(s, x)} ไม่ถูกทำลาย (ธรณีสูบได้ Magic ทั้ง 2 ใบ)` : `${E.name(s, x)} ธรณีสูบแล้วไม่ได้ Magic ครบ 2 ใบ`); return ok; },
   },
   // ขวัญตา เรื่องราว ผู้กำหนดชีวิต
-  "BT12-049": {
+  "BT12-049": { mullKeep: storyKeep,
     aura: (E, s, src, L) => { if (!src.story || L.z !== "av") return []; const n = Math.floor(E.magicInHell(s, L.p) / 2); return n ? [0, 1].map((q) => ({ seat: q, test: (x) => !String(E.def(s, x).x || "").trim(), n: -n })) : []; },
     activate: { label: "ทำความเสียหาย LIFE เรา 1: ให้ Avatar ฝ่ายตรงข้ามเสียความสามารถ", battle: true,
       can: (E, s, x, L) => x.story && L.z === "av" && s.phase === "battle" && s.P[1 - L.p].av.length > 0 && s.P[L.p].life.some((y) => !y.up),

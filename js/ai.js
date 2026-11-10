@@ -1,10 +1,10 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261111041631";
-import { plain } from "./persona.js?v=20261111041631";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261111041631";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261111041631";
-import { Data } from "./fb.js?v=20261111041631";
-import { lsGet, clone } from "./util.js?v=20261111041631";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261111042705";
+import { plain } from "./persona.js?v=20261111042705";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261111042705";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261111042705";
+import { Data } from "./fb.js?v=20261111042705";
+import { lsGet, clone } from "./util.js?v=20261111042705";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -128,7 +128,7 @@ export const H = {
   mulligan(s, p) {
     const P = s.P[p]; const cheap = P.hand.filter((x) => { const d = E.def(s, x); return d.t === "A" && (d.c || 0) <= 3; });
     if (cheap.length >= 2) return [];
-    return P.hand.filter((x) => { const d = E.def(s, x); return (d.c || 0) >= 5 && !d.o1; }).map((x) => x.i);
+    return P.hand.filter((x) => { const d = E.def(s, x); const sc = scriptOf(s, x); if (sc && sc.mullKeep && sc.mullKeep(E, s, x, P.hand)) return false; return (d.c || 0) >= 5 && !d.o1; }).map((x) => x.i);
   },
   pick(s, p) {
     const moves = legalMoves(s, p); if (!moves.length) return null;
@@ -153,18 +153,19 @@ export const H = {
         const x = P.hand.find((y) => y.i === a.i) || (a.from === "hell" ? P.hell.find((y) => y.i === a.i) : null); if (!x) continue; const d = E.def(s, x);
         const payLoss = (a.pay || []).reduce((t, i) => t + H.value(s, P.hand.find((y) => y.i === i)), 0);
         let sc = -99;
-        if (a.type === "summon") { const fx = d.x && /จุติ/.test(d.x) ? H.opsScore(s, p, H.preview(s, { i: x.i, c: x.c, when: "summon", seat: p, exact: true })) : 0; sc = (d.pw || 0) + 2 + Math.max(0, fx) - payLoss * 0.45 + (P.av.length < 2 ? 3 : 0); }
+        let bias = 0; { const sx = scriptOf(s, x); if (sx && sx.botHold) bias = sx.botHold(E, s, x, p) || 0; } // a card that is better kept in hand for now
+        if (a.type === "summon") { const fx = d.x && /จุติ/.test(d.x) ? H.opsScore(s, p, H.preview(s, { i: x.i, c: x.c, when: "summon", seat: p, exact: true })) : 0; sc = (d.pw || 0) + 2 + Math.max(0, fx) - payLoss * 0.45 + (P.av.length < 2 ? 3 : 0) + bias; }
         else if (a.type === "build") sc = 3 - payLoss * 0.3;
         else if (a.type === "cast" && d.st === "L") sc = E.lands(s).some((l) => l.o === p) || (E.lands(s).length && !E.landSc(s, "splitLand")) ? -1 : 2.5;
         else if (a.type === "cast" && d.st === "D") { const host = P.av.find((y) => y.i === a.on); const sm = scriptOf(s, x); const b = sm && sm.modV ? sm.modV(E, s, x, host) : modBonus(d.x); sc = b > 0 && host ? b + (host.a ? 1.5 : 0) + E.power(s, host) * 0.1 : -1; }
         else if (a.type === "cast" && d.st === "N") sc = H.opsScore(s, p, H.preview(s, { i: x.i, c: x.c, when: "cast", seat: p }));
         if (a.via != null) sc += 4; // ซาร์อึก: a dragon for almost nothing
-        cand.push({ m, sc });
+        cand.push({ m, sc, bias });
       }
       cand.sort((a, b) => b.sc - a.sc);
       if (H.look && cand.length) { const top = cand.filter((z) => z.sc > -20).slice(0, H.look);
         for (const z of top) z.lv = H.lookahead(s, p, z.m.a);
-        const ranked = top.filter((z) => z.lv != null).map((z) => ({ ...z, tot: z.lv + z.sc * 0.25 })).sort((a, b) => b.tot - a.tot);
+        const ranked = top.filter((z) => z.lv != null).map((z) => ({ ...z, tot: z.lv + z.sc * 0.25 + (z.bias || 0) })).sort((a, b) => b.tot - a.tot);
         if (ranked.length) return ranked[0].tot >= 0.9 || (ranked[0].sc >= 1.5 && ranked[0].lv > -1) ? ranked[0].m : moves.find((m) => m.a.type === "battle"); }
       if (cand.length && cand[0].sc >= 1.5) return cand[0].m;
       return moves.find((m) => m.a.type === "battle");
