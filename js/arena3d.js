@@ -1,8 +1,8 @@
-// 3D duel arena (three.js r128 + GSAP). Kenney particle textures and Poly Haven stone are CC0.
-import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111032430";
-import { E } from "./engine.js?v=20261111032430";
-import { h } from "./util.js?v=20261111032430";
-import { Sfx } from "./sfx.js?v=20261111032430";
+// 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
+import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111034325";
+import { E } from "./engine.js?v=20261111034325";
+import { h } from "./util.js?v=20261111034325";
+import { Sfx } from "./sfx.js?v=20261111034325";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -27,37 +27,25 @@ function mount(container) {
   const FX = {}; ["magic_02", "magic_04", "magic_05", "spark_05", "spark_06", "slash_02", "circle_05", "smoke_03", "light_02", "star_06", "trace_01", "flare_01", "twirl_02"].forEach((n) => (FX[n] = tex("assets/fx/" + n + ".png")));
   R = { container, canvas, renderer, scene, camera, loader, FX, meshes: new Map(), texCache: new Map(), labels: new Map(), queue: Promise.resolve(), lastEv: 0, camBase: new THREE.Vector3(0, 11, 9.6), look: new THREE.Vector3(0, 0, 0.4), off: new THREE.Vector3(), alive: true, onHover: null, onClick: null, hovered: null, view: 0 };
 
-  scene.add(new THREE.HemisphereLight(0x6f86c9, 0x120c08, 0.55));
-  const key = new THREE.DirectionalLight(0xffe2b0, 1.15); key.position.set(4, 12, 7); key.castShadow = true; key.shadow.mapSize.set(1024, 1024);
+  scene.add(new THREE.HemisphereLight(0xffe2c0, 0x140a06, 0.5));
+  const key = new THREE.DirectionalLight(0xffe2b0, 1.1); key.position.set(4, 12, 7); key.castShadow = true; key.shadow.mapSize.set(1024, 1024);
   Object.assign(key.shadow.camera, { left: -9, right: 9, top: 9, bottom: -9, near: 1, far: 30 }); scene.add(key);
-  const rim = new THREE.DirectionalLight(0x7f9cff, 0.5); rim.position.set(-6, 6, -10); scene.add(rim);
-  R.goldL = new THREE.PointLight(0xffb84a, 1.3, 13, 2); R.goldL.position.set(0, 2.6, 3.6); scene.add(R.goldL);
-  R.redL = new THREE.PointLight(0xff3b45, 1.1, 13, 2); R.redL.position.set(0, 2.6, -4.2); scene.add(R.redL);
+  const rim = new THREE.DirectionalLight(0x9fb4ff, 0.2); rim.position.set(-6, 6, -10); scene.add(rim);
+  R.goldL = new THREE.PointLight(0xffb84a, 0.8, 16, 2); R.goldL.position.set(0, 4.2, 3.6); scene.add(R.goldL);
+  R.redL = new THREE.PointLight(0xff4a3a, 0.55, 16, 2); R.redL.position.set(0, 4.2, -4.4); scene.add(R.redL);
 
-  const floor = tex("assets/tex/floor.jpg"); floor.wrapS = floor.wrapT = THREE.RepeatWrapping; floor.repeat.set(3.2, 3.2);
-  const nor = tex("assets/tex/floor_nor.jpg", false); nor.wrapS = nor.wrapT = THREE.RepeatWrapping; nor.repeat.set(3.2, 3.2);
-  const topMat = new THREE.MeshStandardMaterial({ map: floor, normalMap: nor, color: 0x3a3f50, roughness: 0.86, metalness: 0.1 });
-  const sideMat = new THREE.MeshStandardMaterial({ color: 0x151a2a, roughness: 0.5, metalness: 0.55 });
-  const platform = new THREE.Mesh(new THREE.CylinderGeometry(7.6, 8.3, 0.8, 120), [sideMat, topMat, sideMat]); platform.position.y = -0.4; platform.receiveShadow = true; scene.add(platform);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(7.62, 0.055, 10, 220), new THREE.MeshBasicMaterial({ color: 0xffc35a })); ring.rotation.x = Math.PI / 2; ring.position.y = 0.01; scene.add(ring);
-  const ring2 = ring.clone(); ring2.material = new THREE.MeshBasicMaterial({ color: 0x8a6420 }); ring2.scale.setScalar(1.09); ring2.position.y = -0.38; scene.add(ring2);
-  const plane = (map, size, color, opacity, y) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshBasicMaterial({ map, color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.y = y; scene.add(m); return m; };
-  R.rune = plane(runeTexture(), 14.6, 0xffb44a, 0.32, 0.015);
-  R.sigil = plane(FX.magic_04, 6.5, 0x8fb0ff, 0.26, 0.02);
-  R.sigil2 = plane(FX.magic_02, 3.2, 0xffc35a, 0.28, 0.025); R.sigil2.position.z = -0.2;
-  const div = new THREE.Mesh(new THREE.PlaneGeometry(12.5, 0.06), new THREE.MeshBasicMaterial({ color: 0xffc35a, transparent: true, opacity: 0.65, blending: THREE.AdditiveBlending, depthWrite: false })); div.rotation.x = -Math.PI / 2; div.position.set(0, 0.03, -0.2); scene.add(div); R.div = div;
-
-  R.obelisks = [];
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2 + Math.PI / 8; const r = 11.5 + (i % 2) * 1.2; const g = new THREE.Group(); g.position.set(Math.cos(a) * r, 0, Math.sin(a) * r - 1.5);
-    const ob = new THREE.Mesh(new THREE.ConeGeometry(0.55, 3.6 + (i % 3) * 0.8, 5), new THREE.MeshStandardMaterial({ color: 0x1b2032, roughness: 0.35, metalness: 0.6, flatShading: true })); ob.position.y = 1.4; ob.castShadow = true; g.add(ob);
-    const cr = new THREE.Mesh(new THREE.OctahedronGeometry(0.34), new THREE.MeshStandardMaterial({ color: 0xffc35a, emissive: i % 2 ? 0xff3b45 : 0xffb84a, emissiveIntensity: 1.8, roughness: 0.2 })); cr.position.y = 4.4 + (i % 3) * 0.6; g.add(cr);
-    const halo = sprite(FX.light_02, i % 2 ? 0xff5560 : 0xffc35a, 2.2, cr.position, 0.5, g);
-    scene.add(g); R.obelisks.push({ g, cr, halo, ph: Math.random() * 6 });
-  }
-  const small = innerWidth < 760;
-  R.embers = points(small ? 110 : 240, 0xffb35a, 0.22, FX.spark_05, 10);
-  R.motes = points(small ? 50 : 130, 0x8fb0ff, 0.12, FX.star_06, 12);
+  // the play mat: black lacquer with gold-leaf line-work (ลายรดน้ำ), stepped corners (ย่อมุม) round every zone
+  const small = innerWidth < 760; const mt = matTextures(small);
+  R.matMat = new THREE.MeshStandardMaterial({ map: mt.base, emissiveMap: mt.glow, emissive: new THREE.Color(0xe0982c), emissiveIntensity: 0.2, roughness: 0.52, metalness: 0 });
+  const top = new THREE.Mesh(new THREE.PlaneGeometry(MW, MD), R.matMat); top.rotation.x = -Math.PI / 2; top.position.set(0, 0, MZ); top.receiveShadow = true; scene.add(top);
+  const lacq = new THREE.MeshStandardMaterial({ color: 0x5a1812, roughness: 0.34, metalness: 0 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(MW, 0.28, MD), lacq); body.position.set(0, -0.18, MZ); body.receiveShadow = true; scene.add(body);
+  const trimM = new THREE.MeshStandardMaterial({ color: 0xc99a3e, emissive: 0x7a5414, emissiveIntensity: 0.6, roughness: 0.35, metalness: 0.3 });
+  for (const [w, d, x, z] of [[MW + 0.08, 0.05, 0, MZ - MD / 2], [MW + 0.08, 0.05, 0, MZ + MD / 2], [0.05, MD, -MW / 2, MZ], [0.05, MD, MW / 2, MZ]]) { const t = new THREE.Mesh(new THREE.BoxGeometry(w, 0.05, d), trimM); t.position.set(x, 0.005, z); scene.add(t); }
+  const shade = new THREE.Mesh(new THREE.PlaneGeometry(MW * 1.9, MD * 1.9), new THREE.MeshBasicMaterial({ map: softShadow(), transparent: true, depthWrite: false })); shade.rotation.x = -Math.PI / 2; shade.position.set(0, -0.31, MZ); scene.add(shade);
+  // the centre band lights up when the Battle Phase starts
+  const div = new THREE.Mesh(new THREE.PlaneGeometry(MW - 3.4, 0.62), new THREE.MeshBasicMaterial({ map: R.FX.light_02, color: 0xffc35a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })); div.rotation.x = -Math.PI / 2; div.position.set(1.2, 0.02, MZ); scene.add(div); R.div = div;
+  R.motes = points(small ? 34 : 80, 0xffd27a, 0.1, FX.star_06, 9);
   R.lifeT = new THREE.Mesh(new THREE.OctahedronGeometry(0.55), new THREE.MeshStandardMaterial({ color: 0xff7a80, emissive: 0xff2a3a, emissiveIntensity: 1.6, roughness: 0.15 })); R.lifeT.position.set(0, 1, -4.7); R.lifeT.visible = false; scene.add(R.lifeT);
   R.lifeHalo = sprite(FX.light_02, 0xff4a52, 3.2, R.lifeT.position, 0.5); R.lifeHalo.visible = false;
   R.frame = frameTexture(); R.backTex = backTexture();
@@ -95,9 +83,7 @@ function mount(container) {
     if (!R || !R.alive) return;
     const dt = Math.min(0.05, clock.getDelta()), t = clock.elapsedTime;
     if (!reduce) {
-      R.rune.rotation.z = t * 0.03; R.sigil.rotation.z = -t * 0.06; R.sigil2.rotation.z = t * 0.12; R.rune.material.opacity = 0.3 + Math.sin(t * 1.3) * 0.06;
-      for (const o of R.obelisks) { o.g.position.y = Math.sin(t * 0.6 + o.ph) * 0.25; o.cr.rotation.y = t * 0.8 + o.ph; o.halo.material.opacity = 0.4 + Math.sin(t * 2 + o.ph) * 0.15; }
-      for (const pts of [R.embers, R.motes]) { const a = pts.geometry.attributes.position.array, sp = pts.userData.sp; for (let i = 0; i < sp.length; i++) { a[i * 3 + 1] += sp[i] * 60 * dt * (pts === R.motes ? 0.35 : 1); a[i * 3] += Math.sin(t + i) * 0.002; if (a[i * 3 + 1] > 9) a[i * 3 + 1] = 0; } pts.geometry.attributes.position.needsUpdate = true; }
+      for (const pts of [R.motes]) { const a = pts.geometry.attributes.position.array, sp = pts.userData.sp; for (let i = 0; i < sp.length; i++) { a[i * 3 + 1] += sp[i] * 60 * dt * (pts === R.motes ? 0.35 : 1); a[i * 3] += Math.sin(t + i) * 0.002; if (a[i * 3 + 1] > 9) a[i * 3 + 1] = 0; } pts.geometry.attributes.position.needsUpdate = true; }
       R.lifeT.rotation.y = t * 1.2; R.lifeT.position.y = 1 + Math.sin(t * 2) * 0.12; R.lifeHalo.position.copy(R.lifeT.position);
       for (const m of R.meshes.values()) if (m.pulse) m.glow.material.opacity = 0.4 + Math.sin(t * 6) * 0.25;
     }
@@ -108,7 +94,7 @@ function mount(container) {
   };
   tick();
   gsap.from(R.camBase, { y: 22, z: 18, duration: reduce ? 0 : 2, ease: "power3.out" });
-  gsap.from(R.rune.scale, { x: 0.2, y: 0.2, z: 0.2, duration: reduce ? 0 : 1.6, ease: "power3.out" });
+  gsap.from(R.matMat, { emissiveIntensity: 0, duration: reduce ? 0 : 1.8, ease: "power2.out" }); // the gold leaf catches the light once
 }
 function unmount() {
   if (!R) return; R.alive = false; removeEventListener("resize", R.resize);
@@ -128,16 +114,76 @@ function points(n, color, size, map, spread) {
   const pts = new THREE.Points(g, new THREE.PointsMaterial({ color, size, map, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.9 }));
   pts.userData.sp = sp; R.scene.add(pts); return pts;
 }
-function runeTexture() {
-  const c = document.createElement("canvas"); c.width = c.height = 1024; const g = c.getContext("2d");
-  g.translate(512, 512); g.strokeStyle = g.fillStyle = "rgba(255,214,140,1)"; g.lineCap = "round";
-  const ring = (r, w) => { g.lineWidth = w; g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.stroke(); };
-  ring(500, 6); ring(480, 2); ring(390, 3); ring(250, 2); ring(236, 5);
-  for (let i = 0; i < 72; i++) { g.save(); g.rotate((i / 72) * Math.PI * 2); g.lineWidth = i % 6 ? 2 : 5; g.beginPath(); g.moveTo(0, -480); g.lineTo(0, i % 6 ? -462 : -440); g.stroke(); g.restore(); }
-  g.font = "600 34px sans-serif"; g.textAlign = "center"; const gl = "ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊᛏᛒᛖᛗᛚᛜᛞᛟ";
-  for (let i = 0; i < 24; i++) { g.save(); g.rotate((i / 24) * Math.PI * 2); g.fillText(gl[i], 0, -425); g.restore(); }
-  for (let k = 0; k < 2; k++) { g.lineWidth = 3; g.beginPath(); for (let i = 0; i <= 3; i++) { const a = -Math.PI / 2 + k * Math.PI + (i * 2 * Math.PI) / 3; const p = [Math.cos(a) * 390, Math.sin(a) * 390]; i ? g.lineTo(...p) : g.moveTo(...p); } g.stroke(); }
-  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return t;
+// ---------- lacquer and gold leaf ----------
+// world ↔ mat canvas: x ∈ [-MW/2, MW/2], z ∈ [MZ - MD/2, MZ + MD/2]; the top of the canvas is the opponent's side
+const MW = 15.4, MD = 11.6, MZ = -0.2;
+const GOLD = "#d8a84a";
+// a frame with stepped corners (ย่อมุม), the corner shape of Thai thrones and temple bases
+function stepPath(g, x0, y0, x1, y1, st) {
+  g.beginPath(); g.moveTo(x0 + 2 * st, y0); g.lineTo(x1 - 2 * st, y0); g.lineTo(x1 - 2 * st, y0 + st); g.lineTo(x1 - st, y0 + st); g.lineTo(x1 - st, y0 + 2 * st); g.lineTo(x1, y0 + 2 * st);
+  g.lineTo(x1, y1 - 2 * st); g.lineTo(x1 - st, y1 - 2 * st); g.lineTo(x1 - st, y1 - st); g.lineTo(x1 - 2 * st, y1 - st); g.lineTo(x1 - 2 * st, y1);
+  g.lineTo(x0 + 2 * st, y1); g.lineTo(x0 + 2 * st, y1 - st); g.lineTo(x0 + st, y1 - st); g.lineTo(x0 + st, y1 - 2 * st); g.lineTo(x0, y1 - 2 * st);
+  g.lineTo(x0, y0 + 2 * st); g.lineTo(x0 + st, y0 + 2 * st); g.lineTo(x0 + st, y0 + st); g.lineTo(x0 + 2 * st, y0 + st); g.closePath();
+}
+// ประจำยาม: the four-petal flower that sits on Thai borders and door panels
+function prajamyam(g, cx, cy, r, ground) {
+  g.beginPath();
+  for (let k = 0; k < 4; k++) { const a = (k * Math.PI) / 2 - Math.PI / 2; const P = (d, da) => [cx + Math.cos(a + da) * d, cy + Math.sin(a + da) * d];
+    g.moveTo(cx, cy); g.quadraticCurveTo(...P(r * 0.72, -0.62), ...P(r, 0)); g.quadraticCurveTo(...P(r * 0.72, 0.62), cx, cy); }
+  g.fill();
+  for (let k = 0; k < 4; k++) { const a = (k * Math.PI) / 2 + Math.PI / 4; g.beginPath(); g.arc(cx + Math.cos(a) * r * 0.62, cy + Math.sin(a) * r * 0.62, r * 0.09, 0, 7); g.fill(); }
+  if (ground) { const f = g.fillStyle; g.fillStyle = ground; g.beginPath(); g.moveTo(cx, cy - r * 0.2); g.lineTo(cx + r * 0.2, cy); g.lineTo(cx, cy + r * 0.2); g.lineTo(cx - r * 0.2, cy); g.closePath(); g.fill(); g.fillStyle = f; }
+}
+function matTextures(small) {
+  const S = small ? 84 : 128; const CW = Math.round(MW * S), CH = Math.round(MD * S);
+  const mk = () => { const c = document.createElement("canvas"); c.width = CW; c.height = CH; return c; };
+  const base = mk(), glow = mk(); const g = base.getContext("2d"), q = glow.getContext("2d");
+  const X = (x) => (x + MW / 2) * S, Y = (z) => (z - MZ + MD / 2) * S, U = (v) => v * S;
+  const LAC = "#120b09";
+  // lacquer: a warm black with a soft pool of light, flecks of gold leaf, red lacquer creeping in on the opponent's side
+  g.fillStyle = LAC; g.fillRect(0, 0, CW, CH); q.fillStyle = "#000"; q.fillRect(0, 0, CW, CH);
+  let gr = g.createRadialGradient(CW / 2, CH * 0.55, CW * 0.05, CW / 2, CH * 0.55, CW * 0.62); gr.addColorStop(0, "rgba(64,38,28,.55)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, 0, CW, CH);
+  gr = g.createLinearGradient(0, 0, 0, CH * 0.42); gr.addColorStop(0, "rgba(150,34,24,.30)"); gr.addColorStop(1, "rgba(150,34,24,0)"); g.fillStyle = gr; g.fillRect(0, 0, CW, CH * 0.42);
+  gr = g.createLinearGradient(0, CH, 0, CH * 0.6); gr.addColorStop(0, "rgba(216,168,74,.10)"); gr.addColorStop(1, "rgba(216,168,74,0)"); g.fillStyle = gr; g.fillRect(0, CH * 0.6, CW, CH * 0.4);
+  for (let k = 0; k < CW * CH / 900; k++) { const v = Math.random(); g.fillStyle = v < 0.5 ? "rgba(255,255,255,.018)" : "rgba(0,0,0,.05)"; g.fillRect(Math.random() * CW, Math.random() * CH, 1 + Math.random() * 2, 1 + Math.random() * 2); }
+  for (let k = 0; k < (small ? 260 : 520); k++) { const x = Math.random() * CW, y = Math.random() * CH, r = Math.random() * 1.6 + 0.4, a = Math.random() * 0.22 + 0.04; g.fillStyle = `rgba(232,186,92,${a})`; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); q.fillStyle = `rgba(255,255,255,${a * 0.6})`; q.beginPath(); q.arc(x, y, r, 0, 7); q.fill(); }
+  // everything gilded is drawn twice: in gold on the mat, in white on the glow map
+  const gild = (fn) => { for (const [c, col] of [[g, GOLD], [q, "#fff"]]) { c.save(); c.strokeStyle = c.fillStyle = col; c.lineJoin = "miter"; fn(c, c === g ? LAC : "#000"); c.restore(); } };
+  const frame = (c, x0, z0, x1, z1, st, w = 0.035) => { c.lineWidth = U(w); stepPath(c, X(x0), Y(z0), X(x1), Y(z1), U(st)); c.stroke(); c.lineWidth = U(w * 0.38); stepPath(c, X(x0) + U(0.1), Y(z0) + U(0.1), X(x1) - U(0.1), Y(z1) - U(0.1), U(st * 0.8)); c.stroke(); };
+  const label = (c, text, x, z, flip, align = "left", size = 0.19) => { c.save(); c.translate(X(x), Y(z)); if (flip) c.rotate(Math.PI); c.font = `600 ${U(size)}px "Chakra Petch", "IBM Plex Sans Thai", sans-serif`; c.textAlign = align; c.textBaseline = "middle"; c.globalAlpha = 0.8; c.fillText(text, 0, 0); c.restore(); };
+  const inLabel = (c, text, x0, z0, x1, z1, flip) => (flip ? label(c, text, x1 - 0.32, z1 - 0.3, true) : label(c, text, x0 + 0.32, z0 + 0.3, false));
+  const draw = () => gild((c, ground) => {
+    // the mat's border: a double rule with a row of saw teeth (ฟันปลา) between
+    const e = 0.2; c.lineWidth = U(0.045); stepPath(c, X(-MW / 2 + e), Y(MZ - MD / 2 + e), X(MW / 2 - e), Y(MZ + MD / 2 - e), U(0.22)); c.stroke();
+    c.lineWidth = U(0.016); stepPath(c, X(-MW / 2 + e + 0.24), Y(MZ - MD / 2 + e + 0.24), X(MW / 2 - e - 0.24), Y(MZ + MD / 2 - e - 0.24), U(0.17)); c.stroke();
+    const tooth = 0.17, th = 0.1; const side = (x0, z0, x1, z1, nx, nz) => { const L = Math.hypot(x1 - x0, z1 - z0), n = Math.floor(L / tooth), dx = (x1 - x0) / n, dz = (z1 - z0) / n;
+      c.beginPath(); for (let k = 0; k < n; k++) { const ax = x0 + dx * k, az = z0 + dz * k; c.moveTo(X(ax), Y(az)); c.lineTo(X(ax + dx / 2 + nx * th), Y(az + dz / 2 + nz * th)); c.lineTo(X(ax + dx), Y(az + dz)); } c.fill(); };
+    const i0 = e + 0.07, xa = -MW / 2 + i0 + 0.5, xb = MW / 2 - i0 - 0.5, za = MZ - MD / 2 + i0 + 0.5, zb = MZ + MD / 2 - i0 - 0.5;
+    side(xa, MZ - MD / 2 + i0, xb, MZ - MD / 2 + i0, 0, 1); side(xa, MZ + MD / 2 - i0, xb, MZ + MD / 2 - i0, 0, -1); side(-MW / 2 + i0, za, -MW / 2 + i0, zb, 1, 0); side(MW / 2 - i0, za, MW / 2 - i0, zb, -1, 0);
+    // zones, mine near and the opponent's far (their labels face them)
+    for (const [zs, flip] of [[1, false], [-1, true]]) {
+      const zc = zs > 0 ? 2.15 : -2.55, zo = zs > 0 ? 4.17 : -4.5;
+      frame(c, -4.35, zc - 1.18, 4.35, zc + 1.18, 0.16); inLabel(c, "Avatar Zone", -4.35, zc - 1.18, 4.35, zc + 1.18, flip);
+      prajamyam(c, X(0), Y(zc - zs * 1.18), U(0.2), ground); prajamyam(c, X(0), Y(zc + zs * 1.18), U(0.13), ground);
+      frame(c, -5.8, zo - 0.76, -1.8, zo + 0.76, 0.11, 0.028); inLabel(c, "Construct Zone", -5.8, zo - 0.76, -1.8, zo + 0.76, flip);
+      frame(c, -1.2, zo - 0.76, 5.8, zo + 0.76, 0.11, 0.028); inLabel(c, "Magic Zone", -1.2, zo - 0.76, 5.8, zo + 0.76, flip);
+    }
+    // Land Magic Zone, shared in the middle on the left; the centre band of ประจำยาม runs from it
+    frame(c, -6.98, MZ - 1.72, -5.12, MZ + 1.72, 0.13, 0.03); label(c, "Land Magic", -6.05, MZ + 1.95, false, "center");
+    c.lineWidth = U(0.022); for (const dz of [-0.24, 0.24]) { c.beginPath(); c.moveTo(X(-4.6), Y(MZ + dz)); c.lineTo(X(6.85), Y(MZ + dz)); c.stroke(); }
+    for (let x = -4.2; x <= 6.6; x += 0.9) prajamyam(c, X(x), Y(MZ), U(0.14), ground);
+    for (const x of [-4.6, 6.85]) prajamyam(c, X(x), Y(MZ), U(0.3), ground);
+  });
+  draw();
+  const tb = new THREE.CanvasTexture(base), tg = new THREE.CanvasTexture(glow); tb.encoding = THREE.sRGBEncoding; tb.anisotropy = 8; tg.anisotropy = 8;
+  // the labels need the display font: redraw once it has loaded
+  if (document.fonts && document.fonts.status !== "loaded") document.fonts.ready.then(() => { if (!R) return; draw(); tb.needsUpdate = true; tg.needsUpdate = true; });
+  return { base: tb, glow: tg };
+}
+function softShadow() {
+  const c = document.createElement("canvas"); c.width = c.height = 256; const g = c.getContext("2d");
+  const gr = g.createRadialGradient(128, 128, 30, 128, 128, 128); gr.addColorStop(0, "rgba(0,0,0,.75)"); gr.addColorStop(0.55, "rgba(0,0,0,.45)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+  return new THREE.CanvasTexture(c);
 }
 function frameTexture() {
   const c = document.createElement("canvas"); c.width = 256; c.height = 340; const g = c.getContext("2d");
@@ -147,13 +193,15 @@ function frameTexture() {
 }
 function backTexture() {
   const c = document.createElement("canvas"); c.width = 256; c.height = 348; const g = c.getContext("2d");
-  const gr = g.createLinearGradient(0, 0, 256, 348); gr.addColorStop(0, "#5a1612"); gr.addColorStop(1, "#8f2721"); g.fillStyle = gr; g.fillRect(0, 0, 256, 348);
-  g.strokeStyle = "#e3b54a"; g.lineWidth = 8; g.strokeRect(10, 10, 236, 328); g.fillStyle = "#f2cc6c"; g.font = "700 46px sans-serif"; g.textAlign = "center"; g.fillText("BoT", 128, 190);
+  const gr = g.createLinearGradient(0, 0, 256, 348); gr.addColorStop(0, "#4a120d"); gr.addColorStop(1, "#7a2018"); g.fillStyle = gr; g.fillRect(0, 0, 256, 348);
+  g.strokeStyle = g.fillStyle = GOLD; g.lineWidth = 6; stepPath(g, 12, 12, 244, 336, 14); g.stroke(); g.lineWidth = 2; stepPath(g, 24, 24, 232, 324, 11); g.stroke();
+  prajamyam(g, 128, 160, 46, "#5c1710"); for (const y of [64, 256]) prajamyam(g, 128, y, 16, "#5c1710");
+  g.font = '700 30px "Chakra Petch", sans-serif'; g.textAlign = "center"; g.fillText("BoT", 128, 300);
   const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return t;
 }
 function tokenTexture(d) {
   const c = document.createElement("canvas"); c.width = 256; c.height = 348; const g = c.getContext("2d");
-  g.fillStyle = "#1d2338"; g.fillRect(0, 0, 256, 348); g.strokeStyle = "#" + colorHex(d.co).toString(16).padStart(6, "0"); g.lineWidth = 10; g.strokeRect(6, 6, 244, 336);
+  g.fillStyle = "#2a1712"; g.fillRect(0, 0, 256, 348); g.strokeStyle = "#" + colorHex(d.co).toString(16).padStart(6, "0"); g.lineWidth = 10; g.strokeRect(6, 6, 244, 336);
   g.fillStyle = "#ffd986"; g.font = "700 30px sans-serif"; g.textAlign = "center"; g.fillText("TOKEN", 128, 70); g.fillStyle = "#fff"; g.font = "600 28px sans-serif"; g.fillText(d.n.slice(0, 12), 128, 180);
   g.font = "700 64px sans-serif"; g.fillStyle = "#ffd986"; g.fillText(String(d.pw || 0), 128, 290);
   const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return t;
@@ -216,7 +264,7 @@ export function popText(pos3, text, color) {
   if (!R) return; const s = toScreen(pos3); const d = h("div", { class: "dmg" }, text); d.style.left = s.x + "px"; d.style.top = s.y + "px"; if (color) d.style.textShadow = `0 0 14px ${color},0 2px 0 #000`;
   document.body.append(d); gsap.fromTo(d, { y: 0, scale: 0.4, opacity: 0 }, { y: -40, scale: 1, opacity: 1, duration: 0.35, ease: "back.out(3)" }); gsap.to(d, { y: -90, opacity: 0, duration: 0.6, delay: 0.55, onComplete: () => d.remove() });
 }
-export function mood(mine) { if (!R) return; gsap.to(R.goldL, { intensity: mine ? 1.3 : 0.6, duration: 0.8 }); gsap.to(R.redL, { intensity: mine ? 1.1 : 1.8, duration: 0.8 }); }
+export function mood(mine) { if (!R) return; gsap.to(R.goldL, { intensity: mine ? 0.95 : 0.5, duration: 0.8 }); gsap.to(R.redL, { intensity: mine ? 0.45 : 0.9, duration: 0.8 }); }
 export function highlight(ids, on = true) { if (!R) return; for (const m of R.meshes.values()) { const hit = ids.includes(m.i); m.pulse = on && hit; if (!m.pulse) gsap.to(m.glow.material, { opacity: m.sel ? 0.7 : 0.2, duration: 0.2 }); } }
 export function setLifeTarget(v) { if (!R) return; R.lifeT.visible = v; R.lifeHalo.visible = v; }
 export function select(i) { if (!R) return; for (const m of R.meshes.values()) { m.sel = m.i === i; gsap.to(m.glow.material, { opacity: m.sel ? 0.7 : 0.2, duration: 0.2 }); gsap.to(m.grp.position, { y: m.restY + (m.sel ? 0.4 : 0), duration: 0.2 }); } }
@@ -313,7 +361,7 @@ async function animateEvent(ev, prev, s, V) {
   } else if (ev.k === "turn") {
     mood(mineSide(ev.p)); Sfx.play("turn", { mine: mineSide(ev.p) }); banner(mineSide(ev.p) ? "YOUR TURN" : s.P[ev.p].name, `เทิร์น ${ev.t}`); await sleepMs(500);
   } else if (ev.k === "battle") {
-    Sfx.play("battle"); banner("BATTLE PHASE", ""); gsap.fromTo(R.div.material, { opacity: 1 }, { opacity: 0.65, duration: 1 });
+    Sfx.play("battle"); banner("BATTLE PHASE", ""); gsap.fromTo(R.div.material, { opacity: 0.9 }, { opacity: 0, duration: 1.4, ease: "power2.out" });
   } else if (ev.k === "over") {
     Sfx.play(ev.w === V ? "win" : "lose"); banner(ev.w === V ? "VICTORY" : "DEFEAT", ""); flash(ev.w === V ? "rgba(255,210,120,.5)" : "rgba(80,0,10,.6)", 0.6);
   }

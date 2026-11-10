@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261111032430";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261111032430";
-import { SCRIPTS } from "./scripts.js?v=20261111032430";
-import { newId, clone } from "./util.js?v=20261111032430";
+import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261111034325";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261111034325";
+import { SCRIPTS } from "./scripts.js?v=20261111034325";
+import { newId, clone } from "./util.js?v=20261111034325";
 export const ZONES = ["deck", "hand", "av", "mg", "cs", "hell", "dark", "life"];
 export const ZONE_TH = { deck: "Deck", hand: "มือ", av: "Avatar Zone", mg: "Magic Zone", cs: "Construct Zone", hell: "นรก", dark: "มิติมืด", life: "LIFE", land: "Land Magic" };
 export const PHASE_TH = { mull: "เปลี่ยนมือ", draw: "Draw", main: "Main", battle: "Battle", end: "End", over: "จบเกม" };

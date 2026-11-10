@@ -1,32 +1,26 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261111032430";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261111032430";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261111032430";
-import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261111032430";
-import { Views, avatarEl } from "./ui.js?v=20261111032430";
-import { Ciel } from "./ai.js?v=20261111032430";
-import "./views/library.js?v=20261111032430";
-import "./views/decks.js?v=20261111032430";
-import "./views/lab.js?v=20261111032430";
-import "./views/history.js?v=20261111032430";
-import "./views/ask.js?v=20261111032430";
-import "./views/play.js?v=20261111032430";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261111034325";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261111034325";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261111034325";
+import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261111034325";
+import { Views, avatarEl } from "./ui.js?v=20261111034325";
+import { Ciel } from "./ai.js?v=20261111034325";
+import "./views/library.js?v=20261111034325";
+import "./views/decks.js?v=20261111034325";
+import "./views/lab.js?v=20261111034325";
+import "./views/history.js?v=20261111034325";
+import "./views/ask.js?v=20261111034325";
+import "./views/play.js?v=20261111034325";
 
 const root = $("#view");
 let current = null, cardsReady = false;
 
-// ---------- background embers (2D, cheap) ----------
+// ---------- background: still flecks of gold leaf on the lacquer (drawn once per size, no animation) ----------
 (function bgfx() {
-  const c = $("#bgfx"), g = c.getContext("2d"); const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let W, H, P = []; const fit = () => { W = c.width = innerWidth; H = c.height = innerHeight; P = Array.from({ length: Math.round((W * H) / 26000) }, () => ({ x: Math.random() * W, y: Math.random() * H, r: Math.random() * 1.6 + 0.4, v: Math.random() * 0.35 + 0.08, a: Math.random() })); };
-  fit(); addEventListener("resize", fit);
-  const tick = () => {
-    if (!document.body.classList.contains("arena-on")) {
-      g.clearRect(0, 0, W, H);
-      for (const p of P) { if (!reduce) { p.y -= p.v; p.x += Math.sin(p.y / 60) * 0.15; if (p.y < -5) { p.y = H + 5; p.x = Math.random() * W; } } g.globalAlpha = 0.25 + 0.5 * Math.abs(Math.sin(p.a += 0.01)); g.fillStyle = p.r > 1.4 ? "#ffcf6a" : "#8fa8ff"; g.beginPath(); g.arc(p.x, p.y, p.r, 0, 7); g.fill(); }
-    }
-    requestAnimationFrame(tick);
-  };
-  tick();
+  const c = $("#bgfx"), g = c.getContext("2d");
+  const fit = () => { const W = (c.width = innerWidth), H = (c.height = innerHeight); g.clearRect(0, 0, W, H);
+    for (let k = 0, n = Math.round((W * H) / 9000); k < n; k++) { g.globalAlpha = 0.05 + Math.random() * 0.22; g.fillStyle = "#e8ba5c"; g.beginPath(); g.arc(Math.random() * W, Math.random() * H, Math.random() * 1.3 + 0.3, 0, 7); g.fill(); }
+    g.globalAlpha = 1; };
+  fit(); let t = 0; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(fit, 150); });
 })();
 
 // ---------- gate screens ----------
