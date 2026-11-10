@@ -1,10 +1,10 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus } from "./engine.js?v=20261110225818";
-import { plain } from "./persona.js?v=20261110225818";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261110225818";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261110225818";
-import { Data } from "./fb.js?v=20261110225818";
-import { lsGet } from "./util.js?v=20261110225818";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus } from "./engine.js?v=20261110230417";
+import { plain } from "./persona.js?v=20261110230417";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261110230417";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261110230417";
+import { Data } from "./fb.js?v=20261110230417";
+import { lsGet } from "./util.js?v=20261110230417";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -152,7 +152,7 @@ export const H = {
         return { m, score: -10 };
       }).filter((z) => z.score > 0).sort((a, b) => b.score - a.score);
       if (atk.length) return atk[0].m;
-      return moves.find((m) => m.a.type === "end");
+      return moves.find((m) => m.a.type === "end") || moves.find((m) => m.a.type === "attack"); // a forced attacker must still attack
     }
     return null;
   },
