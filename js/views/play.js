@@ -1,14 +1,21 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261110171526";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261110171526";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261110171526";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261110171526";
-import { Arena } from "../arena3d.js?v=20261110171526";
-import { autoEffect, resolveEffect } from "../effects.js?v=20261110171526";
-import { Sfx } from "../sfx.js?v=20261110171526";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261110171526";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261110171526";
-import { readAura } from "../auras.js?v=20261110171526";
-import { allDecks, deckById } from "./decks.js?v=20261110171526";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261110172114";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261110172114";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261110172114";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261110172114";
+import { Arena } from "../arena3d.js?v=20261110172114";
+import { autoEffect, resolveEffect } from "../effects.js?v=20261110172114";
+import { Sfx } from "../sfx.js?v=20261110172114";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261110172114";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261110172114";
+import { readAura } from "../auras.js?v=20261110172114";
+import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261110172114";
+// a readable snapshot of the game for questions asked to Ciel from inside the app
+addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
+  const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
+  return { game: [`เทิร์น ${s.turn} · ${PHASE_TH[s.phase] || s.phase} · ตาของ ${s.P[s.active].name}`, `เด็คเรา: ${me.deckName || "-"} · เด็คคู่แข่ง: ${op.deckName || "-"}`,
+    `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
+    `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / ")].join("\n") }; });
+import { allDecks, deckById } from "./decks.js?v=20261110172114";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -269,7 +276,7 @@ function draw() {
       E.critical(me) ? h("span", { class: "chip bad" }, "สาหัส! ถูกตี LIFE อีกครั้งจะแพ้") : null,
       h("div", { class: "piles" }, pile(me, "deck", "Deck"), pile(me, "hell", "นรก"), pile(me, "dark", "มิติมืด")),
       h("div", { class: "row" }, ...turnButtons(s, p)),
-      h("div", { class: "row hidem" }, h("button", { class: "btn sm ciel", disabled: s.phase === "over", onclick: coach }, "ชิเอลแนะนำ"), h("button", { class: "btn sm", disabled: s.phase === "over", onclick: tools }, "เครื่องมือ"), h("button", { class: "btn sm", onclick: () => openPile(op, "hell") }, "นรกคู่แข่ง"), h("button", { class: "btn sm", "aria-pressed": Sfx.on ? "true" : "false", onclick: () => { Sfx.toggle(); Sfx.play("click"); draw(); } }, Sfx.on ? "🔊 เสียง" : "🔇 เสียง")),
+      h("div", { class: "row hidem" }, h("button", { class: "btn sm ciel", disabled: s.phase === "over", onclick: coach }, "ชิเอลแนะนำ"), h("button", { class: "btn sm", disabled: s.phase === "over", onclick: tools }, "เครื่องมือ"), h("button", { class: "btn sm", onclick: () => openPile(op, "hell") }, "นรกคู่แข่ง"), isOwner() ? h("button", { class: "btn sm ciel", onclick: () => openAsk() }, "✉ ถามชิเอล") : null, h("button", { class: "btn sm", "aria-pressed": Sfx.on ? "true" : "false", onclick: () => { Sfx.toggle(); Sfx.play("click"); draw(); } }, Sfx.on ? "🔊 เสียง" : "🔇 เสียง")),
       G.coach ? h("div", { class: "coachbox" }, G.coach) : null,
       h("div", { class: "glog", "aria-live": "polite" }, s.log.slice(-30).reverse().map((l) => h("div", { class: l.s === V ? "mine" : "" }, l.m)))),
     handZone(s, V, p), promptBox(s, p),
@@ -289,6 +296,7 @@ function gameMenu(s, V) {
   const me = s.P[V], op = s.P[1 - V];
   openSheet((api) => [
     h("div", { class: "row" }, ...[[me, "deck", "Deck"], [me, "hell", "นรกเรา"], [me, "dark", "มิติมืดเรา"], [op, "hell", "นรกคู่แข่ง"]].map(([P, z, t]) => h("button", { class: "btn sm", onclick: () => { api.close(); openPile(P, z); } }, `${t} ${P[z].length}`))),
+    isOwner() ? h("div", { class: "row" }, h("button", { class: "btn sm ciel", onclick: () => { api.close(); openAsk(); } }, "✉ ถามชิเอล (แนบสถานะเกม)")) : null,
     h("div", { class: "row" }, h("button", { class: "btn sm ciel", disabled: s.phase === "over", onclick: () => { api.close(); coach().then(() => G && G.coach && openSheet(h("div", { class: "coachbox" }, G.coach), { title: "ชิเอลแนะนำ" })); } }, "ชิเอลแนะนำ"), h("button", { class: "btn sm", disabled: s.phase === "over", onclick: () => { api.close(); tools(); } }, "เครื่องมือ"),
       h("button", { class: "btn sm", onclick: (e) => { Sfx.toggle(); Sfx.play("click"); e.currentTarget.textContent = Sfx.on ? "🔊 เสียงเปิด" : "🔇 เสียงปิด"; } }, Sfx.on ? "🔊 เสียงเปิด" : "🔇 เสียงปิด"),
       h("button", { class: "btn sm danger", onclick: () => { api.close(); s.phase === "over" ? exitGame() : confirmBox("ออกจากสนาม? เกมที่ค้างจะเก็บไว้ให้เล่นต่อ", "ออก", exitGame); } }, "ออกจากสนาม")),

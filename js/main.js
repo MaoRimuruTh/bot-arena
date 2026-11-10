@@ -1,13 +1,14 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261110171526";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261110171526";
-import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261110171526";
-import { Views, avatarEl } from "./ui.js?v=20261110171526";
-import { Ciel } from "./ai.js?v=20261110171526";
-import "./views/library.js?v=20261110171526";
-import "./views/decks.js?v=20261110171526";
-import "./views/lab.js?v=20261110171526";
-import "./views/history.js?v=20261110171526";
-import "./views/play.js?v=20261110171526";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261110172114";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261110172114";
+import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261110172114";
+import { Views, avatarEl } from "./ui.js?v=20261110172114";
+import { Ciel } from "./ai.js?v=20261110172114";
+import "./views/library.js?v=20261110172114";
+import "./views/decks.js?v=20261110172114";
+import "./views/lab.js?v=20261110172114";
+import "./views/history.js?v=20261110172114";
+import "./views/ask.js?v=20261110172114";
+import "./views/play.js?v=20261110172114";
 
 const root = $("#view");
 let current = null, cardsReady = false;
@@ -50,6 +51,7 @@ function pendingScreen() {
 // ---------- header / settings ----------
 function meArea() {
   const p = Me.profile || {}; const pending = Data.users.filter((u) => u.status === "pending").length;
+  const na = document.getElementById("nav-ask"); if (na) na.hidden = p.role !== "owner";
   $("#me").replaceChildren(h("button", { class: "btn sm", onclick: settings, "aria-label": "ตั้งค่า" }, avatarEl(myAvatar(), myName(), "hd"), h("span", null, myName()), pending && p.role === "owner" ? h("span", { class: "chip warn" }, pending + " รออนุมัติ") : null, Ciel.on() ? h("span", { class: "chip gold" }, "✦ ชิเอล") : null));
 }
 function settings() {

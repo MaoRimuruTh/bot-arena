@@ -1,4 +1,4 @@
-import { firebaseConfig, FB_VERSION } from "./config.js?v=20261110171526";
+import { firebaseConfig, FB_VERSION } from "./config.js?v=20261110172114";
 const base = `https://www.gstatic.com/firebasejs/${FB_VERSION}/`;
 const { initializeApp } = await import(base + "firebase-app.js");
 const A = await import(base + "firebase-auth.js");
@@ -70,6 +70,12 @@ let favTimer = null; // favourite cards, keyed by "print-rarity" so the list sur
 export function saveFavs() { clearTimeout(favTimer); favTimer = setTimeout(() => F.setDoc(F.doc(db, "users", Me.uid, "private", "favs"), { cards: Data.favs, updatedAt: Date.now() }).catch((e) => console.warn(e)), 400); }
 // prices the player noted down from shops / marketplaces (reference only — nothing is bought or sold here)
 export function savePrices() { return F.setDoc(F.doc(db, "users", Me.uid, "private", "prices"), { cards: Data.prices, updatedAt: Date.now() }).catch((e) => console.warn(e)); }
+// questions to Ciel from inside the app (owner account only, see firestore.rules)
+const inboxCol = () => F.collection(db, "users", Me.uid, "inbox");
+export const addQuestion = ({ text, ctx }) => F.setDoc(F.doc(inboxCol()), { text: String(text).slice(0, 2000), ctx: ctx || {}, at: Date.now(), answer: "", answeredAt: 0 });
+export const watchInbox = (cb) => F.onSnapshot(inboxCol(), (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (b.at || 0) - (a.at || 0))), () => cb([]));
+export const answerQuestion = (id, answer) => F.updateDoc(F.doc(inboxCol(), id), { answer: String(answer).slice(0, 4000), answeredAt: Date.now() });
+export const deleteQuestion = (id) => F.deleteDoc(F.doc(inboxCol(), id));
 export const saveMatch = (id, body) => F.setDoc(F.doc(db, "matches", id), body);
 export const setUserStatus = (uid, status) => F.updateDoc(F.doc(db, "users", uid), { status });
 export const setMeta = (patch) => F.setDoc(F.doc(db, "meta", "config"), patch, { merge: true });
