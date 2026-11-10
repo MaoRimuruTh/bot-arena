@@ -1,22 +1,22 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111012044";
-import { fxText } from "../fxtext.js?v=20261111012044";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111012044";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261111012044";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111012044";
-import { Arena } from "../arena3d.js?v=20261111012044";
-import { autoEffect, resolveEffect } from "../effects.js?v=20261111012044";
-import { Sfx } from "../sfx.js?v=20261111012044";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261111012044";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111012044";
-import { readAura, traits } from "../auras.js?v=20261111012044";
-import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261111012044";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111015639";
+import { fxText } from "../fxtext.js?v=20261111015639";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111015639";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261111015639";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111015639";
+import { Arena } from "../arena3d.js?v=20261111015639";
+import { autoEffect, resolveEffect } from "../effects.js?v=20261111015639";
+import { Sfx } from "../sfx.js?v=20261111015639";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261111015639";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111015639";
+import { readAura, traits } from "../auras.js?v=20261111015639";
+import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261111015639";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
   return { game: [`เทิร์น ${s.turn} · ${PHASE_TH[s.phase] || s.phase} · ตาของ ${s.P[s.active].name}`, `เด็คเรา: ${me.deckName || "-"} · เด็คคู่แข่ง: ${op.deckName || "-"}`,
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / ")].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261111012044";
+import { allDecks, deckById } from "./decks.js?v=20261111015639";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -293,7 +293,7 @@ function draw() {
           const wait = p == null ? "" : !mine(p) ? `รอ ${s.P[p].name}` : s.phase === "mull" ? "เลือกการ์ดที่จะเปลี่ยน" : s.trig.length ? "จัดการเอฟเฟกต์ในกล่องกลางจอ" : s.pend ? "เลือกการตอบโต้ในกล่องกลางจอ" : "";
           return wait ? h("div", { class: "hubwait" }, !mine(p) ? h("span", { class: "dots", "aria-hidden": "true" }, h("i"), h("i"), h("i")) : null, wait) : null; })(),
         E.critical(me) ? h("span", { class: "chip bad" }, "สาหัส! ถูกตี LIFE อีกครั้งจะแพ้") : null,
-        E.deckOpen(s) ? h("span", { class: "chip", title: "การ์ดบนสุดของ Deck ถูกหงายหน้าอยู่ (ความสามารถต่อเนื่อง)" }, `บนสุดของ Deck · เรา: ${me.deck[0] ? E.name(s, me.deck[0]) : "-"} · ${op.name}: ${op.deck[0] ? E.name(s, op.deck[0]) : "-"}`) : null,
+        E.deckOpen(s) ? h("span", { class: "chip", title: "การ์ดบนสุดของ Deck ถูกหงายหน้าอยู่ (ความสามารถต่อเนื่อง)" }, `บนสุดของ Deck · ${[E.deckOpen(s, V) ? `เรา: ${me.deck[0] ? E.name(s, me.deck[0]) : "-"}` : null, E.deckOpen(s, 1 - V) ? `${op.name}: ${op.deck[0] ? E.name(s, op.deck[0]) : "-"}` : null].filter(Boolean).join(" · ")}`) : null,
         h("div", { class: "meplate" }, avatarEl(me.ava, me.name, "me sm"), h("b", null, me.name), crystals(me, false, "pcMe")),
         h("div", { class: "pilebar" }, pile(me, "deck", "Deck"), pile(me, "hell", "นรก"), pile(me, "dark", "มิติมืด"))),
       h("div", { class: "rail hidem" }, tool("coach", "ชิเอลแนะนำ", "แนะนำ", coach, s.phase === "over"), tool("tools", "เครื่องมือจัดการสนามเอง", "เครื่องมือ", tools, s.phase === "over"), tool("hell", "ดูนรกของคู่แข่ง", "นรกคู่แข่ง", () => openPile(op, "hell")),
