@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261110223558";
-import { CARDS, nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261110223558";
-import { E, scriptOf } from "./engine.js?v=20261110223558";
+import { readAura } from "./auras.js?v=20261110224808";
+import { CARDS, nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261110224808";
+import { E, scriptOf } from "./engine.js?v=20261110224808";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -14,6 +14,7 @@ const KEYS = { build: /เมื่อ\s*(?:การ์ด|Construct)\s*(?:ใ�
   win: /เมื่อ\s*(?:Avatar|การ์ด)\s*(?:ใบนี้|ตัวนี้)\s*ทำลาย\s*Avatar\s*(?:ของ)?\s*(?:ฝ่ายตรงข้าม|อีกฝ่าย)\s*จากการต่อสู้\s*(?:สำเร็จ)?/,
   paid: /(?:เมื่อ|ถ้า)\s*(?:(?:การ์ด|Avatar)\s*(?:ใบนี้|นี้)\s*)?ถูก(?:ใช้)?(?:ทิ้ง)?\s*(?:เป็น)?\s*(?:ค่า)?\s*Cost\s*(?:ให้กับ|ให้|ในการ|เพื่อ)?\s*(?:อัญเชิญ)?/,
   milled: /(?:เมื่อ|ถ้า)\s*การ์ดใบนี้\s*(?:ถูก)?\s*(?:(?:ส่งลง|ตก)นรกด้วยผลของ\s*ธรณีสูบ|ธรณีสูบ)(?:\s*\([^)]*\))?(\s*ด้วย(?:การ์ด)?\s*Avatar\s*\{\s*symbol\s*เทพ\s*\}\s*สีม่วง\s*หรือ\s*Magic\s*(?:Card)?)?/i,
+  fight: /เมื่อ\s*(?:Avatar|การ์ด)\s*(?:ใบนี้|ตัวนี้)\s*(?:ทำการ)?ต่อสู้(?!\s*(?:กับ|ชนะ|แพ้))/, link: /เมื่อ\s*(?:Avatar\s*(?:ใบนี้|ตัวนี้)\s*)?เข้าสู่\s*สถานะ\s*\[?\s*Link\s*\]?/,
   end: /อัตโนมัติ\s*ใน(?:ช่วง|ทุกๆ)?\s*End Phase(?:\s*(?:ของ)?\s*เรา)?/, mainStart: /อัตโนมัติ\s*(?:เมื่อ|ใน)?(?:ช่วง)?\s*เริ่ม(?:ต้น)?\s*Main Phase\s*(?:ของ)?\s*เรา/ };
 const VERBS = [/จั่วการ์ด/, /ธรณีสูบ/, /ทำลาย/, /POWER\s*[+\-−–]/, /สภาพนอน/, /สภาพตื่น/, /สูญเสียความสามารถ|เสียความสามารถ|ไร้ผล/, /ทำความเสียหาย/, /ควบคุม/, /เนรเทศ/, /ยกเลิก/, /ทิ้งการ์ด|สุ่มทิ้ง/, /(?:หงาย|คว่ำ)\s*LIFE/i];
 
@@ -78,8 +79,8 @@ function filterOf(t) {
 const seatOf = (t, p) => (/ผู้เล่นทุกคน|ทั้งสองฝ่าย|ทุกฝ่าย|ทั้ง\s*2\s*ฝ่าย/.test(t) ? [p, 1 - p] : /ฝ่ายตรงข้าม|อีกฝ่าย/.test(t) ? [1 - p] : [p]);
 const num = (t, re, d = 1) => { const m = t.match(re); return m ? +m[1] : d; };
 const val = (s, x) => E.power(s, x) + (E.def(s, x).c || 0) * 0.5 + (E.def(s, x).o1 ? 6 : 0);
-const fits = (s, x, f) => { const d = E.def(s, x); return fitsD(d, f, () => E.power(s, x), hasFieldAlias(d) && E.onField(s, x)); };
-function fitsD(d, f, pw = () => d.pw || 0, on = false) {
+const fits = (s, x, f) => { const d = E.def(s, x); return fitsD(d, f, () => E.power(s, x), hasFieldAlias(d) && E.onField(s, x), () => E.costNow(s, x)); };
+function fitsD(d, f, pw = () => d.pw || 0, on = false, cst = () => d.c || 0) {
   const nm = nameText(d, on); const syt = syText(d, on); const anySy = allSy(d, on);
   if (f.symbol && !anySy && !syt.includes(f.symbol)) return false;
   if (f.symbols && !anySy && !f.symbols.some((y) => syt.includes(y))) return false;
@@ -88,10 +89,10 @@ function fitsD(d, f, pw = () => d.pw || 0, on = false) {
   if (f.notName && nm.includes(normName(f.notName))) return false;
   if (f.notOnly && d.o1) return false;
   if (f.st && d.st !== f.st) return false;
-  if (f.maxCost != null && (d.c || 0) > f.maxCost) return false;
-  if (f.minCost != null && (d.c || 0) < f.minCost) return false;
+  if (f.maxCost != null && cst() > f.maxCost) return false;
+  if (f.minCost != null && cst() < f.minCost) return false;
   if (f.minGem != null && (d.g || 0) < f.minGem) return false;
-  if (f.cost != null && (d.c || 0) !== f.cost) return false;
+  if (f.cost != null && cst() !== f.cost) return false;
   if (f.gem != null && (d.g || 0) !== f.gem) return false;
   if (f.power != null && pw() !== f.power) return false;
   if (f.maxPower != null && pw() > f.maxPower) return false;

@@ -858,7 +858,7 @@ Object.assign(SCRIPTS, {
       const t = c.choose(s.P[p].bot ? pool.filter((y) => (E.def(s, y).c || 0) <= 2) : pool, 1, "ไพรมอล รัททาทุย: เซ่นไหว้รัททาทุยฝ่ายเรา 1 ใบ เพื่อกลับเป็นสภาพตื่น (ไม่ใช้ก็ได้)", { optional: true })[0];
       return t ? { explain: `เซ่นไหว้ ${E.name(s, t)} · ${E.name(s, x)} กลับเป็นสภาพตื่น`, ops: [{ op: "destroy", i: t.i, why: "เซ่นไหว้" }, { op: "wake", i: x.i }] } : { explain: "ไม่ใช้ความสามารถ", ops: [] }; } },
   // รัททาทุย พาหะ: the Avatar fighting it gets POWER -1 (the 50-copy deck rule is in the card data)
-  "SD08-002": { foeBattle: () => -1 },
+  "SD08-002": { foeBattle: () => -1, fight: false },
   // โดมรัททาทุย: sacrifice it and show a รัททาทุย Construct from the hand: build that Construct
   "SD08-003": { activate: { label: "เซ่นไหว้ใบนี้ แสดง Construct รัททาทุยจากมือ แล้วก่อสร้าง", can: (E, s, x, L) => L.z === "av" && s.phase === "main" && s.P[L.p].cs.length < 3 && s.P[L.p].hand.some((y) => ratCon(E, s, y) && !s.P[L.p].cs.some((z) => E.name(s, z) === E.name(s, y))),
     run: (c) => { const { E, s, seat: p, self: x } = c; const P = s.P[p]; if (!x) return { explain: "ไม่อยู่บนสนาม", ops: [] };
@@ -925,4 +925,86 @@ Object.assign(SCRIPTS, {
       return { explain: `ก่อสร้าง ${E.name(s, L.x)} จากนรก`, ops: [{ op: "move", i: L.x.i, to: "cs", seat: p }] }; },
     allyOk: (E, s, y, Ly, x) => Ly.z === "cs" && y.used !== s.turn && rat(E, s, x),
     allyDeath: (c) => { const { s, self: y } = c; if (!y || y.used === s.turn) return { explain: "ใช้ไปแล้วในเทิร์นนี้", ops: [] }; return { explain: "รัททาทุยฝ่ายเราถูกทำลาย: จั่ว 1 ใบ", ops: [{ op: "used", i: y.i }, { op: "draw", seat: c.seat, n: 1 }] }; } },
+});
+
+// ---------- Starter Deck 09: วานร ----------
+const monkey = (E, s, x) => isAv(E, s, x) && E.named(s, x, "วานร");
+const monkeyDef = (d) => !!d && d.t === "A" && String(d.n || "").includes("วานร");
+const monkeyToken = (seat, n = 1) => ({ op: "token", seat, n, name: "วานร", power: 1, cost: 1, symbol: "สัตว์", color: "เขียว" });
+const tokensFirst = (E, s) => (a, b) => (b.tok ? 1 : 0) - (a.tok ? 1 : 0) || worth(E, s, a) - worth(E, s, b);
+const hellMonkeys = (E, s, p) => s.P[p].hell.filter((y) => isAv(E, s, y) && E.named(s, y, "วานร")).length;
+// หนุมาน / นิลพัท: from the hand, destroy 2 วานร on our Avatar Zone to summon it
+const monkeyCall = { label: "ทำลาย Avatar วานร 2 ใบบน Avatar Zone เรา แล้วอัญเชิญใบนี้จากมือ", can: (E, s, x, L) => L.z === "hand" && s.phase === "main" && s.P[L.p].av.filter((y) => monkey(E, s, y)).length >= 2,
+  run: (c) => { const { E, s, seat: p, self: x } = c; const two = c.choose(s.P[p].av.filter((y) => monkey(E, s, y)).sort(tokensFirst(E, s)), 2, `ทำลาย Avatar วานร 2 ใบบน Avatar Zone เพื่ออัญเชิญ ${x ? E.name(s, x) : ""}`, { exact: true });
+    if (!x || two.length < 2) return { explain: "มี Avatar วานรไม่พอ", ops: [] };
+    return { explain: `ทำลาย ${two.map((y) => E.name(s, y)).join(", ")} · อัญเชิญ ${E.name(s, x)} จากมือ`, ops: [...two.map((y) => ({ op: "destroy", i: y.i, why: "ค่าความสามารถ" })), { op: "put", i: x.i }] }; } };
+// หนุมาน: once per turn, when the opponent's card would remove it: scout 1, a วานร Avatar keeps it on the field; the scouted card is discarded
+const hanumanSave = (E, s, x, L, o) => { if (!o || !o.fromOpp || x.hs === s.turn) return false; x.hs = s.turn; const P = s.P[L.p]; const top = P.deck[0]; if (!top) return false;
+  const ok = isAv(E, s, top) && E.named(s, top, "วานร"); E.log(s, L.p, `${E.name(s, x)}: สอดแนม 1 ใบ ${E.name(s, top)}${ok ? " เป็น Avatar วานร จึงไม่ถูกนำออกจากสนาม" : " ไม่ใช่วานร"} · ทิ้งการ์ดที่สอดแนม`);
+  E.ops(s, [{ op: "move", i: top.i, to: "hell" }], L.p); return ok; };
+const baliKill = (c) => { const { E, s, seat: p } = c; const O = s.P[1 - p]; if (!O.av.length) return { explain: "ฝ่ายตรงข้ามไม่มี Avatar", ops: [] };
+  const m = Math.min(...O.av.map((x) => E.costNow(s, x))); const all = O.av.filter((x) => E.costNow(s, x) === m);
+  return { explain: `ทำลาย Avatar ที่มี Cost ต่ำที่สุด (${m}) ของฝ่ายตรงข้ามทุกใบ: ${all.map((x) => E.name(s, x)).join(", ")}`, ops: all.map((x) => ({ op: "destroy", i: x.i, why: "ความสามารถของพาลี" })) }; };
+const lifeMonkey = (c) => { const { s, seat: p } = c; if (!c.t.now) return { explain: "จะทำงานใน Main Phase ถัดไป", ops: [{ op: "later", seat: p, t: { i: c.t.i, c: c.t.c, when: "life", seat: p, now: true }, why: `${(s.cards[c.t.c] || {}).n}: ถึง Main Phase ที่รอไว้แล้ว` }] };
+  const n = hellMonkeys(c.E, s, p); return n >= 4 && s.P[p].av.length < 6 ? { explain: `ในนรกมี Avatar วานร ${n} ใบ: เรียก Token วานร 1 ใบ`, ops: [monkeyToken(p, 1)] } : { explain: `ในนรกมี Avatar วานร ${n} ใบ (ต้อง 4 ใบขึ้นไป) ความสามารถไม่ทำงาน`, ops: [] }; };
+Object.assign(SCRIPTS, {
+  // หนุมาน วานรวายุ: called from the hand · โล่มนุษย์ · [Link นิลพัท] · saved once per turn by a วานร scout · when it fights: POWER +1 until end of turn
+  "SD09-001": { activate: monkeyCall, wouldDestroy: hanumanSave, wouldLeave: hanumanSave,
+    fight: (c) => (c.self ? { explain: `${c.E.name(c.s, c.self)} ต่อสู้: POWER +1 จนจบเทิร์น`, ops: [{ op: "power", i: c.self.i, n: 1, temp: true }] } : { explain: "ไม่อยู่บนสนาม", ops: [] }) },
+  // นิลพัท วานรสีกาฬ: called from the hand · สามัคคี · on entering Link: 2 วานร Tokens · POWER +1 for each วานร Token of ours
+  "SD09-002": { activate: monkeyCall,
+    link: (c) => { const n = Math.min(2, 6 - c.s.P[c.seat].av.length); return n > 0 ? { explain: `เข้าสู่สถานะ Link: เรียก Token วานร ${n} ใบ`, ops: [monkeyToken(c.seat, n)] } : { explain: "Avatar Zone เต็ม", ops: [] }; },
+    aura: (E, s, src, L) => (L.z === "av" ? [{ seat: L.p, test: (x) => x.i === src.i, n: s.P[L.p].av.filter((y) => y.tok && E.named(s, y, "วานร")).length }] : []) },
+  // สุครีพ: at the start of our Main Phase, 2 opposing Avatars take the lower of their Costs until end of turn (before พาลี checks the lowest Cost)
+  "SD09-003": { early: true, mainStart: (c) => { const { E, s, seat: p } = c; const pool = s.P[1 - p].av.filter((x) => !E.noAim(s, x)); if (pool.length < 2) return { explain: "ฝ่ายตรงข้ามมี Avatar ให้เลือกไม่ถึง 2 ใบ", ops: [] };
+    const cheap = [...pool].sort((a, b) => E.costNow(s, a) - E.costNow(s, b))[0]; const rich = [...pool].filter((x) => x.i !== cheap.i).sort((a, b) => worth(E, s, b) - worth(E, s, a))[0];
+    const two = c.choose([rich, cheap, ...pool.filter((x) => x !== rich && x !== cheap)], 2, "สุครีพ: เลือก Avatar ฝ่ายตรงข้าม 2 ใบ (Cost ทั้งคู่จะเท่ากับใบที่ต่ำกว่าจนจบเทิร์น)", { exact: true });
+    const v = Math.min(...two.map((x) => E.costNow(s, x))); return { explain: `Cost ของ ${two.map((x) => E.name(s, x)).join(" และ ")} เป็น ${v} จนจบเทิร์น`, ops: two.map((x) => ({ op: "setCost", i: x.i, v })) }; } },
+  // พาลี: จุติ and at the start of our Main Phase: destroy every opposing Avatar with the lowest Cost
+  "SD09-004": { summon: baliKill, mainStart: baliKill },
+  // คิงคา: จุติ with a วานร Avatar in our hell (or showing one from the hand): a วานร Token
+  "SD09-005": { summon: (c) => { const { E, s, seat: p } = c; const P = s.P[p]; if (P.av.length >= 6) return { explain: "Avatar Zone เต็ม", ops: [] };
+    if (hellMonkeys(E, s, p)) return { explain: "ในนรกมี Avatar วานร: เรียก Token วานร 1 ใบ", ops: [monkeyToken(p, 1)] };
+    const show = c.choose(P.hand.filter((y) => isAv(E, s, y) && E.named(s, y, "วานร")), 1, "แสดง Avatar วานรบนมือ 1 ใบ เพื่อเรียก Token วานร (ไม่แสดงก็ได้)", { optional: true })[0];
+    return show ? { explain: `แสดง ${E.name(s, show)} จากมือ · เรียก Token วานร 1 ใบ`, ops: [monkeyToken(p, 1)] } : { explain: "ไม่มีวานรในนรกและไม่ได้แสดงการ์ด", ops: [] }; } },
+  // วานรกินซากลากอเวจี: คำสั่งเสีย with 4+ วานร Avatars in our hell: a วานร Token
+  "SD09-006": { death: (c) => { const n = hellMonkeys(c.E, c.s, c.seat); return n >= 4 && c.s.P[c.seat].av.length < 6 ? { explain: `ในนรกมี Avatar วานร ${n} ใบ: เรียก Token วานร 1 ใบ`, ops: [monkeyToken(c.seat, 1)] } : { explain: `ในนรกมี Avatar วานร ${n} ใบ (ต้อง 4 ใบขึ้นไป)`, ops: [] }; } },
+  // วานรถลกหนังฝังกระดูก: used as Cost for a วานร Avatar: a วานร Token
+  "SD09-007": { paidFor: (d) => monkeyDef(d), paid: (c) => (c.s.P[c.seat].av.length < 6 ? { explain: "ถูกใช้เป็นค่า Cost ให้วานร: เรียก Token วานร 1 ใบ", ops: [monkeyToken(c.seat, 1)] } : { explain: "Avatar Zone เต็ม", ops: [] }) },
+  // เลือกตั้งเจ้าป่า: sacrifice a วานร, scout 7: a วานร Avatar of Cost 5 or less to the hand (คิงคา may be summoned with จุติ instead)
+  "SD09-014": { canCast: (E, s, p) => s.P[p].av.some((y) => monkey(E, s, y)),
+    cast: (c) => { const { E, s, seat: p } = c; const P = s.P[p]; const sac = c.choose(P.av.filter((y) => monkey(E, s, y)).sort(tokensFirst(E, s)), 1, "ค่าใช้จ่าย: เซ่นไหว้ Avatar วานร 1 ใบ", { exact: true })[0]; if (!sac) return { explain: "ไม่มีวานรให้เซ่นไหว้", ops: [] };
+      const top = P.deck.slice(0, Math.min(P.deck.length, 7)); const ops = [{ op: "destroy", i: sac.i, why: "เซ่นไหว้" }, { op: "scoutShow", seat: p, ids: top.map((y) => y.i) }]; const say = [`เซ่นไหว้ ${E.name(s, sac)}`, `สอดแนม ${top.length} ใบ`];
+      const kk = (y) => E.named(s, y, "คิงคา วานรเจ้าป่า");
+      const t = c.choose(top.filter((y) => isAv(E, s, y) && E.named(s, y, "วานร") && (E.def(s, y).c || 0) <= 5).sort((a, b) => kk(b) - kk(a) || worth(E, s, b) - worth(E, s, a)), 1, "เลือก Avatar วานร Cost 5 หรือต่ำกว่าจากที่สอดแนมขึ้นมือ", { exact: true, reveal: top.map((y) => y.i) })[0];
+      if (t) { const room = E.avatars(P) - (sac.tok ? 0 : 1) < 4 && P.av.length - 1 < 6;
+        const m = kk(t) && room ? c.mode([`อัญเชิญ ${E.name(s, t)} แบบจุติ`, `นำ ${E.name(s, t)} ขึ้นมือ`], "เลือกได้คิงคา วานรเจ้าป่า: อัญเชิญแบบจุติแทนการนำขึ้นมือได้", 0) : 1;
+        if (m === 0) { ops.push({ op: "put", i: t.i, jt: true }); say.push(`อัญเชิญ ${E.name(s, t)} แบบจุติ`); } else { ops.push({ op: "search", seat: p, take: t.i, to: "hand" }); say.push(`${E.name(s, t)} ขึ้นมือ`); } }
+      else say.push("ไม่มี Avatar วานร Cost 5 หรือต่ำกว่า");
+      ops.push({ op: "scoutRest", seat: p, ids: top.filter((y) => y !== t).map((y) => y.i), rest: "bottom" }); return { explain: say.join(" · ") + " · ที่เหลือไว้ใต้ Deck", ops }; } },
+  // เตรียมเสบียง: each player puts an Avatar of Cost 4 or less (not Only #1) from its hell on top of its Deck (the opponent puts back its best one)
+  "SD09-015": { cast: (c) => { const { E, s, seat: p } = c; const ok = (y) => E.def(s, y).t === "A" && (E.def(s, y).c || 0) <= 4 && !E.def(s, y).o1;
+    const mine = c.choose(uniq(E, s, [...s.P[p].hell].reverse().filter(ok)).sort(byPw(E, s)), 1, "เลือก Avatar ในนรกเรา (Cost 4 หรือต่ำกว่า) วางไว้บนสุดของ Deck")[0];
+    const theirs = uniq(E, s, [...s.P[1 - p].hell].reverse().filter(ok)).sort((a, b) => worth(E, s, b) - worth(E, s, a))[0];
+    const ops = [], say = []; if (mine) { ops.push({ op: "move", i: mine.i, to: "deckTop" }); say.push(`เรา ${E.name(s, mine)}`); } if (theirs) { ops.push({ op: "move", i: theirs.i, to: "deckTop" }); say.push(`ฝ่ายตรงข้าม ${E.name(s, theirs)}`); }
+    return { explain: say.length ? `วางบนสุดของ Deck: ${say.join(" · ")}` : "ไม่มี Avatar ในนรกที่ตรงเงื่อนไข", ops }; } },
+  // วานรร้อนรัก (React): our วานร is in a fight: sacrifice another วานร that is not fighting: the fighting one POWER +2 until end of turn
+  "SD09-017": { react: { kinds: ["attack"], can: (E, s, p, on) => { const T = on.tk === "av" ? E.locate(s, on.ti) : null; return !!T && T.p === p && monkey(E, s, T.x) && s.P[p].av.some((y) => y.i !== T.x.i && monkey(E, s, y)); } },
+    cast: (c) => { const { E, s, seat: p } = c; const on = onTarget(c); const T = on.ti != null ? E.locate(s, on.ti) : null; if (!T || T.z !== "av") return { explain: "Avatar ที่ต่อสู้ไม่อยู่แล้ว", ops: [] };
+      const sac = c.choose(s.P[p].av.filter((y) => y.i !== T.x.i && monkey(E, s, y)).sort(tokensFirst(E, s)), 1, "ค่าใช้จ่าย: เซ่นไหว้ Avatar วานรใบอื่นที่ไม่ได้ต่อสู้ 1 ใบ", { exact: true })[0];
+      return sac ? { explain: `เซ่นไหว้ ${E.name(s, sac)} · ${E.name(s, T.x)} POWER +2 จนจบเทิร์น`, ops: [{ op: "destroy", i: sac.i, why: "เซ่นไหว้" }, { op: "power", i: T.x.i, n: 2, temp: true }] } : { explain: "ไม่มีวานรใบอื่นให้เซ่นไหว้", ops: [] }; } },
+  // ตรีเพชร: worn only by วานร · destroy the wearer: summon หนุมาน or นิลพัท from our hell
+  "SD09-018": { modOnly: (E, s, host) => monkey(E, s, host),
+    activate: { label: "ทำลาย Avatar ที่สวมใส่ แล้วอัญเชิญหนุมานหรือนิลพัทจากนรก", can: (E, s, x, L) => { const H = L.z === "mg" && x.on != null ? E.locate(s, x.on) : null; return !!H && H.p === L.p && s.phase === "main" && s.P[L.p].hell.some((y) => isAv(E, s, y) && (E.named(s, y, "หนุมาน") || E.named(s, y, "นิลพัท"))); },
+      run: (c) => { const { E, s, seat: p, self: m } = c; const H = m && m.on != null ? E.locate(s, m.on) : null; if (!H) return { explain: "ไม่ได้สวมใส่อยู่", ops: [] };
+        const t = c.choose(uniq(E, s, [...s.P[p].hell].reverse().filter((y) => isAv(E, s, y) && (E.named(s, y, "หนุมาน") || E.named(s, y, "นิลพัท")))).sort(byPw(E, s)), 1, "เลือกหนุมานหรือนิลพัทในนรกที่จะอัญเชิญ", { exact: true })[0];
+        return t ? { explain: `ทำลาย ${E.name(s, H.x)} · อัญเชิญ ${E.name(s, t)} จากนรก`, ops: [{ op: "destroy", i: H.x.i, why: "ค่าความสามารถของตรีเพชร" }, { op: "put", i: t.i }] } : { explain: "ไม่มีหนุมานหรือนิลพัทในนรก", ops: [] }; } } },
+  // ดาบพระขรรค์: worn only by วานร · POWER +2
+  "SD09-019": { modOnly: (E, s, host) => monkey(E, s, host), worn: () => 2 },
+  // ป่าแห่งเมืองขีดขิน (Land): once per turn, sacrifice a วานร: draw 1
+  "SD09-020": { activate: { label: "เซ่นไหว้ Avatar วานร 1 ใบ: จั่ว 1 ใบ", can: (E, s, x, L) => L.z === "land" && s.phase === "main" && s.P[L.p].av.some((y) => monkey(E, s, y)),
+    run: (c) => { const { E, s, seat: p } = c; const sac = c.choose(s.P[p].av.filter((y) => monkey(E, s, y)).sort(tokensFirst(E, s)), 1, "เซ่นไหว้ Avatar วานร 1 ใบเพื่อจั่ว 1 ใบ", { exact: true })[0];
+      return sac ? { explain: `เซ่นไหว้ ${E.name(s, sac)} · จั่ว 1 ใบ`, ops: [{ op: "destroy", i: sac.i, why: "เซ่นไหว้" }, { op: "draw", seat: p, n: 1 }] } : { explain: "ไม่มีวานรให้เซ่นไหว้", ops: [] }; } } },
+  // ไม่นะ คิงคา / นังชั่ว ตายแล้ว (LIFE): in the next Main Phase, with 4+ วานร Avatars in our hell: a วานร Token
+  "SD09-023": { life: lifeMonkey }, "SD09-024": { life: lifeMonkey },
 });

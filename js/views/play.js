@@ -1,22 +1,22 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261110223558";
-import { fxText } from "../fxtext.js?v=20261110223558";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261110223558";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261110223558";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261110223558";
-import { Arena } from "../arena3d.js?v=20261110223558";
-import { autoEffect, resolveEffect } from "../effects.js?v=20261110223558";
-import { Sfx } from "../sfx.js?v=20261110223558";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261110223558";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261110223558";
-import { readAura, traits } from "../auras.js?v=20261110223558";
-import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261110223558";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261110224808";
+import { fxText } from "../fxtext.js?v=20261110224808";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261110224808";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261110224808";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261110224808";
+import { Arena } from "../arena3d.js?v=20261110224808";
+import { autoEffect, resolveEffect } from "../effects.js?v=20261110224808";
+import { Sfx } from "../sfx.js?v=20261110224808";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261110224808";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261110224808";
+import { readAura, traits } from "../auras.js?v=20261110224808";
+import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261110224808";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
   return { game: [`เทิร์น ${s.turn} · ${PHASE_TH[s.phase] || s.phase} · ตาของ ${s.P[s.active].name}`, `เด็คเรา: ${me.deckName || "-"} · เด็คคู่แข่ง: ${op.deckName || "-"}`,
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / ")].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261110223558";
+import { allDecks, deckById } from "./decks.js?v=20261110224808";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -359,7 +359,7 @@ function turnButtons(s, p) {
   if (s.phase === "over") return [h("button", { class: "btn gold sm", onclick: () => { stopGame(true); location.hash = "#play"; } }, "กลับหน้าเตรียมเกม"), h("a", { class: "btn sm", href: "#history", onclick: () => stopGame(true) }, "ดูประวัติ")];
   if (p == null || !mine(p) || s.trig.length || s.pend || s.phase === "mull") return [];
   if (s.phase === "main") { // abilities used from hell / the dark zone have no card on the table to tap, so offer them here
-    const far = [...s.P[p].hell, ...s.P[p].dark].filter((x) => { const sc = scriptOf(s, x); return sc && sc.activate && x.used !== s.turn && sc.activate.can(E, s, x, E.locate(s, x.i)); }).slice(0, 3);
+    const far = [...s.P[p].hand, ...s.P[p].hell, ...s.P[p].dark].filter((x) => { const sc = scriptOf(s, x); return sc && sc.activate && x.used !== s.turn && sc.activate.can(E, s, x, E.locate(s, x.i)); }).slice(0, 3);
     return [h("button", { class: "btn gold sm", onclick: () => doAct({ type: "battle" }, p) }, s.turn === 1 ? "จบเทิร์น" : "ไป Battle Phase"), s.turn === 1 ? null : h("button", { class: "btn sm", onclick: () => doAct({ type: "end" }, p) }, "จบเทิร์นเลย"),
       ...far.map((x) => h("button", { class: "btn ciel sm", title: scriptOf(s, x).activate.label, onclick: () => doAct({ type: "activate", i: x.i }, p) }, `สั่งใช้ ${E.name(s, x)} (${ZONE_TH[E.locate(s, x.i).z]})`))]; }
   if (s.phase === "battle") return [h("button", { class: "btn gold sm", onclick: () => doAct({ type: "end" }, p) }, "จบเทิร์น"), G.att ? h("button", { class: "btn sm", onclick: () => { G.att = null; draw(); } }, "ยกเลิกการเลือก") : null];
@@ -496,7 +496,7 @@ function promptBox(s, p) {
   }
   if (s.trig.length && !G.tmanual && G.tk === s.trig[0].id) return box("กำลังทำงาน…", h("div", { class: "tiny muted" }, (s.cards[s.trig[0].c] || {}).n || ""));
   if (s.trig.length) {
-    const t = s.trig[0]; const d = s.cards[t.c] || {}; const when = { summon: "จุติ", cast: "ใช้ Magic", life: "LIFE หงาย", death: "คำสั่งเสีย", attack: "เมื่อโจมตี", build: "ก่อสร้าง", manual: "สั่งใช้", activate: "สั่งใช้", paid: "ถูกทิ้งเป็นค่า Cost", milled: "ถูกธรณีสูบ", win: "ชนะการต่อสู้", end: "End Phase", mainStart: "เริ่ม Main Phase", attacked: "ถูกโจมตี", hostWin: "Avatar ที่สวมใส่ชนะการต่อสู้", summonedBy: "ถูกอัญเชิญด้วยความสามารถ", retarget: "เปลี่ยนเป้าหมายการโจมตี", stab: "ใช้แทงหลัง", afterFight: "หลังการต่อสู้", onShield: "ใช้โล่มนุษย์", lifeFlip: "LIFE ถูกหงาย", hostAttack: "Avatar ที่สวมใส่โจมตี" }[t.when] || t.when;
+    const t = s.trig[0]; const d = s.cards[t.c] || {}; const when = { summon: "จุติ", cast: "ใช้ Magic", life: "LIFE หงาย", death: "คำสั่งเสีย", attack: "เมื่อโจมตี", build: "ก่อสร้าง", manual: "สั่งใช้", activate: "สั่งใช้", paid: "ถูกทิ้งเป็นค่า Cost", milled: "ถูกธรณีสูบ", win: "ชนะการต่อสู้", end: "End Phase", mainStart: "เริ่ม Main Phase", attacked: "ถูกโจมตี", hostWin: "Avatar ที่สวมใส่ชนะการต่อสู้", summonedBy: "ถูกอัญเชิญด้วยความสามารถ", retarget: "เปลี่ยนเป้าหมายการโจมตี", stab: "ใช้แทงหลัง", afterFight: "หลังการต่อสู้", onShield: "ใช้โล่มนุษย์", lifeFlip: "LIFE ถูกหงาย", hostAttack: "Avatar ที่สวมใส่โจมตี", fight: "เมื่อต่อสู้", link: "เข้าสู่สถานะ Link", allyDeath: "Avatar ฝ่ายเราถูกทำลาย", lifeLater: "LIFE (Main Phase ถัดไป)" }[t.when] || t.when;
     const hint = h("input", { type: "text", placeholder: "บอกชิเอลถ้าต้องเลือกเป้าหมาย เช่น ทำลายพญานาค", "aria-label": "เป้าหมายที่ต้องการ" }); const out = h("div");
     const auto = null;
     return box(`เอฟเฟกต์: ${d.n} (${when})`,
