@@ -5,11 +5,22 @@ import { Views, cardBtn, showCard } from "../ui.js";
 import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js";
 import { filterBar, filterCards } from "./library.js";
 import { openingOdds } from "./lab.js";
+import { CIEL_DECKS } from "../cieldecks.js";
+
+// Ciel's theme decks: print codes → card ids (resolved once the card data is loaded)
+let cielCache = null;
+export function cielDecks() {
+  if (cielCache && cielCache.n === CARDS.length) return cielCache.list;
+  const byPrint = (p) => { const c = CARDS.find((x) => x.p === p); return c ? baseId(c.i) : null; };
+  const list = CIEL_DECKS.map((z) => { const main = {}; for (const [p, n] of z.main) { const id = byPrint(p); if (id != null) main[id] = (main[id] || 0) + n; }
+    return { id: z.id, name: z.name, theme: z.theme, plan: z.plan, style: z.style, main, life: z.life.map(byPrint).filter((x) => x != null), ace: z.ace.map(byPrint).filter((x) => x != null), owner: "ciel", ownerName: "ชิเอล", starter: true, ciel: true, updatedAt: 0 }; });
+  cielCache = { n: CARDS.length, list }; return list;
+}
 
 export let Editing = null;
 const PickFilter = { q: "", t: "", co: "", c: "", set: "", rare: "", sy: "", variants: false, owned: false };
 const blank = () => ({ id: null, name: "เด็คใหม่", main: {}, life: [], ace: [], plan: "", notes: "", style: "win" });
-export const allDecks = () => [...Data.decks, ...starterDecks()];
+export const allDecks = () => [...Data.decks, ...cielDecks(), ...starterDecks()];
 export const deckById = (id) => (id === "__editing" ? Editing : allDecks().find((d) => d.id === id));
 export function addToDeck(d, id, delta = 1) {
   const c = card(id); if (!c) return;
@@ -27,8 +38,8 @@ function deckTile(d) {
   const ace = deckAce(d); const v = validateDeck(d); const ms = Data.matches.filter((m) => m.deckId === d.id); const w = ms.filter((m) => m.result === "win").length;
   const cols = deckColors(d); const band = cols.length ? `linear-gradient(180deg,${cols.map(colorOf).join(",")}${cols.length === 1 ? "," + colorOf(cols[0]) : ""})` : "var(--c-none)";
   return h("a", { class: "tile", href: "#decks/view/" + d.id }, ace ? artImg(ace, "", "") : null, h("div", { class: "wash" }), h("div", { class: "band", style: "background:" + band }),
-    h("div", { class: "in" }, h("span", { class: "eyebrow" }, d.starter ? "ทางการ" : d.owner === Me.uid ? "เด็คของฉัน" : "ของ " + (d.ownerName || "เพื่อน")), h("h3", null, d.name),
-      h("div", { class: "small muted" }, ace ? "เอซ: " + ace.n : ""),
+    h("div", { class: "in" }, h("span", { class: "eyebrow" }, d.ciel ? "✦ ชิเอลแนะนำ" : d.starter ? "ทางการ" : d.owner === Me.uid ? "เด็คของฉัน" : "ของ " + (d.ownerName || "เพื่อน")), h("h3", null, d.name),
+      h("div", { class: "small muted" }, d.theme || (ace ? "เอซ: " + ace.n : "")),
       h("div", { class: "meta" }, h("span", { class: "chip num" }, deckCount(d) + "/50"), v.ok ? h("span", { class: "chip good" }, "พร้อมเล่น") : h("span", { class: "chip warn" }, "ยังไม่ครบ"), ms.length ? h("span", { class: "chip num" }, `ชนะ ${w}/${ms.length}`) : null)));
 }
 
@@ -41,11 +52,12 @@ Views.decks = {
       return this.editor(root);
     }
     const mine = Data.decks.filter((d) => d.owner === Me.uid), friends = Data.decks.filter((d) => d.owner !== Me.uid);
-    root.replaceChildren(h("div", { class: "pagehead" }, h("div", null, h("h1", null, "เด็ค"), h("div", { class: "muted small" }, "จัดเด็คก่อนซื้อจริง ลองเล่น แล้วดูว่าต้องซื้อการ์ดอะไรเพิ่ม")),
+    root.replaceChildren(...[h("div", { class: "pagehead" }, h("div", null, h("h1", null, "เด็ค"), h("div", { class: "muted small" }, "จัดเด็คก่อนซื้อจริง ลองเล่น แล้วดูว่าต้องซื้อการ์ดอะไรเพิ่ม")),
       h("div", { class: "row" }, h("button", { class: "btn ciel", onclick: () => openAceBuilder([]) }, "ให้ชิเอลจัดรอบการ์ดเอซ"), h("a", { class: "btn gold", href: "#decks/new", onclick: () => { Editing = blank(); } }, "สร้างเด็คใหม่"))),
       !Data.ready.decks ? busy("กำลังโหลดเด็ค…") : mine.length ? h("div", { class: "tiles" }, mine.map(deckTile)) : h("div", { class: "empty" }, "ยังไม่มีเด็คของคุณ เริ่มจากเลือกการ์ดเอซให้ชิเอลจัด หรือคัดลอก Starter Deck ด้านล่างไปแก้ต่อ"),
       friends.length ? h("div", { class: "stack", style: "margin-top:28px" }, h("h2", null, "เด็คของเพื่อน"), h("div", { class: "tiles" }, friends.map(deckTile))) : null,
-      h("div", { class: "stack", style: "margin-top:28px" }, h("h2", null, "Starter Deck ทางการ"), h("div", { class: "muted small" }, "จัดตามจำนวนในกล่องจริงจากข้อมูลทางการ"), h("div", { class: "tiles" }, starterDecks().map(deckTile))));
+      h("div", { class: "stack", style: "margin-top:28px" }, h("h2", null, "✦ เด็คแนะนำจากชิเอล"), h("div", { class: "muted small" }, "เด็คธีมที่ชิเอลจัดให้ริมุรุ เปิดดูแผนการเล่น ลงสนามได้เลย หรือคัดลอกไปแก้ต่อ"), h("div", { class: "tiles" }, cielDecks().map(deckTile))),
+      h("div", { class: "stack", style: "margin-top:28px" }, h("h2", null, "Starter Deck ทางการ"), h("div", { class: "muted small" }, "จัดตามจำนวนในกล่องจริงจากข้อมูลทางการ"), h("div", { class: "tiles" }, starterDecks().map(deckTile)))].filter(Boolean));
     if (mode === "ace" && arg) openAceBuilder([+arg]);
   },
   refresh(root, parts) { if (parts[0] === "edit" || parts[0] === "new") return this.drawSide && this.drawSide(); this.render(root, parts); },
@@ -73,7 +85,7 @@ Views.decks = {
     root.replaceChildren(
       h("section", { class: "hero" }, ace ? artImg(ace, "", "") : null, h("div", { class: "wash" }),
         h("div", { class: "in" }, h("div", { class: "row", style: "gap:6px" }, ...deckColors(d).map((c) => h("span", { class: "chip", style: `background:color-mix(in srgb,${colorOf(c)} 25%,transparent)` }, c)), d.style && STYLE_TH[d.style] ? h("span", { class: "chip" }, STYLE_TH[d.style].split(":")[0]) : null, v.ok ? h("span", { class: "chip good" }, "ถูกกติกา") : h("span", { class: "chip warn" }, "ยังไม่ครบกติกา")),
-          h("h1", null, d.name), h("div", { class: "muted small" }, [ace ? "เอซ: " + ace.n : null, `${deckCount(d)} + LIFE ${(d.life || []).length}`, d.starter ? "เด็คทางการ" : d.owner === Me.uid ? "เด็คของคุณ" : "ของ " + (d.ownerName || "เพื่อน"), ms.length ? `ชนะ ${w}/${ms.length} เกม` : null].filter(Boolean).join(" · ")),
+          h("h1", null, d.name), h("div", { class: "muted small" }, [ace ? "เอซ: " + ace.n : null, `${deckCount(d)} + LIFE ${(d.life || []).length}`, d.ciel ? "ชิเอลแนะนำ" : d.starter ? "เด็คทางการ" : d.owner === Me.uid ? "เด็คของคุณ" : "ของ " + (d.ownerName || "เพื่อน"), ms.length ? `ชนะ ${w}/${ms.length} เกม` : null].filter(Boolean).join(" · ")),
           h("div", { class: "row" }, h("a", { class: "btn gold", href: "#play/deck/" + d.id }, "ลงสนามกับเด็คนี้"), h("button", { class: "btn ciel", onclick: () => openAnalysis(d) }, "ชิเอลวิเคราะห์"),
             h("a", { class: "btn", href: "#decks/edit/" + d.id }, d.owner === Me.uid ? "แก้ไข" : "คัดลอกไปแก้"), h("button", { class: "btn", onclick: () => openShopping(d) }, "รายการต้องซื้อ")))),
       h("div", { class: "statrow" }, h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "ทั้งเด็ค"), h("b", null, need)), h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "มีแล้ว"), h("b", { style: "color:#8ee3b2" }, have)),
