@@ -1,22 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261110204819";
-import { fxText } from "../fxtext.js?v=20261110204819";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, starterDecks, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261110204819";
-import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261110204819";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261110204819";
-import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261110204819";
-import { filterBar, filterCards } from "./library.js?v=20261110204819";
-import { openingOdds, simGame } from "./lab.js?v=20261110204819";
-import { freeBuild } from "../builder.js?v=20261110204819";
-import { CIEL_DECKS } from "../cieldecks.js?v=20261110204819";
+import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261110205016";
+import { plain, isOwnerNow } from "../persona.js?v=20261110205016";
+import { fxText } from "../fxtext.js?v=20261110205016";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, starterDecks, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261110205016";
+import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261110205016";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261110205016";
+import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261110205016";
+import { filterBar, filterCards } from "./library.js?v=20261110205016";
+import { openingOdds, simGame } from "./lab.js?v=20261110205016";
+import { freeBuild } from "../builder.js?v=20261110205016";
+import { CIEL_DECKS } from "../cieldecks.js?v=20261110205016";
 
 // Ciel's theme decks: print codes → card ids (resolved once the card data is loaded)
 let cielCache = null;
 export function cielDecks() {
-  if (cielCache && cielCache.n === CARDS.length) return cielCache.list;
+  const own = isOwnerNow(); if (cielCache && cielCache.n === CARDS.length && cielCache.own === own) return cielCache.list;
   const byPrint = (p) => { const c = CARDS.find((x) => x.p === p); return c ? baseId(c.i) : null; };
   const list = CIEL_DECKS.map((z) => { const main = {}; for (const [p, n] of z.main) { const id = byPrint(p); if (id != null) main[id] = (main[id] || 0) + n; }
-    return { id: z.id, name: z.name, theme: z.theme, plan: z.plan, style: z.style, main, life: z.life.map(byPrint).filter((x) => x != null), ace: z.ace.map(byPrint).filter((x) => x != null), owner: "ciel", ownerName: "ชิเอล", starter: true, ciel: true, updatedAt: 0 }; });
-  cielCache = { n: CARDS.length, list }; return list;
+    return { id: z.id, name: z.name, theme: plain(z.theme), plan: plain(z.plan), style: z.style, main, life: z.life.map(byPrint).filter((x) => x != null), ace: z.ace.map(byPrint).filter((x) => x != null), owner: "ciel", ownerName: "ชิเอล", starter: true, ciel: true, updatedAt: 0 }; });
+  cielCache = { n: CARDS.length, own, list }; return list;
 }
 
 export let Editing = null;
@@ -122,7 +123,7 @@ Views.decks = {
       h("div", { class: "row" }, h("button", { class: "btn ciel", onclick: () => openFavBuilder() }, "♥ จัดเด็คจากการ์ดที่ชอบ"), h("button", { class: "btn ciel", onclick: () => openAceBuilder([]) }, "ให้ชิเอลจัดรอบการ์ดเอซ"), h("a", { class: "btn gold", href: "#decks/new", onclick: () => { Editing = blank(); } }, "สร้างเด็คใหม่"))),
       !Data.ready.decks ? busy("กำลังโหลดเด็ค…") : mine.length ? h("div", { class: "stack" }, this.mineBar(mine), h("div", { class: "tiles" }, mine.map(deckTile))) : h("div", { class: "empty" }, "ยังไม่มีเด็คของคุณ เริ่มจากเลือกการ์ดเอซให้ชิเอลจัด หรือคัดลอก Starter Deck ด้านล่างไปแก้ต่อ"),
       friends.length ? h("div", { class: "stack", style: "margin-top:28px" }, h("h2", null, "เด็คของเพื่อน"), h("div", { class: "tiles" }, friends.map(deckTile))) : null,
-      h("div", { class: "stack", style: "margin-top:28px" }, h("h2", null, "✦ เด็คแนะนำจากชิเอล"), h("div", { class: "muted small" }, "เด็คธีมที่ชิเอลจัดให้ริมุรุ เปิดดูแผนการเล่น ลงสนามได้เลย หรือคัดลอกไปแก้ต่อ"), h("div", { class: "tiles" }, cielDecks().map(deckTile))),
+      h("div", { class: "stack", style: "margin-top:28px" }, h("h2", null, "✦ เด็คแนะนำจากชิเอล"), h("div", { class: "muted small" }, plain("เด็คธีมที่ชิเอลจัดให้ริมุรุ เปิดดูแผนการเล่น ลงสนามได้เลย หรือคัดลอกไปแก้ต่อ")), h("div", { class: "tiles" }, cielDecks().map(deckTile))),
       h("div", { class: "stack", style: "margin-top:28px" }, h("h2", null, "Starter Deck ทางการ"), h("div", { class: "muted small" }, "จัดตามจำนวนในกล่องจริงจากข้อมูลทางการ"), h("div", { class: "tiles" }, starterDecks().map(deckTile)))].filter(Boolean));
     if (mode === "ace" && arg) openAceBuilder([+arg]);
   },
@@ -323,7 +324,7 @@ export function openFavBuilder() {
         if (!core.length) { out.replaceChildren(h("div", { class: "muted" }, "เลือกการ์ดอย่างน้อย 1 ใบ")); return; }
         let changed = false; for (const c of core) if (c.b != null && Data.skins[String(c.b)] == null) { Data.skins[String(c.b)] = c.i; changed = true; } if (changed) saveSkins();
         btn.disabled = true; await showFreeBuild(out, { core: core.map((c) => c.i), colors: st.colors, style: st.style }, api); btn.disabled = false; } }, "ให้ชิเอลจัดเด็ค"))), out];
-  }, { title: "♥ จัดเด็คจากการ์ดที่ชอบ", sub: "ชิเอลจัดเด็คจากการ์ดภาพสวยที่ริมุรุเลือกไว้ พร้อมลองให้บอทเล่นให้ดู", wide: true });
+  }, { title: "♥ จัดเด็คจากการ์ดที่ชอบ", sub: plain("ชิเอลจัดเด็คจากการ์ดภาพสวยที่ริมุรุเลือกไว้ พร้อมลองให้บอทเล่นให้ดู"), wide: true });
 }
 // ---------- skins for every card in a deck ----------
 export function openSkins(d) {

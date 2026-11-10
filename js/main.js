@@ -1,14 +1,15 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261110204819";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261110204819";
-import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261110204819";
-import { Views, avatarEl } from "./ui.js?v=20261110204819";
-import { Ciel } from "./ai.js?v=20261110204819";
-import "./views/library.js?v=20261110204819";
-import "./views/decks.js?v=20261110204819";
-import "./views/lab.js?v=20261110204819";
-import "./views/history.js?v=20261110204819";
-import "./views/ask.js?v=20261110204819";
-import "./views/play.js?v=20261110204819";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261110205016";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261110205016";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261110205016";
+import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261110205016";
+import { Views, avatarEl } from "./ui.js?v=20261110205016";
+import { Ciel } from "./ai.js?v=20261110205016";
+import "./views/library.js?v=20261110205016";
+import "./views/decks.js?v=20261110205016";
+import "./views/lab.js?v=20261110205016";
+import "./views/history.js?v=20261110205016";
+import "./views/ask.js?v=20261110205016";
+import "./views/play.js?v=20261110205016";
 
 const root = $("#view");
 let current = null, cardsReady = false;
@@ -122,6 +123,7 @@ function route() {
   if (!document.body.classList.contains("arena-on")) scrollTo(0, 0);
 }
 addEventListener("hashchange", route);
+applyPersona();
 let refreshT = null;
 Data.listeners.add(() => {
   if (Me.profile && Me.profile.role === "owner") meArea();
@@ -155,6 +157,7 @@ onUser(async (user) => {
   try { prof = await ensureProfile(user); } catch (e) { console.error(e); return gate(h("div", null, "เชื่อมต่อฐานข้อมูลไม่ได้"), h("div", { class: "small muted" }, e.message), h("button", { class: "btn", onclick: () => signOut() }, "ออกจากระบบ")); }
   meUnsub = watchMe(async (p) => {
     if (!p) return;
+    { const was = isOwnerNow(); applyPersona(); if (booted && was !== isOwnerNow()) route(); } // Ciel's name is for the owner account only
     if (p.status !== "approved") { booted = false; cardsReady = false; return p.status === "blocked" ? gate(h("h2", null, "บัญชีนี้ถูกระงับ"), h("button", { class: "btn", onclick: () => signOut() }, "ออกจากระบบ")) : pendingScreen(); }
     if (booted) { meArea(); return; } booted = true;
     startData(); meArea(); $("#nav").hidden = false;

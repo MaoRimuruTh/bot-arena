@@ -1,9 +1,10 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus } from "./engine.js?v=20261110204819";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261110204819";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261110204819";
-import { Data } from "./fb.js?v=20261110204819";
-import { lsGet } from "./util.js?v=20261110204819";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus } from "./engine.js?v=20261110205016";
+import { plain } from "./persona.js?v=20261110205016";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261110205016";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261110205016";
+import { Data } from "./fb.js?v=20261110205016";
+import { lsGet } from "./util.js?v=20261110205016";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -13,6 +14,8 @@ export const Ciel = {
 };
 async function callClaude(content, { model, max = 2000 } = {}) {
   const key = Ciel.key(); if (!key) throw Object.assign(new Error("no_key"), { code: "no_key" });
+  // other accounts get the same help from a nameless assistant, not from Ciel
+  content = typeof content === "string" ? plain(content) : Array.isArray(content) ? content.map((b) => (b && b.type === "text" ? { ...b, text: plain(b.text) } : b)) : content;
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
