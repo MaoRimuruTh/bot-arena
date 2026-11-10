@@ -99,15 +99,18 @@ Views.decks = {
     const drawPick = () => {
       const list = filterCards(PickFilter);
       grid.replaceChildren(...list.slice(0, limit).map((c) => { const inDeck = c.t === "L" ? (d.life.includes(c.i) ? 1 : 0) : d.main[c.i] || 0;
-        return h("div", { class: "libi" }, cardBtn(c.i, { badge: inDeck ? "×" + inDeck : null, onclick: () => { addToDeck(d, c.i, 1); drawPick(); this.drawSide(); } }),
+        return h("div", { class: "libi", onmouseenter: () => showHov(c) }, cardBtn(c.i, { badge: inDeck ? "×" + inDeck : null, onclick: () => { addToDeck(d, c.i, 1); drawPick(); this.drawSide(); } }),
           h("div", { class: "row", style: "justify-content:space-between;gap:4px;flex-wrap:nowrap" }, h("div", { class: "nm grow" }, c.n), h("button", { class: "mini", "aria-label": "รายละเอียด " + c.n, onclick: () => showCard(c.i) }, "i"))); }));
       more.replaceChildren(list.length > limit ? h("button", { class: "btn sm", onclick: () => { limit += 90; drawPick(); } }, "แสดงเพิ่ม") : "");
     };
     const side = h("div", { class: "stack" });
+    // hover preview that stays on screen (sticky column): see a card without clicking it
+    const hov = h("div", { class: "panel hovprev" }, h("div", { class: "muted small", style: "grid-column:1/-1" }, "ชี้เมาส์ที่การ์ดเพื่อดูรูปใหญ่และข้อความ"));
+    const showHov = (c) => hov.replaceChildren(holo(h("div", { class: "ccard" }, artImg(c))), h("div", { class: "stack", style: "gap:5px;min-width:0" }, h("b", { style: "font-family:var(--f-display)" }, c.n), h("div", { class: "tiny muted" }, cardLine(c, 0).split(" : ")[0].replace(c.n + " ", "") + " · " + c.p), h("div", { class: "small", style: "line-height:1.55;max-height:170px;overflow:auto;white-space:pre-wrap" }, c.x || "ไม่มีข้อความความสามารถ")));
     this.drawSide = () => {
       const v = validateDeck(d); const st = deckStats(d); const isAce = (id) => (d.ace || []).map(Number).includes(+id);
       const rows = deckEntries(d).sort((a, b) => (a.c.t > b.c.t ? 1 : a.c.t < b.c.t ? -1 : (a.c.c ?? 99) - (b.c.c ?? 99)));
-      side.replaceChildren(
+      side.replaceChildren(hov,
         h("div", { class: "panel stack" }, h("input", { type: "text", id: "deck-name", value: d.name, "aria-label": "ชื่อเด็ค", style: "font:700 1.15rem var(--f-display)", oninput: (e) => { d.name = e.target.value; } }),
           h("div", { class: "valid" }, v.items.map((x) => h("div", { class: x.ok ? "ok" : "no" }, (x.ok ? "✓ " : "✗ ") + x.msg))),
           h("div", { class: "row small" }, Object.entries(st.colors).map(([k, n]) => h("span", { class: "chip" }, h("span", { class: "dot", style: "background:" + colorOf(k === "ไร้สี" ? "" : k) }), `${k} ${n}`)), h("span", { class: "chip num" }, "GEM " + st.gem)),
@@ -116,7 +119,7 @@ Views.decks = {
             h("button", { class: "btn ciel", onclick: () => openAnalysis(d) }, "ชิเอลวิเคราะห์"),
             h("button", { class: "btn", onclick: () => openImport(d, () => { drawPick(); this.drawSide(); }) }, "นำเข้าจากภาพ"),
             d.id ? h("button", { class: "btn danger sm", onclick: () => confirmBox("ลบเด็คนี้ถาวร?", "ลบเด็ค", async () => { await deleteDeck(d.id); Editing = null; location.hash = "#decks"; toast("ลบเด็คแล้ว"); }, true) }, "ลบ") : null)),
-        h("div", { class: "panel stack", style: "gap:6px" }, rows.length ? rows.map((e) => h("div", { class: "pill" + (isAce(e.id) ? " ace" : ""), style: "cursor:default" },
+        h("div", { class: "panel stack", style: "gap:6px" }, rows.length ? rows.map((e) => h("div", { class: "pill" + (isAce(e.id) ? " ace" : ""), style: "cursor:default", onmouseenter: () => showHov(e.c) },
             h("span", { class: "q" }, e.n), e.c.t !== "M" ? h("span", { class: "cost", style: "background:" + colorOf(e.c.co) }, e.c.c ?? "-") : h("span", { class: "chip", style: "font-size:.66rem" }, SUB_TH[e.c.st]),
             h("span", { class: "nm", style: "cursor:pointer", onclick: () => showCard(e.id), title: e.c.p }, e.c.n), h("span", { class: "tiny muted num" }, e.c.p),
             e.c.t === "A" ? h("button", { class: "mini", title: "ตั้งเป็นเอซ", "aria-pressed": isAce(e.id) ? "true" : "false", onclick: () => { d.ace = isAce(e.id) ? d.ace.filter((x) => +x !== e.id) : [...(d.ace || []), e.id].slice(-2); this.drawSide(); } }, isAce(e.id) ? "★" : "☆") : null,

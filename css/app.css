@@ -272,3 +272,30 @@ body.arena-on main{padding:0;max-width:none}
 .avpick button{padding:0;border:0;background:none;cursor:pointer;border-radius:50%;display:grid;place-items:center}
 .avpick button .ava{width:60px;height:60px}
 .avpick button[aria-pressed="true"] .ava{box-shadow:0 0 0 3px var(--gold-hi),0 0 18px rgba(227,181,74,.6)}
+/* card view sheet (tap a card) */
+.cview{display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:18px;align-items:start}
+.cview .ccard.big{width:100%}
+@media (max-width:640px){.cview{grid-template-columns:1fr}.cview .ccard.big{max-width:min(78vw,300px);margin:0 auto}}
+.hcard .zoom{position:absolute;left:5px;top:5px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:.9rem;background:rgba(6,8,16,.85);color:var(--gold-hi);border:1px solid rgba(227,181,74,.55)}
+/* phones: arena gets the whole screen */
+@media (max-width:760px){
+  body.arena-on .top{display:none}
+  body.arena-on .hud{padding-top:env(safe-area-inset-top,0px)}
+  body.arena-on .oppbar{top:calc(8px + env(safe-area-inset-top,0px));left:max(10px,env(safe-area-inset-left,0px));right:max(10px,env(safe-area-inset-right,0px));transform:none;justify-content:space-between;padding:6px 10px}
+  body.arena-on .oppbar .pname b{font-size:.85rem} body.arena-on .oppbar .cry{width:12px;height:17px}
+  body.arena-on .hint{top:calc(62px + env(safe-area-inset-top,0px));font-size:.75rem;padding:4px 12px}
+  .handrow{left:0;right:0;width:auto;transform:none;bottom:calc(66px + env(safe-area-inset-bottom,0px));height:auto;display:flex;gap:8px;overflow-x:auto;overflow-y:visible;padding:14px max(12px,env(safe-area-inset-right,0px)) 4px max(12px,env(safe-area-inset-left,0px));pointer-events:auto;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+  .handrow .hcard{position:relative;flex:none;width:86px;left:auto;transform:none;scroll-snap-align:center}
+  .handrow .hcard.sel{transform:translateY(-10px)}
+  .handrow .hcard .gem{font-size:.66rem;right:4px;bottom:4px}
+  .mbar{position:absolute;left:max(8px,env(safe-area-inset-left,0px));right:max(8px,env(safe-area-inset-right,0px));bottom:calc(8px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:8px;padding:7px 9px}
+  .mbar .mturn{display:flex;flex-direction:column;line-height:1.15} .mbar .mturn b{font:700 .9rem var(--f-display)} .mbar .mturn span{font-size:.7rem;color:var(--gold)}
+  .mbar .cry{width:11px;height:16px} .mbar .crys{gap:3px} .mbar .btn.sm{padding:0 10px}
+  body.arena-on .prompt{bottom:calc(200px + env(safe-area-inset-bottom,0px));max-height:38vh;overflow:auto;padding:12px}
+}
+/* deck pages: the card preview column stays on screen while scrolling */
+@media (min-width:1051px){.lab>aside{position:sticky;top:76px;max-height:calc(100vh - 90px);overflow:auto}}
+@media (min-width:981px){.editor>.stack{position:sticky;top:76px;max-height:calc(100vh - 90px);overflow:auto}}
+.hovprev{display:grid;grid-template-columns:120px minmax(0,1fr);gap:12px;align-items:start}
+.hovprev .ccard{width:120px;cursor:default}
+@media (max-width:640px){.cview .ccard.big{max-width:min(58vw,240px)}.cview .acts{position:sticky;top:-20px;z-index:2;padding:8px 0;background:var(--panel-solid,#10142a)}.cview .acts .btn{flex:1;height:46px}}

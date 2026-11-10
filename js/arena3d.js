@@ -70,7 +70,7 @@ function mount(container) {
   R.resize = () => {
     const w = container.clientWidth || innerWidth, hh = container.clientHeight || innerHeight; renderer.setSize(w, hh, false); camera.aspect = w / hh;
     const portrait = w / hh < 0.9; const k = portrait ? 1 : Math.min(1.45, Math.max(1, 820 / hh, 1250 / w));
-    R.camBase.set(0, portrait ? 18.5 : 11.2 * k, portrait ? 14.5 : 9.6 * k); camera.fov = portrait ? 46 : 38; camera.updateProjectionMatrix();
+    R.camBase.set(0, portrait ? 17.5 : 11.2 * k, portrait ? 12.5 : 9.6 * k); R.look.set(0, 0, portrait ? 1.9 : 0.4); camera.fov = portrait ? 50 : 38; camera.updateProjectionMatrix();
     if (R.composer) R.composer.setSize(w, hh);
     document.documentElement.style.setProperty("--handDrop", hh < 700 ? "-80px" : "-44px");
   };

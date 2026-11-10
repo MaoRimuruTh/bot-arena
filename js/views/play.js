@@ -1,4 +1,4 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep } from "../util.js";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js";
 import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js";
 import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError } from "../engine.js";
 import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js";
@@ -21,6 +21,9 @@ function whoActs(s) {
   return s.active;
 }
 const isBot = (s, p) => !!s.P[p].bot;
+// phones/tablets: tap opens a big card view with actions instead of acting right away
+const compact = () => matchMedia("(max-width: 760px)").matches;
+const touchy = () => compact() || matchMedia("(pointer: coarse)").matches;
 const mine = (p) => G && (G.mode === "solo" || p === G.V);
 
 Views.play = {
@@ -149,12 +152,12 @@ async function doAct(a, p) {
     G.lock = true;
     try {
       await F.runTransaction(db, async (tx) => { const snap = await tx.get(gameRef(G.id)); const s = JSON.parse(snap.data().state); E.apply(s, a, p); tx.update(gameRef(G.id), { state: JSON.stringify(s), status: s.phase === "over" ? "over" : "playing", updatedAt: Date.now() }); });
-      G.pick = null; G.att = null; G.host = null; G.payFor = null; return true;
+      G.pick = null; G.att = null; G.host = null; G.payFor = null; G.castFor = null; return true;
     } catch (e) { toast(e.message || "ทำไม่ได้", "bad"); return false; }
     finally { if (G) G.lock = false; }
   }
   try { E.apply(G.s, a, p); } catch (e) { toast(e.message, "bad"); return false; }
-  G.pick = null; G.att = null; G.host = null; G.payFor = null; G.helperPick = null; persist();
+  G.pick = null; G.att = null; G.host = null; G.payFor = null; G.helperPick = null; G.castFor = null; persist();
   Arena.update(G.s, view()); draw(); drive();
   return true;
 }
@@ -200,6 +203,8 @@ function fieldClick(i) {
   if (!G || !G.s) return; const s = G.s; const p = whoActs(s);
   if (i === "life") { if (G.att) attack(G.att, "life"); return; }
   const L = E.locate(s, i); if (!L) return; G.sel = i; Arena.select(i); drawInspector();
+  const choosingTarget = G.host ? L.z === "av" : G.att && L.p !== p && (L.z === "av" || L.z === "cs");
+  if (touchy() && !choosingTarget) return cardView(L.x);
   if (G.host) { if (L.z === "av") { const host = G.host; G.host = null; doAct({ type: "cast", i: host, on: i }, view()); } return; }
   if (p == null || !mine(p) || s.phase !== "battle" || s.active !== p || s.pend || s.trig.length) return;
   if (L.p === p && L.z === "av" && L.x.a) { G.att = i; draw(); return; }
@@ -224,6 +229,17 @@ function draw() {
     : G.thinking || (p == null ? "" : !mine(p) ? `รอ ${s.P[p].name}…` : s.phase === "mull" ? "เลือกการ์ดที่จะเปลี่ยน หรือเก็บมือเดิม" : s.trig.length ? "มีเอฟเฟกต์ต้องจัดการ" : s.pend ? "ถูกโจมตี เลือกการตอบโต้" : s.phase === "main" ? "Main Phase · แตะการ์ดบนมือเพื่อเล่น" : s.phase === "battle" ? (G.att ? "เลือกเป้าหมายบนสนาม" : "Battle · เลือก Avatar ที่ตื่นเพื่อโจมตี") : s.phase === "end" && s.need ? `ทิ้งการ์ด ${s.need} ใบ` : "");
   const pile = (P, z, t) => h("button", { onclick: () => openPile(P, z) }, h("b", null, P[z].length), h("span", null, t));
   const ph = ["draw", "main", "battle", "end"];
+  if (compact()) {
+    G.hud.replaceChildren(
+      h("div", { class: "oppbar glass" }, op.bot && !op.ava ? h("span", { class: "ava sm" }, "✦") : avatarEl(op.ava, op.name, "sm"), h("div", { class: "pname" }, h("b", null, op.name), h("span", null, `มือ ${op.hand.length} · Deck ${op.deck.length}`)), crystals(op, true, "pcOp")),
+      hint ? h("div", { class: "hint" }, G.say && !mine(p ?? -1) ? "✦ " + G.say : hint) : null,
+      handZone(s, V, p), promptBox(s, p),
+      h("div", { class: "mbar glass" },
+        h("button", { class: "btn sm", "aria-label": "เมนูเกม", onclick: () => gameMenu(s, V) }, "☰"),
+        h("div", { class: "mturn" }, h("b", null, `เทิร์น ${s.turn}`), h("span", null, s.phase === "mull" ? "เปลี่ยนมือ" : PHASE_TH[s.phase])),
+        crystals(me, false, "pcMe"), h("div", { class: "grow" }), ...turnButtons(s, p).filter(Boolean).slice(0, 2)));
+    afterDraw(s, V, op, myTurn); return;
+  }
   G.hud.replaceChildren(
     h("div", { class: "oppbar glass" }, op.bot && !op.ava ? h("span", { class: "ava" }, "✦") : avatarEl(op.ava, op.name), h("div", { class: "pname" }, h("b", null, op.name), h("span", null, `${op.deckName} · Deck ${op.deck.length}`)), crystals(op, true, "pcOp"),
       h("div", { class: "backs", "aria-label": `มือ ${op.hand.length} ใบ` }, op.hand.slice(0, 10).map(() => h("i"))), G.say ? h("span", { class: "chip gold", style: "max-width:220px;overflow:hidden;text-overflow:ellipsis" }, "✦ " + G.say) : null),
@@ -241,12 +257,48 @@ function draw() {
       h("div", { class: "glog", "aria-live": "polite" }, s.log.slice(-30).reverse().map((l) => h("div", { class: l.s === V ? "mine" : "" }, l.m)))),
     handZone(s, V, p), promptBox(s, p),
     h("button", { class: "btn sm arena-exit", onclick: () => (s.phase === "over" ? exitGame() : confirmBox("ออกจากสนาม? เกมที่ค้างจะเก็บไว้ให้เล่นต่อ", "ออก", exitGame)) }, "← ออก"));
+  afterDraw(s, V, op, myTurn);
+}
+function afterDraw(s, V, op, myTurn) {
+  const me = s.P[V];
   drawInspector();
   const targets = [];
   if (G.att) { targets.push(...op.av.map((x) => x.i), ...op.cs.map((x) => x.i)); }
   else if (myTurn && s.phase === "battle" && !s.pend && !s.trig.length) targets.push(...me.av.filter((x) => x.a).map((x) => x.i));
   if (G.host) targets.push(...s.P[0].av.map((x) => x.i), ...s.P[1].av.map((x) => x.i));
   Arena.highlight(targets); const AL = G.att && E.locate(s, G.att); Arena.setLifeTarget(!!AL && (!op.av.length || E.kw(s, AL.x, "เตะไข่")));
+}
+function gameMenu(s, V) {
+  const me = s.P[V], op = s.P[1 - V];
+  openSheet((api) => [
+    h("div", { class: "row" }, ...[[me, "deck", "Deck"], [me, "hell", "นรกเรา"], [me, "dark", "มิติมืดเรา"], [op, "hell", "นรกคู่แข่ง"]].map(([P, z, t]) => h("button", { class: "btn sm", onclick: () => { api.close(); openPile(P, z); } }, `${t} ${P[z].length}`))),
+    h("div", { class: "row" }, h("button", { class: "btn sm ciel", disabled: s.phase === "over", onclick: () => { api.close(); coach().then(() => G && G.coach && openSheet(h("div", { class: "coachbox" }, G.coach), { title: "ชิเอลแนะนำ" })); } }, "ชิเอลแนะนำ"), h("button", { class: "btn sm", disabled: s.phase === "over", onclick: () => { api.close(); tools(); } }, "เครื่องมือ"),
+      h("button", { class: "btn sm danger", onclick: () => { api.close(); s.phase === "over" ? exitGame() : confirmBox("ออกจากสนาม? เกมที่ค้างจะเก็บไว้ให้เล่นต่อ", "ออก", exitGame); } }, "ออกจากสนาม")),
+    G.coach ? h("div", { class: "coachbox" }, G.coach) : null,
+    h("div", { class: "eyebrow" }, "บันทึกเกม"), h("div", { class: "glog", style: "max-height:44vh" }, s.log.slice(-40).reverse().map((l) => h("div", { class: l.s === V ? "mine" : "" }, l.m)))], { title: `เทิร์น ${s.turn} · ${s.P[s.active].name}` });
+}
+// big, readable card view with the actions that make sense right now
+function cardView(x) {
+  const s = G.s; const p = whoActs(s); const V = view(); const L = E.locate(s, x.i); if (!L) return;
+  const d = E.def(s, x); const c = d.im != null ? card(d.im) : null; const acts = []; const myMove = p != null && mine(p);
+  const go = (fn) => () => { api.close(); fn(); };
+  if (L.z === "hand" && L.p === V && myMove) {
+    const main = s.active === p && s.phase === "main" && !s.trig.length && !s.pend;
+    if (d.t === "A" && main) acts.push(["อัญเชิญ", () => handClick(x), "gold"]);
+    else if (d.t === "C" && main) acts.push(["ก่อสร้าง", () => handClick(x), "gold"]);
+    else if (d.t === "M" && d.st === "R" && !s.mu[p].R) acts.push(["ใช้ React", () => { G.castFor = x.i; draw(); }, "gold"]);
+    else if (d.t === "M" && d.st === "D" && main && !s.mu[p].D) acts.push(["สวมใส่ให้ Avatar…", () => handClick(x), "gold"]);
+    else if (d.t === "M" && main && !s.mu[p][d.st]) acts.push(["ใช้ Magic…", () => { G.castFor = x.i; draw(); }, "gold"]);
+  }
+  if (L.z === "av" && L.p === p && myMove && s.phase === "battle" && s.active === p && !s.pend && !s.trig.length && x.a) acts.push(["โจมตีด้วยใบนี้", () => { G.att = x.i; Arena.select(x.i); draw(); }, "gold"]);
+  if (G.att && L.p !== p && (L.z === "av" || L.z === "cs") && myMove) acts.push(["โจมตีใบนี้", () => attack(G.att, L.z, x.i), "gold"]);
+  if (G.host && L.z === "av") acts.push(["สวมใส่ให้ใบนี้", () => { const host = G.host; G.host = null; doAct({ type: "cast", i: host, on: x.i }, V); }, "gold"]);
+  if (mine(L.p) && d.x && L.z !== "hand" && L.z !== "deck") acts.push(["สั่งใช้ความสามารถ", () => doAct({ type: "useAbility", i: x.i }, L.p), ""]);
+  const stat = [ZONE_TH[L.z], d.t === "M" ? "Magic " + SUB_TH[d.st] : d.t === "T" ? "Token" : "Cost " + (d.c ?? 0), "GEM " + (d.g || 0) + (d.gc ? " (" + d.gc + ")" : ""), d.pw != null || L.z === "av" ? "POWER " + (L.z === "av" || L.z === "cs" ? E.power(s, x) : d.pw || 0) : null, L.z === "av" ? (x.a ? "ตื่น" : "นอน") : null, d.sy ? "Symbol " + d.sy : null].filter(Boolean);
+  const api = openSheet(() => h("div", { class: "cview" }, c ? holo(h("div", { class: "ccard big", style: "cursor:default" }, artImg(c))) : h("div", { class: "fx" }, "Token " + d.n),
+    h("div", { class: "stack", style: "gap:8px;min-width:0" }, h("div", { class: "row", style: "gap:6px" }, stat.map((t) => h("span", { class: "chip" + (/^POWER/.test(t) ? " gold" : "") }, t)), (x.kw || []).map((k) => h("span", { class: "chip good" }, k))),
+      acts.length ? h("div", { class: "row acts" }, acts.map(([t, fn, cls]) => h("button", { class: "btn " + (cls || ""), onclick: go(fn) }, t))) : null,
+      d.x ? h("div", { class: "fx" }, d.x) : h("div", { class: "muted small" }, "ไม่มีข้อความความสามารถ"))), { title: d.n, sub: s.P[L.p].name });
 }
 function exitGame() { const over = G && G.s && G.s.phase === "over"; stopGame(over); location.hash = "#play"; }
 function turnButtons(s, p) {
@@ -266,15 +318,16 @@ function drawInspector() {
     mine(L.p) && d.x && L.z !== "hand" ? h("button", { class: "btn sm", onclick: () => doAct({ type: "useAbility", i: L.x.i }, L.p) }, "สั่งใช้ความสามารถ") : null);
 }
 function handZone(s, V, p) {
-  const P = s.P[V]; const n = P.hand.length; const zone = h("div", { class: "handzone", "aria-label": "การ์ดบนมือ" });
+  const P = s.P[V]; const n = P.hand.length; const row = compact(); const zone = h("div", { class: row ? "handzone handrow" : "handzone", "aria-label": "การ์ดบนมือ" });
   const w = Math.min(760, innerWidth * 0.92); const cw = innerWidth < 760 ? 92 : 128; const gap = Math.min(cw * 0.78, (w - cw) / Math.max(1, n - 1));
   const sel = G.pick || []; const canPlay = p != null && mine(p) && p === V;
   P.hand.forEach((x, k) => {
     const d = E.def(s, x); const off = k - (n - 1) / 2; const c = d.im != null ? card(d.im) : null;
-    const b = h("button", { class: "hcard" + (sel.includes(x.i) ? " sel" : ""), "aria-label": `${d.n} ${TYPE_TH[d.t]} GEM ${d.g || 0}`, style: `left:${w / 2 - cw / 2 + off * gap}px;transform:translateY(${Math.abs(off) * Math.abs(off) * 2.2 + (sel.includes(x.i) ? -26 : 0)}px) rotate(${off * 3.2}deg);z-index:${k}` },
-      c ? artImg(c) : null, h("span", { class: "gem" }, (d.t === "M" ? SUB_TH[d.st][0] : "C" + (d.c ?? 0)) + " · G" + (d.g || 0)));
+    const b = h("button", { class: "hcard" + (sel.includes(x.i) ? " sel" : ""), "aria-label": `${d.n} ${TYPE_TH[d.t]} GEM ${d.g || 0}`, style: row ? "" : `left:${w / 2 - cw / 2 + off * gap}px;transform:translateY(${Math.abs(off) * Math.abs(off) * 2.2 + (sel.includes(x.i) ? -26 : 0)}px) rotate(${off * 3.2}deg);z-index:${k}` },
+      c ? artImg(c) : null, h("span", { class: "gem" }, (d.t === "M" ? SUB_TH[d.st][0] : "C" + (d.c ?? 0)) + " · G" + (d.g || 0)),
+      touchy() ? h("span", { class: "zoom", role: "button", "aria-label": "ดูการ์ด " + d.n, onclick: (e) => { e.stopPropagation(); cardView(x); } }, "⤢") : null);
     b.addEventListener("mouseenter", () => { G.hover = null; showHandInspect(x); });
-    b.addEventListener("click", () => handClick(x));
+    b.addEventListener("click", () => { const sel = G.payFor || s.phase === "mull" || (s.phase === "end" && s.need) || G.host; if (touchy() && !sel) return cardView(x); handClick(x); });
     if (!canPlay) b.classList.add("dim");
     zone.append(b);
   });
@@ -286,11 +339,11 @@ function handClick(x) {
   const d = E.def(s, x);
   if (G.payFor) { const pk = G.pick || []; G.pick = pk.includes(x.i) ? pk.filter((i) => i !== x.i) : x.i === G.payFor ? pk : [...pk, x.i]; return draw(); }
   if (s.phase === "mull" || (s.phase === "end" && s.need)) { const pk = G.pick || []; G.pick = pk.includes(x.i) ? pk.filter((i) => i !== x.i) : [...pk, x.i]; return draw(); }
-  if (d.t === "M" && d.st === "R") return doAct({ type: "cast", i: x.i }, V);
+  if (d.t === "M" && d.st === "R") { G.castFor = x.i; return draw(); }
   if (s.active !== p || s.phase !== "main" || s.trig.length || s.pend) return showHandInspect(x);
   if (d.t === "A" || d.t === "C") { const auto = E.autoPay(s, p, x.i); if (!auto) { toast(`GEM บนมือไม่พอจ่าย ${d.n} (Cost ${d.c || 0})`); return showHandInspect(x); } G.payFor = x.i; G.pick = auto; return draw(); }
-  if (d.t === "M" && d.st === "D") { G.host = x.i; toast("แตะ Avatar บนสนามที่จะสวมใส่"); return draw(); }
-  if (d.t === "M") return doAct({ type: "cast", i: x.i }, p);
+  if (d.t === "M" && d.st === "D") { G.host = x.i; return draw(); }
+  if (d.t === "M") { G.castFor = x.i; return draw(); } // always confirm before a Magic goes off
   showHandInspect(x);
 }
 function promptBox(s, p) {
@@ -303,6 +356,24 @@ function promptBox(s, p) {
     return box(`${d.t === "A" ? "อัญเชิญ" : "ก่อสร้าง"} ${d.n} · Cost ${d.c || 0}`, h("div", { class: "small muted" }, "แตะการ์ดบนมือเพื่อเลือกจ่าย GEM (ทิ้งลงนรก) ระบบเลือกชุดที่เสียน้อยให้แล้ว"),
       h("div", { class: "small " + (r.ok ? "" : "muted"), style: r.ok ? "color:#8ee3b2" : "" }, r.ok ? `จ่าย GEM ${r.total}/${d.c || 0}${r.exact ? " · พอดี" : ""}` : r.err),
       h("div", { class: "row" }, h("button", { class: "btn gold", disabled: !r.ok, onclick: () => { const pay = G.pick; G.payFor = null; doAct({ type: d.t === "A" ? "summon" : "build", i: x.i, pay }, p); } }, "ยืนยัน"), h("button", { class: "btn", onclick: () => { G.payFor = null; G.pick = null; draw(); } }, "ยกเลิก")));
+  }
+  if (G.castFor) {
+    const x = P.hand.find((y) => y.i === G.castFor); const d = x && E.def(s, x);
+    const ok = x && (d.st === "R" ? !s.mu[p].R : s.phase === "main" && s.active === p && !s.trig.length && !s.pend && !s.mu[p][d.st]);
+    if (!ok) { G.castFor = null; } else {
+      const fx = autoEffect(s, { i: x.i, c: x.c, when: "cast", seat: p }); const empty = !s.P[p].av.length && /Avatar[^:]*(ฝ่ายเรา|ของเรา|Zone\s*เรา)|เลือก\s*Avatar/.test(d.x || "");
+      return box(`ใช้ ${SUB_TH[d.st]} Magic: ${d.n}?`, h("div", { class: "fx small", style: "max-height:120px;overflow:auto" }, d.x || "ไม่มีข้อความ"),
+        fx ? h("div", { class: "small", style: "color:#8ee3b2" }, fx.explain) : h("div", { class: "tiny muted" }, "ระบบอ่านผลเองไม่ได้ ใช้แล้วจะให้เลือกว่าจะให้ชิเอลจัดการหรือจัดการเอง"),
+        empty ? h("div", { class: "small", style: "color:var(--warn)" }, "ระวัง: ตอนนี้ยังไม่มี Avatar ฝ่ายเราบนสนาม ผลของการ์ดนี้อาจไม่มีเป้าหมาย") : null,
+        s.mu[p][d.st] === undefined && d.st !== "R" ? h("div", { class: "tiny muted" }, `Magic ${SUB_TH[d.st]} ใช้ได้เทิร์นละ 1 ใบ`) : null,
+        h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => { G.castFor = null; doAct({ type: "cast", i: x.i }, p); } }, "ใช้เลย"), h("button", { class: "btn", onclick: () => { G.castFor = null; draw(); } }, "ยกเลิก")));
+    }
+  }
+  if (G.host) {
+    const x = P.hand.find((y) => y.i === G.host); if (!x) { G.host = null; return null; }
+    const avs = [...s.P[p].av, ...s.P[1 - p].av];
+    return box(`สวมใส่ ${E.name(s, x)} ให้ Avatar`, h("div", { class: "pick" }, avs.map((y) => cardBtn(E.def(s, y).im, { badge: (y.o === p ? "เรา " : "") + "P" + E.power(s, y), onclick: () => { G.host = null; doAct({ type: "cast", i: x.i, on: y.i }, p); } }))),
+      h("div", { class: "row" }, h("button", { class: "btn sm", onclick: () => { G.host = null; draw(); } }, "ยกเลิก")));
   }
   if (G.helperPick) {
     const hp = G.helperPick; const helpers = P.av.filter((y) => y.a && y.i !== hp.att && (E.kw(s, y, "สามัคคี") || E.kw(s, y, "แทงหลัง")));
