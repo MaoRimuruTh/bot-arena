@@ -1,7 +1,7 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { E, scriptOf } from "./engine.js?v=20261110170239";
+import { E, scriptOf } from "./engine.js?v=20261110171156";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ยกเว้น|ไม่ได้ชื่อ|ที่ไม่ใช่|ที่สุด|กี่ใบ|ก่อสร้าง|สวม|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|\d\)|ลูกเต๋า|สูงสุด|ถ้า|หาก|เลือกปฏิบัติ|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|ได้รับ|เปลี่ยนชื่อ|สวมใส่|ควบคุม|Token|โทเคน|เทิร์นถัดไป|ครั้งถัดไป|เลือก\s*1\s*อย่าง|ทั้งหมดบนมือ|เปิดเผย|แสดง/;
 // the trigger keyword must start an ability ("จุติ :" / "จุติ (…) :" / "จุติ ทิ้งการ์ด… :"), not appear inside one ("อัญเชิญ จุติ Avatar")

@@ -1,13 +1,14 @@
-import { h, openSheet, holo } from "./util.js?v=20261110170239";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf } from "./cards.js?v=20261110170239";
-import { Data, saveOwned, saveSkins } from "./fb.js?v=20261110170239";
-import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261110170239";
+import { h, openSheet, holo } from "./util.js?v=20261110171156";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt } from "./cards.js?v=20261110171156";
+import { Data, saveOwned, saveSkins, saveFavs } from "./fb.js?v=20261110171156";
+import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261110171156";
 
 export function cardBtn(id, opts = {}) {
   const c = card(id); const b = h("button", { class: "ccard" + (opts.cls ? " " + opts.cls : ""), type: "button", "aria-label": c ? c.n : "การ์ด", title: c ? c.n : "", onclick: opts.onclick });
   if (c) b.append(artImg(c));
   if (opts.badge) b.append(h("span", { class: "badge" }, opts.badge));
   if (opts.own) b.append(h("span", { class: "own" }, opts.own));
+  if (c && opts.heart !== false && isFav(c)) b.append(h("span", { class: "fav", "aria-label": "การ์ดที่ชอบ" }, "♥"));
   return holo(b);
 }
 export function cardInfo(c) {
@@ -32,7 +33,7 @@ export function showCard(id, extra) {
     const own = h("b", { class: "num" }, ownedOf(c.i));
     const aceBox = h("div");
     return [h("div", { class: "detail" }, holo(h("div", { class: "ccard", style: "cursor:default" }, artImg(c))),
-      h("div", { class: "stack" }, cardInfo(c), c.x ? h("div", { class: "fx" }, c.x) : h("div", { class: "muted small" }, "ไม่มีข้อความความสามารถ"), c.ex ? h("div", { class: "small muted" }, c.ex) : null,
+      h("div", { class: "stack" }, favButton(c), cardInfo(c), c.x ? h("div", { class: "fx" }, c.x) : h("div", { class: "muted small" }, "ไม่มีข้อความความสามารถ"), c.ex ? h("div", { class: "small muted" }, c.ex) : null,
         h("div", { class: "row" }, h("span", { class: "muted small" }, "ฉันมีจริง"), h("button", { class: "mini", "aria-label": "ลด", onclick: () => { setOwned(c.i, Math.max(0, ownedOf(c.i) - 1)); own.textContent = ownedOf(c.i); } }, "−"), own, h("button", { class: "mini", "aria-label": "เพิ่ม", onclick: () => { setOwned(c.i, ownedOf(c.i) + 1); own.textContent = ownedOf(c.i); } }, "+")),
         others.length ? h("div", { class: "stack", style: "gap:6px" }, h("div", { class: "eyebrow" }, "ชื่อเดียวกันแต่คนละใบ · นับรวมโควตาชื่อ"), h("div", { class: "pick" }, others.map((v) => cardBtn(v.i, { badge: v.p, onclick: () => { api.close(); showCard(v.i, extra); } })))) : null,
         skinPicker(c, api, extra),
@@ -41,6 +42,17 @@ export function showCard(id, extra) {
           h("button", { class: "btn ciel sm", onclick: async (e) => { const b = e.currentTarget; if (!Ciel.on()) { aceBox.replaceChildren(h("div", { class: "muted small" }, aiErr({ code: "no_key" }))); return; } b.disabled = true; aceBox.replaceChildren(h("span", { class: "muted small" }, "ชิเอลกำลังประเมิน…")); try { const r = await cielAceCheck(c); aceBox.replaceChildren(aceView(r)); } catch (err) { aceBox.replaceChildren(h("div", { class: "muted small" }, aiErr(err))); } b.disabled = false; } }, "ประเมินเป็นเอซ"),
           h("a", { class: "btn sm", href: "#decks/ace/" + c.i, onclick: () => api.close() }, "จัดเด็ครอบใบนี้")) : null, aceBox))];
   }, { title: c.n, sub: `${TYPE_TH[c.t]} · ${c.p}`, wide: true });
+}
+// ♥ favourite: Ciel can build a deck from these, and a favourite special art becomes the card's skin
+export function toggleFav(c) {
+  const k = favKey(c); if (Data.favs[k]) delete Data.favs[k]; else { Data.favs[k] = Date.now(); if (c.b != null && Data.skins[String(c.b)] == null) { Data.skins[String(c.b)] = c.i; saveSkins(); } }
+  saveFavs(); Data.listeners.forEach((f) => { try { f(); } catch (e) { console.warn(e); } });
+}
+function favButton(c) {
+  const b = h("button", { class: "btn sm fav-btn", "aria-pressed": isFav(c) ? "true" : "false" });
+  const paint = () => { const on = isFav(c); b.setAttribute("aria-pressed", on ? "true" : "false"); b.textContent = on ? "♥ อยู่ในการ์ดที่ชอบ" : "♡ เก็บเป็นการ์ดที่ชอบ"; };
+  b.onclick = () => { toggleFav(c); paint(); }; paint();
+  return h("div", { class: "row", style: "gap:8px" }, b, isSpecialArt(c) ? h("span", { class: "chip gold" }, "✦ ภาพพิเศษ " + c.r) : null);
 }
 // choose which print of this card is shown everywhere (decks, hand, 3D arena)
 function skinPicker(c, api, extra) {

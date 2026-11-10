@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261110170239";
-import { h } from "./util.js?v=20261110170239";
-import { Data } from "./fb.js?v=20261110170239";
+import { CARD_SOURCE } from "./config.js?v=20261110171156";
+import { h } from "./util.js?v=20261110171156";
+import { Data } from "./fb.js?v=20261110171156";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -60,6 +60,9 @@ export function imgUrls(c) {
 export const SkinCtx = { on: true }; // skins show only on the deck pages and in the arena (set by the router)
 export function skinOf(c) { if (!c || c.b != null || !SkinCtx.on) return c; const v = Data.skins && Data.skins[String(c.i)]; const s = v != null ? CARDS[+v] : null; return s && (s.b === c.i || s.i === c.i) ? s : c; }
 export const variantsOf = (c) => { const b = c.b != null ? c.b : c.i; return CARDS.filter((x) => x.i === b || x.b === b); };
+export const favKey = (c) => c.p + "-" + c.r;
+export const isFav = (c) => !!(c && Data.favs && Data.favs[favKey(c)]);
+export const favCards = () => Object.keys((Data && Data.favs) || {}).map((k) => CARDS.find((c) => favKey(c) === k)).filter(Boolean);
 export const isSpecialArt = (c) => c.b != null || ["SCR", "CBR", "USEC"].includes(c.r);
 const goodUrl = new Map();
 export function artUrl(c) { return goodUrl.get(c.i) || imgUrls(c)[0]; }

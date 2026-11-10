@@ -1,14 +1,14 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261110170239";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261110170239";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261110170239";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261110170239";
-import { Arena } from "../arena3d.js?v=20261110170239";
-import { autoEffect, resolveEffect } from "../effects.js?v=20261110170239";
-import { Sfx } from "../sfx.js?v=20261110170239";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261110170239";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261110170239";
-import { readAura } from "../auras.js?v=20261110170239";
-import { allDecks, deckById } from "./decks.js?v=20261110170239";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261110171156";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261110171156";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261110171156";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261110171156";
+import { Arena } from "../arena3d.js?v=20261110171156";
+import { autoEffect, resolveEffect } from "../effects.js?v=20261110171156";
+import { Sfx } from "../sfx.js?v=20261110171156";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261110171156";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261110171156";
+import { readAura } from "../auras.js?v=20261110171156";
+import { allDecks, deckById } from "./decks.js?v=20261110171156";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });

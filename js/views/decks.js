@@ -1,11 +1,12 @@
-import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261110170239";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, starterDecks, ownedOf, cardLine } from "../cards.js?v=20261110170239";
-import { Data, Me, saveDeck, deleteDeck } from "../fb.js?v=20261110170239";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261110170239";
-import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261110170239";
-import { filterBar, filterCards } from "./library.js?v=20261110170239";
-import { openingOdds } from "./lab.js?v=20261110170239";
-import { CIEL_DECKS } from "../cieldecks.js?v=20261110170239";
+import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261110171156";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, starterDecks, ownedOf, cardLine, favCards, variantsOf, isSpecialArt } from "../cards.js?v=20261110171156";
+import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261110171156";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261110171156";
+import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261110171156";
+import { filterBar, filterCards } from "./library.js?v=20261110171156";
+import { openingOdds, simGame } from "./lab.js?v=20261110171156";
+import { freeBuild } from "../builder.js?v=20261110171156";
+import { CIEL_DECKS } from "../cieldecks.js?v=20261110171156";
 
 // Ciel's theme decks: print codes → card ids (resolved once the card data is loaded)
 let cielCache = null;
@@ -53,7 +54,7 @@ Views.decks = {
     }
     const mine = Data.decks.filter((d) => d.owner === Me.uid), friends = Data.decks.filter((d) => d.owner !== Me.uid);
     root.replaceChildren(...[h("div", { class: "pagehead" }, h("div", null, h("h1", null, "เด็ค"), h("div", { class: "muted small" }, "จัดเด็คก่อนซื้อจริง ลองเล่น แล้วดูว่าต้องซื้อการ์ดอะไรเพิ่ม")),
-      h("div", { class: "row" }, h("button", { class: "btn ciel", onclick: () => openAceBuilder([]) }, "ให้ชิเอลจัดรอบการ์ดเอซ"), h("a", { class: "btn gold", href: "#decks/new", onclick: () => { Editing = blank(); } }, "สร้างเด็คใหม่"))),
+      h("div", { class: "row" }, h("button", { class: "btn ciel", onclick: () => openFavBuilder() }, "♥ จัดเด็คจากการ์ดที่ชอบ"), h("button", { class: "btn ciel", onclick: () => openAceBuilder([]) }, "ให้ชิเอลจัดรอบการ์ดเอซ"), h("a", { class: "btn gold", href: "#decks/new", onclick: () => { Editing = blank(); } }, "สร้างเด็คใหม่"))),
       !Data.ready.decks ? busy("กำลังโหลดเด็ค…") : mine.length ? h("div", { class: "tiles" }, mine.map(deckTile)) : h("div", { class: "empty" }, "ยังไม่มีเด็คของคุณ เริ่มจากเลือกการ์ดเอซให้ชิเอลจัด หรือคัดลอก Starter Deck ด้านล่างไปแก้ต่อ"),
       friends.length ? h("div", { class: "stack", style: "margin-top:28px" }, h("h2", null, "เด็คของเพื่อน"), h("div", { class: "tiles" }, friends.map(deckTile))) : null,
       h("div", { class: "stack", style: "margin-top:28px" }, h("h2", null, "✦ เด็คแนะนำจากชิเอล"), h("div", { class: "muted small" }, "เด็คธีมที่ชิเอลจัดให้ริมุรุ เปิดดูแผนการเล่น ลงสนามได้เลย หรือคัดลอกไปแก้ต่อ"), h("div", { class: "tiles" }, cielDecks().map(deckTile))),
@@ -87,7 +88,7 @@ Views.decks = {
         h("div", { class: "in" }, h("div", { class: "row", style: "gap:6px" }, ...deckColors(d).map((c) => h("span", { class: "chip", style: `background:color-mix(in srgb,${colorOf(c)} 25%,transparent)` }, c)), d.style && STYLE_TH[d.style] ? h("span", { class: "chip" }, STYLE_TH[d.style].split(":")[0]) : null, v.ok ? h("span", { class: "chip good" }, "ถูกกติกา") : h("span", { class: "chip warn" }, "ยังไม่ครบกติกา")),
           h("h1", null, d.name), h("div", { class: "muted small" }, [ace ? "เอซ: " + ace.n : null, `${deckCount(d)} + LIFE ${(d.life || []).length}`, d.ciel ? "ชิเอลแนะนำ" : d.starter ? "เด็คทางการ" : d.owner === Me.uid ? "เด็คของคุณ" : "ของ " + (d.ownerName || "เพื่อน"), ms.length ? `ชนะ ${w}/${ms.length} เกม` : null].filter(Boolean).join(" · ")),
           h("div", { class: "row" }, h("a", { class: "btn gold", href: "#play/deck/" + d.id }, "ลงสนามกับเด็คนี้"), h("button", { class: "btn ciel", onclick: () => openAnalysis(d) }, "ชิเอลวิเคราะห์"),
-            h("a", { class: "btn", href: "#decks/edit/" + d.id }, d.owner === Me.uid ? "แก้ไข" : "คัดลอกไปแก้"), h("button", { class: "btn", onclick: () => openShopping(d) }, "รายการต้องซื้อ")))),
+            h("a", { class: "btn", href: "#decks/edit/" + d.id }, d.owner === Me.uid ? "แก้ไข" : "คัดลอกไปแก้"), h("button", { class: "btn", onclick: () => openShopping(d) }, "รายการต้องซื้อ"), h("button", { class: "btn", onclick: () => openSkins(d) }, "✦ เลือกสกินทั้งเด็ค")))),
       h("div", { class: "statrow" }, h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "ทั้งเด็ค"), h("b", null, need)), h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "มีแล้ว"), h("b", { style: "color:#8ee3b2" }, have)),
         h("div", { class: "stat buy", style: "cursor:pointer", onclick: () => openShopping(d) }, h("span", { class: "eyebrow" }, "ต้องซื้อเพิ่ม"), h("b", null, need - have + " ใบ")),
         odds ? h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "ได้เอซภายในเทิร์น 3"), h("b", { style: "color:var(--gold-hi)" }, Math.round(odds.t3 * 100) + "%")) : null),
@@ -165,7 +166,8 @@ export function openAceBuilder(preset) {
       colorRow, h("div", { class: "row" }, h("span", { class: "small muted" }, "แนวเด็ค"), seg, h("label", { class: "chk small" }, h("input", { type: "checkbox", onchange: (e) => (st.useOwned = e.target.checked) }), "ใช้การ์ดที่มีจริงก่อน")),
       h("textarea", { id: "ace-req", rows: 2, placeholder: "อยากได้อะไรเพิ่ม เช่น อยากชนะเร็วในเทิร์น 6, ไม่เอา React เยอะ", oninput: (e) => (st.request = e.target.value) }),
       h("div", { class: "row" }, h("button", { class: "btn gold", onclick: async (e) => {
-        const btn = e.currentTarget; if (!Ciel.on()) { out.replaceChildren(h("div", { class: "muted" }, aiErr({ code: "no_key" }))); return; }
+        const btn = e.currentTarget; if (!st.ace.length) { out.replaceChildren(h("div", { class: "muted" }, "เลือกการ์ดเอซก่อนอย่างน้อย 1 ใบ")); return; }
+        if (!Ciel.on()) { btn.disabled = true; await showFreeBuild(out, { core: st.ace, colors: st.colors, style: st.style }, api); btn.disabled = false; return; }
         btn.disabled = true; out.replaceChildren(busy("ชิเอลกำลังคัดการ์ดจากคลังทั้งหมด อาจใช้เวลาครึ่งนาที…"));
         try {
           const r = await cielBuild({ ace: st.ace, colors: st.colors, style: st.style, request: st.request, owned: st.useOwned ? Object.keys(Data.owned).join(",") : "" });
@@ -179,9 +181,60 @@ export function openAceBuilder(preset) {
             h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => { Editing = deck; api.close(); location.hash = "#decks/new"; } }, "เปิดในตัวแก้ไข"))));
         } catch (err) { out.replaceChildren(h("div", { class: "muted" }, aiErr(err))); }
         btn.disabled = false;
-      } }, "ให้ชิเอลจัดเด็ค"), !Ciel.on() ? h("span", { class: "small muted" }, "ต้องใส่ API key ที่หน้าตั้งค่าก่อน") : null), out];
+      } }, "ให้ชิเอลจัดเด็ค"), !Ciel.on() ? h("span", { class: "small muted" }, "ใช้ตัวจัดเด็คฟรีของชิเอล (ไม่ต้องใช้ API key)") : null), out];
   }, { title: "จัดเด็ครอบการ์ดเอซ", sub: "ชิเอลคัดการ์ดหนุนเอซจากคลังทั้งหมด พร้อมแผนการเล่น", wide: true });
 }
+// ---------- free builder: favourites → deck ----------
+async function showFreeBuild(out, opts, api) {
+  out.replaceChildren(busy("ชิเอลกำลังจัดเด็คแล้วลองให้บอทเล่น…")); await new Promise((r) => setTimeout(r, 30));
+  const r = freeBuild(opts); const deck = { ...blank(), ...r.deck };
+  // quick test: 40 bot games against the official starter decks
+  const st = starterDecks(); let w = 0, n = 0; for (let k = 0; k < 40; k++) { const g = simGame(deck, st[k % st.length], (Date.now() + k * 7919) | 0); n++; if (g.winner === 0) w++; if (k % 10 === 9) await new Promise((res) => setTimeout(res, 0)); }
+  const pct = Math.round((w / n) * 100); const v = r.valid;
+  const ents = deckEntries(deck).sort((a, b) => (a.c.t === "A" ? 0 : 1) - (b.c.t === "A" ? 0 : 1) || (a.c.c || 0) - (b.c.c || 0));
+  out.replaceChildren(h("div", { class: "panel stack" },
+    h("div", { class: "row" }, h("h3", null, deck.name), h("span", { class: "chip num" }, deckCount(deck) + "/50"), h("span", { class: "chip " + (pct >= 60 ? "good" : pct >= 40 ? "warn" : "bad") }, `ชนะเด็คเริ่มต้น ${pct}% (บอท ${n} เกม)`)),
+    h("div", { class: "small", style: "white-space:pre-wrap;line-height:1.6" }, deck.plan),
+    h("div", { class: "pick" }, ents.slice(0, 18).map((e) => cardBtn(e.id, { badge: "×" + e.n, onclick: () => showCard(e.id) }))),
+    h("div", { class: "valid" }, v.items.filter((x) => !x.ok).map((x) => h("div", { class: "no" }, "✗ " + x.msg + " (แก้ต่อในตัวแก้ไขได้)"))),
+    h("div", { class: "tiny muted" }, "ตัวจัดฟรีเลือกการ์ดหนุนจาก Symbol ชื่อ และสีที่เข้ากัน ลองปรับต่อในตัวแก้ไข แล้วไปห้องทดลองเพื่อจำลองเกมเพิ่ม"),
+    h("div", { class: "row" }, h("button", { class: "btn gold", onclick: async (e) => { e.currentTarget.disabled = true; try { const id = await saveDeck(deck); api.close(); toast("บันทึกเด็คแล้ว"); location.hash = "#decks/view/" + id; } catch (err) { toast("บันทึกไม่สำเร็จ: " + err.message, "bad"); e.currentTarget.disabled = false; } } }, "บันทึกเด็คนี้"),
+      h("button", { class: "btn", onclick: () => { Editing = deck; api.close(); location.hash = "#decks/new"; } }, "เปิดในตัวแก้ไข"))));
+}
+export function openFavBuilder() {
+  const favs = favCards(); const st = { off: new Set(), colors: [], style: "fun" };
+  openSheet((api) => {
+    if (!favs.length) return [h("div", { class: "stack" }, h("div", null, "ยังไม่มีการ์ดที่ชอบเลยค่ะ"), h("div", { class: "small muted" }, "ไปที่คลังการ์ด ติ๊ก \"✦ เฉพาะภาพพิเศษ\" แล้วกดการ์ดที่ชอบ กดปุ่ม ♡ เก็บไว้ จากนั้นกลับมาที่นี่ ชิเอลจะจัดเด็คจากการ์ดพวกนั้นให้"),
+      h("a", { class: "btn gold", href: "#library", onclick: () => api.close() }, "ไปคลังการ์ด"))];
+    const grid = h("div", { class: "pick" }); const colorRow = h("div", { class: "row small" }); const out = h("div");
+    const drawGrid = () => grid.replaceChildren(...favs.map((c) => { const b = cardBtn(c.i, { cls: st.off.has(c.i) ? "dim" : "", badge: st.off.has(c.i) ? "ไม่ใช้" : c.r, onclick: () => { st.off.has(c.i) ? st.off.delete(c.i) : st.off.add(c.i); drawGrid(); } }); return b; }));
+    const auto = (() => { const cnt = {}; favs.forEach((c) => { if (c.co) cnt[c.co] = (cnt[c.co] || 0) + 1; }); return Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k]) => k); })(); st.colors = auto;
+    const drawColors = () => colorRow.replaceChildren(h("span", { class: "muted" }, "สีของเด็ค (สูงสุด 2)"), ...COLORS.map((c) => h("label", { class: "chk" }, h("input", { type: "checkbox", checked: st.colors.includes(c), onchange: (e) => { st.colors = e.target.checked ? [...st.colors, c].slice(-2) : st.colors.filter((x) => x !== c); drawColors(); } }), h("span", { class: "dot", style: "background:" + colorOf(c) }), c)));
+    drawGrid(); drawColors();
+    const seg = h("div", { class: "seg", role: "group", "aria-label": "แนวเด็ค" }, [["fun", "มันส์สุด"], ["win", "ล่าชัย"], ["budget", "งบน้อย"]].map(([k, t]) => h("button", { "aria-pressed": st.style === k ? "true" : "false", onclick: (e) => { st.style = k; seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", "false")); e.currentTarget.setAttribute("aria-pressed", "true"); } }, t)));
+    return [h("div", { class: "stack" }, h("div", { class: "eyebrow" }, `การ์ดที่ชอบ ${favs.length} ใบ · แตะเพื่อไม่ใช้ในเด็คนี้`), grid, colorRow, h("div", { class: "row" }, h("span", { class: "small muted" }, "แนวเด็ค"), seg),
+      h("div", { class: "tiny muted" }, "ภาพพิเศษที่ชอบจะถูกตั้งเป็นสกินของการ์ดนั้นให้อัตโนมัติ"),
+      h("div", { class: "row" }, h("button", { class: "btn gold", onclick: async (e) => { const btn = e.currentTarget; const core = favs.filter((c) => !st.off.has(c.i));
+        if (!core.length) { out.replaceChildren(h("div", { class: "muted" }, "เลือกการ์ดอย่างน้อย 1 ใบ")); return; }
+        let changed = false; for (const c of core) if (c.b != null && Data.skins[String(c.b)] == null) { Data.skins[String(c.b)] = c.i; changed = true; } if (changed) saveSkins();
+        btn.disabled = true; await showFreeBuild(out, { core: core.map((c) => c.i), colors: st.colors, style: st.style }, api); btn.disabled = false; } }, "ให้ชิเอลจัดเด็ค"))), out];
+  }, { title: "♥ จัดเด็คจากการ์ดที่ชอบ", sub: "ชิเอลจัดเด็คจากการ์ดภาพสวยที่ริมุรุเลือกไว้ พร้อมลองให้บอทเล่นให้ดู", wide: true });
+}
+// ---------- skins for every card in a deck ----------
+export function openSkins(d) {
+  openSheet((api) => {
+    const rows = [...deckEntries(d), ...(d.life || []).map((i) => ({ c: card(i), id: +i, n: 1 }))].filter((e) => e.c && variantsOf(e.c).length > 1);
+    if (!rows.length) return [h("div", { class: "muted" }, "การ์ดในเด็คนี้ยังไม่มีภาพพิเศษให้เลือก")];
+    const body = h("div", { class: "stack", style: "gap:14px" });
+    const draw = () => body.replaceChildren(...rows.map((e) => { const b = baseId(e.c.i); const cur = Data.skins[String(b)] != null ? +Data.skins[String(b)] : b;
+      return h("div", { class: "stack", style: "gap:6px" }, h("div", { class: "row small" }, h("b", null, e.c.n), h("span", { class: "muted" }, `${variantsOf(e.c).length} ภาพ`)),
+        h("div", { class: "pick" }, variantsOf(e.c).map((v) => { const btn = h("button", { class: "ccard" + (cur === v.i ? " sel" : ""), "aria-label": `${v.n} ${v.r}`, "aria-pressed": cur === v.i ? "true" : "false", onclick: () => { if (v.i === b) delete Data.skins[String(b)]; else Data.skins[String(b)] = v.i; saveSkins(); draw(); } }, rawArt(v), h("span", { class: "badge" }, (isSpecialArt(v) ? "✦ " : "") + v.r)); return btn; }))); }));
+    draw(); return [h("div", { class: "small muted" }, "แตะภาพที่อยากใช้ ภาพที่เลือกจะแสดงในหน้าเด็คและในสนาม"), body];
+  }, { title: "เลือกสกินทั้งเด็ค", sub: d.name, wide: true });
+}
+// the art of exactly this print, ignoring the current skin choice
+function rawArt(v) { const k = String(baseId(v.i)); const saved = Data.skins[k]; delete Data.skins[k]; const im = artImg(v); if (saved != null) Data.skins[k] = saved; return im; }
+
 export function openAnalysis(d) {
   openSheet(() => {
     const out = h("div", null, Ciel.on() ? busy("ชิเอลกำลังวิเคราะห์เด็คและผลการเล่น…") : h("div", { class: "muted" }, aiErr({ code: "no_key" })));
