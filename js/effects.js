@@ -1,8 +1,8 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { CARDS } from "./cards.js?v=20261110205821";
-import { E, scriptOf } from "./engine.js?v=20261110205821";
+import { CARDS } from "./cards.js?v=20261110210951";
+import { E, scriptOf } from "./engine.js?v=20261110210951";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -266,7 +266,7 @@ function sentence(s, t, p, self, ctx) {
       ops.push({ op: "control", i: self.i, seat: 1 - p }); say.push(`${E.name(s, self)} ย้ายไปอยู่ฝ่ายตรงข้าม`); return { ops, say }; }
     if (!OPP.test(t) || !/Avatar/.test(t) || /Draw Phase|ถัดไป/.test(t)) return false;
     const temp = /จนจบเทิร์น/.test(t); const asleep = /สภาพนอน/.test(t); if (E.avatars(P) >= 4) { say.push("Avatar Zone เราเต็ม"); return { ops, say }; }
-    const x = ctx.choose(oppAv({ ...f0, type: null }).filter((y) => !y.tok), 1, "เลือก Avatar ฝ่ายตรงข้ามที่จะควบคุม", { optional: /สามารถ/.test(t) })[0];
+    const x = ctx.choose(oppAv({ ...f0, type: null }).filter((y) => !y.tok && !(!y.mute && (E.hooks(s, y) || {}).noControl)), 1, "เลือก Avatar ฝ่ายตรงข้ามที่จะควบคุม", { optional: /สามารถ/.test(t) })[0];
     if (x) { ops.push({ op: "control", i: x.i, seat: p, ...(temp ? { until: "turn" } : {}), ...(asleep ? { asleep: true } : {}) }); say.push(`ควบคุม ${E.name(s, x)}${temp ? " จนจบเทิร์น" : ""}`); } else say.push("ไม่มีเป้าหมาย");
   } else if (/เนรเทศ/.test(t)) {
     if (/Deck|มือ/.test(t)) return false;

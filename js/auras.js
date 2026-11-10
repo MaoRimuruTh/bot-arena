@@ -35,9 +35,17 @@ function parse(seg) {
   let textHas = null; t = t.replace(/ที่มี\s*["“]([^"”]+)["”]\s*อยู่ใน\s*Text Box/, (m, a) => { textHas = a.trim(); return " "; });
   let kws = null; const km = t.match(new RegExp(`(?:และ\\s*)?(?:จะ)?ได้รับ\\s*(?:ความสามารถ\\s*)?((?:["“]?\\s*(?:${KWS})\\s*["”]?\\s*(?:,|และ)?\\s*)+)`));
   if (km) { kws = km[1].match(new RegExp(KWS, "g")); t = t.replace(km[0], " ").replace(/\s+และ\s*$/, " "); }
+  t = t.replace(/(?:จะ)?ได้รับ\s*(?=POWER)/g, " ");
+  // counted by what this Avatar wears, or by our Tokens (read before the general checks, which reject those words)
+  let em = t.match(/^(?:(?:Avatar|การ์ด)\s*(?:ใบนี้|ตัวนี้)\s*)?POWER\s*\+\s*(\d+)\s*(?:ตามจำนวน|ต่อจำนวน)\s*(การ์ด|Modification(?:\s*Magic)?)\s*(?:["“]([^"”]+)["”])?\s*ที่(?:สวมใส่|ติด)(?:อยู่)?(?:\s*(?:กับ|ให้)?\s*(?:Avatar|การ์ด)?\s*(?:ใบนี้|ตัวนี้))?\s*$/);
+  if (em && !kws) return { when: null, has: null, kind: "count", per: +em[1], count: { worn: true, mod: /Modification/.test(em[2]), name: em[3] ? em[3].trim() : null } };
+  em = t.match(/^(?:(?:Avatar|การ์ด)\s*(?:ใบนี้|ตัวนี้)\s*)?POWER\s*\+\s*(\d+)\s*(?:ตามจำนวน|ต่อจำนวน)\s*Token\s*["“]?([^\s"”]+)["”]?\s*บน\s*Avatar Zone\s*(?:ฝ่าย)?เรา\s*$/);
+  if (em && !kws) return { when: null, has: null, kind: "count", per: +em[1], count: { token: em[2] } };
   if (BAIL.test(t)) return null;
   if (!/POWER/.test(t) && !kws) return null;
   const spec = { when: null, has: null, ...(kws ? { kw: kws } : {}) };
+  const lm = t.match(/(?:ตราบเท่าที่|ถ้า)\s*(?:บน\s*)?Land Magic Zone\s*มี\s*(?:["“]([^"”]+)["”]|(\S+(?:\s\S+)??))\s+(?=Avatar|การ์ด|POWER)/);
+  if (lm) { spec.land = (lm[1] || lm[2]).trim(); t = t.replace(lm[0], " "); }
   // timing / location conditions
   t = t.replace(/(?:ตราบเท่าที่|เมื่อ)\s*(?:Avatar|การ์ด)?\s*(?:ใบนี้|ตัวนี้)?\s*(?:อยู่)?\s*บน\s*(?:Avatar|Construct)\s*Zone(?:\s*ฝ่ายเรา)?/g, " ");
   t = t.replace(/ตราบเท่าที่อยู่บน\s*Avatar\s*Zone/g, " ");
@@ -106,13 +114,16 @@ function run(E, s, src, L, specs, zone) {
     if (sp.when === "battle" && s.phase !== "battle") continue;
     if (sp.when === "oppTurn" && s.active === p) continue;
     if (sp.when === "myTurn" && s.active !== p) continue;
+    if (sp.land && !(s.land && String(E.def(s, s.land).n || "").includes(sp.land))) continue;
     if (sp.has) { const pool = sp.has.any ? [...s.P[p].av, ...s.P[p].cs, ...s.P[p].mg, ...(s.land && s.land.o === p ? [s.land] : [])] : s.P[p].av;
       if (!pool.some((x) => x.i !== (sp.has.other ? src.i : -1) && (sp.has.any ? sp.has.f.names.some((n) => String(E.def(s, x).n || "").includes(n)) : fits(E, s, x, sp.has.f)))) continue; }
     if (sp.kind === "self") { if (zone === "av") res.push({ seat: p, test: (x) => x.i === src.i, n: sp.n, kw: sp.kw }); continue; }
     if (sp.kind === "group") { res.push({ seat: sp.side === "opp" ? 1 - p : p, test: (x) => !(sp.other && x.i === src.i) && (sp.f && named(sp.f) ? fits(E, s, x, sp.f) : true), n: sp.n, kw: sp.kw }); continue; }
     if (sp.kind === "count" && zone === "av") {
       let k = 0; const c = sp.count;
-      if (c.life) k = (c.life === "both" ? [0, 1] : [p]).reduce((a, q) => a + s.P[q].life.filter((x) => x.up).length, 0);
+      if (c.worn) k = [...s.P[0].mg, ...s.P[1].mg].filter((m) => m.on === src.i && (!c.mod || E.def(s, m).st === "D") && (!c.name || String(E.def(s, m).n || "").includes(c.name))).length;
+      else if (c.token) k = s.P[p].av.filter((x) => x.tok && String(E.def(s, x).n || "").includes(c.token)).length;
+      else if (c.life) k = (c.life === "both" ? [0, 1] : [p]).reduce((a, q) => a + s.P[q].life.filter((x) => x.up).length, 0);
       else { const seats = c.side === "both" ? [0, 1] : [p]; let list = seats.flatMap((q) => s.P[q][c.zone]).filter((x) => fits(E, s, x, c.f) && !(c.other && x.i === src.i));
         if (c.uniq) list = [...new Set(list.map((x) => E.def(s, x).n))]; k = list.length; }
       if (k) res.push({ seat: p, test: (x) => x.i === src.i, n: k * sp.per });
@@ -135,7 +146,12 @@ export function traits(def) {
     if (/เมื่อ\s*Avatar\s*(?:["“][^"”]+["”]\s*)?ที่สวมใส่(?:การ์ด(?:ใบ)?นี้)?\s*จะถูกทำลาย\s*:?\s*(?:สามารถ)?\s*ทำลายการ์ดใบนี้\s*แทน/.test(text)) o.shield = true;
   }
   if (["A", "T"].includes(def.t)) {
-    if (line(/(?:Avatar|การ์ด)\s*(?:ใบนี้|ตัวนี้)\s*(?:จะ)?\s*(?:โจมตีไม่ได้|ไม่สามารถโจมตีได้)/) && !/โจมตีได้(?!.*ไม่)|สามารถสั่งโจมตี|จะโจมตีได้/.test(text.replace(/ไม่สามารถโจมตีได้/g, ""))) o.noAttack = () => true;
+    if (line(/(?:Avatar|การ์ด)\s*(?:ใบนี้|ตัวนี้)\s*(?:จะ)?\s*(?:โจมตีไม่ได้|ไม่สามารถ\s*โจมตีได้)/) && !/โจมตีได้(?!.*ไม่)|สามารถสั่งโจมตี|จะโจมตีได้/.test(text.replace(/ไม่สามารถ\s*โจมตีได้/g, ""))) o.noAttack = () => true;
+    // "cannot attack unless an Avatar is worn (N or more)" / "may attack only with an empty hand"
+    if ((m = text.match(/ถ้าไม่มี\s*Avatar\s*สวมใส่\s*Avatar\s*(?:ใบนี้|ตัวนี้)\s*(?:(\d+)\s*ใบ\s*ขึ้นไป)?\s*(?:จะ)?\s*ไม่สามารถ\s*โจมตีได้/))) { const need = +(m[1] || 1); o.noAttack = (E, s, x) => [...s.P[0].mg, ...s.P[1].mg].filter((c) => c.on === x.i && ["A", "T"].includes(E.def(s, c).t)).length < need; }
+    else if (/(?:การ์ด|Avatar)\s*(?:ใบนี้|ตัวนี้)\s*สามารถ(?:สั่ง)?โจมตีได้\s*(?:ต่อ)?เมื่อเราไม่มีการ์ดบนมือ/.test(text)) o.noAttack = (E, s, x) => { const L = E.locate(s, x.i); return !!L && s.P[L.p].hand.length > 0; };
+    if (String(text).split(/\n/).some((l) => /(?:Avatar|การ์ด)\s*(?:ใบนี้|ตัวนี้)\s*(?:จะ)?\s*(?:ไม่สามารถ\s*(?:ถูก)?\s*เปลี่ยนการควบคุม|ไม่ถูกเปลี่ยนการควบคุม)/.test(l))) o.noControl = true;
+    if (line(/ฝ่ายตรงข้าม\s*(?:จะ)?\s*ไม่สามารถเลือกเป้า(?:หมาย)?(?:การ)?โจมตี(?:อื่น)?\s*(?:ได้)?\s*นอกจาก\s*(?:การ์ด|Avatar)\s*(?:ใบนี้|ตัวนี้)/)) o.taunt = () => true;
     if (/ไม่สามารถลงสนามจากบนมือ|ลงสนามจากบนมือไม่ได้/.test(text)) o.noHand = true;
     if (/ควบคุม[^\n]*?(?:ใน|บน)\s*Avatar Zone\s*ได้เพียง\s*1\s*ใบ/.test(text)) o.uniq = true;
     if (/ถือเป็น\s*Avatar\s*ทุกสี/.test(text)) o.anyColor = true;
