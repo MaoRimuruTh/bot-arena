@@ -1,7 +1,7 @@
 // Free reader for continuous POWER effects ("ต่อเนื่อง ... POWER +N").
 // Conservative like effects.js: anything it can't express exactly is ignored (returns no aura).
 // readAura(def) -> null or { desc, run(E, s, src, L) -> [{ seat, test(x), n }] }
-import { nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261111025421";
+import { nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261111032430";
 const cache = new Map();
 
 const ON_FIELD = { A: "av", T: "av", C: "cs" };
@@ -121,8 +121,8 @@ function run(E, s, src, L, specs, zone) {
     if (sp.when === "battle" && s.phase !== "battle") continue;
     if (sp.when === "oppTurn" && s.active === p) continue;
     if (sp.when === "myTurn" && s.active !== p) continue;
-    if (sp.land && !(s.land && String(E.def(s, s.land).n || "").includes(sp.land))) continue;
-    if (sp.has) { const pool = sp.has.any ? [...s.P[p].av, ...s.P[p].cs, ...s.P[p].mg, ...(s.land && s.land.o === p ? [s.land] : [])] : s.P[p].av;
+    if (sp.land && !E.lands(s).some((l) => String(E.def(s, l).n || "").includes(sp.land))) continue;
+    if (sp.has) { const pool = sp.has.any ? [...s.P[p].av, ...s.P[p].cs, ...s.P[p].mg, ...E.lands(s).filter((l) => l.o === p)] : s.P[p].av;
       if (!pool.some((x) => x.i !== (sp.has.other ? src.i : -1) && (sp.has.any ? sp.has.f.names.some((n) => String(E.def(s, x).n || "").includes(n)) : fits(E, s, x, sp.has.f)))) continue; }
     if (sp.kind === "self") { if (zone === "av") res.push({ seat: p, test: (x) => x.i === src.i, n: sp.n, kw: sp.kw }); continue; }
     if (sp.kind === "group") { for (const seat of sp.side === "both" ? [0, 1] : [sp.side === "opp" ? 1 - p : p]) res.push({ seat, test: (x) => !(sp.other && x.i === src.i) && (!sp.atk || (!!s.pend && s.pend.att === x.i)) && (sp.f && named(sp.f) ? fits(E, s, x, sp.f) : true), n: sp.n, kw: sp.kw }); continue; }

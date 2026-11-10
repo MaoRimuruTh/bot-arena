@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP). Kenney particle textures and Poly Haven stone are CC0.
-import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111025421";
-import { E } from "./engine.js?v=20261111025421";
-import { h } from "./util.js?v=20261111025421";
-import { Sfx } from "./sfx.js?v=20261111025421";
+import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111032430";
+import { E } from "./engine.js?v=20261111032430";
+import { h } from "./util.js?v=20261111032430";
+import { Sfx } from "./sfx.js?v=20261111032430";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -231,7 +231,7 @@ function layout(s, V) {
     P.cs.forEach((x, k) => out.set(x.i, { x, p, side, zone: "cs", pos: new THREE.Vector3(-5.1 + k * 1.3, 0.04, zs * 4.15 - (side === "me" ? 0 : 0.35)), scale: 0.68 }));
     P.mg.forEach((x, k) => out.set(x.i, { x, p, side, zone: "mg", pos: new THREE.Vector3(5.1 - k * 1.15, 0.04, zs * 4.15 - (side === "me" ? 0 : 0.35)), scale: 0.6 }));
   }
-  if (s.land) out.set(s.land.i, { x: s.land, p: s.land.o, side: s.land.o === V ? "me" : "opp", zone: "land", pos: new THREE.Vector3(-6.05, 0.04, -0.2), scale: 0.72 });
+  { const two = !!(s.land && s.land2); for (const l of [s.land, s.land2]) if (l) out.set(l.i, { x: l, p: l.o, side: l.o === V ? "me" : "opp", zone: "land", pos: new THREE.Vector3(-6.05, 0.04, two ? (l.o === V ? 0.6 : -1.0) : -0.2), scale: two ? 0.6 : 0.72 }); } // แบ่งแยกดินแดน: one Land per side
   return out;
 }
 function makeMesh(s, L) {

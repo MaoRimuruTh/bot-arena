@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261111025421";
-import { CARDS, nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261111025421";
-import { E, scriptOf } from "./engine.js?v=20261111025421";
+import { readAura } from "./auras.js?v=20261111032430";
+import { CARDS, nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261111032430";
+import { E, scriptOf } from "./engine.js?v=20261111032430";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -233,13 +233,12 @@ function sentence(s, t, p, self, ctx) {
   if (/Land\s*Magic/i.test(t) && !/ขึ้นมือ|นรก/.test(t)) {
     let m;
     if ((m = t.match(/^ทำลาย(?:การ์ด)?\s*Land\s*Magic\s*(?:1\s*ใบ\s*)?(?:(?:บน|ใน)\s*(?:Land\s*Magic\s*Zone|สนาม))?\s*$/i))) {
-      if (s.land && !ctx.landGone) { ops.push({ op: "destroy", i: s.land.i, why: "จากเอฟเฟกต์" }); say.push(`ทำลาย Land Magic ${E.name(s, s.land)}`); ctx.landGone = true; } else say.push("ไม่มี Land Magic บนสนาม");
-      return { ops, say };
+      { const on = E.lands(s); const L0 = on.length > 1 ? ctx.choose([...on].sort((a, b) => (a.o === p) - (b.o === p)), 1, "เลือก Land Magic ที่จะทำลาย", { exact: true })[0] : on[0]; if (L0 && !ctx.landGone) { ops.push({ op: "destroy", i: L0.i, why: "จากเอฟเฟกต์" }); say.push(`ทำลาย Land Magic ${E.name(s, L0)}`); ctx.landGone = true; } else say.push("ไม่มี Land Magic บนสนาม"); return { ops, say }; }
     }
     if ((m = t.match(/^(?:สามารถ\s*)?(?:นำ|สั่งใช้|ใช้)\s*Land\s*Magic\s*(?:["“]([^"”]+)["”]\s*)?(?:1\s*ใบ\s*)?จาก(?:ใน)?\s*Deck\s*(?:(?:ฝ่าย|ของ)?เรา)?\s*(?:1\s*ใบ\s*)?(?:มา(?:เล่น|วาง|ใช้)?(?:ไว้)?\s*(?:บน|ใน|ที่)\s*(?:Land\s*Magic\s*Zone|สนาม)(?:\s*(?:ฝ่าย)?เรา)?)?\s*$/i))) {
       const seen = new Set(); const cands = P.deck.filter((x) => { const d = E.def(s, x); return d.t === "M" && d.st === "L" && (!m[1] || String(d.n).includes(m[1])); }).filter((x) => { const k = E.def(s, x).n; if (seen.has(k)) return false; seen.add(k); return true; });
       const got = ctx.choose(cands, 1, "เลือก Land Magic จาก Deck มาเล่นบนสนาม", { optional: /สามารถ/.test(t) })[0];
-      if (got) { if (s.land && !ctx.landGone) ops.push({ op: "move", i: s.land.i, to: "hell" }); ops.push({ op: "toLand", i: got.i }, { op: "shuffle", seat: p }); say.push(`นำ ${E.name(s, got)} จาก Deck มาเล่นบน Land Magic Zone`); } else { ops.push({ op: "shuffle", seat: p }); say.push("ไม่มี Land Magic ใน Deck"); }
+      if (got) { ops.push({ op: "toLand", i: got.i }, { op: "shuffle", seat: p }); say.push(`นำ ${E.name(s, got)} จาก Deck มาเล่นบน Land Magic Zone`); } else { ops.push({ op: "shuffle", seat: p }); say.push("ไม่มี Land Magic ใน Deck"); }
       return { ops, say };
     }
   }
@@ -291,7 +290,7 @@ function sentence(s, t, p, self, ctx) {
       if ((!OPP.test(t) && !anySide) || /นรก|Deck|มือ|Magic Zone|มิติมืด/.test(t)) return false;
       const f = f0; if (/Cost|POWER/.test(t) && f.maxCost == null && f.maxPower == null && f.minCost == null && f.cost == null && f.power == null) return false;
       const all = /ทุกใบ|ทั้งหมด/.test(t); const hm = howMany(t); const n = all ? 99 : hm.n;
-      const cands = (/Construct/.test(t) ? O.cs.filter((x) => fits(s, x, f)) : f.type === "M" ? [...O.mg, ...(s.land && s.land.o === 1 - p ? [s.land] : [])].filter((x) => typed(x, f)) : /การ์ด(?:บนสนาม)?\s*\d/.test(t) && !/Avatar/.test(t) ? [...oppAv({ ...f, type: null }), ...O.cs] : oppAv(f));
+      const cands = (/Construct/.test(t) ? O.cs.filter((x) => fits(s, x, f)) : f.type === "M" ? [...O.mg, ...E.lands(s).filter((l) => l.o === 1 - p)].filter((x) => typed(x, f)) : /การ์ด(?:บนสนาม)?\s*\d/.test(t) && !/Avatar/.test(t) ? [...oppAv({ ...f, type: null }), ...O.cs] : oppAv(f));
       if (anySide && !all) cands.push(...P.av.filter((x) => typed(x, f) && !(self && x.i === self.i)).sort((a, b) => val(s, a) - val(s, b)));
       const pool = all ? cands : ctx.choose(cands, n, `เลือกการ์ด${anySide ? "บนสนาม" : "ฝ่ายตรงข้าม"}ที่จะทำลาย (${hm.upTo ? "สูงสุด " : ""}${n} ใบ)`, { optional: hm.upTo });
       for (const x of pool) ops.push({ op: "destroy", i: x.i, why: "จากเอฟเฟกต์" });
@@ -456,7 +455,7 @@ export function reactTiming(text) {
 // ---------- costs and conditions written before ":" ----------
 const NEXT = "(?=\\s*(?:$|และ|,|ธรณีสูบ|ทิ้ง|เปลี่ยน|เซ่นไหว้|เซ่นไหว์|เนรเทศ|หงาย|ส่ง|เลือก|สอดแนม|แสดง))";
 const nameOrFilter = (t) => { t = t.replace(/(?:บน|ใน)\s*(?:Avatar Zone|สนาม)(?:\s*(?:ฝ่าย)?เรา)?/g, " "); const f = filterOf(t); if (f.symbols) f.symbol = f.symbol || "\u0000"; if (!f.name && !f.names && !f.symbol) { const bare = t.replace(/Avatar|การ์ด|Construct|Magic|ใบอื่น|ชื่อ/g, "").trim(); if (bare && bare.length <= 40 && !/\d|ที่|หรือ/.test(bare)) f.name = bare; } return f; };
-const fieldOf = (s, p, zone) => (zone === "Construct Zone" ? s.P[p].cs : zone === "Land Magic Zone" ? (s.land ? [s.land] : []) : zone === "Avatar Zone" ? s.P[p].av : [...s.P[p].av, ...s.P[p].cs, ...s.P[p].mg, ...(s.land && s.land.o === p ? [s.land] : [])]);
+const fieldOf = (s, p, zone) => (zone === "Construct Zone" ? s.P[p].cs : zone === "Land Magic Zone" ? E.lands(s) : zone === "Avatar Zone" ? s.P[p].av : [...s.P[p].av, ...s.P[p].cs, ...s.P[p].mg, ...E.lands(s).filter((l) => l.o === p)]);
 // "สามารถใช้(การ์ดนี้)ได้เมื่อ …" → true / false, or null when the condition cannot be read
 export function playCond(s, text, p) {
   const m = String(text || "").match(/(?:สามารถ)?ใช้(?:การ์ด(?:ใบ)?นี้)?ได้(?:ต่อ)?(?:เมื่อ|ถ้า)\s*([^:\n]*)/); if (!m) return true;

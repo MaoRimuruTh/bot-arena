@@ -1,10 +1,10 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261111025421";
-import { plain } from "./persona.js?v=20261111025421";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261111025421";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261111025421";
-import { Data } from "./fb.js?v=20261111025421";
-import { lsGet } from "./util.js?v=20261111025421";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261111032430";
+import { plain } from "./persona.js?v=20261111032430";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261111032430";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261111032430";
+import { Data } from "./fb.js?v=20261111032430";
+import { lsGet } from "./util.js?v=20261111032430";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -83,13 +83,13 @@ export function stateText(s, view, opts = {}) {
     if (P.hell.length) L.push(`  นรก (${P.hell.length}): ${P.hell.slice(-12).map((x) => "#" + x.i + " " + E.name(s, x)).join(", ")}`);
     if (P.dark.length) L.push(`  มิติมืด: ${P.dark.map((x) => E.name(s, x)).join(", ")}`);
   }
-  if (s.land) L.push(`\nLand Magic บนสนาม: #${s.land.i} ${E.name(s, s.land)} (ของ ${s.P[s.land.o].name})`);
+  for (const l0 of E.lands(s)) L.push(`\nLand Magic บนสนาม: #${l0.i} ${E.name(s, l0)} (ของ ${s.P[l0.o].name})`);
   if (s.pend) L.push(`\nกำลังโจมตี: #${s.pend.att} → ${s.pend.tk === "life" ? "LIFE" : "#" + s.pend.ti}`);
   // texts of visible cards
   const vis = new Map();
   const addv = (x) => { const d = E.def(s, x); if (d.x && !vis.has(d.n)) vis.set(d.n, d.x.replace(/\s+/g, " ").slice(0, 260)); };
   for (const P of s.P) { [...P.av, ...P.cs, ...P.mg].forEach(addv); }
-  me.hand.forEach(addv); if (s.land) addv(s.land);
+  me.hand.forEach(addv); E.lands(s).forEach(addv);
   if (vis.size) { L.push("\nข้อความการ์ดที่มองเห็น:"); for (const [n, x] of vis) L.push(`- ${n}: ${x}`); }
   return L.join("\n");
 }
@@ -122,13 +122,13 @@ export const H = {
         const a = m.a; if (a.type === "battle") continue;
         if (a.type === "activate") { const L = E.locate(s, a.i); const nm = L ? E.name(s, L.x) : ""; const fx = L ? H.opsScore(s, p, H.preview(s, { i: L.x.i, c: L.x.c, when: "activate", seat: p, ...(a.k != null ? { k: a.k } : {}) })) : 0;
           cand.push({ m, sc: /นักท่องเรื่องราว/.test(nm) ? 7 : /มิติมืด/.test(m.d) ? 5 : fx < 0 ? fx : 1.5 + Math.min(6, fx) }); continue; }
-        const x = P.hand.find((y) => y.i === a.i); if (!x) continue; const d = E.def(s, x);
+        const x = P.hand.find((y) => y.i === a.i) || (a.from === "hell" ? P.hell.find((y) => y.i === a.i) : null); if (!x) continue; const d = E.def(s, x);
         const payLoss = (a.pay || []).reduce((t, i) => t + H.value(s, P.hand.find((y) => y.i === i)), 0);
         let sc = -99;
         if (a.type === "summon") { const fx = d.x && /จุติ/.test(d.x) ? H.opsScore(s, p, H.preview(s, { i: x.i, c: x.c, when: "summon", seat: p, exact: true })) : 0; sc = (d.pw || 0) + 2 + Math.max(0, fx) - payLoss * 0.45 + (P.av.length < 2 ? 3 : 0); }
         else if (a.type === "build") sc = 3 - payLoss * 0.3;
-        else if (a.type === "cast" && d.st === "L") sc = s.land ? -1 : 2.5;
-        else if (a.type === "cast" && d.st === "D") { const host = P.av.find((y) => y.i === a.on); const b = modBonus(d.x); sc = b > 0 && host ? b + (host.a ? 1.5 : 0) + E.power(s, host) * 0.1 : -1; }
+        else if (a.type === "cast" && d.st === "L") sc = E.lands(s).some((l) => l.o === p) || (E.lands(s).length && !E.landSc(s, "splitLand")) ? -1 : 2.5;
+        else if (a.type === "cast" && d.st === "D") { const host = P.av.find((y) => y.i === a.on); const sm = scriptOf(s, x); const b = sm && sm.modV ? sm.modV(E, s, x, host) : modBonus(d.x); sc = b > 0 && host ? b + (host.a ? 1.5 : 0) + E.power(s, host) * 0.1 : -1; }
         else if (a.type === "cast" && d.st === "N") sc = H.opsScore(s, p, H.preview(s, { i: x.i, c: x.c, when: "cast", seat: p }));
         if (a.via != null) sc += 4; // ซาร์อึก: a dragon for almost nothing
         cand.push({ m, sc });
