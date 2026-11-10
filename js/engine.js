@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261111034325";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261111034325";
-import { SCRIPTS } from "./scripts.js?v=20261111034325";
-import { newId, clone } from "./util.js?v=20261111034325";
+import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261111035449";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261111035449";
+import { SCRIPTS } from "./scripts.js?v=20261111035449";
+import { newId, clone } from "./util.js?v=20261111035449";
 export const ZONES = ["deck", "hand", "av", "mg", "cs", "hell", "dark", "life"];
 export const ZONE_TH = { deck: "Deck", hand: "มือ", av: "Avatar Zone", mg: "Magic Zone", cs: "Construct Zone", hell: "นรก", dark: "มิติมืด", life: "LIFE", land: "Land Magic" };
 export const PHASE_TH = { mull: "เปลี่ยนมือ", draw: "Draw", main: "Main", battle: "Battle", end: "End", over: "จบเกม" };
@@ -298,7 +298,7 @@ export const E = {
     if (L.z === "mg" && x.on) { const H = E.locate(s, x.on); if (H && H.x.muteBy === x.i) { delete H.x.mute; delete H.x.muteBy; } delete x.on; if (H && H.z === "av" && !x.mute && (scriptOf(s, x) || {}).leaveKillsHost) s.later2 = [...(s.later2 || []), H.x.i]; if (H && H.z === "av" && !x.mute && (scriptOf(s, x) || {}).leaveReturns && H.p !== H.x.o) { const P0 = s.P[H.x.o]; if (E.avatars(P0) < 4) { s.P[H.p].av.splice(s.P[H.p].av.indexOf(H.x), 1); P0.av.push(H.x); E.log(s, H.x.o, `${E.name(s, H.x)} กลับไปอยู่กับเจ้าของ`); } } }
     if (L.z === "av" && to !== "av") { for (const q of [0, 1]) for (const y of s.P[q].av) if (y.nwBy === x.i) { delete y.nw; delete y.nwBy; } const so = x.mute ? null : scriptOf(s, x); if (so && so.onLeave) s.trig.push({ id: newId(), seat: L.p, i: x.i, c: x.c, when: "onLeave" }); }
     if (x.tok && to !== "av") { E.log(s, L.p, `Token ${E.name(s, x)} ถูกนำออกจากเกม`); return null; }
-    x.a = true; x.pm = 0; x.tm = 0; for (const k of ["kw", "kt", "ua", "tn", "fm", "story", "mute", "zero", "muteEnd", "guard", "used", "saved", "exd", "canAtk", "back", "lk", "cst", "nlt", "hs", "sb", "t0", "muteBy", "ind", "imm", "nsh", "cm", "ups", "blk", "fromHell", "noAct", "bp", "fd", "rimm", "own", "lh2", "kf", "frz", "px", "feed", "ofa", "mustAtk", "sumt", "picky", "hs2", "tani", "twice", "twiceUsed", "sye", "nw", "nwBy", "nact", "mil", "kdm", "fa"]) delete x[k]; if (to !== "hand") delete x.hcm; if (to !== "hell") delete x.hlock; if (to !== "life") delete x.up; if (!["av", "mg", "cs", "land"].includes(to)) { delete x.nameAs; delete x.syAs; delete x.ov; delete x.srv; delete x.xn; delete x.xsy; delete x.mgo; }
+    x.a = true; x.pm = 0; x.tm = 0; for (const k of ["kw", "kt", "ua", "tn", "fm", "story", "mute", "zero", "muteEnd", "guard", "used", "saved", "exd", "canAtk", "back", "lk", "cst", "nlt", "hs", "sb", "t0", "muteBy", "ind", "imm", "nsh", "cm", "ups", "blk", "fromHell", "noAct", "bp", "fd", "rimm", "own", "lh2", "kf", "frz", "px", "feed", "ofa", "mustAtk", "sumt", "picky", "hs2", "tani", "twice", "twiceUsed", "sye", "nw", "nwBy", "nact", "mil", "kdm", "fa", "stay"]) delete x[k]; if (to !== "hand") delete x.hcm; if (to !== "hell") delete x.hlock; if (to !== "life") delete x.up; if (!["av", "mg", "cs", "land"].includes(to)) { delete x.nameAs; delete x.syAs; delete x.ov; delete x.srv; delete x.xn; delete x.xsy; delete x.mgo; }
     const owner = x.o; const ctl = seatOverride != null ? seatOverride : (L.z === "land" ? owner : L.p);
     const dest = { hand: owner, hell: owner, dark: owner, deckTop: owner, deckBottom: owner, life: seatOverride != null ? seatOverride : owner }[to];
     if (to === "deckTop") s.P[dest].deck.unshift(x);
@@ -325,6 +325,7 @@ export const E = {
       for (const [z, list] of [["av", P.av], ["cs", P.cs], ["mg", P.mg], ["hand", P.hand], ["land", E.lands(s).filter((l) => l.o === L.p)]]) for (const y of list) {
         if (y.i === L.x.i || y.mute) continue; const sy = scriptOf(s, y); if (!sy || !sy.saveOther) continue; const r = sy.saveOther(E, s, y, { p: L.p, z }, L.x, L, { fight, cause, by: opt.by }); if (!r) continue;
         E.log(s, L.p, r.why); s.saving = (s.saving || 0) + 1; try { E.ops(s, r.ops || [], L.p); } finally { s.saving--; } if (!r.also) return; } }
+    if (L.x.stay === s.turn) { delete L.x.stay; E.log(s, L.p, `${E.name(s, L.x)} ไม่ออกจากสนาม`); return; }
     if (L.x.guard) { delete L.x.guard; E.log(s, L.p, `${E.name(s, L.x)} ไม่ถูกทำลาย (ได้รับการป้องกัน)`); return; }
     if (L.x.ind === s.turn) { E.log(s, L.p, `${E.name(s, L.x)} ไม่ถูกทำลายในเทิร์นนี้`); return; }
     if (L.x.fprot >= s.turn && /^(?:แพ้|เสมอ|พลังเท่ากัน)/.test(String(cause || ""))) { E.log(s, L.p, `${E.name(s, L.x)} ไม่ถูกทำลายจากการต่อสู้ในเทิร์นนี้`); return; }
@@ -417,7 +418,25 @@ export const E = {
   // after a summon or a Magic, the other player may answer with a React before effects resolve
   openWindow(s, p, kind, i) { const q = 1 - p; const on = { kind, by: p, i }; if (E.reactsFor(s, q, on).length) s.rw = on; },
 
-  apply(s, act, p) { E.sync(s); try { return E.act0(s, act, p); } finally { E.sync(s); } },
+  apply(s, act, p) { E.sync(s); try { return E.act0(s, act, p); } finally { E.runHeld(s); E.sync(s); } },
+  // an effect held back so the other player could answer "when an Avatar would be destroyed / leave the field" runs once that window closes
+  runHeld(s) { let g = 0; while (s.phase !== "over" && !s.rw && s.trig.length && s.trig[0].held && g++ < 10) { const t = s.trig[0]; E.act0(s, { type: "trig", id: t.id }, t.seat); } },
+  // which of the other player's Avatars / Constructs these ops would destroy or move off the field; a window only if they hold an answer for it
+  doomFor(s, ops, p) { const q = 1 - p; const kill = [], killCs = [], leave = [];
+    for (const o of ops || []) { if (!o || o.i == null || typeof o.i !== "number") continue; const L = E.locate(s, o.i); if (!L || L.p !== q || (L.z !== "av" && L.z !== "cs")) continue;
+      if (o.op === "destroy") (L.z === "av" ? kill : killCs).push(o.i); else if (L.z === "av" && ((o.op === "move" && o.to !== "av") || o.op === "exile")) leave.push(o.i); }
+    return E.doomWin(s, { kind: "doom", by: p, p: q, kill: [...new Set(kill)], killCs: [...new Set(killCs)], leave: [...new Set(leave)], fight: false }); },
+  doomWin(s, on) { on.ids = [...new Set([...on.kill, ...on.killCs, ...on.leave])]; if (!on.ids.length || s.phase === "over") return null; on.i = on.ids[0];
+    return E.reactsFor(s, on.p, on).some((x) => { const sc = scriptOf(s, x); return !!(sc && sc.react && sc.react.kinds.includes("doom")); }) ? on : null; },
+  // before a fight is resolved: whoever is about to lose an Avatar / Construct in it may answer first
+  fightDoom(s) { const pd = s.pend; if (!pd || (pd.tk !== "av" && pd.tk !== "cs")) return false; const A = E.locate(s, pd.att), T = E.locate(s, pd.ti); if (!A || A.z !== "av" || !T || T.z !== pd.tk) return false;
+    const ap = Math.max(0, E.power(s, A.x) + (pd.bonus || 0) + (pd.tk === "av" ? E.battleMod(s, A.x, T.x) : 0)), tp = Math.max(0, E.power(s, T.x) + (pd.tk === "av" ? E.battleMod(s, T.x, A.x) : 0));
+    let dead = []; if (pd.tk === "cs") dead = ap > tp ? [T] : []; else if (ap > tp) dead = [T]; else if (tp > ap) dead = [A]; else if (ap > 0) { const ah = E.kw(s, A.x, "ลูกฮึด"), dh = E.kw(s, T.x, "ลูกฮึด"); dead = ah && !dh ? [T] : dh && !ah ? [A] : [A, T]; }
+    pd.doomAsked = pd.doomAsked || [false, false];
+    for (const q of [1 - pd.by, pd.by]) { if (pd.doomAsked[q]) continue; const mine = dead.filter((D) => D.p === q); if (!mine.length) continue; pd.doomAsked[q] = true;
+      const on = E.doomWin(s, { kind: "doom", by: 1 - q, p: q, kill: mine.filter((D) => D.z === "av").map((D) => D.x.i), killCs: mine.filter((D) => D.z === "cs").map((D) => D.x.i), leave: [], fight: true });
+      if (on) { s.rw = on; E.log(s, q, `${mine.map((D) => E.name(s, D.x)).join(", ")} กำลังจะถูกทำลายจากการต่อสู้`); return true; } }
+    return false; },
   act0(s, act, p) {
     if (s.phase === "over" && act.type !== "note") throw new RuleError("เกมจบแล้ว");
     const P = s.P[p], O = s.P[1 - p];
@@ -513,7 +532,7 @@ export const E = {
         if (st !== "R") E.openWindow(s, p, "cast", x.i);
         return;
       }
-      case "pass": { need(s.rw && s.rw.by !== p, "ไม่มีจังหวะให้ตอบโต้"); E.log(s, p, `${P.name} ไม่ตอบโต้`); s.rw = null; return; }
+      case "pass": { need(s.rw && s.rw.by !== p, "ไม่มีจังหวะให้ตอบโต้"); E.log(s, p, `${P.name} ไม่ตอบโต้`); s.rw = null; if (s.pend && s.pend.go && !s.trig.length) { delete s.pend.go; E.startFight(s); } return; }
       case "battle": {
         need(E.canAct(s, p) && s.phase === "main", "ไปเฟสต่อสู้ได้จาก Main Phase");
         if (s.turn === 1) { E.log(s, p, "เทิร์นแรกของผู้เริ่มก่อนไม่มี Battle Phase"); return E.apply(s, { type: "end" }, p); }
@@ -594,11 +613,13 @@ export const E = {
       }
       case "trig": {
         const k = s.trig.findIndex((t) => t.id === act.id); need(k >= 0, "เอฟเฟกต์นี้จบไปแล้ว");
-        const t = s.trig[k]; need(t.seat === p, "ไม่ใช่เอฟเฟกต์ของคุณ");
+        const t = s.trig[k]; need(t.seat === p, "ไม่ใช่เอฟเฟกต์ของคุณ"); need(!(t.held && s.rw), "รอฝ่ายตรงข้ามตอบโต้ก่อน");
         s.trig.splice(k, 1);
         const nm = s.cards[t.c] ? s.cards[t.c].n : "การ์ด";
-        if (act.skip) E.log(s, p, `ข้ามเอฟเฟกต์ ${nm}`);
-        else { if (act.explain) E.log(s, p, `เอฟเฟกต์ ${nm}: ${act.explain}`); s.cur = t.c; s.curSeat = t.seat; if (t.now) s.lifeNow = t.now; try { E.ops(s, act.ops || [], p); } finally { delete s.cur; delete s.curSeat; delete s.lifeNow; } }
+        if (act.skip && !t.held) E.log(s, p, `ข้ามเอฟเฟกต์ ${nm}`);
+        else { const ops0 = t.held ? t.hops : act.ops || [], ex0 = t.held ? t.hex : act.explain;
+          if (!t.held) { const doom = E.doomFor(s, ops0, p); if (doom) { s.trig.splice(k, 0, { ...t, held: true, hops: ops0, hex: ex0 }); s.rw = doom; E.log(s, doom.p, `${doom.ids.map((i) => E.name(s, E.locate(s, i).x)).join(", ")} กำลังจะ${doom.kill.length || doom.killCs.length ? "ถูกทำลาย" : "ออกจากสนาม"} (${nm})`); return; } }
+          if (ex0) E.log(s, p, `เอฟเฟกต์ ${nm}: ${ex0}`); s.cur = t.c; s.curSeat = t.seat; if (t.now) s.lifeNow = t.now; try { E.ops(s, ops0, p); } finally { delete s.cur; delete s.curSeat; delete s.lifeNow; } }
         if (t.toHell) { const L = E.locate(s, t.i); if (L && L.z === "mg" && L.x.on == null && !(scriptOf(s, L.x) || {}).stay) { s.P[L.p].mg.splice(L.idx, 1); s.P[L.x.o].hell.push(L.x); } } // บลัดดี้แมรี่ stays
         if (s.pend && !s.trig.length && s.pend.resolved) s.pend = null;
         if (s.pend && !s.trig.length && s.pend.go) { delete s.pend.go; E.startFight(s); }
@@ -633,6 +654,7 @@ export const E = {
         if (T.z === "av") for (const [H, F] of [[A, T], [T, A]]) for (const m of [...s.P[0].mg, ...s.P[1].mg]) { if (m.on !== H.x.i || m.mute) continue; const sc = scriptOf(s, m); if (sc && sc.hostFight && (!sc.hostFightOk || sc.hostFightOk(E, s, m, H.x, F.x))) { s.trig.push({ id: newId(), seat: H.p, i: m.i, c: m.c, when: "hostFight", foe: F.x.i }); n++; } } }
       if (T.z === "av") for (const F of [A, T]) for (const y of s.P[F.p].hand) { const sc = scriptOf(s, y); if (sc && sc.handFight && sc.handFightOk && sc.handFightOk(E, s, y, F.x)) { s.trig.push({ id: newId(), seat: F.p, i: y.i, c: y.c, when: "handFight", fighter: F.x.i, optional: true }); n++; } }
       if (n) { pd.go = true; return; } }
+    if ((pd.tk === "av" || pd.tk === "cs") && E.fightDoom(s)) { pd.go = true; return; }
     E.resolveAttack(s);
   },
   resolveAttack(s) {
@@ -727,6 +749,7 @@ export const E = {
         // "เมื่อ Avatar ใบนี้จะออกจากสนาม … : จะไม่ออกจากสนาม" (ไพรมอล รัททาทุย)
         if (wasAv && to !== "av" && E.immuneNow(s, L.x)) { E.log(s, by, `${E.name(s, L.x)} ไม่รับผลความสามารถนี้`); return; }
         if (wasAv && to !== "av" && E.hostSaved(s, L.x, L, by !== L.p)) return;
+        if (wasAv && to !== "av" && L.x.stay === s.turn) { delete L.x.stay; E.log(s, by, `${E.name(s, L.x)} ไม่ออกจากสนาม`); return; }
         if ((wasAv || L.z === "mg") && to !== "av" && E.guarded(s, L.x, L, by !== L.p, "move")) { E.log(s, by, `${E.name(s, L.x)} ไม่ถูกนำออกจากสนาม (ความสามารถต่อเนื่อง)`); return; }
         if (wasAv && to !== "av") { const sc = scriptOf(s, L.x); if (sc && sc.wouldLeave && L.x.saved !== s.turn && sc.wouldLeave(E, s, L.x, L, { fromOpp: by !== L.p, to })) { L.x.saved = s.turn; return; } }
         const built = to === "cs" && L.z !== "cs"; if (built && s.P[o.seat != null ? seat : L.x.o].cs.some((y) => E.name(s, y) === name)) { E.log(s, by, `ก่อสร้าง ${name} ไม่ได้: มี Construct ชื่อนี้อยู่แล้ว`); return; }
@@ -740,7 +763,8 @@ export const E = {
       }
       case "destroy": { if (o.ifPower0) { const L = E.locate(s, o.i); if (!L || E.power(s, L.x) > 0) return; } E.destroy(s, o.i, o.why || "จากเอฟเฟกต์", { noSave: !!o.noSave, by }); return; }
       case "atEnd": { (s.timers = s.timers || []).push({ turn: o.turn | 0, seat: by, ops: (o.ops || []).slice(0, 10), why: o.why || "" }); return; } // ops that run at the end of turn `turn`
-      case "exile": { const name = nm(o.i); E.moveTo(s, o.i, "dark"); E.log(s, by, `เนรเทศ ${name}`); return; }
+      case "exile": { const name = nm(o.i); { const L = E.locate(s, o.i); if (L && L.z === "av" && L.x.stay === s.turn) { delete L.x.stay; E.log(s, by, `${name} ไม่ออกจากสนาม`); return; } } E.moveTo(s, o.i, "dark"); E.log(s, by, `เนรเทศ ${name}`); return; }
+      case "stay": { const L = E.locate(s, o.i); if (L) { L.x.stay = s.turn; E.log(s, by, `${E.name(s, L.x)} จะไม่ออกจากสนามครั้งถัดไปในเทิร์นนี้`); } return; }
       case "power": {
         const L = E.locate(s, o.i); if (!L) throw new RuleError("ไม่พบการ์ด");
         if (E.immuneNow(s, L.x, "power")) { E.log(s, by, `${E.name(s, L.x)} ไม่รับผลความสามารถนี้`); return; }

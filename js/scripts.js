@@ -169,12 +169,12 @@ Object.assign(SCRIPTS, {
       if (!t) return { explain: "ไม่มีเป้าหมาย", ops: [] }; const big = c.E.magicInHell(c.s, c.seat) >= 8;
       return { explain: `${c.E.name(c.s, t)} เสียความสามารถจนจบเทิร์น${big ? " และถูกทำลาย (Magic ในนรก 8+)" : ""}`, ops: [{ op: "mute", i: t.i, until: "turn" }, ...(big ? [{ op: "destroy", i: t.i, why: "Skill : Hypersense" }] : [])] }; },
   },
-  // Skill : Second Energy (approximation: protect a story Avatar once this turn)
-  "BT09-060": {
-    canCast: (E, s, p) => s.P[p].av.some((x) => story(E, s, x)),
-    cast: (c) => { const t = c.choose(c.s.P[c.seat].av.filter((x) => story(c.E, c.s, x)).sort(strongFirst(c.E, c.s)), 1, "เลือกเรื่องราวที่จะไม่ออกจากสนาม")[0];
-      if (!t) return { explain: "ไม่มีเรื่องราวบนสนาม", ops: [] }; const big = c.E.magicInHell(c.s, c.seat) >= 8; const oh = c.s.P[1 - c.seat].hell;
-      return { explain: `${c.E.name(c.s, t)} จะไม่ออกจากสนามครั้งถัดไปในเทิร์นนี้${big && oh.length ? " · ฝ่ายตรงข้ามเนรเทศการ์ดในนรก 1 ใบ" : ""}`, ops: [{ op: "guard", i: t.i }, ...(big && oh.length ? [{ op: "exile", i: oh[oh.length - 1].i }] : [])] }; },
+  // Skill : Second Energy: when a "เรื่องราว" of ours would leave the field by an opposing card: it stays · with 8+ Magic in our hell the opponent exiles a card of their hell
+  "BT09-060": { react: { kinds: ["doom"], can: (E, s, p, on) => on.p === p && on.by !== p && [...on.kill, ...on.leave].some((i) => { const L = E.locate(s, i); return L && story(E, s, L.x); }), botV: (E, s, q, on) => doomV(E, s, q, on) + 2 },
+    cast: (c) => { const { E, s, seat: p } = c; const L = [...doomed(c, "kill"), ...doomed(c, "leave")].filter((x) => story(E, s, x)); const t = L.length > 1 ? c.choose(L.sort(strongFirst(E, s)), 1, "เลือกเรื่องราวที่จะไม่ออกจากสนาม", { exact: true })[0] : L[0];
+      if (!t) return { explain: "เรื่องราวใบนั้นไม่อยู่บนสนามแล้ว", ops: [] }; const big = E.magicInHell(s, p) >= 8 && s.P[1 - p].hell.length > 0;
+      return { explain: `${E.name(s, t)} จะไม่ออกจากสนาม${big ? " · ฝ่ายตรงข้ามเลือกเนรเทศการ์ดในนรกตนเอง 1 ใบ" : ""}`, ops: [{ op: "stay", i: t.i }, ...(big ? [{ op: "resume", t: { i: c.t.i, c: c.t.c, when: "foeExile", seat: 1 - p } }] : [])] }; },
+    foeExile: (c) => { const { E, s, seat: q } = c; const t = c.choose([...s.P[q].hell].sort(cheapCard(E, s)), 1, "Skill : Second Energy: เลือกการ์ดในนรกของคุณ 1 ใบที่จะเนรเทศ", { exact: true })[0]; return t ? { explain: `เนรเทศ ${E.name(s, t)} จากนรก`, ops: [{ op: "move", i: t.i, to: "dark" }] } : { explain: "ไม่มีการ์ดในนรก", ops: [] }; },
   },
   // Skill : Dacknova
   "BT12-064": {
@@ -476,6 +476,9 @@ Object.assign(SCRIPTS, {
 // react.kinds: "summon" (an Avatar was summoned), "cast" (a Magic was used), "attack" (we are being attacked)
 // The trigger carries the window as c.t.on = { kind, by, i } or { kind:"attack", by, att, tk, ti }.
 const onTarget = (c) => c.t.on || {};
+// "when … would be destroyed / leave the field": the cards that window is about (still where they were)
+const doomed = (c, list) => (onTarget(c)[list] || []).map((i) => c.E.locate(c.s, i)).filter(Boolean).map((L) => L.x);
+const doomV = (E, s, q, on, list = "kill") => Math.max(-9, ...(on[list] || []).map((i) => E.locate(s, i)).filter(Boolean).map((L) => (E.def(s, L.x).c || 0) * 0.8 + E.power(s, L.x) * 0.5 - 1));
 const myTargetAttacked = (E, s, p, on) => on.kind === "attack" && on.tk === "av" && (E.locate(s, on.ti) || {}).p === p;
 const destroySummoned = { react: { kinds: ["summon"], can: (E, s, p, on) => !!E.locate(s, on.i) && (E.locate(s, on.i) || {}).z === "av" },
   cast: (c) => { const L = c.E.locate(c.s, onTarget(c).i); return L ? { explain: `ทำลาย ${c.E.name(c.s, L.x)} ที่เพิ่งอัญเชิญ`, ops: [{ op: "destroy", i: L.x.i, why: "อุบัติเหตุ!!!" }] } : { explain: "เป้าหมายหายไปแล้ว", ops: [] }; } };
@@ -506,10 +509,9 @@ Object.assign(SCRIPTS, {
   // กระแสสิริมงคล
   "BT02-049": { react: { kinds: ["attack"] }, cast: (c) => ({ explain: "จั่ว 1 ใบ (โจมตี 1 ตัว)", ops: [{ op: "draw", seat: c.seat, n: 1 }] }) },
   // หมอมาแล้วววว: in a window we protect the attacked Avatar (or choose one)
-  "BT01-040": { react: { kinds: ["attack", "summon", "cast"] },
-    cast: (c) => { const on = onTarget(c); const T = on.kind === "attack" && on.tk === "av" ? c.E.locate(c.s, on.ti) : null;
-      const t = T ? T.x : c.choose([...c.s.P[c.seat].av, ...c.s.P[1 - c.seat].av], 1, "เลือก Avatar ที่จะไม่ถูกทำลาย (ครั้งถัดไปในเทิร์นนี้)")[0];
-      return t ? { explain: `${c.E.name(c.s, t)} จะไม่ถูกทำลายครั้งถัดไปในเทิร์นนี้`, ops: [{ op: "guard", i: t.i }] } : { explain: "ไม่มีเป้าหมาย", ops: [] }; } },
+  "BT01-040": { react: { kinds: ["doom"], can: (E, s, p, on) => on.p === p && on.kill.length > 0, botV: (E, s, q, on) => doomV(E, s, q, on) },
+    cast: (c) => { const L = doomed(c, "kill"); const t = L.length > 1 ? c.choose(L.sort((a, b) => worth(c.E, c.s, b) - worth(c.E, c.s, a)), 1, "เลือก Avatar ที่จะไม่ถูกทำลาย", { exact: true })[0] : L[0];
+      return t ? { explain: `${c.E.name(c.s, t)} จะไม่ถูกทำลาย`, ops: [{ op: "guard", i: t.i }] } : { explain: "Avatar ใบนั้นไม่อยู่บนสนามแล้ว", ops: [] }; } },
   // งับ (dino)
   "BT03-050": { react: { kinds: ["attack"] },
     cast: (c) => { const on = onTarget(c); const top = c.s.P[c.seat].deck.slice(0, 2); const cands = top.filter((x) => isAv(c.E, c.s, x) && sy(c.E, c.s, x, "กะปอม"));
@@ -1152,9 +1154,9 @@ Object.assign(SCRIPTS, {
       while (room > 0) { const t = c.choose(P.hand.filter((y) => isAv(E, s, y) && !got.includes(y) && cost(y) <= budget).sort((a, b) => worth(E, s, b) - worth(E, s, a)), 1, `อัญเชิญ Avatar จากมือ (GEM เหลือ ${budget})`, { optional: true })[0]; if (!t) break; got.push(t); budget -= cost(t); room--; }
       return { explain: `เซ่นไหว้ ${sac.length} ใบ · อัญเชิญ ${got.map((y) => E.name(s, y)).join(", ") || "ไม่มี"}`, ops: [...sac.map((y) => ({ op: "destroy", i: y.i, why: "เซ่นไหว้" })), ...got.map((y) => ({ op: "put", i: y.i }))] }; } },
   // ถวาย (React): our Avatar would be destroyed in this fight: discard the whole hand: it is not destroyed
-  "BT02-051": { react: { kinds: ["attack"], can: (E, s, p, on) => { const T = on.tk === "av" ? E.locate(s, on.ti) : null; const A = E.locate(s, on.att); return !!(T && A && T.p === p && E.power(s, A.x) + ((s.pend && s.pend.bonus) || 0) >= E.power(s, T.x)); } },
-    cast: (c) => { const { E, s, seat: p } = c; const on = onTarget(c); const T = on.ti != null ? E.locate(s, on.ti) : null; if (!T) return { explain: "Avatar ใบนั้นไม่อยู่แล้ว", ops: [] }; const hand = s.P[p].hand.filter((y) => y.i !== c.t.i);
-      return { explain: `ทิ้งการ์ดทั้งมือ ${hand.length} ใบ · ${E.name(s, T.x)} จะไม่ถูกทำลาย`, ops: [...(hand.length ? [{ op: "discard", seat: p, iids: hand.map((y) => y.i) }] : []), { op: "guard", i: T.x.i }] }; } },
+  "BT02-051": { react: { kinds: ["doom"], can: (E, s, p, on) => on.p === p && on.kill.length > 0, botV: (E, s, q, on) => doomV(E, s, q, on) - s.P[q].hand.length * 0.9 },
+    cast: (c) => { const { E, s, seat: p } = c; const L = doomed(c, "kill"); const T = L.length > 1 ? c.choose(L.sort((a, b) => worth(E, s, b) - worth(E, s, a)), 1, "เลือก Avatar ที่จะไม่ถูกทำลาย", { exact: true })[0] : L[0]; if (!T) return { explain: "Avatar ใบนั้นไม่อยู่แล้ว", ops: [] }; const hand = s.P[p].hand.filter((y) => y.i !== c.t.i);
+      return { explain: `ทิ้งการ์ดทั้งมือ ${hand.length} ใบ · ${E.name(s, T)} จะไม่ถูกทำลาย`, ops: [...(hand.length ? [{ op: "discard", seat: p, iids: hand.map((y) => y.i) }] : []), { op: "guard", i: T.i }] }; } },
   // ประกันชั้นต่ำ: the wearer survives one attack; after it is attacked this card goes to hell
   "BT02-055": { worn: () => 0, atkShield: true },
   // ขวานเงิน: POWER +2 and the wearer's abilities have no effect while it wears this card
@@ -1759,10 +1761,9 @@ Object.assign(SCRIPTS, {
       const pool = uniq(E, s, s.P[p].deck.filter((y) => isAv(E, s, y) && (E.named(s, y, "ทหาร") || E.named(s, y, "รด.")))).sort((a, b) => worth(E, s, b) - worth(E, s, a)).slice(0, 3);
       return { explain: `ส่งพลเอก 3 ใบลงนรก · การ์ดบนสนามและบนมือฝ่ายตรงข้ามลงนรกทั้งหมด · อัญเชิญ ${pool.length} ใบจาก Deck`, ops: [...gens.map((y) => ({ op: "move", i: y.i, to: "hell" })), { op: "wipe", seat: 1 - p }, ...pool.map((y) => ({ op: "put", i: y.i })), { op: "shuffle", seat: p }] }; } },
   // ช่างมาแล้ววว (React): a Construct of ours that would be destroyed is not
-  "BT06-050": { react: { kinds: ["attack", "cast", "activate", "summon"], can: (E, s, p, on) => (on.kind === "attack" ? on.tk === "cs" && E.locate(s, on.ti)?.p === p : s.P[p].cs.length > 0),
-      botV: (E, s, q, on) => { if (on.kind !== "attack" || on.tk !== "cs") return -9; const A = E.locate(s, on.att), T = E.locate(s, on.ti); return A && T && E.power(s, A.x) + ((s.pend && s.pend.bonus) || 0) > E.power(s, T.x) ? 6 : -9; } },
-    cast: (c) => { const { E, s, seat: p } = c; const on = onTarget(c); const T = on.kind === "attack" && on.tk === "cs" ? E.locate(s, on.ti) : null; const t = T ? T.x : c.choose([...s.P[p].cs].sort((a, b) => worth(E, s, b) - worth(E, s, a)), 1, "เลือก Construct ที่จะไม่ถูกทำลาย", { exact: true })[0];
-      return t ? { explain: `${E.name(s, t)} จะไม่ถูกทำลาย`, ops: [{ op: "ind", i: t.i }] } : { explain: "ไม่มี Construct", ops: [] }; } },
+  "BT06-050": { react: { kinds: ["doom"], can: (E, s, p, on) => on.p === p && on.killCs.length > 0, botV: (E, s, q, on) => doomV(E, s, q, on, "killCs") + 3 },
+    cast: (c) => { const { E, s } = c; const L = doomed(c, "killCs"); const t = L.length > 1 ? c.choose(L.sort((a, b) => worth(E, s, b) - worth(E, s, a)), 1, "เลือก Construct ที่จะไม่ถูกทำลาย", { exact: true })[0] : L[0];
+      return t ? { explain: `${E.name(s, t)} จะไม่ถูกทำลาย`, ops: [{ op: "guard", i: t.i }] } : { explain: "Construct ใบนั้นไม่อยู่แล้ว", ops: [] }; } },
   // ธาตุไฟแตก ๆ (React): one of ours to hell, roll: even destroys 2 opposing Avatars, odd destroys 1 of ours
   "BT06-051": { react: { kinds: ["attack", "summon", "cast", "activate", "battle", "react"], can: (E, s, p) => s.P[p].av.length > 0,
       botV: (E, s, q) => (s.P[1 - q].av.length >= 2 && s.P[q].av.length >= 2 ? 2 : -9) },
@@ -1993,10 +1994,9 @@ Object.assign(SCRIPTS, {
       botV: (E, s, q, on) => { const A = E.locate(s, on.att), T = E.locate(s, on.ti); return A && T && E.power(s, A.x) + ((s.pend && s.pend.bonus) || 0) >= E.power(s, T.x) ? 5 : -9; } },
     cast: (c) => { const { E, s, seat: p } = c; const t = [...s.P[p].hell].find((y) => spell(E, s, y)); return t ? { explain: `${E.name(s, t)} เข้าใต้ Deck · ยกเลิกการโจมตี`, ops: [{ op: "move", i: t.i, to: "deckBottom" }, { op: "cancelAttack" }] } : { explain: "", ops: [] }; } },
   // ขอจบรายการแต่เพียงเท่านี้ (React): our พี่หน่วง about to be destroyed: the ship to hell, พี่หน่วง to the hand instead
-  "BT07-061": { react: { kinds: ["attack", "cast", "activate", "summon"], can: (E, s, p, on) => s.P[p].cs.some((y) => E.named(s, y, "ยานรายการ เถียงทันหน่วง")) && (on.kind === "attack" ? on.tk === "av" && E.locate(s, on.ti)?.p === p && E.named(s, E.locate(s, on.ti).x, "พี่หน่วง") : s.P[p].av.some((y) => E.named(s, y, "พี่หน่วง"))),
-      botV: (E, s, q, on) => { if (on.kind !== "attack") return -9; const A = E.locate(s, on.att), T = E.locate(s, on.ti); return A && T && E.power(s, A.x) + ((s.pend && s.pend.bonus) || 0) >= E.power(s, T.x) ? 5 : -9; } },
-    cast: (c) => { const { E, s, seat: p } = c; const on = onTarget(c); const ship = s.P[p].cs.find((y) => E.named(s, y, "ยานรายการ เถียงทันหน่วง")); const T = on.kind === "attack" ? E.locate(s, on.ti) : null; const n = T ? T.x : s.P[p].av.find((y) => E.named(s, y, "พี่หน่วง"));
-      return ship && n ? { explain: `${E.name(s, ship)} ลงนรก · ${E.name(s, n)} กลับขึ้นมือ`, ops: [{ op: "move", i: ship.i, to: "hell" }, { op: "move", i: n.i, to: "hand" }] } : { explain: "", ops: [] }; } },
+  "BT07-061": { react: { kinds: ["doom"], can: (E, s, p, on) => on.p === p && s.P[p].cs.some((y) => E.named(s, y, "ยานรายการ เถียงทันหน่วง")) && on.kill.some((i) => { const L = E.locate(s, i); return L && E.named(s, L.x, "พี่หน่วง"); }), botV: (E, s, q, on) => doomV(E, s, q, on) + 1 },
+    cast: (c) => { const { E, s, seat: p } = c; const ship = s.P[p].cs.find((y) => E.named(s, y, "ยานรายการ เถียงทันหน่วง")); const n = doomed(c, "kill").find((y) => E.named(s, y, "พี่หน่วง"));
+      return ship && n ? { explain: `${E.name(s, ship)} ลงนรก · ${E.name(s, n)} กลับขึ้นมือแทนการถูกทำลาย`, ops: [{ op: "move", i: ship.i, to: "hell" }, { op: "move", i: n.i, to: "hand" }] } : { explain: "", ops: [] }; } },
   // ขนมณี แฟลร์: only {สัตว์วิเศษ} ครุฑ · when an opposing card would remove the wearer, this card goes to hell instead
   "BT07-062": { modOnly: (E, s, h) => garuda(E, s, h) && sy(E, s, h, "สัตว์วิเศษ"), worn: () => 0, hostSave: (E, s, m, host, o) => { if (o.fight || !o.fromOpp) return null; const L = E.locate(s, host.i); E.log(s, L ? L.p : null, `${E.name(s, m)} ลงนรกแทน: ${E.name(s, host)} ไม่ถูกนำออกจากสนาม`); E.moveTo(s, m.i, "hell"); return true; } },
   // เก้าอี้ เฟิร์สคลาส: the wearer is also named "Super Air"
