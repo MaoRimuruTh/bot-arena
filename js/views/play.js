@@ -1,13 +1,13 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError } from "../engine.js";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js";
-import { Arena } from "../arena3d.js";
-import { autoEffect } from "../effects.js";
-import { Sfx } from "../sfx.js";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js";
-import { allDecks, deckById } from "./decks.js";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261110155219";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261110155219";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError } from "../engine.js?v=20261110155219";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261110155219";
+import { Arena } from "../arena3d.js?v=20261110155219";
+import { autoEffect } from "../effects.js?v=20261110155219";
+import { Sfx } from "../sfx.js?v=20261110155219";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261110155219";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261110155219";
+import { allDecks, deckById } from "./decks.js?v=20261110155219";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });

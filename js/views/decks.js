@@ -1,11 +1,11 @@
-import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, starterDecks, ownedOf, cardLine } from "../cards.js";
-import { Data, Me, saveDeck, deleteDeck } from "../fb.js";
-import { Views, cardBtn, showCard } from "../ui.js";
-import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js";
-import { filterBar, filterCards } from "./library.js";
-import { openingOdds } from "./lab.js";
-import { CIEL_DECKS } from "../cieldecks.js";
+import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261110155219";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, starterDecks, ownedOf, cardLine } from "../cards.js?v=20261110155219";
+import { Data, Me, saveDeck, deleteDeck } from "../fb.js?v=20261110155219";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261110155219";
+import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261110155219";
+import { filterBar, filterCards } from "./library.js?v=20261110155219";
+import { openingOdds } from "./lab.js?v=20261110155219";
+import { CIEL_DECKS } from "../cieldecks.js?v=20261110155219";
 
 // Ciel's theme decks: print codes → card ids (resolved once the card data is loaded)
 let cielCache = null;

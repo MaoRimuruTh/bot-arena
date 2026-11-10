@@ -1,7 +1,7 @@
-import { h, openSheet, holo } from "./util.js";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf } from "./cards.js";
-import { Data, saveOwned } from "./fb.js";
-import { Ciel, cielAceCheck, aiErr } from "./ai.js";
+import { h, openSheet, holo } from "./util.js?v=20261110155219";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf } from "./cards.js?v=20261110155219";
+import { Data, saveOwned } from "./fb.js?v=20261110155219";
+import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261110155219";
 
 export function cardBtn(id, opts = {}) {
   const c = card(id); const b = h("button", { class: "ccard" + (opts.cls ? " " + opts.cls : ""), type: "button", "aria-label": c ? c.n : "การ์ด", title: c ? c.n : "", onclick: opts.onclick });
