@@ -265,3 +265,10 @@ body.arena-on main{padding:0;max-width:none}
 .bar .trk{background:rgba(255,255,255,.06);border-radius:99px;overflow:hidden}
 .mrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid var(--line-2);cursor:pointer;color:inherit;font:inherit;text-align:left;width:100%}
 .mrow:hover{border-color:var(--line)}
+.ava.sm{width:26px;height:26px;font-size:.7rem;box-shadow:none}
+.ava.lg{width:88px;height:88px;font-size:2rem}
+.ava.hd{width:28px;height:28px;font-size:.75rem;box-shadow:0 0 0 1.5px var(--gold)}
+.avpick{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:10px;max-height:300px;overflow:auto}
+.avpick button{padding:0;border:0;background:none;cursor:pointer;border-radius:50%;display:grid;place-items:center}
+.avpick button .ava{width:60px;height:60px}
+.avpick button[aria-pressed="true"] .ava{box-shadow:0 0 0 3px var(--gold-hi),0 0 18px rgba(227,181,74,.6)}

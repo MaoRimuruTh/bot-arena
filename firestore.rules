@@ -9,6 +9,7 @@ service cloud.firestore {
     function me() { return get(userPath(request.auth.uid)).data; }
     function approved() { return hasMe() && me().status == 'approved'; }
     function isOwner() { return hasMe() && me().role == 'owner' && me().status == 'approved'; }
+    function okProfile() { let d = request.resource.data; return (!('nick' in d) || (d.nick is string && d.nick.size() <= 24)) && (!('avatar' in d) || (d.avatar is string && d.avatar.size() < 60000)); }
 
     // first account ever becomes the owner (created in one batch with its user doc)
     match /meta/owner {
@@ -28,13 +29,17 @@ service cloud.firestore {
         || (request.resource.data.role == 'owner' && request.resource.data.status == 'approved'
             && !exists(ownerPath()) && getAfter(ownerPath()).data.uid == uid));
       allow update: if (signedIn() && request.auth.uid == uid
-                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSeen', 'name', 'photo']))
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSeen', 'name', 'photo', 'nick', 'avatar']) && okProfile())
                     || (isOwner() && uid != request.auth.uid
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
                         && request.resource.data.status in ['approved', 'pending', 'blocked']);
       allow delete: if isOwner() && uid != request.auth.uid;
       match /private/{doc} {
         allow read, write: if signedIn() && request.auth.uid == uid && approved();
+      }
+      // questions asked to Ciel from inside the app (owner account only)
+      match /inbox/{q} {
+        allow read, write: if signedIn() && request.auth.uid == uid && isOwner();
       }
     }
     match /decks/{id} {

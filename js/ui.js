@@ -48,4 +48,11 @@ function aceView(r) {
     (r.needs || []).length ? h("ul", { class: "small", style: "margin:0;padding-left:18px" }, r.needs.map((x) => h("li", null, x))) : null,
     parts.length ? h("div", { class: "pick" }, parts.map((p) => cardBtn(p.i, { onclick: () => showCard(p.i) }))) : null);
 }
+// profile picture: "card:<print>" (card art), an image URL or data URL, or the first letter of the name
+export function avatarEl(ava, name, cls = "") {
+  const el = h("span", { class: "ava " + cls, "aria-hidden": "true" });
+  if (ava && ava.startsWith("card:")) { const c = CARDS.find((x) => x.p === ava.slice(5)); if (c) { const im = artImg(c, "", ""); im.style.objectPosition = "50% 22%"; im.style.transform = "scale(1.6)"; el.append(im); return el; } }
+  if (ava && /^(https:|data:image\/)/.test(ava)) { el.append(h("img", { src: ava, alt: "", referrerpolicy: "no-referrer" })); return el; }
+  el.textContent = (name || "?").slice(0, 1); return el;
+}
 export const Views = {};

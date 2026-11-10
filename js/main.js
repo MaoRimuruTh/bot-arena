@@ -1,7 +1,7 @@
 import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta } from "./fb.js";
-import { loadCards, CARDS } from "./cards.js";
-import { Views } from "./ui.js";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js";
+import { loadCards, CARDS, isBase } from "./cards.js";
+import { Views, avatarEl } from "./ui.js";
 import { Ciel } from "./ai.js";
 import "./views/library.js";
 import "./views/decks.js";
@@ -50,13 +50,13 @@ function pendingScreen() {
 // ---------- header / settings ----------
 function meArea() {
   const p = Me.profile || {}; const pending = Data.users.filter((u) => u.status === "pending").length;
-  $("#me").replaceChildren(h("button", { class: "btn sm", onclick: settings, "aria-label": "ตั้งค่า" }, p.photo ? h("img", { src: p.photo, alt: "", referrerpolicy: "no-referrer" }) : null, h("span", null, p.name || ""), pending && p.role === "owner" ? h("span", { class: "chip warn" }, pending + " รออนุมัติ") : null, Ciel.on() ? h("span", { class: "chip gold" }, "✦ ชิเอล") : null));
+  $("#me").replaceChildren(h("button", { class: "btn sm", onclick: settings, "aria-label": "ตั้งค่า" }, avatarEl(myAvatar(), myName(), "hd"), h("span", null, myName()), pending && p.role === "owner" ? h("span", { class: "chip warn" }, pending + " รออนุมัติ") : null, Ciel.on() ? h("span", { class: "chip gold" }, "✦ ชิเอล") : null));
 }
 function settings() {
   openSheet((api) => {
     const key = h("input", { type: "password", value: Ciel.key(), placeholder: "sk-ant-…", autocomplete: "off", "aria-label": "Claude API key" });
     const model = h("select", { "aria-label": "โมเดลหลัก" }, ["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-5-5"].map((m) => h("option", { value: m, selected: m === Ciel.model() }, m)));
-    const out = [h("div", { class: "eyebrow" }, "ชิเอล (Claude API)"),
+    const out = [...profileSection(api), h("div", { class: "eyebrow", style: "margin-top:12px" }, "ชิเอล (Claude API)"),
       h("div", { class: "small muted" }, "ใส่ API key ของคุณเองเพื่อให้ชิเอลคิดเป็นบอท อ่านเอฟเฟกต์การ์ด และจัดเด็ค key เก็บเฉพาะในเบราว์เซอร์นี้ ไม่ส่งขึ้นฐานข้อมูล ค่าใช้จ่ายคิดกับบัญชี API ของคุณ ถ้าไม่ใส่ ยังเล่นกับบอทพื้นฐานได้"),
       key, h("div", { class: "row" }, h("span", { class: "small muted" }, "โมเดลจัดเด็ค/อ่านการ์ด"), model),
       h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => { const v = key.value.trim(); if (v) lsSet("bot.apiKey", v); else lsDel("bot.apiKey"); lsSet("bot.model", model.value); toast(v ? "บันทึก key ของชิเอลแล้ว" : "ลบ key แล้ว"); meArea(); api.close(); } }, "บันทึก"), Ciel.on() ? h("button", { class: "btn danger sm", onclick: () => { lsDel("bot.apiKey"); meArea(); api.close(); toast("ลบ key แล้ว"); } }, "ลบ key") : null)];
@@ -64,8 +64,8 @@ function settings() {
       const users = Data.users.filter((u) => u.id !== Me.uid).sort((a, b) => (a.status === "pending" ? -1 : 1) - (b.status === "pending" ? -1 : 1) || (b.createdAt || 0) - (a.createdAt || 0));
       const url = h("input", { type: "text", value: Data.meta.cardsUrl || "", placeholder: "เว้นว่าง = ใช้ไฟล์ข้อมูลตั้งต้น", "aria-label": "ลิงก์ข้อมูลการ์ด" });
       out.push(h("div", { class: "eyebrow", style: "margin-top:12px" }, "ผู้เล่นในสนาม (เจ้าของเท่านั้น)"),
-        users.length ? h("div", { class: "stack", style: "gap:6px" }, users.map((u) => h("div", { class: "mrow", style: "cursor:default" }, u.photo ? h("img", { src: u.photo, alt: "", referrerpolicy: "no-referrer", style: "width:30px;height:30px;border-radius:50%" }) : h("span", { class: "ava" }, (u.name || "?")[0]),
-          h("div", { style: "min-width:0" }, h("b", null, u.name), h("div", { class: "tiny muted" }, `${u.email || ""} · ${fmtDate(u.createdAt)}`)),
+        users.length ? h("div", { class: "stack", style: "gap:6px" }, users.map((u) => h("div", { class: "mrow", style: "cursor:default" }, avatarEl(u.avatar || u.photo, u.nick || u.name, "sm"),
+          h("div", { style: "min-width:0" }, h("b", null, u.nick || u.name), u.nick ? h("span", { class: "tiny muted" }, " (" + u.name + ")") : null, h("div", { class: "tiny muted" }, `${u.email || ""} · ${fmtDate(u.createdAt)}`)),
           h("div", { class: "row" }, h("span", { class: "chip " + (u.status === "approved" ? "good" : u.status === "blocked" ? "bad" : "warn") }, { approved: "อนุมัติแล้ว", blocked: "ระงับ", pending: "รออนุมัติ" }[u.status] || u.status),
             u.status !== "approved" ? h("button", { class: "btn sm gold", onclick: () => setUserStatus(u.id, "approved").then(() => toast("อนุมัติ " + u.name)).catch(() => toast("อนุมัติไม่ได้", "bad")) }, "อนุมัติ") : null,
             u.status !== "blocked" ? h("button", { class: "btn sm danger", onclick: () => setUserStatus(u.id, "blocked").then(() => toast("ระงับ " + u.name)) }, "ระงับ") : null)))) : h("div", { class: "small muted" }, "ยังไม่มีเพื่อนขอเข้า ส่งลิงก์เว็บนี้ให้เพื่อนล็อกอิน แล้วมากดอนุมัติที่นี่"),
@@ -74,7 +74,37 @@ function settings() {
     }
     out.push(h("div", { class: "row", style: "margin-top:12px" }, h("button", { class: "btn", onclick: () => { api.close(); signOut(); } }, "ออกจากระบบ")));
     return out;
-  }, { title: "ตั้งค่า", sub: Me.profile ? Me.profile.name : "", wide: true });
+  }, { title: "ตั้งค่า", sub: myName(), wide: true });
+}
+// ---------- profile: nickname + picture (upload, card art, or Google) ----------
+function shrinkImage(file) {
+  return new Promise((res, rej) => {
+    const img = new Image(); const url = URL.createObjectURL(file);
+    img.onload = () => { const S = 160, c = document.createElement("canvas"); c.width = c.height = S; const g = c.getContext("2d"); const m = Math.min(img.width, img.height);
+      g.drawImage(img, (img.width - m) / 2, (img.height - m) / 2, m, m, 0, 0, S, S); URL.revokeObjectURL(url); res(c.toDataURL("image/jpeg", 0.82)); };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("อ่านรูปไม่ได้")); }; img.src = url;
+  });
+}
+function profileSection() {
+  const st = { nick: (Me.profile && Me.profile.nick) || "", avatar: (Me.profile && Me.profile.avatar) || "" };
+  const prev = h("div"); const drawPrev = () => prev.replaceChildren(avatarEl(st.avatar || (Me.profile && Me.profile.photo), st.nick || (Me.profile && Me.profile.name), "lg"));
+  drawPrev();
+  const nick = h("input", { type: "text", value: st.nick, maxlength: "24", placeholder: (Me.profile && Me.profile.name) || "ชื่อเล่น", "aria-label": "ชื่อที่แสดง", oninput: (e) => { st.nick = e.target.value; drawPrev(); } });
+  const file = h("input", { type: "file", accept: "image/*", hidden: true, onchange: async (e) => { const f = e.target.files[0]; if (!f) return; try { st.avatar = await shrinkImage(f); drawPrev(); } catch (er) { toast(er.message, "bad"); } } });
+  const pickBox = h("div");
+  const cardPicker = () => {
+    let q = ""; const grid = h("div", { class: "avpick" });
+    const draw = () => { const list = CARDS.filter((c) => isBase(c) && c.t === "A" && (!q || c.n.includes(q) || (c.sy || "").includes(q))).sort((a, b) => (b.o1 ? 1 : 0) - (a.o1 ? 1 : 0) || (b.pw || 0) - (a.pw || 0)).slice(0, 36);
+      grid.replaceChildren(...list.map((c) => h("button", { title: c.n, "aria-label": c.n, "aria-pressed": st.avatar === "card:" + c.p ? "true" : "false", onclick: () => { st.avatar = "card:" + c.p; drawPrev(); draw(); } }, avatarEl("card:" + c.p, c.n)))); };
+    draw();
+    pickBox.replaceChildren(h("div", { class: "stack", style: "gap:8px" }, h("input", { type: "search", placeholder: "ค้นชื่อการ์ดหรือ Symbol", "aria-label": "ค้นการ์ดสำหรับรูปโปรไฟล์", oninput: (e) => { q = e.target.value.trim(); draw(); } }), grid));
+  };
+  return [h("div", { class: "eyebrow" }, "โปรไฟล์"),
+    h("div", { class: "row", style: "gap:16px;align-items:flex-start" }, prev, h("div", { class: "stack grow", style: "gap:8px" }, nick,
+      h("div", { class: "row" }, file, h("button", { class: "btn sm", onclick: () => file.click() }, "อัปโหลดรูป"), h("button", { class: "btn sm", onclick: cardPicker }, "เลือกจากภาพการ์ด"), h("button", { class: "btn sm", onclick: () => { st.avatar = ""; drawPrev(); } }, "ใช้รูปจาก Google")),
+      h("div", null, h("button", { class: "btn gold sm", onclick: async (e) => { const b = e.currentTarget; b.disabled = true;
+        try { await saveProfile({ nick: st.nick.trim().slice(0, 24), avatar: st.avatar }); toast("บันทึกโปรไฟล์แล้ว"); } catch (er) { console.warn(er); toast("บันทึกโปรไฟล์ไม่สำเร็จ", "bad"); } b.disabled = false; } }, "บันทึกโปรไฟล์")))),
+    pickBox];
 }
 
 // ---------- router ----------
@@ -109,7 +139,7 @@ onUser(async (user) => {
   meUnsub = watchMe(async (p) => {
     if (!p) return;
     if (p.status !== "approved") { booted = false; cardsReady = false; return p.status === "blocked" ? gate(h("h2", null, "บัญชีนี้ถูกระงับ"), h("button", { class: "btn", onclick: () => signOut() }, "ออกจากระบบ")) : pendingScreen(); }
-    if (booted) return; booted = true;
+    if (booted) { meArea(); return; } booted = true;
     startData(); meArea(); $("#nav").hidden = false;
     gate(busy("กำลังโหลดการ์ดจากเว็บทางการ…"));
     try { await loadCards(); }

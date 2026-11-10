@@ -36,6 +36,9 @@ export async function ensureProfile(user) {
   Me.user = user; Me.uid = user.uid; Me.profile = snap.data();
   return Me.profile;
 }
+export const myName = () => (Me.profile && (Me.profile.nick || Me.profile.name)) || "ผู้เล่น";
+export const myAvatar = () => (Me.profile && (Me.profile.avatar || Me.profile.photo)) || "";
+export const saveProfile = (patch) => F.updateDoc(F.doc(db, "users", Me.uid), patch);
 export const watchMe = (cb) => F.onSnapshot(F.doc(db, "users", Me.uid), (s) => { Me.profile = s.data(); cb(Me.profile); }, () => {});
 
 // ---------- live data ----------
@@ -52,7 +55,7 @@ export function startData() {
 }
 export async function saveDeck(deck) {
   const now = Date.now(); const id = deck.id || F.doc(F.collection(db, "decks")).id;
-  const body = { name: deck.name || "เด็คไม่มีชื่อ", owner: Me.uid, ownerName: Me.profile?.name || "", main: deck.main || {}, life: deck.life || [], ace: deck.ace || [], style: deck.style || "", plan: deck.plan || "", notes: deck.notes || "", updatedAt: now, createdAt: deck.createdAt || now };
+  const body = { name: deck.name || "เด็คไม่มีชื่อ", owner: Me.uid, ownerName: myName(), main: deck.main || {}, life: deck.life || [], ace: deck.ace || [], style: deck.style || "", plan: deck.plan || "", notes: deck.notes || "", updatedAt: now, createdAt: deck.createdAt || now };
   await F.setDoc(F.doc(db, "decks", id), body); return id;
 }
 export const deleteDeck = (id) => F.deleteDoc(F.doc(db, "decks", id));

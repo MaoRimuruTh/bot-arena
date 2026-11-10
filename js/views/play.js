@@ -3,8 +3,8 @@ import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB
 import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError } from "../engine.js";
 import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js";
 import { Arena } from "../arena3d.js";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch } from "../fb.js";
-import { Views, cardBtn, showCard } from "../ui.js";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js";
 import { allDecks, deckById } from "./decks.js";
 
 const SAVE = "bot.game";
@@ -57,7 +57,7 @@ Views.play = {
         const lobby = h("div", { class: "stack", style: "gap:8px" }, busy("กำลังหาห้อง…"));
         lobbyUnsub = watchLobby((rooms) => {
           const list = rooms.filter((r) => Date.now() - (r.updatedAt || 0) < 6 * 3600e3).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-          lobby.replaceChildren(...(list.length ? list.map((r) => h("div", { class: "mrow", style: "cursor:default" }, h("span", { class: "ava" }, (r.hostName || "?").slice(0, 1)), h("div", { class: "grow" }, h("b", null, r.hostName || "เพื่อน"), h("div", { class: "tiny muted" }, "เด็ค " + (r.hostDeck && r.hostDeck.name || ""))),
+          lobby.replaceChildren(...(list.length ? list.map((r) => h("div", { class: "mrow", style: "cursor:default" }, avatarEl(r.hostAva, r.hostName), h("div", { class: "grow" }, h("b", null, r.hostName || "เพื่อน"), h("div", { class: "tiny muted" }, "เด็ค " + (r.hostDeck && r.hostDeck.name || ""))),
             r.host === Me.uid ? h("button", { class: "btn sm danger", onclick: () => F.deleteDoc(gameRef(r.id)).catch(() => {}) }, "ยกเลิกห้อง") : h("button", { class: "btn sm gold", disabled: !d, onclick: () => joinRoom(r) }, "เข้าร่วม"))) : [h("div", { class: "muted small" }, "ยังไม่มีห้องที่รออยู่")]));
         });
         body.append(h("div", { class: "tiny muted" }, "สร้างห้องแล้วให้เพื่อนที่ได้รับอนุมัติกดเข้าร่วมจากหน้านี้ เกมซิงก์ผ่านฐานข้อมูลแบบเรียลไทม์"),
@@ -91,7 +91,7 @@ const pack = (d) => ({ ...deckToList(d), name: d.name, id: d.id });
 function startLocal(mode) {
   const me = deckById(Setup.deck), op = pickOpp(); if (!me || !op) return toast("เลือกเด็คก่อน");
   const botName = Setup.brain === "ciel" && Ciel.on() ? "ชิเอล" : "บอท";
-  const s = E.newGame({ players: [{ uid: Me.uid, name: Me.profile.name || "ริมุรุ" }, mode === "bot" ? { name: botName, bot: true } : { uid: Me.uid, name: "ฝั่งที่ 2" }], decks: [pack(me), pack(op)], seed: (Math.random() * 2 ** 31) | 0, first: Math.random() < 0.5 ? 0 : 1, mode });
+  const s = E.newGame({ players: [{ uid: Me.uid, name: myName(), ava: myAvatar() }, mode === "bot" ? { name: botName, bot: true } : { uid: Me.uid, name: "ฝั่งที่ 2" }], decks: [pack(me), pack(op)], seed: (Math.random() * 2 ** 31) | 0, first: Math.random() < 0.5 ? 0 : 1, mode });
   G = { s, V: 0, mode, brain: mode === "bot" && Setup.brain === "ciel" && Ciel.on() ? "ciel" : "basic", id: s.id, saved: false };
   persist(); go();
 }
@@ -114,7 +114,7 @@ function stopGame(clear) {
 async function createRoom() {
   const me = deckById(Setup.deck); if (!me) return;
   const id = newGameId();
-  await F.setDoc(gameRef(id), { status: "waiting", host: Me.uid, hostName: Me.profile.name || "ผู้เล่น", hostDeck: pack(me), seats: [Me.uid], createdAt: Date.now(), updatedAt: Date.now() });
+  await F.setDoc(gameRef(id), { status: "waiting", host: Me.uid, hostName: myName(), hostAva: myAvatar(), hostDeck: pack(me), seats: [Me.uid], createdAt: Date.now(), updatedAt: Date.now() });
   toast("สร้างห้องแล้ว รอเพื่อนเข้าร่วม"); openOnline(id, 0);
 }
 async function joinRoom(r) {
@@ -122,8 +122,8 @@ async function joinRoom(r) {
   try {
     await F.runTransaction(db, async (tx) => {
       const snap = await tx.get(gameRef(r.id)); const g = snap.data(); if (!g || g.status !== "waiting") throw new Error("ห้องนี้เริ่มไปแล้ว");
-      const s = E.newGame({ players: [{ uid: g.host, name: g.hostName }, { uid: Me.uid, name: Me.profile.name || "ผู้เล่น" }], decks: [g.hostDeck, pack(me)], seed: (Math.random() * 2 ** 31) | 0, first: Math.random() < 0.5 ? 0 : 1, mode: "friend", id: r.id });
-      tx.update(gameRef(r.id), { status: "playing", guest: Me.uid, guestName: Me.profile.name || "ผู้เล่น", seats: [g.host, Me.uid], state: JSON.stringify(s), updatedAt: Date.now() });
+      const s = E.newGame({ players: [{ uid: g.host, name: g.hostName, ava: g.hostAva || "" }, { uid: Me.uid, name: myName(), ava: myAvatar() }], decks: [g.hostDeck, pack(me)], seed: (Math.random() * 2 ** 31) | 0, first: Math.random() < 0.5 ? 0 : 1, mode: "friend", id: r.id });
+      tx.update(gameRef(r.id), { status: "playing", guest: Me.uid, guestName: myName(), seats: [g.host, Me.uid], state: JSON.stringify(s), updatedAt: Date.now() });
     });
     openOnline(r.id, 1);
   } catch (e) { toast(e.message || "เข้าร่วมไม่ได้", "bad"); }
@@ -224,14 +224,14 @@ function draw() {
   const pile = (P, z, t) => h("button", { onclick: () => openPile(P, z) }, h("b", null, P[z].length), h("span", null, t));
   const ph = ["draw", "main", "battle", "end"];
   G.hud.replaceChildren(
-    h("div", { class: "oppbar glass" }, h("span", { class: "ava" }, (op.name || "?").slice(0, 1)), h("div", { class: "pname" }, h("b", null, op.name), h("span", null, `${op.deckName} · Deck ${op.deck.length}`)), crystals(op, true, "pcOp"),
+    h("div", { class: "oppbar glass" }, op.bot && !op.ava ? h("span", { class: "ava" }, "✦") : avatarEl(op.ava, op.name), h("div", { class: "pname" }, h("b", null, op.name), h("span", null, `${op.deckName} · Deck ${op.deck.length}`)), crystals(op, true, "pcOp"),
       h("div", { class: "backs", "aria-label": `มือ ${op.hand.length} ใบ` }, op.hand.slice(0, 10).map(() => h("i"))), G.say ? h("span", { class: "chip gold", style: "max-width:220px;overflow:hidden;text-overflow:ellipsis" }, "✦ " + G.say) : null),
     hint ? h("div", { class: "hint" }, hint) : null,
     h("aside", { class: "inspector glass", id: "insp" }),
     h("aside", { class: "matchp glass" },
       h("div", { class: "turnline" }, h("b", null, "เทิร์น " + s.turn), h("span", null, s.phase === "mull" ? "เปลี่ยนมือ" : s.P[s.active].name)),
       h("div", { class: "phases" }, ph.map((k) => h("span", { class: s.phase === k ? "on" : "" }, PHASE_TH[k]))),
-      h("div", { class: "row", style: "justify-content:space-between" }, h("span", { class: "small" }, me.name), crystals(me, false, "pcMe")),
+      h("div", { class: "row", style: "justify-content:space-between;flex-wrap:nowrap" }, h("span", { class: "row small", style: "gap:8px;flex-wrap:nowrap" }, avatarEl(me.ava, me.name, "me sm"), me.name), crystals(me, false, "pcMe")),
       E.critical(me) ? h("span", { class: "chip bad" }, "สาหัส! ถูกตี LIFE อีกครั้งจะแพ้") : null,
       h("div", { class: "piles" }, pile(me, "deck", "Deck"), pile(me, "hell", "นรก"), pile(me, "dark", "มิติมืด")),
       h("div", { class: "row" }, ...turnButtons(s, p)),

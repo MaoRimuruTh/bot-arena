@@ -27,7 +27,7 @@ export const E = {
       winner: null, reason: "", mull: [false, false], mu: [{}, {}], played: [{}, {}], startedAt: Date.now(), P: [] };
     for (let p = 0; p < 2; p++) {
       const pl = players[p];
-      const P = { uid: pl.uid || null, name: pl.name, bot: !!pl.bot, deckName: decks[p].name || "", deckId: decks[p].id || null, deck: [], hand: [], av: [], mg: [], cs: [], hell: [], dark: [], life: [] };
+      const P = { uid: pl.uid || null, name: pl.name, ava: pl.ava || "", bot: !!pl.bot, deckName: decks[p].name || "", deckId: decks[p].id || null, deck: [], hand: [], av: [], mg: [], cs: [], hell: [], dark: [], life: [] };
       const mk = (id) => { const c = card(id); s.cards[id] = s.cards[id] || { n: c.n, t: c.t, st: c.st, c: c.c, g: c.g, gc: c.gc, pw: c.pw, sy: c.sy, co: c.co, x: c.x || "", o1: c.o1, im: +id }; return { i: s.nextI++, c: String(id), o: p, a: true }; };
       P.deck = E.shuffle(s, decks[p].main.map(mk));
       P.life = E.shuffle(s, decks[p].life.map(mk)).map((x) => ({ ...x, up: false }));
