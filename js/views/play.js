@@ -1,22 +1,22 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111040633";
-import { fxText } from "../fxtext.js?v=20261111040633";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111040633";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111040633";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111040633";
-import { Arena } from "../arena3d.js?v=20261111040633";
-import { autoEffect, resolveEffect } from "../effects.js?v=20261111040633";
-import { Sfx } from "../sfx.js?v=20261111040633";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261111040633";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111040633";
-import { readAura, traits } from "../auras.js?v=20261111040633";
-import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261111040633";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111041631";
+import { fxText } from "../fxtext.js?v=20261111041631";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111041631";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111041631";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111041631";
+import { Arena } from "../arena3d.js?v=20261111041631";
+import { autoEffect, resolveEffect } from "../effects.js?v=20261111041631";
+import { Sfx } from "../sfx.js?v=20261111041631";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261111041631";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111041631";
+import { readAura, traits } from "../auras.js?v=20261111041631";
+import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261111041631";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
   return { game: [`เทิร์น ${s.turn} · ${PHASE_TH[s.phase] || s.phase} · ตาของ ${s.P[s.active].name}`, `เด็คเรา: ${me.deckName || "-"} · เด็คคู่แข่ง: ${op.deckName || "-"}`,
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / ")].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261111040633";
+import { allDecks, deckById } from "./decks.js?v=20261111041631";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -65,6 +65,10 @@ Views.play = {
           h("div", { class: "row" }, h("span", { class: "small muted" }, "สมองบอท"), h("div", { class: "seg", role: "group", "aria-label": "สมองบอท" }, [["ciel", "ชิเอล"], ["basic", "พื้นฐาน"]].map(([k, t]) => h("button", { "aria-pressed": Setup.brain === k ? "true" : "false", onclick: () => { Setup.brain = k; save(); draw(); } }, t)))),
           h("div", { class: "tiny muted" }, Setup.brain === "ciel" ? (Ciel.on() ? "ชิเอลคิดทุกจังหวะและอ่านเอฟเฟกต์การ์ดให้ (ใช้ API key ของคุณ)" : "ยังไม่ได้ใส่ API key จะใช้บอทพื้นฐานแทน") : "บอทพื้นฐานเล่นตามกติกา ข้ามเอฟเฟกต์ข้อความของตัวเอง"),
           h("button", { class: "btn gold lg", disabled: !d, onclick: () => startLocal("bot") }, "เริ่มดวล"));
+      } else if (Setup.mode === "learn") {
+        body.append(h("div", { class: "small" }, "เกมสอนเล่นใช้ Starter Deck 01 สู้กับบอทที่ใช้ Starter Deck 02 ระหว่างเล่นจะมีคำอธิบายขึ้นทีละเรื่องเมื่อถึงจังหวะนั้นในเกม เช่น การจ่าย GEM การโจมตี และ LIFE"),
+          h("div", { class: "tiny muted" }, "กติกาตาม Rule Book 3.2 เหมือนเกมจริงทุกอย่าง ปิดคำอธิบายได้ทุกเมื่อ"),
+          h("button", { class: "btn gold lg", onclick: startLearn }, "เริ่มสอนเล่น"));
       } else if (Setup.mode === "solo") {
         body.append(h("div", { class: "row" }, h("span", { class: "small muted" }, "เด็คฝั่งที่ 2"), deckSel("opp", decks, h("option", { value: "random", selected: Setup.opp === "random" }, "สุ่มจาก Starter Deck"))),
           h("div", { class: "tiny muted" }, "ควบคุมทั้งสองฝั่งเอง เหมาะกับลองคอมโบหรือเล่นกับเพื่อนบนเครื่องเดียวกัน"), h("button", { class: "btn gold lg", disabled: !d, onclick: () => startLocal("solo") }, "เริ่มเกม"));
@@ -78,7 +82,7 @@ Views.play = {
         body.append(h("div", { class: "tiny muted" }, "สร้างห้องแล้วให้เพื่อนที่ได้รับอนุมัติกดเข้าร่วมจากหน้านี้ เกมซิงก์ผ่านฐานข้อมูลแบบเรียลไทม์"),
           h("button", { class: "btn gold lg", disabled: !d, onclick: createRoom }, "สร้างห้อง"), h("div", { class: "eyebrow" }, "ห้องที่รออยู่"), lobby);
       }
-      right.replaceChildren(h("div", { class: "modes" }, modeBtn("bot", "ดวลกับบอท", "ซ้อมมือกับชิเอล"), modeBtn("friend", "ดวลกับเพื่อน", "ออนไลน์ผ่านห้อง"), modeBtn("solo", "เล่นสองฝั่ง", "ทดลองคอมโบเอง")), h("div", { class: "panel" }, body));
+      right.replaceChildren(h("div", { class: "modes" }, modeBtn("bot", "ดวลกับบอท", "ซ้อมมือกับชิเอล"), modeBtn("friend", "ดวลกับเพื่อน", "ออนไลน์ผ่านห้อง"), modeBtn("solo", "เล่นสองฝั่ง", "ทดลองคอมโบเอง"), modeBtn("learn", "สอนเล่น", "เรียนกติกาทีละขั้น")), h("div", { class: "panel" }, body));
     };
     root.replaceChildren(h("div", { class: "pagehead" }, h("div", null, h("h1", null, "สนามดวล"), h("div", { class: "muted small" }, "เล่นตาม Rule Book 3.2 · เอฟเฟกต์การ์ดให้ชิเอลอ่าน หรือจัดการเองด้วยเครื่องมือ")),
       saved && saved.s && saved.s.phase !== "over" ? h("button", { class: "btn ciel", onclick: () => resume(saved) }, `เล่นต่อ: ${saved.s.P[saved.V || 0].deckName} · เทิร์น ${saved.s.turn}`) : null),
@@ -110,6 +114,12 @@ function startLocal(mode) {
   G = { s, V: 0, mode, brain: mode === "bot" && Setup.brain === "ciel" && Ciel.on() ? "ciel" : "basic", id: s.id, saved: false };
   persist(); go();
 }
+function startLearn() {
+  const st = allDecks().filter((d) => d.starter); const me = st.find((d) => /01/.test(d.name)) || st[0], op = st.find((d) => /02/.test(d.name)) || st[1]; if (!me || !op) return toast("ไม่พบ Starter Deck");
+  const s = E.newGame({ players: [{ uid: Me.uid, name: myName(), ava: myAvatar() }, { name: "บอท", bot: true }], decks: [pack(me), pack(op)], seed: 20261111, first: 0, mode: "bot" });
+  G = { s, V: 0, mode: "bot", brain: "basic", id: s.id, saved: false, learn: { seen: {} } };
+  persist(); go();
+}
 function go() { if (location.hash === "#play/game") Views.play.render(document.getElementById("view"), ["game"]); else location.hash = "#play/game"; }
 function waitingGate(root) {
   const id = G.id;
@@ -120,7 +130,7 @@ function resume(saved) {
   if (G.mode === "friend") return openOnline(G.id, G.V);
   go();
 }
-function persist() { if (!G) return; if (G.mode === "friend") lsSet(SAVE, { mode: "friend", id: G.id, V: G.V, s: G.s }); else lsSet(SAVE, { s: G.s, V: G.V, mode: G.mode, brain: G.brain, id: G.id }); }
+function persist() { if (!G) return; if (G.mode === "friend") lsSet(SAVE, { mode: "friend", id: G.id, V: G.V, s: G.s }); else lsSet(SAVE, { s: G.s, V: G.V, mode: G.mode, brain: G.brain, id: G.id, learn: G.learn || null }); }
 function stopGame(clear) {
   if (!G) return; if (G.unsub) G.unsub(); if (clear) lsDel(SAVE); else persist();
   Arena.unmount(); document.body.classList.remove("arena-on"); document.querySelectorAll(".banner,.dmg").forEach((e) => e.remove()); G = null;
@@ -271,7 +281,7 @@ function draw() {
     G.hud.replaceChildren(
       h("div", { class: "oppbar glass" }, op.bot && !op.ava ? h("span", { class: "ava sm" }, "✦") : avatarEl(op.ava, op.name, "sm"), h("div", { class: "pname" }, h("b", null, op.name), h("span", null, `มือ ${op.hand.length} · Deck ${op.deck.length}`)), crystals(op, true, "pcOp")),
       hint ? h("div", { class: "hint" }, G.say && !mine(p ?? -1) ? "✦ " + G.say : hint) : null,
-      handZone(s, V, p), promptBox(s, p),
+      handZone(s, V, p), promptBox(s, p), tutorBox(s, V, p),
       h("div", { class: "mbar glass" },
         h("button", { class: "btn sm", "aria-label": "เมนูเกม", onclick: () => gameMenu(s, V) }, "☰"),
         h("div", { class: "mturn" }, h("b", null, `เทิร์น ${s.turn}`), h("span", null, s.phase === "mull" ? "เปลี่ยนมือ" : PHASE_TH[s.phase])),
@@ -300,9 +310,56 @@ function draw() {
         isOwner() ? tool("ask", "ถามชิเอลเกี่ยวกับตานี้", "ถามชิเอล", () => openAsk()) : null, tool(Sfx.on ? "sound" : "mute", Sfx.on ? "ปิดเสียง" : "เปิดเสียง", "เสียง", () => { Sfx.toggle(); Sfx.play("click"); draw(); })),
       G.coach ? h("div", { class: "coachbox" }, G.coach) : null,
       h("div", { class: "feed", "aria-live": "polite", tabindex: "0", "aria-label": "บันทึกเกม" }, s.log.slice(-30).reverse().map((l) => h("div", { class: l.s === V ? "mine" : l.s === 1 - V ? "opp" : "" }, l.m)))),
-    handZone(s, V, p), promptBox(s, p),
+    handZone(s, V, p), promptBox(s, p), tutorBox(s, V, p),
     h("button", { class: "btn sm arena-exit", onclick: () => (s.phase === "over" ? exitGame() : confirmBox("ออกจากสนาม? เกมที่ค้างจะเก็บไว้ให้เล่นต่อ", "ออก", exitGame)) }, "← ออก"));
   afterDraw(s, V, op, myTurn);
+}
+// ---------- learn mode: each part of the game explained the first time it comes up ----------
+const mainMine = (s, V, p) => s.phase === "main" && s.active === V && p === V && !s.trig.length && !s.rw && !s.pend;
+const canDo = (s, V, type) => legalMoves(s, V).some((m) => m.a.type === type);
+const recentFight = (s) => s.log.slice(-12).some((l) => /แพ้การต่อสู้|พลังเท่ากัน/.test(l.m));
+const LESSONS = [
+  { k: "start", when: (s) => s.phase === "mull", t: "ยินดีต้อนรับสู่สนามดวล",
+    b: () => ["ฝั่งล่างเป็นของคุณ ฝั่งบนเป็นของบอท ทุกคนเริ่มด้วยการ์ดบนมือ 5 ใบ และ LIFE 5 ใบที่คว่ำไว้", "ตอนนี้เปลี่ยนมือได้ครั้งเดียว แตะการ์ดที่ไม่อยากเก็บแล้วกดเปลี่ยน หรือกด เก็บมือเดิม"] },
+  { k: "turn", when: mainMine, t: "ลำดับในหนึ่งเทิร์น",
+    b: () => ["Draw → Main → Battle → End ดูเฟสปัจจุบันได้ที่แถบด้านขวา", "ต้นเทิร์นจั่ว 1 ใบ ถ้ามือเหลือไม่ถึง 3 ใบจะจั่วจนครบ 3", "ผู้ที่เริ่มก่อนไม่มี Battle Phase ในเทิร์นแรก"] },
+  { k: "zones", when: mainMine, t: "โซนบนสนาม",
+    b: () => ["Avatar Zone คือกรอบใหญ่ตรงกลาง ลง Avatar ได้ 4 ใบ", "Magic Zone เก็บการ์ดที่สวมใส่อยู่ ส่วน Construct Zone เก็บสิ่งก่อสร้างได้ 3 ใบ", "Land Magic Zone ด้านซ้ายใช้ร่วมกันทั้งสองฝ่าย ลงใบใหม่จะแทนที่ใบเดิม"] },
+  { k: "summon", when: (s, V, p) => mainMine(s, V, p) && canDo(s, V, "summon"), t: "อัญเชิญ Avatar",
+    b: () => ["แตะการ์ด Avatar บนมือ แล้วเลือกการ์ดใบอื่นบนมือมาจ่าย Cost", "Cost คือเลขมุมซ้ายบนของการ์ด จ่ายด้วย GEM คือรูปเพชรที่ขอบบนของการ์ด", "การ์ดที่ใช้จ่ายจะลงนรก"] },
+  { k: "pay", when: () => G.payFor != null, t: "จ่าย GEM",
+    b: () => ["เลือกการ์ดบนมือให้ GEM รวมถึง Cost แล้วกดยืนยัน จ่ายเกินจำเป็นไม่ได้", "GEM ที่มีสีใช้จ่ายได้เฉพาะการ์ดสีเดียวกัน", "ถ้าจ่ายพอดีกับ Cost การ์ดที่มีคำว่า พอดี จะได้ความสามารถเพิ่ม"] },
+  { k: "effect", when: (s, V) => s.trig.length > 0 && s.trig[0].seat === V, t: "ความสามารถของการ์ด",
+    b: () => ["ความสามารถทำงานเองตามจังหวะที่เขียนไว้ เช่น จุติ ทำงานตอนอัญเชิญแบบจ่าย Cost", "ถ้าต้องเลือกเป้าหมายหรือเลือกปฏิบัติ เกมจะถามคุณ"] },
+  { k: "magic", when: (s, V, p) => mainMine(s, V, p) && canDo(s, V, "cast"), t: "Magic มี 4 แบบ",
+    b: () => ["Normal ใช้ใน Main Phase ของเรา · Modification สวมใส่ให้ Avatar · Land วางบน Land Magic Zone", "React ใช้ตอบโต้ตอนอีกฝ่ายทำบางอย่าง", "Magic แต่ละแบบใช้ได้เทิร์นละ 1 ใบ"] },
+  { k: "battle", when: (s, V, p) => mainMine(s, V, p) && s.turn > 1 && s.P[V].av.some((x) => x.a), t: "เข้าสู่ Battle Phase",
+    b: () => ["ลงการ์ดใน Main Phase เสร็จแล้ว กด ไป Battle Phase", "Avatar ที่ตื่นอยู่สั่งโจมตีได้ตัวละครั้ง โจมตีแล้วจะนอน"] },
+  { k: "attack", when: (s, V, p) => s.phase === "battle" && s.active === V && p === V && canDo(s, V, "attack"), t: "สั่งโจมตี",
+    b: () => ["แตะ Avatar ของเราที่ตื่นอยู่ แล้วเลือกเป้าหมาย", "โจมตี LIFE ได้เมื่ออีกฝ่ายไม่มี Avatar หรือการ์ดของเรามีความสามารถ เตะไข่", "ไม่มีอะไรจะทำแล้วกด จบเทิร์น"] },
+  { k: "fight", when: (s) => recentFight(s), t: "ผลการต่อสู้",
+    b: () => ["เทียบ POWER ฝ่ายที่น้อยกว่าถูกทำลายลงนรก", "POWER เท่ากันถูกทำลายทั้งคู่ ยกเว้นฝ่ายที่มีความสามารถ ลูกฮึด"] },
+  { k: "defend", when: (s, V) => !!s.pend && s.pend.by !== V, t: "ถูกโจมตี",
+    b: () => ["เลือกได้ว่าจะปล่อยให้โจมตี ให้ Avatar ที่มี โล่มนุษย์ รับแทน หรือใช้ React", "ถ้าไม่มีอะไรตอบโต้ได้ เกมจะไปต่อเอง"] },
+  { k: "react", when: (s, V) => !!s.rw && s.rw.by !== V && E.reactsFor(s, V, s.rw).length > 0, t: "จังหวะตอบโต้",
+    b: () => ["อีกฝ่ายเพิ่งทำบางอย่าง และคุณมี React ที่ใช้ตอบได้", "กดใช้การ์ด หรือ ไม่ตอบโต้ เพื่อปล่อยผ่าน"] },
+  { k: "life", when: (s) => s.P.some((P) => P.life.some((y) => y.up)), t: "LIFE Card",
+    b: () => ["ถูกโจมตีเข้า LIFE จะหงาย LIFE 1 ใบ บางใบมีความสามารถทำงานตอนถูกหงาย", "LIFE หงายครบ 5 ใบเรียกว่าสถานะสาหัส ถูกโจมตีเข้า LIFE อีกครั้งจะแพ้"] },
+  { k: "discard", when: (s, V) => s.phase === "end" && s.active === V && s.need > 0, t: "มือเกิน 7 ใบ",
+    b: () => ["ตอนจบเทิร์นถ้ามีการ์ดบนมือเกิน 7 ใบ ต้องทิ้งจนเหลือ 7", "แตะการ์ดบนมือที่จะทิ้ง"] },
+  { k: "critical", when: (s) => s.phase !== "over" && s.P.some((P) => E.critical(P)), t: "สถานะสาหัส",
+    b: (s) => [`LIFE ของ${s.P.filter((P) => E.critical(P)).map((P) => P.name).join(" และ ")}หงายครบ 5 ใบแล้ว`, "ถูกโจมตีเข้า LIFE อีกครั้งจะแพ้ทันที"] },
+  { k: "tools", when: (s, V, p) => mainMine(s, V, p) && s.turn >= 3, t: "ตัวช่วยระหว่างเล่น",
+    b: () => ["ปุ่ม แนะนำ ให้ชิเอลบอกท่าที่น่าเล่นในตานี้", "ชี้หรือแตะการ์ดเพื่อดูรายละเอียดเต็ม", "ปุ่ม นรกคู่แข่ง เปิดดูการ์ดที่ลงนรกของบอท"] },
+  { k: "over", when: (s) => s.phase === "over", t: "จบเกม",
+    b: (s, V) => [s.winner === V ? "ชนะแล้ว! ต่อไปลองดวลกับบอทด้วยเด็คของคุณเองได้เลย" : "ไม่เป็นไร เริ่มสอนเล่นใหม่ได้ หรือไปจัดเด็คของคุณที่หน้า เด็ค", "ประวัติเกมนี้ดูย้อนหลังได้ที่หน้า ประวัติ"] },
+];
+function tutorBox(s, V, p) {
+  if (!G.learn) return null; const seen = G.learn.seen || (G.learn.seen = {});
+  const k = LESSONS.find((l) => !seen[l.k] && l.when(s, V, p)); if (!k) return null;
+  const fresh = G.learn.last !== k.k; G.learn.last = k.k;
+  return h("aside", { class: "tutor" + (fresh ? " fresh" : ""), "aria-live": "polite" }, h("div", { class: "in" }, h("b", null, k.t), h("ul", null, k.b(s, V).map((t) => h("li", null, t))),
+    h("div", { class: "row" }, h("button", { class: "btn gold sm", onclick: () => { seen[k.k] = 1; persist(); draw(); } }, "เข้าใจแล้ว"), h("button", { class: "btn sm", onclick: () => { G.learn = null; persist(); draw(); } }, "ปิดคำอธิบาย"))));
 }
 function afterDraw(s, V, op, myTurn) {
   const me = s.P[V];

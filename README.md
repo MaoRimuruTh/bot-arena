@@ -5,7 +5,7 @@
 - เว็บส่วนตัว ใช้ได้เฉพาะบัญชีที่เจ้าของอนุมัติ (`noindex`)
 - **ไม่มีระบบซื้อขาย เติมเงิน หรือหารายได้ใดๆ** ทั้งสิ้น
 - ข้อมูลและภาพการ์ดโหลดสดจากเว็บทางการ [bottcg.com](https://bottcg.com/cards) ไม่ได้เก็บสำเนาไว้ใน repo นี้ ลิขสิทธิ์การ์ด ภาพ และชื่อเกมเป็นของเจ้าของเกม (PASULOL / LION HOUSE) ใช้ส่วนตัวโดยได้รับอนุญาตจากทีมงาน
-- กติกาอ้างอิง Rule Book 3.2
+- กติกาอ้างอิง Rule Book 3.2 · การ์ดทุกใบ (1140 ใบที่มีข้อความ) ทำงานอัตโนมัติ · มีโหมดสอนเล่นทีละขั้น
 
 ## โครงสร้าง
 - Static site บน GitHub Pages (ES modules ไม่มี build step)
@@ -15,5 +15,5 @@
 
 ## เครดิตทรัพยากรฟรี
 - Particle textures: [Kenney Particle Pack](https://kenney.nl/assets/particle-pack) (CC0)
-- Floor texture: [Poly Haven — rock_tile_floor](https://polyhaven.com/a/rock_tile_floor) (CC0)
-- ฟอนต์: Chakra Petch, IBM Plex Sans Thai, JetBrains Mono (Google Fonts, OFL)
+- ฟอนต์: Chakra Petch, IBM Plex Sans Thai (Google Fonts, OFL)
+- สนามดวลลายรดน้ำ (ลงรักปิดทอง ย่อมุม ลายประจำยาม) วาดด้วยโค้ดใน `js/arena3d.js`
