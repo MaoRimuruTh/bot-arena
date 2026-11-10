@@ -1,7 +1,7 @@
-import { h, openSheet, holo } from "./util.js?v=20261110162433";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf } from "./cards.js?v=20261110162433";
-import { Data, saveOwned, saveSkins } from "./fb.js?v=20261110162433";
-import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261110162433";
+import { h, openSheet, holo } from "./util.js?v=20261110162653";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf } from "./cards.js?v=20261110162653";
+import { Data, saveOwned, saveSkins } from "./fb.js?v=20261110162653";
+import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261110162653";
 
 export function cardBtn(id, opts = {}) {
   const c = card(id); const b = h("button", { class: "ccard" + (opts.cls ? " " + opts.cls : ""), type: "button", "aria-label": c ? c.n : "การ์ด", title: c ? c.n : "", onclick: opts.onclick });

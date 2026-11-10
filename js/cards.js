@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261110162433";
-import { h } from "./util.js?v=20261110162433";
-import { Data } from "./fb.js?v=20261110162433";
+import { CARD_SOURCE } from "./config.js?v=20261110162653";
+import { h } from "./util.js?v=20261110162653";
+import { Data } from "./fb.js?v=20261110162653";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -18,11 +18,15 @@ export const kwHas = (t, k) => (t || "").includes(k);
 const TYPE = { Avatar: "A", Magic: "M", Construct: "C", Life: "L", Token: "T" };
 const SUB = { Normal: "N", Modification: "D", React: "R", Land: "L" };
 function transform(raw) {
-  const groups = new Map(); const out = [];
-  raw.forEach((c, i) => { const k = c.name + "|" + c.type + "|" + (c.mainEffect || "").trim(); if (!groups.has(k)) groups.set(k, i); });
+  // same card = same name and type, and either the same print code or the same text once spacing,
+  // line breaks and slashes are ignored (special-art reprints often re-wrap the text)
+  const norm = (t) => String(t || "").replace(/[\s\/|]+/g, "").replace(/[“”]/g, '"');
+  const groups = new Map(); const byPrint = new Map(); const out = [];
+  raw.forEach((c, i) => { const k = c.name + "|" + c.type + "|" + norm(c.mainEffect); const kp = c.name + "|" + c.type + "|" + c.print;
+    const g = groups.has(k) ? groups.get(k) : byPrint.has(kp) ? byPrint.get(kp) : i; if (!groups.has(k)) groups.set(k, g); if (!byPrint.has(kp)) byPrint.set(kp, g); raw[i]._g = g; });
   raw.forEach((c, i) => {
     const t = TYPE[c.type] || "A"; const e = { i, n: c.name, t, p: c.print, r: c.rare, x: (c.mainEffect || "").trim() };
-    const b = groups.get(c.name + "|" + c.type + "|" + (c.mainEffect || "").trim()); if (b !== i) e.b = b;
+    const b = c._g; if (b !== i) e.b = b;
     if (t === "M") { e.st = SUB[c.subtype] || "N"; e.g = c.cost || 0; }
     else { if (c.cost != null) e.c = c.cost; if (c.gem != null) e.g = c.gem; if (c.power != null) e.pw = c.power; }
     if (c.symbol) e.sy = c.symbol; if (c.color) e.co = c.color; if (c.gemColor) e.gc = c.gemColor; if (c.customLimit) e.lim = c.customLimit;
