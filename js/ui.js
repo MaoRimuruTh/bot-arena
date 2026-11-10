@@ -1,0 +1,51 @@
+import { h, openSheet, holo } from "./util.js";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf } from "./cards.js";
+import { Data, saveOwned } from "./fb.js";
+import { Ciel, cielAceCheck, aiErr } from "./ai.js";
+
+export function cardBtn(id, opts = {}) {
+  const c = card(id); const b = h("button", { class: "ccard" + (opts.cls ? " " + opts.cls : ""), type: "button", "aria-label": c ? c.n : "การ์ด", title: c ? c.n : "", onclick: opts.onclick });
+  if (c) b.append(artImg(c));
+  if (opts.badge) b.append(h("span", { class: "badge" }, opts.badge));
+  if (opts.own) b.append(h("span", { class: "own" }, opts.own));
+  return holo(b);
+}
+export function cardInfo(c) {
+  const kv = []; const add = (k, v) => { if (v != null && v !== "") kv.push(h("dt", null, k), h("dd", null, v)); };
+  add("ประเภท", TYPE_TH[c.t] + (c.st ? " · " + SUB_TH[c.st] : ""));
+  add("สี", c.co ? h("span", { class: "row", style: "gap:6px" }, h("span", { class: "dot", style: "background:" + colorOf(c.co) }), c.co) : "ไร้สี");
+  if (c.t !== "M") add("Cost", c.c != null ? h("span", { class: "num" }, c.c) : null);
+  add("GEM", c.g != null ? h("span", { class: "num" }, c.g + (c.gc ? " (สี" + c.gc + ")" : "")) : null);
+  add("POWER", c.pw != null ? h("span", { class: "num" }, c.pw) : null);
+  add("Symbol", c.sy); add("รหัส", h("span", { class: "num" }, c.p + " · " + c.r)); add("ชุด", setName(c) + (c.dr ? " · " + c.dr : ""));
+  add("จำกัด", c.o1 ? "Only #1 (1 ใบต่อเด็ค)" : c.lim ? c.lim + " ใบ" : "4 ใบต่อชื่อ");
+  if (c.fl) add("สถานะ", c.fl === "le" ? "ลำเอียง: ใช้แข่งทางการไม่ได้" : "โดนใจ: การ์ดคอลแลบ แข่งได้");
+  add("ภาพโดย", c.ar);
+  return h("dl", { class: "kv" }, kv);
+}
+export function setOwned(id, n) { const k = String(baseId(id)); if (n > 0) Data.owned[k] = n; else delete Data.owned[k]; saveOwned(); }
+export function showCard(id, extra) {
+  const c = card(id); if (!c) return;
+  const variants = (CARDS.byName.get(c.n) || []).filter((x) => x.i !== c.i && (x.b === baseId(c.i) || x.i === baseId(c.i)));
+  const others = (CARDS.byName.get(c.n) || []).filter((x) => isBase(x) && x.i !== baseId(c.i));
+  openSheet((api) => {
+    const own = h("b", { class: "num" }, ownedOf(c.i));
+    const aceBox = h("div");
+    return [h("div", { class: "detail" }, holo(h("div", { class: "ccard", style: "cursor:default" }, artImg(c))),
+      h("div", { class: "stack" }, cardInfo(c), c.x ? h("div", { class: "fx" }, c.x) : h("div", { class: "muted small" }, "ไม่มีข้อความความสามารถ"), c.ex ? h("div", { class: "small muted" }, c.ex) : null,
+        h("div", { class: "row" }, h("span", { class: "muted small" }, "ฉันมีจริง"), h("button", { class: "mini", "aria-label": "ลด", onclick: () => { setOwned(c.i, Math.max(0, ownedOf(c.i) - 1)); own.textContent = ownedOf(c.i); } }, "−"), own, h("button", { class: "mini", "aria-label": "เพิ่ม", onclick: () => { setOwned(c.i, ownedOf(c.i) + 1); own.textContent = ownedOf(c.i); } }, "+")),
+        others.length ? h("div", { class: "stack", style: "gap:6px" }, h("div", { class: "eyebrow" }, "ชื่อเดียวกันแต่คนละใบ · นับรวมโควตาชื่อ"), h("div", { class: "pick" }, others.map((v) => cardBtn(v.i, { badge: v.p, onclick: () => { api.close(); showCard(v.i, extra); } })))) : null,
+        variants.length ? h("div", { class: "stack", style: "gap:6px" }, h("div", { class: "eyebrow" }, "ภาพอื่นของใบนี้"), h("div", { class: "pick" }, variants.map((v) => cardBtn(v.i, { badge: v.r, onclick: () => { api.close(); showCard(v.i, extra); } })))) : null,
+        extra ? extra(c, api) : null,
+        c.t === "A" ? h("div", { class: "row" },
+          h("button", { class: "btn ciel sm", onclick: async (e) => { const b = e.currentTarget; if (!Ciel.on()) { aceBox.replaceChildren(h("div", { class: "muted small" }, aiErr({ code: "no_key" }))); return; } b.disabled = true; aceBox.replaceChildren(h("span", { class: "muted small" }, "ชิเอลกำลังประเมิน…")); try { const r = await cielAceCheck(c); aceBox.replaceChildren(aceView(r)); } catch (err) { aceBox.replaceChildren(h("div", { class: "muted small" }, aiErr(err))); } b.disabled = false; } }, "ประเมินเป็นเอซ"),
+          h("a", { class: "btn sm", href: "#decks/ace/" + c.i, onclick: () => api.close() }, "จัดเด็ครอบใบนี้")) : null, aceBox))];
+  }, { title: c.n, sub: `${TYPE_TH[c.t]} · ${c.p}`, wide: true });
+}
+function aceView(r) {
+  const parts = (r.partners || []).map(card).filter(Boolean);
+  return h("div", { class: "panel stack" }, h("div", { class: "row" }, h("span", { class: "chip " + (/[SA]/.test(r.rating) ? "good" : "warn") }, "ระดับเอซ " + (r.rating || "?")), h("span", { class: "small" }, r.why || "")),
+    (r.needs || []).length ? h("ul", { class: "small", style: "margin:0;padding-left:18px" }, r.needs.map((x) => h("li", null, x))) : null,
+    parts.length ? h("div", { class: "pick" }, parts.map((p) => cardBtn(p.i, { onclick: () => showCard(p.i) }))) : null);
+}
+export const Views = {};

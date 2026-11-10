@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>BoT Arena</title>
+<meta name="description" content="สนามซ้อมส่วนตัวสำหรับ Battle of Talingchan">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#070912">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=JetBrains+Mono:wght@600;700&display=swap">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<canvas id="bgfx" aria-hidden="true"></canvas>
+<header class="top"><div class="top-in wrap">
+  <a class="logo" href="#play"><i>BoT</i>BoT ARENA</a>
+  <nav class="nav" id="nav" aria-label="เมนูหลัก" hidden>
+    <a href="#play" data-tab="play">สนาม</a>
+    <a href="#decks" data-tab="decks">เด็ค</a>
+    <a href="#library" data-tab="library">คลังการ์ด</a>
+    <a href="#lab" data-tab="lab">ห้องทดลอง</a>
+    <a href="#history" data-tab="history">ประวัติ</a>
+  </nav>
+  <div class="me" id="me"></div>
+</div></header>
+<main class="wrap" id="view"></main>
+<div id="toasts" aria-live="polite"></div>
+<noscript>เว็บนี้ต้องเปิด JavaScript</noscript>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
