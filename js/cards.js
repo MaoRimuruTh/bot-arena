@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261110201727";
-import { h } from "./util.js?v=20261110201727";
-import { Data } from "./fb.js?v=20261110201727";
+import { CARD_SOURCE } from "./config.js?v=20261110203939";
+import { h } from "./util.js?v=20261110203939";
+import { Data } from "./fb.js?v=20261110203939";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -13,7 +13,23 @@ export const colorHex = (c) => CHEX[c] || 0x9aa3b8;
 const SET_TH = { SD: "Starter Deck", BT: "Booster", KD: "Kudson Deck", CC: "Community Collection", PRMO: "โปรโม", ODY: "Odyssey", RM: "Remaster", SL: "Special", B2SA: "B2S", B2SB: "B2S", FPRO: "โปรโม", PRE: "Pre-order", APFD: "โปรโม", STOR: "ร้านค้า" };
 export const setCode = (c) => c.p.split("-")[0];
 export const setName = (c) => { const s = setCode(c); return SET_TH[s] || SET_TH[s.replace(/\d+$/, "")] || s; };
-export const kwHas = (t, k) => (t || "").includes(k);
+// A keyword belongs to the card only where it stands as a keyword: at the start of the text or of a line, or right
+// after another keyword of its own (with or without reminder text). "ได้รับ โล่มนุษย์", "อัญเชิญ จุติ …" or
+// "Avatar ที่มี สามัคคี" only mention the keyword; they do not give it to the card that says so.
+const KW_ALL = ["โล่มนุษย์", "ลูกฮึด", "สามัคคี", "เตะไข่", "แทงหลัง", "จุติ", "คำสั่งเสีย", "พอดี"];
+const KW_REF = /(?:ได้รับ|ความสามารถ|อัญเชิญ|แบบ|และ|หรือ|มี|รับ|ของ|ใช้|เป็น|ด้วย|,)$/;
+const KW_TRIG = new Set(["จุติ", "คำสั่งเสีย"]);
+function ownKw(t, i, k, depth) {
+  const p = t.slice(0, i); const tail = (p.match(/[\s"“”'#\-•*·]*$/) || [""])[0]; let core = p.slice(0, p.length - tail.length);
+  if (!core) return true;
+  if (tail.includes("\n") && !KW_REF.test(core)) return true;
+  // the keyword before it (skipping that keyword's reminder text) decides
+  const bare = core.replace(/\{red\s*\([^{}]*\)\s*\}$/, "").replace(/\([^()]*\)$/, "").replace(/[\s"“”']+$/, "");
+  for (const w of KW_ALL) if (bare.endsWith(w)) return depth < 6 && ownKw(t, bare.length - w.length, w, depth + 1);
+  // "… POWER +1 คำสั่งเสีย : …" written on one line
+  return KW_TRIG.has(k) && !KW_REF.test(core) && /^\s*(?:[:：(]|\{red\s*\()/.test(t.slice(i + k.length));
+}
+export function kwHas(t, k) { t = String(t || ""); for (let i = t.indexOf(k); i >= 0; i = t.indexOf(k, i + 1)) if (ownKw(t, i, k, 0)) return true; return false; }
 
 const TYPE = { Avatar: "A", Magic: "M", Construct: "C", Life: "L", Token: "T" };
 const SUB = { Normal: "N", Modification: "D", React: "R", Land: "L" };

@@ -1,21 +1,21 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261110201727";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261110201727";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261110201727";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261110201727";
-import { Arena } from "../arena3d.js?v=20261110201727";
-import { autoEffect, resolveEffect } from "../effects.js?v=20261110201727";
-import { Sfx } from "../sfx.js?v=20261110201727";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261110201727";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261110201727";
-import { readAura } from "../auras.js?v=20261110201727";
-import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261110201727";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261110203939";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261110203939";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261110203939";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261110203939";
+import { Arena } from "../arena3d.js?v=20261110203939";
+import { autoEffect, resolveEffect } from "../effects.js?v=20261110203939";
+import { Sfx } from "../sfx.js?v=20261110203939";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261110203939";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261110203939";
+import { readAura } from "../auras.js?v=20261110203939";
+import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261110203939";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
   return { game: [`เทิร์น ${s.turn} · ${PHASE_TH[s.phase] || s.phase} · ตาของ ${s.P[s.active].name}`, `เด็คเรา: ${me.deckName || "-"} · เด็คคู่แข่ง: ${op.deckName || "-"}`,
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / ")].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261110201727";
+import { allDecks, deckById } from "./decks.js?v=20261110203939";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -171,12 +171,19 @@ async function doAct(a, p) {
   Arena.update(G.s, view()); draw(); drive();
   return true;
 }
+// attacked with nothing to answer with (no awake โล่มนุษย์, no React that fits): take the attack without asking
+function nothingToAnswer(s, p) { return !!s.pend && s.pend.by !== p && !s.trig.length && !s.rw && legalMoves(s, p).length <= 1 && !E.reactsFor(s, p, { kind: "attack", by: s.pend.by, att: s.pend.att, tk: s.pend.tk, ti: s.pend.ti }).length; }
+function autoRespond(s, p) {
+  if (!mine(p) || !nothingToAnswer(s, p) || G.castFor) return;
+  const key = [s.turn, s.pend.att, s.pend.tk, s.pend.ti, s.log.length].join(":"); if (G.autoKey === key) return; G.autoKey = key;
+  setTimeout(() => { const n = G && G.s; if (!n || !n.pend || G.castFor || [n.turn, n.pend.att, n.pend.tk, n.pend.ti, n.log.length].join(":") !== key || !nothingToAnswer(n, p)) return; doAct({ type: "respond" }, p); }, 900);
+}
 // bot / auto driver
 async function drive() {
   if (!G || G.driving || !G.s) return; const s = G.s;
   if (s.phase === "over") return finish();
   const p = whoActs(s); if (p == null) return;
-  if (!isBot(s, p)) { if (s.trig.length && mine(p)) humanTrig(s, p); return; }
+  if (!isBot(s, p)) { if (s.trig.length && mine(p)) humanTrig(s, p); else autoRespond(s, p); return; }
   G.driving = true;
   try {
     await Arena.idle(); await sleep(G.brain === "ciel" ? 250 : 650); if (!G || G.s !== s) return;
@@ -421,13 +428,16 @@ function promptBox(s, p) {
       // React: only inside a matching window; scripted canCast: only when its condition holds
       const scx = scriptOf(s, x);
       const KIND_TH = { attack: "ตอนฝ่ายตรงข้ามประกาศโจมตี", summon: "ตอนฝ่ายตรงข้ามอัญเชิญ Avatar", cast: "ตอนฝ่ายตรงข้ามใช้ Magic" };
-      const block = d.st === "R" ? (!on || !E.reactsFor(s, p, on).includes(x) ? `React ใช้ได้${scx && scx.react ? scx.react.kinds.map((k) => KIND_TH[k]).join(" หรือ ") : "ตอนฝ่ายตรงข้ามทำบางอย่าง"} (และตรงเงื่อนไขบนการ์ด) ตอนนั้นจะมีปุ่มขึ้นให้เอง` : null)
+      // a React whose moment the game cannot check: the player may use it by hand on their own turn or in any response window
+      const free = d.st === "R" && !scx && E.ext.reactFree && E.ext.reactFree(s, x); const byHand = free && (on ? true : E.canAct(s, p));
+      const block = d.st === "R" ? (byHand ? null : free ? "ระบบตรวจเงื่อนไขของ React ใบนี้เองไม่ได้ ใช้เองได้ในเทิร์นของเรา หรือตอนที่มีกล่องให้ตอบโต้ขึ้นมา" : !on || !E.reactsFor(s, p, on).includes(x) ? `React ใช้ได้${scx && scx.react ? scx.react.kinds.map((k) => KIND_TH[k]).join(" หรือ ") : "ตอนฝ่ายตรงข้ามทำบางอย่าง"} (และตรงเงื่อนไขบนการ์ด) ตอนนั้นจะมีปุ่มขึ้นให้เอง` : null)
         : scx && scx.canCast && !scx.canCast(E, s, p) ? "ยังไม่ตรงเงื่อนไขการใช้การ์ดใบนี้" : null;
       if (block) return box(`${d.n}`, h("div", { class: "fx small", style: "max-height:120px;overflow:auto" }, d.x || ""), h("div", { class: "small", style: "color:var(--warn)" }, block),
         h("div", { class: "row" }, h("button", { class: "btn", onclick: () => { G.castFor = null; draw(); } }, "ปิด")));
       return box(`ใช้ ${SUB_TH[d.st]} Magic: ${d.n}?`, h("div", { class: "fx small", style: "max-height:120px;overflow:auto" }, d.x || "ไม่มีข้อความ"),
         asks ? h("div", { class: "small", style: "color:#8ee3b2" }, "ใช้แล้วจะให้เลือก: " + asks) : fx ? h("div", { class: "small", style: "color:#8ee3b2" }, fx.explain) : h("div", { class: "tiny muted" }, "ระบบอ่านผลเองไม่ได้ ใช้แล้วจะให้เลือกว่าจะให้ชิเอลจัดการหรือจัดการเอง"),
         empty ? h("div", { class: "small", style: "color:var(--warn)" }, "ระวัง: ตอนนี้ยังไม่มี Avatar ฝ่ายเราบนสนาม ผลของการ์ดนี้อาจไม่มีเป้าหมาย") : null,
+        byHand && (!on || !E.reactsFor(s, p, on).includes(x)) ? h("div", { class: "small", style: "color:var(--warn)" }, "ระบบตรวจเงื่อนไขของ React ใบนี้เองไม่ได้ ใช้เมื่อเงื่อนไขบนการ์ดครบจริงเท่านั้น") : null,
         s.mu[p][d.st] === undefined && d.st !== "R" ? h("div", { class: "tiny muted" }, `Magic ${SUB_TH[d.st]} ใช้ได้เทิร์นละ 1 ใบ`) : null,
         h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => { G.castFor = null; doAct({ type: "cast", i: x.i }, p); } }, "ใช้เลย"), h("button", { class: "btn", onclick: () => { G.castFor = null; draw(); } }, "ยกเลิก")));
     }
@@ -482,8 +492,10 @@ function promptBox(s, p) {
   if (s.pend) {
     const moves = legalMoves(s, p); const reacts = P.hand.filter((x) => { const d = E.def(s, x); return d.t === "M" && d.st === "R" && !s.mu[p].R; });
     const att = E.locate(s, s.pend.att); const tgt = s.pend.tk === "life" ? "LIFE" : (E.locate(s, s.pend.ti) || { x: null }).x ? E.name(s, E.locate(s, s.pend.ti).x) : "?";
+    const rs = E.reactsFor(s, p, { kind: "attack", by: s.pend.by, att: s.pend.att, tk: s.pend.tk, ti: s.pend.ti });
     return box(`ถูกโจมตี: ${att ? E.name(s, att.x) : "?"} (POWER ${att ? E.power(s, att.x) + (s.pend.bonus || 0) : 0}) → ${tgt}`,
-      (() => { const rs = E.reactsFor(s, p, { kind: "attack", by: s.pend.by, att: s.pend.att, tk: s.pend.tk, ti: s.pend.ti }); return rs.length ? h("div", { class: "opts" }, rs.map((x) => h("button", { class: "btn sm ciel", onclick: () => doAct({ type: "cast", i: x.i }, p) }, "React: " + E.name(s, x)))) : null; })(),
+      !rs.length && moves.length <= 1 ? h("div", { class: "tiny muted" }, "ไม่มี โล่มนุษย์ ที่ตื่นอยู่ และไม่มี React ที่ใช้ได้ตอนนี้ · รับการโจมตีให้อัตโนมัติ") : null,
+      rs.length ? h("div", { class: "opts" }, rs.map((x) => h("button", { class: "btn sm ciel", onclick: () => doAct({ type: "cast", i: x.i }, p) }, "React: " + E.name(s, x)))) : null,
       h("div", { class: "opts" }, moves.map((m) => h("button", { class: "btn sm" + (m.a.shield ? " gold" : ""), onclick: () => doAct(m.a, p) }, m.d))));
   }
   if (s.phase === "end" && s.need) {

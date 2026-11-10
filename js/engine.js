@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId } from "./cards.js?v=20261110201727";
-import { readAura, traits } from "./auras.js?v=20261110201727";
-import { SCRIPTS } from "./scripts.js?v=20261110201727";
-import { newId, clone } from "./util.js?v=20261110201727";
+import { card, kwHas, SUB_TH, CARDS, baseId } from "./cards.js?v=20261110203939";
+import { readAura, traits } from "./auras.js?v=20261110203939";
+import { SCRIPTS } from "./scripts.js?v=20261110203939";
+import { newId, clone } from "./util.js?v=20261110203939";
 export const ZONES = ["deck", "hand", "av", "mg", "cs", "hell", "dark", "life"];
 export const ZONE_TH = { deck: "Deck", hand: "มือ", av: "Avatar Zone", mg: "Magic Zone", cs: "Construct Zone", hell: "นรก", dark: "มิติมืด", life: "LIFE", land: "Land Magic" };
 export const PHASE_TH = { mull: "เปลี่ยนมือ", draw: "Draw", main: "Main", battle: "Battle", end: "End", over: "จบเกม" };
@@ -256,7 +256,7 @@ export const E = {
         if (d.st === "R") {
           on = s.rw && s.rw.by !== p ? { ...s.rw } : s.pend && s.pend.by !== p ? { kind: "attack", by: s.pend.by, att: s.pend.att, tk: s.pend.tk, ti: s.pend.ti } : null;
           const sc = scriptOf(s, x); if (sc && sc.react) need(on && sc.react.kinds.includes(on.kind) && (!sc.react.can || sc.react.can(E, s, p, on, x)), "ยังไม่ถึงจังหวะของ React ใบนี้");
-          else if (!sc && E.ext.react) need(on && E.ext.react(s, x, p, on, true) !== false, "ยังไม่ถึงจังหวะของ React ใบนี้");
+          else if (!sc && E.ext.react) need(on ? E.ext.react(s, x, p, on, true) !== false : !!(E.ext.reactFree && E.ext.reactFree(s, x)) && E.canAct(s, p), "ยังไม่ถึงจังหวะของ React ใบนี้");
         }
         s.mu[p][d.st] = true; P.hand.splice(P.hand.indexOf(x), 1);
         if (s.active === p) for (const { x: y, L: Ly } of fieldCards(s)) { if (Ly.p !== p) continue; const sy = scriptOf(s, y); if (sy && sy.onMagic) { const ops = sy.onMagic(E, s, y, Ly); if (ops && ops.length) E.ops(s, ops, p); } }
@@ -311,8 +311,10 @@ export const E = {
       case "respond": {
         need(s.pend && s.pend.by === 1 - p && !s.trig.length, "ยังไม่ถึงจังหวะตอบโต้");
         if (act.shield) {
+          // โล่มนุษย์: an awake Avatar with the keyword goes to sleep and becomes the target instead
           const y = P.av.find((z) => z.i === act.shield); need(y && E.kw(s, y, "โล่มนุษย์") && y.i !== s.pend.ti, "ต้องเป็น Avatar ที่มีโล่มนุษย์");
-          s.pend.tk = "av"; s.pend.ti = y.i; E.log(s, p, `${E.name(s, y)} ใช้โล่มนุษย์รับการโจมตีแทน`);
+          need(y.a, "โล่มนุษย์ใช้ได้เฉพาะ Avatar ที่อยู่ในสภาพตื่น");
+          y.a = false; s.pend.tk = "av"; s.pend.ti = y.i; E.log(s, p, `${E.name(s, y)} ใช้โล่มนุษย์ เปลี่ยนเป็นสภาพนอนแล้วรับการโจมตีแทน`);
         }
         E.resolveAttack(s); return;
       }
@@ -561,8 +563,9 @@ export function legalMoves(s, p) {
   if (s.phase === "over") return out;
   if (s.trig.length || (s.pend && s.pend.by === p)) return out;
   if (s.pend && s.pend.by === 1 - p) {
-    out.push({ d: "ไม่ใช้โล่มนุษย์ ปล่อยให้โจมตีตามเดิม", a: { type: "respond" } });
-    for (const y of P.av) if (E.kw(s, y, "โล่มนุษย์") && y.i !== s.pend.ti) out.push({ d: `ใช้โล่มนุษย์ ${E.name(s, y)} (POWER ${E.power(s, y)}) รับแทน`, a: { type: "respond", shield: y.i } });
+    const shields = P.av.filter((y) => y.a && y.i !== s.pend.ti && E.kw(s, y, "โล่มนุษย์"));
+    out.push({ d: shields.length ? "ไม่ใช้โล่มนุษย์ ปล่อยให้โจมตีตามเดิม" : "ไม่ตอบโต้ ปล่อยให้โจมตี", a: { type: "respond" } });
+    for (const y of shields) out.push({ d: `ใช้โล่มนุษย์ ${E.name(s, y)} (POWER ${E.power(s, y)}) รับแทน`, a: { type: "respond", shield: y.i } });
     return out;
   }
   if (s.phase === "mull") return out;

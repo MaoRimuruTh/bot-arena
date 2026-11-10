@@ -1,7 +1,7 @@
-import { h, openSheet, holo, toast, fmtDate } from "./util.js?v=20261110201727";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt, priceOf, setCode } from "./cards.js?v=20261110201727";
-import { Data, saveOwned, saveSkins, saveFavs, savePrices } from "./fb.js?v=20261110201727";
-import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261110201727";
+import { h, openSheet, holo, toast, fmtDate } from "./util.js?v=20261110203939";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt, priceOf, setCode } from "./cards.js?v=20261110203939";
+import { Data, saveOwned, saveSkins, saveFavs, savePrices } from "./fb.js?v=20261110203939";
+import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261110203939";
 
 export function cardBtn(id, opts = {}) {
   const c = card(id); const b = h("button", { class: "ccard" + (opts.cls ? " " + opts.cls : ""), type: "button", "aria-label": c ? c.n : "การ์ด", title: c ? c.n : "", onclick: opts.onclick });
