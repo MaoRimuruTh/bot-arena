@@ -1,13 +1,13 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261110161750";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261110161750";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261110161750";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261110161750";
-import { Arena } from "../arena3d.js?v=20261110161750";
-import { autoEffect, resolveEffect } from "../effects.js?v=20261110161750";
-import { Sfx } from "../sfx.js?v=20261110161750";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261110161750";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261110161750";
-import { allDecks, deckById } from "./decks.js?v=20261110161750";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261110162433";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261110162433";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261110162433";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261110162433";
+import { Arena } from "../arena3d.js?v=20261110162433";
+import { autoEffect, resolveEffect } from "../effects.js?v=20261110162433";
+import { Sfx } from "../sfx.js?v=20261110162433";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261110162433";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261110162433";
+import { allDecks, deckById } from "./decks.js?v=20261110162433";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -17,6 +17,7 @@ let G = null; // live game
 function whoActs(s) {
   if (s.phase === "over") return null;
   if (s.phase === "mull") return s.mull[0] ? (s.mull[1] ? null : 1) : 0;
+  if (s.rw) return 1 - s.rw.by;
   if (s.trig.length) return s.trig[0].seat;
   if (s.pend) return 1 - s.pend.by;
   return s.active;
@@ -173,6 +174,7 @@ async function drive() {
     await Arena.idle(); await sleep(G.brain === "ciel" ? 250 : 650); if (!G || G.s !== s) return;
     let a = null;
     if (s.phase === "mull") a = { type: "mull", iids: H.mulligan(s, p) };
+    else if (s.rw) a = H.react(s, p) || { type: "pass" };
     else if (s.trig.length) {
       const t = s.trig[0];
       if (G.brain === "ciel") { G.thinking = "ชิเอลกำลังอ่านเอฟเฟกต์ " + (s.cards[t.c] || {}).n; draw(); try { const r = await cielResolve(s, t); a = { type: "trig", id: t.id, ...r }; } catch (e) { a = H.trig(s, t); toast(aiErr(e), "bad"); } }
@@ -180,7 +182,9 @@ async function drive() {
     } else if (s.phase === "end" && s.need) a = { type: "discard", iids: H.discard(s, p) };
     else {
       let m = null;
-      if (G.brain === "ciel") { G.thinking = "ชิเอลกำลังคิด…"; draw(); m = await cielPick(s, p); }
+      const rx = s.pend ? H.react(s, p) : null;
+      if (rx) m = { a: rx, say: "ใช้ React ตอบโต้!" };
+      else if (G.brain === "ciel") { G.thinking = "ชิเอลกำลังคิด…"; draw(); m = await cielPick(s, p); }
       else m = H.pick(s, p);
       if (m && m.say) G.say = m.say;
       a = m ? m.a : s.pend ? { type: "respond" } : { type: "end" };
@@ -419,6 +423,13 @@ function promptBox(s, p) {
     return box("เปลี่ยนมือ (ทำได้ครั้งเดียว)", h("div", { class: "small muted" }, "แตะการ์ดบนมือที่ต้องการส่งกลับ Deck แล้วจั่วใหม่เท่าจำนวนนั้น"),
       h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => { const ids = G.pick || []; G.pick = null; doAct({ type: "mull", iids: ids }, p); } }, n ? `เปลี่ยน ${n} ใบ` : "เก็บมือเดิม")));
   }
+  if (s.rw && s.rw.by !== p) {
+    const L = E.locate(s, s.rw.i); const what = L ? `${s.rw.kind === "summon" ? "อัญเชิญ" : "ใช้ Magic"} ${E.name(s, L.x)}` : "เล่นการ์ด";
+    const rs = E.reactsFor(s, p, s.rw);
+    return box(`${s.P[s.rw.by].name} ${what} · จะใช้ React ตอบโต้ไหม?`, L ? h("div", { class: "row small" }, h("button", { class: "btn sm", onclick: () => cardView(L.x) }, "ดูการ์ดนั้น")) : null,
+      h("div", { class: "opts" }, rs.map((x) => h("button", { class: "btn sm gold", onclick: () => doAct({ type: "cast", i: x.i }, p) }, "ใช้ " + E.name(s, x)))),
+      h("div", { class: "row" }, h("button", { class: "btn", onclick: () => doAct({ type: "pass" }, p) }, "ไม่ตอบโต้")));
+  }
   if (s.trig.length && G.ask && G.tk === s.trig[0].id) {
     const t = s.trig[0]; const d = s.cards[t.c] || {}; const a = G.ask; const sel = G.askSel || [];
     if (a.modes) return box(`${d.n}: ${a.prompt}`, h("div", { class: "opts" }, a.modes.map((t, k) => h("button", { class: "btn sm", onclick: () => { G.tpicks[a.idx] = [k]; G.ask = null; humanTrig(G.s, p); } }, t))));
@@ -447,7 +458,7 @@ function promptBox(s, p) {
     const moves = legalMoves(s, p); const reacts = P.hand.filter((x) => { const d = E.def(s, x); return d.t === "M" && d.st === "R" && !s.mu[p].R; });
     const att = E.locate(s, s.pend.att); const tgt = s.pend.tk === "life" ? "LIFE" : (E.locate(s, s.pend.ti) || { x: null }).x ? E.name(s, E.locate(s, s.pend.ti).x) : "?";
     return box(`ถูกโจมตี: ${att ? E.name(s, att.x) : "?"} (POWER ${att ? E.power(s, att.x) + (s.pend.bonus || 0) : 0}) → ${tgt}`,
-      reacts.length ? h("div", { class: "small muted" }, "มี React Magic ใช้ได้ แตะการ์ดบนมือเพื่อใช้ก่อนตัดสิน") : null,
+      (() => { const rs = E.reactsFor(s, p, { kind: "attack", by: s.pend.by, att: s.pend.att, tk: s.pend.tk, ti: s.pend.ti }); return rs.length ? h("div", { class: "opts" }, rs.map((x) => h("button", { class: "btn sm ciel", onclick: () => doAct({ type: "cast", i: x.i }, p) }, "React: " + E.name(s, x)))) : null; })(),
       h("div", { class: "opts" }, moves.map((m) => h("button", { class: "btn sm" + (m.a.shield ? " gold" : ""), onclick: () => doAct(m.a, p) }, m.d))));
   }
   if (s.phase === "end" && s.need) {

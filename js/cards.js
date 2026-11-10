@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261110161750";
-import { h } from "./util.js?v=20261110161750";
-import { Data } from "./fb.js?v=20261110161750";
+import { CARD_SOURCE } from "./config.js?v=20261110162433";
+import { h } from "./util.js?v=20261110162433";
+import { Data } from "./fb.js?v=20261110162433";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -53,7 +53,8 @@ export function imgUrls(c) {
   return [`${b}${f}${c.p}-${c.r}.png`, `${b}${f}${c.p}.png`, `${b}${c.p}-${c.r}.png`, `${b}${c.p}.png`];
 }
 // skins: the player can pick any alternate print of a card as the art shown everywhere
-export function skinOf(c) { if (!c || c.b != null) return c; const v = Data.skins && Data.skins[String(c.i)]; const s = v != null ? CARDS[+v] : null; return s && (s.b === c.i || s.i === c.i) ? s : c; }
+export const SkinCtx = { on: true }; // skins show only on the deck pages and in the arena (set by the router)
+export function skinOf(c) { if (!c || c.b != null || !SkinCtx.on) return c; const v = Data.skins && Data.skins[String(c.i)]; const s = v != null ? CARDS[+v] : null; return s && (s.b === c.i || s.i === c.i) ? s : c; }
 export const variantsOf = (c) => { const b = c.b != null ? c.b : c.i; return CARDS.filter((x) => x.i === b || x.b === b); };
 export const isSpecialArt = (c) => c.b != null || ["SCR", "CBR", "USEC"].includes(c.r);
 const goodUrl = new Map();

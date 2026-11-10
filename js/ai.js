@@ -1,9 +1,9 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus } from "./engine.js?v=20261110161750";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261110161750";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261110161750";
-import { Data } from "./fb.js?v=20261110161750";
-import { lsGet } from "./util.js?v=20261110161750";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus } from "./engine.js?v=20261110162433";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261110162433";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261110162433";
+import { Data } from "./fb.js?v=20261110162433";
+import { lsGet } from "./util.js?v=20261110162433";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -165,6 +165,20 @@ export const H = {
       else if (o.op === "discard") v -= 1.6 * (o.iids || []).length;
     }
     return v;
+  },
+  // answer a window (s.rw) or an attack (s.pend) with a React if it is clearly worth it
+  react(s, q) {
+    const on = s.rw && s.rw.by !== q ? s.rw : s.pend && s.pend.by !== q ? { kind: "attack", by: s.pend.by, att: s.pend.att, tk: s.pend.tk, ti: s.pend.ti } : null; if (!on) return null;
+    let best = null;
+    for (const x of E.reactsFor(s, q, on)) {
+      const r = H.preview(s, { i: x.i, c: x.c, when: "cast", seat: q, on }); let v = H.opsScore(s, q, r);
+      if (r && r.ops.some((o) => o.op === "cancelAttack")) v += 3;
+      if (on.kind === "attack") { const A = E.locate(s, on.att); const T = on.tk === "av" ? E.locate(s, on.ti) : null; const ap = A ? E.power(s, A.x) + (s.pend.bonus || 0) : 0;
+        const danger = on.tk === "life" ? (E.critical(s.P[q]) ? 30 : 4) : T && ap >= E.power(s, T.x) ? 3 + E.power(s, T.x) * 0.5 : 0; if (!danger) v -= 3; else v += danger * 0.3; }
+      if (on.kind === "summon") { const L = E.locate(s, on.i); if (L) v += (E.def(s, L.x).c || 0) >= 4 || E.power(s, L.x) >= 5 ? 2 : -3; }
+      if (!best || v > best.v) best = { v, x };
+    }
+    return best && best.v >= 3 ? { type: "cast", i: best.x.i } : null;
   },
   // resolve an effect without AI: read it if possible, otherwise skip
   trig(s, t) { let r = null; try { r = resolveEffect(s, t); } catch (e) { console.warn(e); } return r && r.ops ? { type: "trig", id: t.id, explain: r.explain, ops: r.ops } : { type: "trig", id: t.id, skip: true }; },

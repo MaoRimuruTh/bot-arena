@@ -206,3 +206,69 @@ Object.assign(SCRIPTS, {
       return { explain: `นำ ${t.map((x) => c.E.name(c.s, x)).join(", ")} ขึ้นมือ`, ops: t.map((x) => ({ op: "move", i: x.i, to: "hand" })) }; },
   },
 });
+
+// ===================== React cards (answer windows) =====================
+// react.kinds: "summon" (an Avatar was summoned), "cast" (a Magic was used), "attack" (we are being attacked)
+// The trigger carries the window as c.t.on = { kind, by, i } or { kind:"attack", by, att, tk, ti }.
+const onTarget = (c) => c.t.on || {};
+const myTargetAttacked = (E, s, p, on) => on.kind === "attack" && on.tk === "av" && (E.locate(s, on.ti) || {}).p === p;
+const destroySummoned = { react: { kinds: ["summon"], can: (E, s, p, on) => !!E.locate(s, on.i) && (E.locate(s, on.i) || {}).z === "av" },
+  cast: (c) => { const L = c.E.locate(c.s, onTarget(c).i); return L ? { explain: `ทำลาย ${c.E.name(c.s, L.x)} ที่เพิ่งอัญเชิญ`, ops: [{ op: "destroy", i: L.x.i, why: "อุบัติเหตุ!!!" }] } : { explain: "เป้าหมายหายไปแล้ว", ops: [] }; } };
+Object.assign(SCRIPTS, {
+  "SD01-017": destroySummoned, "KD03-016": destroySummoned, // อุบัติเหตุ!!!
+  // ไม่เจ้ายังไม่พร้อม
+  "BT03-047": { react: { kinds: ["summon"], can: (E, s, p, on) => (E.locate(s, on.i) || {}).z === "av" },
+    cast: (c) => { const L = c.E.locate(c.s, onTarget(c).i); return L ? { explain: `${c.E.name(c.s, L.x)} เปลี่ยนเป็นสภาพนอน`, ops: [{ op: "wake", i: L.x.i, v: false }] } : { explain: "เป้าหมายหายไปแล้ว", ops: [] }; } },
+  // เจ้ากล้าดียังไง
+  "BT01-039": { react: { kinds: ["attack"] },
+    cast: (c) => { const L = c.E.locate(c.s, onTarget(c).att); return L ? { explain: `ส่ง ${c.E.name(c.s, L.x)} ที่ประกาศโจมตีลงนรก`, ops: [{ op: "move", i: L.x.i, to: "hell" }, { op: "cancelAttack" }] } : { explain: "ผู้โจมตีหายไปแล้ว", ops: [] }; } },
+  // หนีคือยอดกลยุทธ์
+  "SD07-016": { react: { kinds: ["attack"], can: myTargetAttacked },
+    cast: (c) => { const L = c.E.locate(c.s, onTarget(c).ti); return L ? { explain: `${c.E.name(c.s, L.x)} หนีกลับขึ้นมือ`, ops: [{ op: "move", i: L.x.i, to: "hand" }, { op: "cancelAttack" }] } : { explain: "เป้าหมายหายไปแล้ว", ops: [] }; } },
+  // เอากล้วยมานี่ย์ !!!!!!
+  "BT02-052": { react: { kinds: ["attack"], can: myTargetAttacked },
+    cast: (c) => { const on = onTarget(c); const pool = c.s.P[1 - c.seat].av.filter((x) => !c.E.untargetable(c.s, x)).sort((a, b) => (b.i === on.att ? 1 : 0) - (a.i === on.att ? 1 : 0));
+      const t = c.choose(pool, 1, "เลือก Avatar อีกฝ่าย POWER -2")[0]; return t ? { explain: `${c.E.name(c.s, t)} POWER -2 จนจบเทิร์น`, ops: [{ op: "power", i: t.i, n: -2, temp: true }] } : { explain: "ไม่มีเป้าหมาย", ops: [] }; } },
+  // ฟ้องครู
+  "BT02-053": { react: { kinds: ["attack"], can: (E, s, p, on) => myTargetAttacked(E, s, p, on) && s.P[p].av.length > 1 },
+    cast: (c) => { const on = onTarget(c); const pool = c.s.P[c.seat].av.filter((x) => x.i !== on.ti).sort((a, b) => c.E.power(c.s, b) - c.E.power(c.s, a));
+      const t = c.choose(pool, 1, "เลือก Avatar ฝ่ายเราที่จะยืม POWER ให้เป้าหมาย")[0]; const T = c.E.locate(c.s, on.ti);
+      return t && T ? { explain: `${c.E.name(c.s, T.x)} POWER +${c.E.power(c.s, t)} จาก ${c.E.name(c.s, t)}`, ops: [{ op: "power", i: T.x.i, n: c.E.power(c.s, t), temp: true }] } : { explain: "ไม่มีเป้าหมาย", ops: [] }; } },
+  // ไปเลยมอนตี้
+  "BT02-054": { react: { kinds: ["attack"] },
+    cast: (c) => { const on = onTarget(c); const P = c.s.P[c.seat]; const n = 2 * (P.av.length + P.cs.length + P.mg.length + P.hand.length); const L = c.E.locate(c.s, on.att);
+      return L ? { explain: `${c.E.name(c.s, L.x)} POWER -${n}`, ops: [{ op: "power", i: L.x.i, n: -Math.min(20, n), temp: true }] } : { explain: "ผู้โจมตีหายไปแล้ว", ops: [] }; } },
+  // กระแสสิริมงคล
+  "BT02-049": { react: { kinds: ["attack"] }, cast: (c) => ({ explain: "จั่ว 1 ใบ (โจมตี 1 ตัว)", ops: [{ op: "draw", seat: c.seat, n: 1 }] }) },
+  // หมอมาแล้วววว: in a window we protect the attacked Avatar (or choose one)
+  "BT01-040": { react: { kinds: ["attack", "summon", "cast"] },
+    cast: (c) => { const on = onTarget(c); const T = on.kind === "attack" && on.tk === "av" ? c.E.locate(c.s, on.ti) : null;
+      const t = T ? T.x : c.choose([...c.s.P[c.seat].av, ...c.s.P[1 - c.seat].av], 1, "เลือก Avatar ที่จะไม่ถูกทำลาย (ครั้งถัดไปในเทิร์นนี้)")[0];
+      return t ? { explain: `${c.E.name(c.s, t)} จะไม่ถูกทำลายครั้งถัดไปในเทิร์นนี้`, ops: [{ op: "guard", i: t.i }] } : { explain: "ไม่มีเป้าหมาย", ops: [] }; } },
+  // งับ (dino)
+  "BT03-050": { react: { kinds: ["attack"] },
+    cast: (c) => { const on = onTarget(c); const top = c.s.P[c.seat].deck.slice(0, 2); const cands = top.filter((x) => isAv(c.E, c.s, x) && sy(c.E, c.s, x, "กะปอม"));
+      const got = c.choose(cands, 1, "สอดแนม 2 ใบ: เลือก Avatar กะปอมขึ้นมือ", { reveal: top.map((x) => x.i), optional: true })[0];
+      if (!got) return { explain: "สอดแนม 2 ใบ ไม่ได้ไดโน", ops: [{ op: "shuffle", seat: c.seat }] };
+      const L = c.E.locate(c.s, on.att);
+      return { explain: `ได้ ${c.E.name(c.s, got)} ขึ้นมือ · ทำลายผู้โจมตี`, ops: [{ op: "search", seat: c.seat, take: got.i, to: "hand" }, ...(L ? [{ op: "destroy", i: L.x.i, why: "งับ" }] : [])] }; } },
+  // งานจับมือ (idol)
+  "KD03-015": { react: { kinds: ["attack"], can: (E, s, p, on) => myTargetAttacked(E, s, p, on) && nm(E, s, E.locate(s, on.ti).x, "ไอดอล") },
+    cast: (c) => { const ota = c.s.P[c.seat].hell.filter((x) => nm(c.E, c.s, x, "โอตะ")); const idols = c.s.P[c.seat].av.filter((x) => nm(c.E, c.s, x, "ไอดอล"));
+      const o = c.choose(ota, 1, "เลือกโอตะในนรกที่จะสวมใส่", { optional: true })[0]; const h = o ? c.choose(idols, 1, "สวมใส่ให้ไอดอลใบไหน")[0] : null;
+      return { explain: "ยกเลิกการโจมตี" + (o && h ? ` · ${c.E.name(c.s, o)} สวมใส่ให้ ${c.E.name(c.s, h)}` : ""), ops: [{ op: "cancelAttack" }, ...(o && h ? [{ op: "attach", i: o.i, on: h.i }] : [])] }; } },
+  // เสียงเรียกแห่งวัลฮัลลา (valkyrie): only while critical
+  "BT06-052": { canCast: (E, s, p) => E.critical(s.P[p]), react: { kinds: ["attack"] },
+    cast: (c) => { const val = uniq(c.E, c.s, c.s.P[c.seat].hell.filter((x) => nm(c.E, c.s, x, "เทพธิดาแห่งวัลฮัลลา")));
+      const room = 4 - c.E.avatars(c.s.P[c.seat]); const pick = c.choose(val, Math.max(0, Math.min(4, room)), "อัญเชิญเทพธิดาจากนรก (สูงสุด 4 ใบ)", { optional: true });
+      return { explain: `ธรณีสูบ 5 · ยกเลิกการโจมตี${pick.length ? ` · อัญเชิญ ${pick.map((x) => c.E.name(c.s, x)).join(", ")}` : ""}`, ops: [{ op: "mill", seat: c.seat, n: 5 }, { op: "cancelAttack" }, ...pick.map((x) => ({ op: "move", i: x.i, to: "av" }))] }; } },
+  // ไฮแจ็ค ไฮรีเทิร์น (virus)
+  "BT11-060": { react: { kinds: ["attack"], can: (E, s, p) => s.P[p].hell.some((x) => virus(E, s, x)) },
+    cast: (c) => { const on = onTarget(c); const v = c.s.P[c.seat].hell.filter((x) => virus(c.E, c.s, x) && !c.E.def(c.s, x).o1)[0]; const L = c.E.locate(c.s, on.att);
+      return v && L ? { explain: `เนรเทศ ${c.E.name(c.s, v)} · ${c.E.name(c.s, L.x)} POWER ตั้งต้นเป็น 0`, ops: [{ op: "exile", i: v.i }, { op: "zero", i: L.x.i }] } : { explain: "ไม่มีไวรัสในนรก หรือผู้โจมตีหายไป", ops: [] }; } },
+  // ชีวิตเหนือหน้าที่ (SD09)
+  "SD09-016": { react: { kinds: ["attack"], can: (E, s, p) => s.P[p].av.some((x) => nm(E, s, x, "วานร")) },
+    cast: (c) => { const w = c.choose(c.s.P[c.seat].av.filter((x) => nm(c.E, c.s, x, "วานร")).sort((a, b) => c.E.power(c.s, a) - c.E.power(c.s, b)), 1, "เลือกวานรที่จะไปไว้บนสุดของ Deck")[0];
+      return w ? { explain: `${c.E.name(c.s, w)} กลับบนสุด Deck · ยกเลิกการโจมตี`, ops: [{ op: "move", i: w.i, to: "deckTop" }, { op: "cancelAttack" }] } : { explain: "ไม่มีวานร", ops: [] }; } },
+});
+SCRIPTS["SD07-017"] = SCRIPTS["BT01-040"]; // same card, slightly different wording

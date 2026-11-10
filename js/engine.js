@@ -1,7 +1,7 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId } from "./cards.js?v=20261110161750";
-import { SCRIPTS } from "./scripts.js?v=20261110161750";
-import { newId, clone } from "./util.js?v=20261110161750";
+import { card, kwHas, SUB_TH, CARDS, baseId } from "./cards.js?v=20261110162433";
+import { SCRIPTS } from "./scripts.js?v=20261110162433";
+import { newId, clone } from "./util.js?v=20261110162433";
 export const ZONES = ["deck", "hand", "av", "mg", "cs", "hell", "dark", "life"];
 export const ZONE_TH = { deck: "Deck", hand: "มือ", av: "Avatar Zone", mg: "Magic Zone", cs: "Construct Zone", hell: "นรก", dark: "มิติมืด", life: "LIFE", land: "Land Magic" };
 export const PHASE_TH = { mull: "เปลี่ยนมือ", draw: "Draw", main: "Main", battle: "Battle", end: "End", over: "จบเกม" };
@@ -154,7 +154,16 @@ export const E = {
     }
     return best ? best.pay : null;
   },
-  canAct(s, p) { return s.phase !== "over" && !s.trig.length && !s.pend && s.active === p && s.phase !== "mull"; },
+  canAct(s, p) { return s.phase !== "over" && !s.trig.length && !s.pend && !s.rw && s.active === p && s.phase !== "mull"; },
+  // which React cards in p's hand fit this moment (on = the window: summon / cast / attack)
+  reactsFor(s, p, on) {
+    if (s.mu[p].R || s.phase === "over") return [];
+    return s.P[p].hand.filter((x) => { const d = E.def(s, x); if (d.t !== "M" || d.st !== "R") return false; const sc = scriptOf(s, x);
+      if (sc && sc.react) return sc.react.kinds.includes(on.kind) && (!sc.react.can || sc.react.can(E, s, p, on, x)) && (!sc.canCast || sc.canCast(E, s, p));
+      return !s.P[p].bot && !(sc && sc.canCast && !sc.canCast(E, s, p)); });
+  },
+  // after a summon or a Magic, the other player may answer with a React before effects resolve
+  openWindow(s, p, kind, i) { const q = 1 - p; const on = { kind, by: p, i }; if (E.reactsFor(s, q, on).length) s.rw = on; },
 
   apply(s, act, p) {
     if (s.phase === "over" && act.type !== "note") throw new RuleError("เกมจบแล้ว");
@@ -196,6 +205,7 @@ export const E = {
         if (scS && scS.summon) { if (!scS.storyOnly || x.story) E.addTrig(s, p, x, "summon", { exact: r.exact }); }
         else if (kwHas(d.x, "จุติ")) E.addTrig(s, p, x, "summon", { exact: r.exact });
         else if (act.type === "build" && d.x) E.addTrig(s, p, x, "build", { optional: true });
+        if (act.type === "summon") E.openWindow(s, p, "summon", x.i);
         return;
       }
       case "cast": {
@@ -204,6 +214,11 @@ export const E = {
         need(s.phase !== "mull" && !s.mu[p][d.st], `Magic ประเภท ${SUB_TH[d.st]} ใช้ไปแล้วเทิร์นนี้`);
         { const sc = scriptOf(s, x); need(!(sc && sc.canCast && !sc.canCast(E, s, p)), "ยังไม่ตรงเงื่อนไขการใช้การ์ดใบนี้"); }
         if (d.st !== "R") need(E.canAct(s, p) && s.phase === "main", `${SUB_TH[d.st]} Magic ใช้ได้เฉพาะ Main Phase ของคุณ`);
+        let on = null;
+        if (d.st === "R") {
+          on = s.rw && s.rw.by !== p ? { ...s.rw } : s.pend && s.pend.by !== p ? { kind: "attack", by: s.pend.by, att: s.pend.att, tk: s.pend.tk, ti: s.pend.ti } : null;
+          const sc = scriptOf(s, x); if (sc && sc.react) need(on && sc.react.kinds.includes(on.kind) && (!sc.react.can || sc.react.can(E, s, p, on, x)), "ยังไม่ถึงจังหวะของ React ใบนี้");
+        }
         s.mu[p][d.st] = true; P.hand.splice(P.hand.indexOf(x), 1);
         if (s.active === p) for (const { x: y, L: Ly } of fieldCards(s)) { if (Ly.p !== p) continue; const sy = scriptOf(s, y); if (sy && sy.onMagic) { const ops = sy.onMagic(E, s, y, Ly); if (ops && ops.length) E.ops(s, ops, p); } }
         s.played[p][x.c] = (s.played[p][x.c] || 0) + 1;
@@ -217,9 +232,12 @@ export const E = {
         } else {
           P.mg.push(x); E.log(s, p, `ใช้ ${SUB_TH[d.st]} Magic ${d.n}`); E.ev(s, { k: "cast", i: x.i, p, st: d.st });
           if (d.x) E.addTrig(s, p, x, "cast", { toHell: true }); else { P.mg.splice(P.mg.indexOf(x), 1); P.hell.push(x); }
+          if (d.st === "R") { const k = s.trig.findIndex((t) => t.i === x.i); if (k > 0) { const [t] = s.trig.splice(k, 1); s.trig.unshift(t); } if (k >= 0) s.trig[0].on = on; s.rw = null; }
         }
+        if (d.st !== "R") E.openWindow(s, p, "cast", x.i);
         return;
       }
+      case "pass": { need(s.rw && s.rw.by !== p, "ไม่มีจังหวะให้ตอบโต้"); E.log(s, p, `${P.name} ไม่ตอบโต้`); s.rw = null; return; }
       case "battle": {
         need(E.canAct(s, p) && s.phase === "main", "ไปเฟสต่อสู้ได้จาก Main Phase");
         if (s.turn === 1) { E.log(s, p, "เทิร์นแรกของผู้เริ่มก่อนไม่มี Battle Phase"); return E.apply(s, { type: "end" }, p); }
@@ -409,6 +427,14 @@ export const E = {
         const sc = scriptOf(s, H.x); if (sc && sc.summon) s.trig.push({ id: newId(), seat: H.p, i: H.x.i, c: H.x.c, when: "summon" });
         return;
       }
+      case "cancelAttack": { if (s.pend) { E.log(s, by, "ยกเลิกการโจมตี"); s.pend = null; } return; }
+      case "zero": { const L = E.locate(s, o.i); if (!L) throw new RuleError("ไม่พบการ์ด"); L.x.zero = true; L.x.muteEnd = s.turn; E.log(s, by, `${E.name(s, L.x)} POWER ตั้งต้นเป็น 0 จนจบเทิร์น`); return; }
+      case "attach": { // put a card onto an Avatar as an equipped card (e.g. โอตะ on a ไอดอล)
+        const L = E.locate(s, o.i), H = E.locate(s, o.on); if (!L || !H || H.z !== "av") throw new RuleError("สวมใส่ไม่ได้");
+        if (L.z === "land") s.land = null; else s.P[L.p][L.z].splice(L.idx, 1); L.x.on = o.on; L.x.a = true; s.P[H.p].mg.push(L.x);
+        E.log(s, by, `${E.name(s, L.x)} สวมใส่ให้ ${E.name(s, H.x)}`); return;
+      }
+      case "negate": { const k = s.trig.findIndex((t) => t.i === o.i); if (k >= 0) s.trig.splice(k, 1); const L = E.locate(s, o.i); if (L && (L.z === "mg" || L.z === "land")) E.moveTo(s, o.i, "hell"); E.log(s, by, "ยกเลิกผลของการ์ดนั้น"); return; }
       case "later": { (s.later = s.later || []).push({ seat, ops: (o.ops || []).slice(0, 10), why: o.why }); E.log(s, seat, "รอทำงานใน Main Phase ถัดไป"); return; }
       case "guard": { const L = E.locate(s, o.i); if (!L) throw new RuleError("ไม่พบการ์ด"); L.x.guard = true; E.log(s, by, `${E.name(s, L.x)} ได้รับการป้องกันการถูกทำลาย 1 ครั้ง`); return; }
       case "scout": { // look at the top n, take the chosen (or first matching) card, the rest go to the bottom

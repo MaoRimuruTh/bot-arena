@@ -1,13 +1,13 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261110161750";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261110161750";
-import { loadCards, CARDS, isBase } from "./cards.js?v=20261110161750";
-import { Views, avatarEl } from "./ui.js?v=20261110161750";
-import { Ciel } from "./ai.js?v=20261110161750";
-import "./views/library.js?v=20261110161750";
-import "./views/decks.js?v=20261110161750";
-import "./views/lab.js?v=20261110161750";
-import "./views/history.js?v=20261110161750";
-import "./views/play.js?v=20261110161750";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261110162433";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261110162433";
+import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261110162433";
+import { Views, avatarEl } from "./ui.js?v=20261110162433";
+import { Ciel } from "./ai.js?v=20261110162433";
+import "./views/library.js?v=20261110162433";
+import "./views/decks.js?v=20261110162433";
+import "./views/lab.js?v=20261110162433";
+import "./views/history.js?v=20261110162433";
+import "./views/play.js?v=20261110162433";
 
 const root = $("#view");
 let current = null, cardsReady = false;
@@ -113,7 +113,7 @@ function route() {
   if (!cardsReady) return;
   const { tab, parts } = parse();
   if (current && current !== tab && Views[current].leave) Views[current].leave();
-  current = tab;
+  current = tab; SkinCtx.on = tab === "decks" || tab === "play";
   document.querySelectorAll("#nav a").forEach((a) => (a.dataset.tab === tab ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
   try { Views[tab].render(root, parts); } catch (e) { console.error(e); root.replaceChildren(h("div", { class: "empty" }, "หน้านี้มีปัญหา: " + e.message)); }
   if (!document.body.classList.contains("arena-on")) scrollTo(0, 0);

@@ -1,9 +1,9 @@
-import { h, busy, lsGet, lsSet } from "../util.js?v=20261110161750";
-import { card, deckEntries, deckToList, validateDeck, TYPE_TH } from "../cards.js?v=20261110161750";
-import { E } from "../engine.js?v=20261110161750";
-import { H } from "../ai.js?v=20261110161750";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261110161750";
-import { allDecks } from "./decks.js?v=20261110161750";
+import { h, busy, lsGet, lsSet } from "../util.js?v=20261110162433";
+import { card, deckEntries, deckToList, validateDeck, TYPE_TH } from "../cards.js?v=20261110162433";
+import { E } from "../engine.js?v=20261110162433";
+import { H } from "../ai.js?v=20261110162433";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261110162433";
+import { allDecks } from "./decks.js?v=20261110162433";
 
 // exact hypergeometric: P(at least one of k copies within m cards from a deck of N)
 function atLeastOne(N, k, m) { if (k <= 0) return 0; if (m >= N) return 1; let p = 1; for (let i = 0; i < m; i++) p *= (N - k - i) / (N - i); return 1 - Math.max(0, p); }
@@ -21,8 +21,9 @@ export function simGame(dA, dB, seed) {
   for (const p of [0, 1]) E.apply(s, { type: "mull", iids: H.mulligan(s, p) }, p);
   for (let step = 0; step < 4000 && s.phase !== "over"; step++) {
     try {
+      if (s.rw) { const q = 1 - s.rw.by; E.apply(s, H.react(s, q) || { type: "pass" }, q); continue; }
       if (s.trig.length) { const t = s.trig[0]; E.apply(s, H.trig(s, t), t.seat); continue; }
-      if (s.pend) { const p = 1 - s.pend.by; const m = H.pick(s, p); E.apply(s, m ? m.a : { type: "respond" }, p); continue; }
+      if (s.pend) { const p = 1 - s.pend.by; const r = H.react(s, p); if (r) { E.apply(s, r, p); continue; } const m = H.pick(s, p); E.apply(s, m ? m.a : { type: "respond" }, p); continue; }
       const p = s.active;
       if (s.phase === "end" && s.need) { E.apply(s, { type: "discard", iids: H.discard(s, p) }, p); continue; }
       const m = H.pick(s, p); E.apply(s, m ? m.a : { type: "end" }, p);
