@@ -1008,3 +1008,64 @@ Object.assign(SCRIPTS, {
   // ไม่นะ คิงคา / นังชั่ว ตายแล้ว (LIFE): in the next Main Phase, with 4+ วานร Avatars in our hell: a วานร Token
   "SD09-023": { life: lifeMonkey }, "SD09-024": { life: lifeMonkey },
 });
+
+// ---------- BT01 ----------
+const syIs = (E, s, x, k) => { const d = E.def(s, x); return E.hasSy(s, x, k) && (String(d.sy || "").split(/[\s,\/]+/).includes(k) || !String(d.sy || "").includes(k)); }; // "สัตว์" is not "สัตว์วิเศษ"
+const flipsOwnLife = { toHell: (c) => (c.E.critical(c.s.P[c.seat]) ? { explain: "LIFE หงายหมดแล้ว", ops: [] } : { explain: "ตกลงสู่นรก: หงาย LIFE Card ใบบนสุดฝ่ายเรา 1 ใบ", ops: [{ op: "lifeFlip", seat: c.seat }] }) };
+Object.assign(SCRIPTS, {
+  // นนทก นิ้วเพชร: attacking a {เทพ} Avatar destroys it
+  "BT01-001": { attackOk: (E, s) => { const T = s.pend && s.pend.tk === "av" ? E.locate(s, s.pend.ti) : null; return !!T && sy(E, s, T.x, "เทพ"); }, attack: (c) => { const { E, s } = c; const T = s.pend && s.pend.tk === "av" ? E.locate(s, s.pend.ti) : null; if (!T || T.z !== "av" || !sy(E, s, T.x, "เทพ")) return { explain: "เป้าหมายไม่ใช่ Avatar {เทพ}", ops: [] };
+    return { explain: `โจมตี Avatar {เทพ}: ทำลาย ${E.name(s, T.x)}`, ops: [{ op: "destroy", i: T.x.i, why: "ความสามารถของนนทก นิ้วเพชร" }] }; } },
+  // อู๊ดลูกเสือ: when attacked, may destroy another Avatar of ours: cancel that attack (read from the card art; the data text lost a word)
+  "BT01-005": { attacked: (c) => { const { E, s, seat: p, self: x } = c; if (!x || !s.pend) return { explain: "ไม่มีการโจมตีแล้ว", ops: [] };
+    const A = E.locate(s, s.pend.att); const ap = A ? E.power(s, A.x) + (s.pend.bonus || 0) : 0; const pool = s.P[p].av.filter((y) => y.i !== x.i).sort((a, b) => (b.tok ? 1 : 0) - (a.tok ? 1 : 0) || worth(E, s, a) - worth(E, s, b));
+    const cands = s.P[p].bot ? (ap >= E.power(s, x) ? pool.filter((y) => worth(E, s, y) + 1 < worth(E, s, x)) : []) : pool;
+    const t = c.choose(cands, 1, "อู๊ดลูกเสือถูกโจมตี: ทำลาย Avatar ใบอื่นของเราเพื่อยกเลิกการโจมตี (ไม่ใช้ก็ได้)", { optional: true })[0];
+    return t ? { explain: `ทำลาย ${E.name(s, t)} · ยกเลิกการโจมตีนั้น`, ops: [{ op: "destroy", i: t.i, why: "ค่าความสามารถของอู๊ดลูกเสือ" }, { op: "cancelAttack" }] } : { explain: "ไม่ใช้ความสามารถ", ops: [] }; } },
+  // รัททาทุย นางพญา: in our first Draw Phase it may come from the Deck instead of the draw
+  "BT01-008": { firstDraw: (c) => { const { E, s, seat: p, self: q } = c; if (!q || E.locate(s, q.i).z !== "deck") return { explain: "ไม่อยู่ใน Deck แล้ว", ops: [] }; const back = (c.t.drawn || []).map((i) => s.P[p].hand.find((y) => y.i === i)).filter(Boolean).pop();
+    const m = c.mode([`นำ ${E.name(s, q)} จาก Deck ขึ้นมือแทนการจั่ว`, "จั่วตามปกติ"], "Draw Phase แรก: เลือกได้", 0); if (m !== 0) return { explain: "จั่วตามปกติ", ops: [] };
+    return { explain: `นำ ${E.name(s, q)} ขึ้นมือแทนการจั่ว${back ? ` (${E.name(s, back)} กลับไปบน Deck)` : ""}`, ops: [...(back ? [{ op: "move", i: back.i, to: "deckTop" }] : []), { op: "search", seat: p, take: q.i, to: "hand" }] }; } },
+  // รัททาทุย พ่อพันธุ์: จุติ with รัททาทุย นางพญา on our side: any number of "รัททาทุย" Avatars from the Deck, total Cost 5 or less, then shuffle
+  "BT01-009": { summon: (c) => { const { E, s, seat: p } = c; const P = s.P[p]; if (!P.av.some((y) => E.named(s, y, "รัททาทุย นางพญา"))) return { explain: "ไม่มีรัททาทุย นางพญาบน Avatar Zone เรา", ops: [] };
+    let budget = 5, room = Math.max(0, Math.min(4 - E.avatars(P), 6 - P.av.length)); const got = [];
+    while (room > 0) { const pool = uniq(E, s, P.deck.filter((y) => isAv(E, s, y) && E.named(s, y, "รัททาทุย") && !got.includes(y) && (E.def(s, y).c || 0) <= budget)).sort((a, b) => worth(E, s, b) - worth(E, s, a));
+      const t = c.choose(pool, 1, `เลือก Avatar "รัททาทุย" จาก Deck (Cost รวมเหลือ ${budget}) หรือหยุด`, { optional: true })[0]; if (!t) break; got.push(t); budget -= E.def(s, t).c || 0; room--; }
+    return { explain: got.length ? `อัญเชิญ ${got.map((y) => E.name(s, y)).join(", ")} จาก Deck แล้วสับ Deck` : "ไม่อัญเชิญ · สับ Deck", ops: [...got.map((y) => ({ op: "put", i: y.i })), { op: "shuffle", seat: p }] }; } },
+  // ลูกแม่ศรีนวล: คำสั่งเสีย: turn the top face-up LIFE card face down again
+  "BT01-012": { death: (c) => (c.s.P[c.seat].life.some((y) => y.up) && !c.E.critical(c.s.P[c.seat]) ? { explain: "คว่ำ LIFE Card ที่หงายอยู่ใบบนสุด 1 ใบ", ops: [{ op: "lifeFlip", seat: c.seat, up: false }] } : { explain: c.E.critical(c.s.P[c.seat]) ? "อยู่ในสถานะสาหัส คว่ำ LIFE ด้วยความสามารถไม่ได้" : "ไม่มี LIFE ที่หงายอยู่", ops: [] }) },
+  // ศาลพระภูมิ: จุติ: a {ผี} Avatar from the Deck, shuffle · cannot be chosen as an attack target while another {ผี} of ours is on the field
+  "BT01-020": { summon: (c) => { const { E, s, seat: p } = c; const P = s.P[p]; if (E.avatars(P) >= 4 || P.av.length >= 6) return { explain: "Avatar Zone เต็ม", ops: [{ op: "shuffle", seat: p }] };
+      const t = c.choose(uniq(E, s, P.deck.filter((y) => isAv(E, s, y) && sy(E, s, y, "ผี"))).sort(strongFirst(E, s)), 1, "เลือก Avatar {ผี} จาก Deck ที่จะอัญเชิญ")[0];
+      return { explain: t ? `อัญเชิญ ${E.name(s, t)} จาก Deck แล้วสับ Deck` : "ไม่มี Avatar {ผี} ใน Deck", ops: [...(t ? [{ op: "put", i: t.i }] : []), { op: "shuffle", seat: p }] }; },
+    noAtk: (E, s, x, L) => L.z === "av" && s.P[L.p].av.some((y) => y.i !== x.i && sy(E, s, y, "ผี")) },
+  // เพื่อลูกค้า: sacrifice a {สัตว์} Avatar: draw 3, then only {สัตว์} Avatars may be summoned this turn
+  "BT01-037": { canCast: (E, s, p) => s.P[p].av.some((y) => syIs(E, s, y, "สัตว์")),
+    cast: (c) => { const { E, s, seat: p } = c; const t = c.choose(s.P[p].av.filter((y) => syIs(E, s, y, "สัตว์")).sort((a, b) => worth(E, s, a) - worth(E, s, b)), 1, "เซ่นไหว้ Avatar {สัตว์} ฝ่ายเรา 1 ใบ", { exact: true })[0];
+      return t ? { explain: `เซ่นไหว้ ${E.name(s, t)} · จั่ว 3 ใบ · เทิร์นนี้อัญเชิญได้แค่ Avatar {สัตว์}`, ops: [{ op: "destroy", i: t.i, why: "เซ่นไหว้" }, { op: "draw", seat: p, n: 3 }, { op: "turnLock", seat: p, sy: "สัตว์" }] } : { explain: "ไม่มี Avatar {สัตว์} ให้เซ่นไหว้", ops: [] }; } },
+  // ริกกี้ นักปลอมแปลง (React): one of ours was destroyed in a fight: take a sleeping opposing Avatar and wear this card on it; if this card is destroyed, that Avatar returns to its owner's hand
+  "BT01-042": { react: { kinds: ["destroyed"], can: (E, s, p, on) => on.p === p && on.fight && s.P[1 - p].av.some((y) => !y.a && !E.noAim(s, y) && !E.noControl(s, y)) && E.avatars(s.P[p]) < 4 && s.P[p].av.length < 6 },
+    cast: (c) => { const { E, s, seat: p } = c; const t = c.choose(s.P[1 - p].av.filter((y) => !y.a && !E.noAim(s, y) && !E.noControl(s, y)).sort(strongFirst(E, s)), 1, "เลือก Avatar ฝ่ายตรงข้ามที่นอนอยู่ มาอยู่ฝ่ายเรา", { exact: true })[0];
+      return t ? { explain: `ควบคุม ${E.name(s, t)} แล้วนำริกกี้ไปสวมใส่ให้`, ops: [{ op: "control", i: t.i, seat: p }, { op: "attach", i: c.t.i, on: t.i }] } : { explain: "ไม่มี Avatar ที่นอนอยู่ให้เลือก", ops: [] }; },
+    wornDestroyed: (E, s, m, host) => (E.locate(s, host) ? [{ op: "move", i: host, to: "hand" }] : []) },
+  // น้ำชูกำลัง: the wearer wakes up in the End Phase
+  "BT01-043": { endPhase: (E, s, m, L) => (L.z === "mg" && m.on != null && E.locate(s, m.on) && !E.locate(s, m.on).x.a ? [{ op: "wake", i: m.on }] : []) },
+  // รั้วของชาติ: the wearer has โล่มนุษย์
+  "BT01-044": { aura: (E, s, src, L) => { const H = L.z === "mg" && src.on != null ? E.locate(s, src.on) : null; return H ? [{ seat: H.p, test: (x) => x.i === src.on, n: 0, kw: ["โล่มนุษย์"] }] : []; } },
+  // ตีแม่: POWER +2 · when it falls to hell, our top LIFE card is flipped
+  "BT01-045": { worn: () => 2, ...flipsOwnLife },
+  // ตีพ่อ: in Battle Phase, when the wearer destroys an opposing Avatar it may wake once · when it falls to hell, our top LIFE card is flipped
+  "BT01-046": { worn: () => 0, hostWin: (c) => { const { E, s, self: m } = c; const H = m && m.on != null ? E.locate(s, m.on) : null; if (!H || m.used === s.turn) return { explain: "ใช้ไปแล้วในเทิร์นนี้", ops: [] };
+      return { explain: `${E.name(s, H.x)} ทำลาย Avatar อีกฝ่ายสำเร็จ: กลับมาสภาพตื่น`, ops: [{ op: "used", i: m.i }, { op: "wake", i: H.x.i }] }; }, ...flipsOwnLife },
+  // เขาไกรลาสเอียง (Land): whoever declares an attack mills 2
+  "BT01-047": { onDeclare: (E, s, x, L, by) => [{ op: "mill", seat: by, n: 2 }] },
+  // ทุ่งนาแดนนี้ (Land): every {แมลง}, {สัตว์}, {รัททาทุย} and {คน} Avatar POWER +1
+  "BT01-048": { aura: (E, s, src, L) => (L.z === "land" ? [0, 1].map((q) => ({ seat: q, test: (x) => ["แมลง", "สัตว์", "รัททาทุย", "คน"].some((k) => syIs(E, s, x, k)), n: 1 })) : []) },
+  // มวยทะเลลลลลล (Land): each player attacks once per turn · it leaves after 4 turns
+  "BT01-049": { oneAttack: true, endPhase: (E, s, x, L) => (L.z === "land" && x.t0 != null && s.turn - x.t0 >= 3 ? [{ op: "move", i: x.i, to: "hell" }] : []) },
+  // โรงบาล (Land): once per turn, discard 1: an Avatar of Cost 3 or less from hell to the hand; that name cannot be summoned or used this turn
+  "BT01-050": { activate: { label: "ทิ้งการ์ดบนมือ 1 ใบ: นำ Avatar Cost 3 หรือต่ำกว่าจากนรกขึ้นมือ", can: (E, s, x, L) => L.z === "land" && s.phase === "main" && s.P[L.p].hand.length > 0 && s.P[L.p].hell.some((y) => isAv(E, s, y) && (E.def(s, y).c || 0) <= 3),
+    run: (c) => { const { E, s, seat: p } = c; const P = s.P[p]; const t = c.choose(uniq(E, s, [...P.hell].reverse().filter((y) => isAv(E, s, y) && (E.def(s, y).c || 0) <= 3)).sort(strongFirst(E, s)), 1, "เลือก Avatar Cost 3 หรือต่ำกว่าในนรกที่จะขึ้นมือ", { exact: true })[0];
+      const pay = t ? c.choose([...P.hand].sort(cheapCard(E, s)), 1, "ค่าใช้จ่าย: ทิ้งการ์ดบนมือ 1 ใบ", { exact: true })[0] : null; if (!t || !pay) return { explain: "ไม่มีการ์ดให้เลือก", ops: [] };
+      return { explain: `ทิ้ง ${E.name(s, pay)} · ${E.name(s, t)} จากนรกขึ้นมือ (เทิร์นนี้อัญเชิญหรือใช้ความสามารถชื่อนี้ไม่ได้)`, ops: [{ op: "discard", seat: p, iids: [pay.i] }, { op: "move", i: t.i, to: "hand" }, { op: "turnLock", seat: p, name: E.name(s, t) }] }; } } },
+});
