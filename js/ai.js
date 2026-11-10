@@ -1,10 +1,10 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus } from "./engine.js?v=20261110232407";
-import { plain } from "./persona.js?v=20261110232407";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261110232407";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261110232407";
-import { Data } from "./fb.js?v=20261110232407";
-import { lsGet } from "./util.js?v=20261110232407";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261110235239";
+import { plain } from "./persona.js?v=20261110235239";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261110235239";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261110235239";
+import { Data } from "./fb.js?v=20261110235239";
+import { lsGet } from "./util.js?v=20261110235239";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -111,6 +111,8 @@ export const H = {
       // a forced โล่มนุษย์ (ลิโป้): one that wins the fight, otherwise the cheapest one
       if (!moves.some((m) => m.a.type === "respond" && !m.a.shield)) { const all = moves.filter((m) => m.a.shield).map((m) => { const y = E.locate(s, m.a.shield).x; return { m, p: E.power(s, y), v: H.value(s, y) }; }); const w = all.filter((z) => z.p > ap).sort((a, b) => a.v - b.v)[0] || all.sort((a, b) => a.v - b.v)[0]; if (w) return w.m; }
       if (sh && (s.pend.tk === "life" ? sh.p >= ap - 1 : sh.p > ap)) return sh.m;
+      // abilities that answer an attack (นักรบ ฮอล, อาจารย์หลี): their scripts say when it is worth it
+      for (const m of moves.filter((m) => m.a.type === "answer")) { const L = E.locate(s, m.a.i); const sc = L && scriptOf(s, L.x); if (sc && sc.answer.botOk && sc.answer.botOk(E, s, L.x, L, ap)) return m; }
       return moves[0];
     }
     if (s.phase === "main") {
@@ -188,6 +190,7 @@ export const H = {
     for (const x of E.reactsFor(s, q, on)) {
       const r = H.preview(s, { i: x.i, c: x.c, when: "cast", seat: q, on }); let v = H.opsScore(s, q, r);
       if (r && r.ops.some((o) => o.op === "cancelAttack")) v += 3;
+      { const sc = scriptOf(s, x); if (sc && sc.react && sc.react.botV) v += sc.react.botV(E, s, q, on, x) || 0; }
       if (on.kind === "attack") { const A = E.locate(s, on.att); const T = on.tk === "av" ? E.locate(s, on.ti) : null; const ap = A ? E.power(s, A.x) + (s.pend.bonus || 0) : 0;
         const danger = on.tk === "life" ? (E.critical(s.P[q]) ? 30 : 4) : T && ap >= E.power(s, T.x) ? 3 + E.power(s, T.x) * 0.5 : 0; if (!danger) v -= 3; else v += danger * 0.3; }
       if (on.kind === "summon") { const L = E.locate(s, on.i); if (L) v += (E.def(s, L.x).c || 0) >= 4 || E.power(s, L.x) >= 5 ? 2 : -3; }

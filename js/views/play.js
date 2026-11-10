@@ -1,22 +1,22 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261110232407";
-import { fxText } from "../fxtext.js?v=20261110232407";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261110232407";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261110232407";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261110232407";
-import { Arena } from "../arena3d.js?v=20261110232407";
-import { autoEffect, resolveEffect } from "../effects.js?v=20261110232407";
-import { Sfx } from "../sfx.js?v=20261110232407";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261110232407";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261110232407";
-import { readAura, traits } from "../auras.js?v=20261110232407";
-import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261110232407";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261110235239";
+import { fxText } from "../fxtext.js?v=20261110235239";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261110235239";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261110235239";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261110235239";
+import { Arena } from "../arena3d.js?v=20261110235239";
+import { autoEffect, resolveEffect } from "../effects.js?v=20261110235239";
+import { Sfx } from "../sfx.js?v=20261110235239";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261110235239";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261110235239";
+import { readAura, traits } from "../auras.js?v=20261110235239";
+import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261110235239";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
   return { game: [`เทิร์น ${s.turn} · ${PHASE_TH[s.phase] || s.phase} · ตาของ ${s.P[s.active].name}`, `เด็คเรา: ${me.deckName || "-"} · เด็คคู่แข่ง: ${op.deckName || "-"}`,
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / ")].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261110232407";
+import { allDecks, deckById } from "./decks.js?v=20261110235239";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -405,11 +405,13 @@ function handClick(x) {
   if (s.phase === "mull" || (s.phase === "end" && s.need)) { const pk = G.pick || []; G.pick = pk.includes(x.i) ? pk.filter((i) => i !== x.i) : [...pk, x.i]; return draw(); }
   if (d.t === "M" && d.st === "R") { G.castFor = x.i; return draw(); }
   if (s.active !== p || s.phase !== "main" || s.trig.length || s.pend) return showHandInspect(x);
-  if (d.t === "A" && E.locked(s, p, x)) return toast("หลังใช้ซาร์อึก เกมนี้อัญเชิญได้เฉพาะมังกรหรือผู้ฝึกมังกร", "bad");
+  if (x.borrow) { toast("การ์ดใบนี้ใช้ได้แค่เป็นค่า Cost ในการอัญเชิญ", "bad"); return showHandInspect(x); }
+  if (d.t === "A" && E.locked(s, p, x)) return toast("อัญเชิญการ์ดใบนี้ไม่ได้ในเทิร์นนี้ (ผลของการ์ดที่ใช้ไปแล้ว)", "bad");
   if (d.t === "A" && (E.avatars(s.P[p]) >= 4 || s.P[p].av.length >= 6)) { toast("Avatar Zone เต็มแล้ว (Avatar ได้ 4 ใบ)", "bad"); return showHandInspect(x); }
   if (d.t === "A" && (E.hooks(s, x) || {}).noHand) { toast("การ์ดใบนี้ลงสนามจากบนมือไม่ได้", "bad"); return showHandInspect(x); }
   if (d.t === "C" && s.P[p].cs.length >= 3) { toast("Construct Zone เต็มแล้ว (3 ใบ)", "bad"); return showHandInspect(x); }
   if (d.t === "A" || d.t === "C") { const auto = E.autoPay(s, p, x.i); if (!auto) { toast(`GEM บนมือไม่พอจ่าย ${d.n} (Cost ${d.c || 0})`); return showHandInspect(x); } G.payFor = x.i; G.pick = auto; return draw(); }
+  if (d.t === "M" && d.st === "D" && (scriptOf(s, x) || {}).castFree) return doAct({ type: "cast", i: x.i }, p);
   if (d.t === "M" && d.st === "D") { G.host = x.i; return draw(); }
   if (d.t === "M") { G.castFor = x.i; return draw(); } // always confirm before a Magic goes off
   showHandInspect(x);
@@ -477,7 +479,7 @@ function promptBox(s, p) {
       h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => { const ids = G.pick || []; G.pick = null; doAct({ type: "mull", iids: ids }, p); } }, n ? `เปลี่ยน ${n} ใบ` : "เก็บมือเดิม")));
   }
   if (s.rw && s.rw.by !== p) {
-    const L = E.locate(s, s.rw.i); const what = L ? `${s.rw.kind === "summon" ? "อัญเชิญ" : s.rw.kind === "activate" ? "ใช้ความสามารถของ" : "ใช้ Magic"} ${E.name(s, L.x)}` : "เล่นการ์ด";
+    const L = E.locate(s, s.rw.i); const what = s.rw.kind === "battle" ? "เข้าสู่ Battle Phase" : L ? `${s.rw.kind === "summon" ? "อัญเชิญ" : s.rw.kind === "activate" ? "ใช้ความสามารถของ" : s.rw.kind === "react" ? "ใช้ React" : "ใช้ Magic"} ${E.name(s, L.x)}` : "เล่นการ์ด";
     const rs = E.reactsFor(s, p, s.rw);
     return box(s.rw.kind === "destroyed" ? `${L ? E.name(s, L.x) : "Avatar"} ของคุณถูกทำลาย · จะใช้ React ไหม?` : `${s.P[s.rw.by].name} ${what} · จะใช้ React ตอบโต้ไหม?`, L ? h("div", { class: "row small" }, h("button", { class: "btn sm", onclick: () => cardView(L.x) }, "ดูการ์ดนั้น")) : null,
       h("div", { class: "opts" }, rs.map((x) => h("button", { class: "btn sm gold", onclick: () => doAct({ type: "cast", i: x.i }, p) }, "ใช้ " + E.name(s, x)))),
