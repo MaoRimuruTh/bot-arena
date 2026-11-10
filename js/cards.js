@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261111023353";
-import { h } from "./util.js?v=20261111023353";
-import { Data } from "./fb.js?v=20261111023353";
+import { CARD_SOURCE } from "./config.js?v=20261111025421";
+import { h } from "./util.js?v=20261111025421";
+import { Data } from "./fb.js?v=20261111025421";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -177,6 +177,8 @@ export function validateDeck(d) {
   const life = (d.life || []).map(card).filter(Boolean); const ln = new Set(life.map((c) => c.n));
   out.push({ ok: life.length === 5 && ln.size === 5 && life.every((c) => c.t === "L"), msg: `LIFE ${life.length}/5 ใบ` + (ln.size < life.length ? " (ชื่อซ้ำ)" : "") });
   if (ents.some((e) => e.c.fl === "le")) out.push({ ok: true, warn: true, msg: "มีการ์ดลำเอียง ใช้แข่งงานทางการไม่ได้" });
+  // "ถ้าใส่การ์ดใบนี้ใน Deck จะต้องใส่ {only} สุวาน ใน Deck อีก 1 ใบ" (พญายม With The Shotgun)
+  if (ents.some((e) => e.c.n === "พญายม With The Shotgun")) { const ok = ents.some((e) => e.c.n === "สุวาน" && e.c.o1); out.push({ ok, msg: ok ? "พญายม With The Shotgun มี สุวาน (Only) คู่กันแล้ว" : "ใส่ พญายม With The Shotgun ต้องใส่ สุวาน (Only #1) ด้วย" }); }
   return { ok: out.every((x) => x.ok), items: out };
 }
 export function deckStats(d) {
