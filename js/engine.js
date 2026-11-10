@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName } from "./cards.js?v=20261110220552";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261110220552";
-import { SCRIPTS } from "./scripts.js?v=20261110220552";
-import { newId, clone } from "./util.js?v=20261110220552";
+import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261110221909";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261110221909";
+import { SCRIPTS } from "./scripts.js?v=20261110221909";
+import { newId, clone } from "./util.js?v=20261110221909";
 export const ZONES = ["deck", "hand", "av", "mg", "cs", "hell", "dark", "life"];
 export const ZONE_TH = { deck: "Deck", hand: "มือ", av: "Avatar Zone", mg: "Magic Zone", cs: "Construct Zone", hell: "นรก", dark: "มิติมืด", life: "LIFE", land: "Land Magic" };
 export const PHASE_TH = { mull: "เปลี่ยนมือ", draw: "Draw", main: "Main", battle: "Battle", end: "End", over: "จบเกม" };
@@ -22,6 +22,7 @@ const hkMerged = new Map();
 const fires = (s, x, when, re) => { if (x.mute) return false; const sc = scriptOf(s, x); if (sc && sc[when]) return !(when === "attack" && sc.storyOnly && !x.story); const t = E.def(s, x).x || ""; return E.ext.trig ? E.ext.trig(t, when) : !!(re && re.test(t)); };
 const hk = (s, x) => { const sc = scriptOf(s, x); const tr = traits(E.def(s, x)); if (!sc || !tr) return sc || tr; let m = hkMerged.get(sc); if (!m) { m = { ...tr, ...sc }; hkMerged.set(sc, m); } return m; };
 const FIELD = ["av", "cs", "mg"];
+const COLORS = ["แดง", "ฟ้า", "เขียว", "ม่วง"];
 export const END_RE = /อัตโนมัติ\s*ใน(?:ช่วง|ทุกๆ)?\s*End Phase(\s*(?:ของ)?\s*เรา)?/;
 export const MAIN_RE = /อัตโนมัติ\s*(?:เมื่อ|ใน)?(?:ช่วง)?\s*เริ่ม(?:ต้น)?\s*Main Phase\s*(?:ของ)?\s*เรา/;
 function fieldCards(s) { const out = []; for (let p = 0; p < 2; p++) for (const z of FIELD) for (const x of s.P[p][z]) out.push({ x, L: { p, z } }); if (s.land) out.push({ x: s.land, L: { p: s.land.o, z: "land" } }); return out; }
@@ -72,10 +73,31 @@ export const E = {
   // extra cards seen by a scout of player p's card `src` (วัดคู่บ้านคู่เมือง …)
   scoutBonus(s, p, src) { let n = 0; for (const { x: y, L: Ly } of fieldCards(s)) if (Ly.p === p && !y.mute) { const sy = scriptOf(s, y); if (sy && sy.scoutMore) n += sy.scoutMore(E, s, y, Ly, src) || 0; } return n; },
   // Avatars that may not attack LIFE right now (printed restrictions)
-  noLife(s, x) { if (x.mute) return false; const h = hk(s, x); return !!(h && h.noLife && h.noLife(E, s, x)); },
+  noLife(s, x) { if (x.nlt === s.turn) return true; if (x.mute) return false; const h = hk(s, x); return !!(h && h.noLife && h.noLife(E, s, x)); },
   // the fight is over: "until the end of the fight" POWER changes end
-  endFight(s) { s.pend = null; for (const q of [0, 1]) for (const y of s.P[q].av) delete y.fm; },
+  endFight(s, cancelled) { const pd = s.pend; s.pend = null; for (const q of [0, 1]) for (const y of s.P[q].av) delete y.fm;
+    // แทงหลัง: when the fight is over, an attacker that shares no colour with a backstabbing helper is destroyed
+    if (!cancelled && pd && pd.bs && pd.bs.length) { const A = E.locate(s, pd.att); if (A && A.z === "av") { const ac = E.colors(s, A.x); const bad = pd.bs.find((b) => !b.co.some((c) => ac.includes(c)));
+      if (bad) E.destroy(s, A.x.i, `แทงหลังของ ${bad.n}: สีต่างกับผู้โจมตี ถูกทำลายเมื่อจบการต่อสู้`); } }
+  },
+  // colours a card counts as (printed colour plus "ถือว่ามีสี …" rules)
+  colors(s, x) { const d = E.def(s, x); const on = hasFieldAlias(d) && E.onField(s, x); return COLORS.filter((c) => colorIs(d, c, on)); },
+  // how Avatar y of player p may help attacker att: สามัคคี adds its POWER, แทงหลัง adds +1 (risky: other colour → attacker destroyed after the fight)
+  helpOf(s, p, att, y) {
+    if (!y.a || y.i === att.i || y.mute) return null;
+    if (E.kw(s, y, "สามัคคี") && !fieldCards(s).some(({ x: z, L }) => L.p !== p && !z.mute && (scriptOf(s, z) || {}).noUnite)) return { k: "u", n: E.power(s, y) };
+    if (E.kw(s, y, "แทงหลัง")) { const yc = E.colors(s, y), ac = E.colors(s, att); return { k: "b", n: 1, risky: !yc.some((c) => ac.includes(c)) }; }
+    return null;
+  },
+  // x cannot be chosen by its opponent's card abilities (its own rule, or a protection such as กวนอู's)
+  noAim(s, x) { if (E.untargetable(s, x)) return true; const L = E.locate(s, x.i); if (!L) return false;
+    for (const { x: src, L: Ls } of fieldCards(s)) { if (Ls.p !== L.p || src.mute) continue; const sc = scriptOf(s, src); if (sc && sc.noAim && sc.noAim(E, s, src, Ls, x, L)) return true; } return false; },
+  // the attack now goes to another Avatar: cards waiting for that moment fire (ลิโป้ …)
+  retargeted(s) { let n = 0; for (const { x: y, L } of fieldCards(s)) { if (y.mute) continue; const sc = scriptOf(s, y); if (sc && sc.retarget && (!sc.retargetOk || sc.retargetOk(E, s, y, L))) { s.trig.push({ id: newId(), seat: L.p, i: y.i, c: y.c, when: "retarget", optional: true }); n++; } } return n; },
   // Avatars that say "the opponent can attack nothing but this card"
+  noControl(s, x) { return !x.mute && !!(hk(s, x) || {}).noControl; },
+  // awake Avatars of player p that can take the pending attack with โล่มนุษย์
+  shields(s, p) { return s.pend ? s.P[p].av.filter((y) => y.a && y.i !== s.pend.ti && E.kw(s, y, "โล่มนุษย์")) : []; },
   taunts(s, p) { return s.P[p].av.filter((y) => { if (y.mute) return false; const h = hk(s, y); return !!(h && h.taunt && h.taunt(E, s, y)); }); },
   battleMod(s, me, foe) { const sc = scriptOf(s, me); return sc && sc.battle ? sc.battle(E, s, me, foe) : 0; },
   locked(s, p, x) { if (s.lock && s.lock[p] === "dragon") { const d = E.def(s, x); return !(String(d.sy || "").includes("มังกร") || String(d.n || "").includes("ผู้ฝึกมังกร")); } return false; },
@@ -319,15 +341,15 @@ export const E = {
         else if (act.tk === "cs") need(O.cs.some((y) => y.i === act.ti), "เป้าหมายไม่อยู่บน Construct Zone");
         else if (act.tk === "life") { need(!O.av.length || E.kw(s, x, "เตะไข่"), "ฝ่ายตรงข้ามยังมี Avatar อยู่ (ยกเว้นเตะไข่)"); need(!E.noLife(s, x), "Avatar ใบนี้โจมตี LIFE ไม่ได้ตอนนี้ (เงื่อนไขบนการ์ด)"); }
         else throw new RuleError("เป้าหมายไม่ถูกต้อง");
-        let bonus = 0; const sup = [];
+        let bonus = 0; const sup = [], bs = [], stab = [];
         for (const i of act.sup || []) {
-          const y = P.av.find((z) => z.i === i);
-          if (!y || !y.a || y.i === x.i) continue;
-          if (E.kw(s, y, "สามัคคี")) bonus += E.power(s, y); else if (E.kw(s, y, "แทงหลัง")) bonus += 1; else continue;
-          y.a = false; sup.push(i);
+          const y = P.av.find((z) => z.i === i); const hp = y ? E.helpOf(s, p, x, y) : null; if (!hp) continue;
+          bonus += hp.n; y.a = false; sup.push(i);
+          if (hp.k === "b") { bs.push({ i, n: E.name(s, y), co: E.colors(s, y) }); const sy = y.mute ? null : scriptOf(s, y); if (sy && sy.stab && (!sy.stabOk || sy.stabOk(E, s, y, x))) stab.push(y); }
         }
         x.a = false;
-        s.pend = { att: x.i, tk: act.tk, ti: act.ti || null, bonus, sup, by: p };
+        s.pend = { att: x.i, tk: act.tk, ti: act.ti || null, bonus, sup, by: p, ...(bs.length ? { bs } : {}) };
+        for (const y of stab) s.trig.push({ id: newId(), seat: p, i: y.i, c: y.c, when: "stab" });
         E.ev(s, { k: "declare", att: x.i, by: p, tk: act.tk, ti: act.ti || null });
         const tName = act.tk === "life" ? "LIFE" : E.name(s, E.locate(s, act.ti).x);
         E.log(s, p, `${E.name(s, x)} (POWER ${E.power(s, x) + bonus}) โจมตี ${tName}${sup.length ? ` · ผู้ช่วย ${sup.length} ใบ +${bonus}` : ""}`);
@@ -339,12 +361,14 @@ export const E = {
       }
       case "respond": {
         need(s.pend && s.pend.by === 1 - p && !s.trig.length, "ยังไม่ถึงจังหวะตอบโต้");
+        if (s.pend.must && !act.shield) need(!E.shields(s, p).length, "ต้องใช้โล่มนุษย์ (ความสามารถของผู้โจมตี)");
         if (act.shield) {
           // โล่มนุษย์: an awake Avatar with the keyword goes to sleep and becomes the target instead
           const y = P.av.find((z) => z.i === act.shield); need(y && E.kw(s, y, "โล่มนุษย์") && y.i !== s.pend.ti, "ต้องเป็น Avatar ที่มีโล่มนุษย์");
           need(y.a, "โล่มนุษย์ใช้ได้เฉพาะ Avatar ที่อยู่ในสภาพตื่น");
           y.a = false; s.pend.tk = "av"; s.pend.ti = y.i; E.log(s, p, `${E.name(s, y)} ใช้โล่มนุษย์ เปลี่ยนเป็นสภาพนอนแล้วรับการโจมตีแทน`);
           { const sy2 = y.mute ? null : scriptOf(s, y); if (sy2 && sy2.onShield) E.ops(s, sy2.onShield(E, s, y) || [], p); }
+          if (E.retargeted(s)) { s.pend.go = true; return; } // the fight waits for those effects
         }
         E.resolveAttack(s); return;
       }
@@ -370,6 +394,7 @@ export const E = {
         else { if (act.explain) E.log(s, p, `เอฟเฟกต์ ${nm}: ${act.explain}`); s.cur = t.c; try { E.ops(s, act.ops || [], p); } finally { delete s.cur; } }
         if (t.toHell) { const L = E.locate(s, t.i); if (L && L.z === "mg") { s.P[L.p].mg.splice(L.idx, 1); s.P[L.x.o].hell.push(L.x); } }
         if (s.pend && !s.trig.length && s.pend.resolved) s.pend = null;
+        if (s.pend && !s.trig.length && s.pend.go) { delete s.pend.go; E.resolveAttack(s); }
         if (s.endWait && !s.trig.length && s.phase === "end") { delete s.endWait; E.finishTurn(s); }
         return;
       }
@@ -528,6 +553,8 @@ export const E = {
         const from = ZONE_TH[L.z] || L.z; const x = E.moveTo(s, o.i, "av", L.x.o); if (o.exd) x.exd = true; if (o.asleep) x.a = false;
         E.ev(s, { k: "summon", i: x.i, p: x.o }); E.log(s, by, `อัญเชิญ ${E.name(s, x)} จาก${from}${o.jt ? " แบบจุติ" : ""}${o.asleep ? " ในสภาพนอน" : ""}${o.exd ? " (ได้รับคำสั่งเสีย : เนรเทศ)" : ""}`);
         if (o.jt) { const ex = o.exact ? { exact: true } : {}; const sc = scriptOf(s, x); if (sc && sc.summon) { if (!sc.storyOnly || x.story) E.addTrig(s, x.o, x, "summon", ex); } else if (kwHas(E.def(s, x).x, "จุติ")) E.addTrig(s, x.o, x, "summon", ex); }
+        // "เมื่อการ์ดใบนี้ถูกอัญเชิญมาด้วยความสามารถของ …": the card whose effect is resolving is the source
+        if (s.cur != null && s.cards[s.cur]) { x.sb = s.cur; const sc = x.mute ? null : scriptOf(s, x); if (sc && sc.summonedBy && (!sc.byOk || sc.byOk(E, s, s.cards[s.cur], x))) s.trig.push({ id: newId(), seat: x.o, i: x.i, c: x.c, when: "summonedBy", src: s.cur }); }
         return;
       }
       case "toLand": { const L = E.locate(s, o.i); if (!L) throw new RuleError("ไม่พบการ์ด"); const name = E.name(s, L.x); E.moveTo(s, o.i, "land"); E.log(s, by, `ใช้ ${name} บน Land Magic Zone`); return; }
@@ -543,7 +570,7 @@ export const E = {
         E.log(s, by, `ธรณีสูบเจอ ${o.name} ${k} ใบ · ทำลายได้ Cost รวมไม่เกิน ${(o.base | 0) + k}`); for (const x of kill) E.destroy(s, x.i, "ความสามารถของซีเกิร์ด"); return;
       }
       case "flag": { const L = E.locate(s, o.i); if (L && ["canAtk"].includes(o.k)) L.x[o.k] = o.v; return; }
-      case "cancelAttack": { if (s.pend) { E.log(s, by, "ยกเลิกการโจมตี"); E.endFight(s); } return; }
+      case "cancelAttack": { if (s.pend) { E.log(s, by, "ยกเลิกการโจมตี"); E.endFight(s, true); } return; }
       case "zero": { const L = E.locate(s, o.i); if (!L) throw new RuleError("ไม่พบการ์ด"); L.x.zero = true; L.x.muteEnd = s.turn; E.log(s, by, `${E.name(s, L.x)} POWER ตั้งต้นเป็น 0 จนจบเทิร์น`); return; }
       case "attach": { // put a card onto an Avatar as an equipped card (e.g. โอตะ on a ไอดอล)
         const L = E.locate(s, o.i), H = E.locate(s, o.on); if (!L) throw new RuleError("สวมใส่ไม่ได้");
@@ -590,7 +617,9 @@ export const E = {
       }
       case "discardRandom": { const P = s.P[seat]; for (let k = 0; k < n && P.hand.length; k++) { const j = Math.floor(E.rnd(s) * P.hand.length); const x = P.hand.splice(j, 1)[0]; P.hell.push(x); E.log(s, seat, `ทิ้งแบบสุ่ม ${E.name(s, x)}`); } return; }
       case "control": { const L = E.locate(s, o.i); if (!L || L.z !== "av") throw new RuleError("ควบคุมได้เฉพาะ Avatar บนสนาม");
-        if (!L.x.mute && (hk(s, L.x) || {}).noControl) { E.log(s, by, `${E.name(s, L.x)} ไม่สามารถถูกเปลี่ยนการควบคุมได้`); return; } const t = o.seat === 0 || o.seat === 1 ? o.seat : 1 - L.p; const P = s.P[t]; if (E.avatars(P) >= 4 || P.av.length >= 6) throw new RuleError("Avatar Zone เต็ม"); s.P[L.p].av.splice(L.idx, 1); if (o.until === "turn") L.x.back = L.p; if (o.asleep) L.x.a = false; P.av.push(L.x); E.log(s, by, `${s.P[t].name} ได้ควบคุม ${E.name(s, L.x)}${o.until === "turn" ? " จนจบเทิร์น" : ""}`); return; }
+        if (!L.x.mute && (hk(s, L.x) || {}).noControl) { E.log(s, by, `${E.name(s, L.x)} ไม่สามารถถูกเปลี่ยนการควบคุมได้`); return; } const t = o.seat === 0 || o.seat === 1 ? o.seat : 1 - L.p; const P = s.P[t]; if (E.avatars(P) >= 4 || P.av.length >= 6) throw new RuleError("Avatar Zone เต็ม"); s.P[L.p].av.splice(L.idx, 1); if (o.until === "turn") L.x.back = L.p; if (o.asleep) L.x.a = false; if (o.wake) L.x.a = true; if (o.noLife) L.x.nlt = s.turn; P.av.push(L.x); E.log(s, by, `${s.P[t].name} ได้ควบคุม ${E.name(s, L.x)}${o.until === "turn" ? " จนจบเทิร์น" : ""}${o.wake ? " ในสภาพตื่น" : ""}${o.noLife ? " (โจมตี LIFE ไม่ได้)" : ""}`); return; }
+      case "mustShield": { if (s.pend) { s.pend.must = true; E.log(s, by, "ฝ่ายตรงข้ามต้องใช้โล่มนุษย์ในการโจมตีครั้งนี้"); } return; }
+      case "redirect": { const L = E.locate(s, o.i); if (!s.pend || !L || L.z !== "av" || L.p === s.pend.by || s.pend.ti === o.i) return; s.pend.tk = "av"; s.pend.ti = o.i; E.log(s, by, `เปลี่ยนเป้าหมายการโจมตีไปที่ ${E.name(s, L.x)}`); E.retargeted(s); return; }
       case "note": { E.log(s, by, String(o.text || "").slice(0, 200)); return; }
       case "win": { E.lose(s, 1 - seat, String(o.text || "เงื่อนไขชนะพิเศษจากการ์ด")); return; }
       default: throw new RuleError("ไม่รู้จักผล " + o.op);
@@ -623,8 +652,8 @@ export function legalMoves(s, p) {
   if (s.phase === "over") return out;
   if (s.trig.length || (s.pend && s.pend.by === p)) return out;
   if (s.pend && s.pend.by === 1 - p) {
-    const shields = P.av.filter((y) => y.a && y.i !== s.pend.ti && E.kw(s, y, "โล่มนุษย์"));
-    out.push({ d: shields.length ? "ไม่ใช้โล่มนุษย์ ปล่อยให้โจมตีตามเดิม" : "ไม่ตอบโต้ ปล่อยให้โจมตี", a: { type: "respond" } });
+    const shields = E.shields(s, p);
+    if (!(s.pend.must && shields.length)) out.push({ d: shields.length ? "ไม่ใช้โล่มนุษย์ ปล่อยให้โจมตีตามเดิม" : "ไม่ตอบโต้ ปล่อยให้โจมตี", a: { type: "respond" } });
     for (const y of shields) out.push({ d: `ใช้โล่มนุษย์ ${E.name(s, y)} (POWER ${E.power(s, y)}) รับแทน`, a: { type: "respond", shield: y.i } });
     return out;
   }

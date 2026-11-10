@@ -1,10 +1,10 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus } from "./engine.js?v=20261110220552";
-import { plain } from "./persona.js?v=20261110220552";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261110220552";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261110220552";
-import { Data } from "./fb.js?v=20261110220552";
-import { lsGet } from "./util.js?v=20261110220552";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus } from "./engine.js?v=20261110221909";
+import { plain } from "./persona.js?v=20261110221909";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261110221909";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261110221909";
+import { Data } from "./fb.js?v=20261110221909";
+import { lsGet } from "./util.js?v=20261110221909";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -107,7 +107,9 @@ export const H = {
     const P = s.P[p], O = s.P[1 - p];
     if (s.pend) {
       const att = E.locate(s, s.pend.att); const ap = att ? E.power(s, att.x) + (s.pend.bonus || 0) : 0;
-      const sh = moves.filter((m) => m.a.shield).map((m) => ({ m, p: E.power(s, E.locate(s, m.a.shield).x) })).sort((a, b) => b.p - a.p)[0];
+      const sh = moves.filter((m) => m.a.shield).map((m) => ({ m, p: E.power(s, E.locate(s, m.a.shield).x), v: H.value(s, E.locate(s, m.a.shield).x) })).sort((a, b) => b.p - a.p)[0];
+      // a forced โล่มนุษย์ (ลิโป้): one that wins the fight, otherwise the cheapest one
+      if (!moves.some((m) => m.a.type === "respond" && !m.a.shield)) { const all = moves.filter((m) => m.a.shield).map((m) => { const y = E.locate(s, m.a.shield).x; return { m, p: E.power(s, y), v: H.value(s, y) }; }); const w = all.filter((z) => z.p > ap).sort((a, b) => a.v - b.v)[0] || all.sort((a, b) => a.v - b.v)[0]; if (w) return w.m; }
       if (sh && (s.pend.tk === "life" ? sh.p >= ap - 1 : sh.p > ap)) return sh.m;
       return moves[0];
     }
@@ -142,7 +144,7 @@ export const H = {
         if (m.a.tk === "cs") return { m, score: ap > tp ? 8 : -5 };
         if (ap > tp) return { m, score: 20 + tp };
         if (m.a.tk === "av") { // can สามัคคี / แทงหลัง helpers turn this into a win?
-          const helpers = P.av.filter((y) => y.a && y.i !== x.i && (E.kw(s, y, "สามัคคี") || E.kw(s, y, "แทงหลัง"))).map((y) => ({ i: y.i, b: E.kw(s, y, "สามัคคี") ? E.power(s, y) : 1 })).sort((a, b) => a.b - b.b);
+          const helpers = P.av.map((y) => ({ y, hq: E.helpOf(s, p, x, y) })).filter((z) => z.hq && !z.hq.risky).map((z) => ({ i: z.y.i, b: z.hq.n })).sort((a, b) => a.b - b.b);
           let bonus = 0; const sup = []; for (const hlp of helpers) { if (ap + bonus > tp) break; bonus += hlp.b; sup.push(hlp.i); }
           if (ap + bonus > tp) return { m: { ...m, a: { ...m.a, sup } }, score: 14 + tp - sup.length * 2 };
         }

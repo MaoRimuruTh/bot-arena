@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261110220552";
-import { CARDS, nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261110220552";
-import { E, scriptOf } from "./engine.js?v=20261110220552";
+import { readAura } from "./auras.js?v=20261110221909";
+import { CARDS, nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261110221909";
+import { E, scriptOf } from "./engine.js?v=20261110221909";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -202,7 +202,7 @@ function sentence(s, t, p, self, ctx) {
   const typed = (x, f) => fits(s, x, f) && (!f.type || E.def(s, x).t === f.type || (f.type === "A" && E.def(s, x).t === "T")) && !(f.other && self && x.i === self.i);
   // "that Avatar" / "the attacker" in answers to an attack, a summon or a fight
   const refCard = () => { const i = /ที่(?:ประกาศ)?โจมตี|ผู้โจมตี|ใบที่โจมตี/.test(t) && ref.att != null ? ref.att : /ใบนั้น|ตัวนั้น|ที่เป็นเป้าหมาย|ที่ต่อสู้ด้วย|ที่ถูกอัญเชิญ|ที่อัญเชิญ/.test(t) && ref.that != null ? ref.that : null; const L = i != null ? E.locate(s, i) : null; return L && L.z === "av" ? L.x : null; };
-  const oppAv = (f) => O.av.filter((x) => typed(x, f) && !E.untargetable(s, x)).sort((a, b) => val(s, b) - val(s, a));
+  const oppAv = (f) => O.av.filter((x) => typed(x, f) && !E.noAim(s, x)).sort((a, b) => val(s, b) - val(s, a));
   const me = ctx.me;
   if (/สวม/.test(t)) { // "bring X onto this Avatar" / "put this card onto an Avatar"
     let m;
@@ -366,7 +366,7 @@ function sentence(s, t, p, self, ctx) {
     else if (self && (/ใบนี้|ตัวนี้/.test(t) || (!/เลือก|ฝ่าย|ทุกใบ|Avatar|\{/.test(t.split("POWER")[0]) && v > 0))) tgt = [self];
     else {
       const opp = OPP.test(t) || (v < 0 && !/ฝ่ายเรา|ของเรา|Zone\s*เรา/.test(t));
-      const cands = (opp ? O.av.filter((x) => !E.untargetable(s, x)) : P.av).filter((x) => typed(x, f)).sort(opp ? (a, b) => (v < 0 ? val(s, b) - val(s, a) : val(s, a) - val(s, b)) : (a, b) => (b.a ? 1 : 0) - (a.a ? 1 : 0) || E.power(s, b) - E.power(s, a));
+      const cands = (opp ? O.av.filter((x) => !E.noAim(s, x)) : P.av).filter((x) => typed(x, f)).sort(opp ? (a, b) => (v < 0 ? val(s, b) - val(s, a) : val(s, a) - val(s, b)) : (a, b) => (b.a ? 1 : 0) - (a.a ? 1 : 0) || E.power(s, b) - E.power(s, a));
       tgt = /ทุกใบ|ทั้งหมด/.test(t) ? cands : ctx.choose(cands, 1, `เลือก Avatar ${opp ? "ฝ่ายตรงข้าม" : "ฝ่ายเรา"} ที่จะ POWER ${v > 0 ? "+" : ""}${v}`);
     }
     if (!tgt.length) { say.push("ไม่มีเป้าหมาย POWER"); }
@@ -374,7 +374,7 @@ function sentence(s, t, p, self, ctx) {
     if (tgt.length) say.push(`${tgt.map((x) => E.name(s, x)).join(", ")} POWER ${v > 0 ? "+" : ""}${v}`);
   } else if (/สภาพนอน|เป็นนอน/.test(t)) {
     const rc = refCard(); if (!rc && !OPP.test(t)) return false;
-    const cands = O.av.filter((x) => x.a && typed(x, f0) && !E.untargetable(s, x)).sort((a, b) => E.power(s, b) - E.power(s, a));
+    const cands = O.av.filter((x) => x.a && typed(x, f0) && !E.noAim(s, x)).sort((a, b) => E.power(s, b) - E.power(s, a));
     const tgt = rc ? [rc] : /ทุกใบ|ทั้งหมด/.test(t) ? cands : ctx.choose(cands, pickN(t), "เลือก Avatar ฝ่ายตรงข้ามที่จะทำให้นอน");
     for (const x of tgt) ops.push({ op: "wake", i: x.i, v: false }); say.push(tgt.length ? `ทำให้ ${tgt.map((x) => E.name(s, x)).join(", ")} นอน` : "ไม่มีเป้าหมายให้นอน");
   } else if (/สภาพตื่น|เป็นตื่น/.test(t)) {

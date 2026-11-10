@@ -1,22 +1,22 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261110220552";
-import { fxText } from "../fxtext.js?v=20261110220552";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261110220552";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261110220552";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261110220552";
-import { Arena } from "../arena3d.js?v=20261110220552";
-import { autoEffect, resolveEffect } from "../effects.js?v=20261110220552";
-import { Sfx } from "../sfx.js?v=20261110220552";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261110220552";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261110220552";
-import { readAura, traits } from "../auras.js?v=20261110220552";
-import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261110220552";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261110221909";
+import { fxText } from "../fxtext.js?v=20261110221909";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261110221909";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf } from "../engine.js?v=20261110221909";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261110221909";
+import { Arena } from "../arena3d.js?v=20261110221909";
+import { autoEffect, resolveEffect } from "../effects.js?v=20261110221909";
+import { Sfx } from "../sfx.js?v=20261110221909";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261110221909";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261110221909";
+import { readAura, traits } from "../auras.js?v=20261110221909";
+import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261110221909";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
   return { game: [`เทิร์น ${s.turn} · ${PHASE_TH[s.phase] || s.phase} · ตาของ ${s.P[s.active].name}`, `เด็คเรา: ${me.deckName || "-"} · เด็คคู่แข่ง: ${op.deckName || "-"}`,
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / ")].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261110220552";
+import { allDecks, deckById } from "./decks.js?v=20261110221909";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -177,7 +177,7 @@ function nothingToAnswer(s, p) { return !!s.pend && s.pend.by !== p && !s.trig.l
 function autoRespond(s, p) {
   if (!mine(p) || !nothingToAnswer(s, p) || G.castFor) return;
   const key = [s.turn, s.pend.att, s.pend.tk, s.pend.ti, s.log.length].join(":"); if (G.autoKey === key) return; G.autoKey = key;
-  setTimeout(() => { const n = G && G.s; if (!n || !n.pend || G.castFor || [n.turn, n.pend.att, n.pend.tk, n.pend.ti, n.log.length].join(":") !== key || !nothingToAnswer(n, p)) return; doAct({ type: "respond" }, p); }, 900);
+  setTimeout(() => { const n = G && G.s; if (!n || !n.pend || G.castFor || [n.turn, n.pend.att, n.pend.tk, n.pend.ti, n.log.length].join(":") !== key || !nothingToAnswer(n, p)) return; doAct((legalMoves(n, p)[0] || {}).a || { type: "respond" }, p); }, 900);
 }
 // bot / auto driver
 async function drive() {
@@ -244,7 +244,7 @@ function fieldClick(i) {
 }
 function attack(att, tk, ti) {
   const s = G.s, p = s.active, P = s.P[p];
-  const helpers = P.av.filter((y) => y.a && y.i !== att && (E.kw(s, y, "สามัคคี") || E.kw(s, y, "แทงหลัง")));
+  const ax = P.av.find((y) => y.i === att); const helpers = ax ? P.av.filter((y) => E.helpOf(s, p, ax, y)) : [];
   if (!helpers.length) return doAct({ type: "attack", i: att, tk, ti }, p);
   G.helperPick = { att, tk, ti, sup: [] }; draw();
 }
@@ -464,8 +464,10 @@ function promptBox(s, p) {
       h("div", { class: "row" }, h("button", { class: "btn sm", onclick: () => { G.host = null; draw(); } }, "ยกเลิก")));
   }
   if (G.helperPick) {
-    const hp = G.helperPick; const helpers = P.av.filter((y) => y.a && y.i !== hp.att && (E.kw(s, y, "สามัคคี") || E.kw(s, y, "แทงหลัง")));
-    return box("เลือกผู้ช่วยโจมตี (สามัคคี / แทงหลัง)", h("div", { class: "pick" }, helpers.map((y) => { const b = cardBtn(E.def(s, y).im, { badge: E.kw(s, y, "สามัคคี") ? "+" + E.power(s, y) : "+1", cls: hp.sup.includes(y.i) ? "sel" : "", onclick: () => { hp.sup = hp.sup.includes(y.i) ? hp.sup.filter((i) => i !== y.i) : [...hp.sup, y.i]; draw(); } }); return b; })),
+    const hp = G.helperPick; const ax = P.av.find((y) => y.i === hp.att); const helpers = ax ? P.av.map((y) => ({ y, hq: E.helpOf(s, p, ax, y) })).filter((z) => z.hq) : [];
+    const risky = helpers.some((z) => z.hq.risky && hp.sup.includes(z.y.i));
+    return box("เลือกผู้ช่วยโจมตี (สามัคคี / แทงหลัง)", h("div", { class: "pick" }, helpers.map(({ y, hq }) => { const b = cardBtn(E.def(s, y).im, { badge: "+" + hq.n + (hq.risky ? " ⚠" : ""), cls: hp.sup.includes(y.i) ? "sel" : "", onclick: () => { hp.sup = hp.sup.includes(y.i) ? hp.sup.filter((i) => i !== y.i) : [...hp.sup, y.i]; draw(); } }); if (hq.risky) b.title = "แทงหลังสีต่างกับผู้โจมตี: ผู้โจมตีจะถูกทำลายเมื่อจบการต่อสู้"; return b; })),
+      risky ? h("div", { class: "tiny", style: "color:#ffb4a8" }, "⚠ ผู้ช่วยแทงหลังสีต่างกับผู้โจมตี: ผู้โจมตีจะถูกทำลายเมื่อจบการต่อสู้") : null,
       h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => { G.helperPick = null; doAct({ type: "attack", i: hp.att, tk: hp.tk, ti: hp.ti, sup: hp.sup }, p); } }, "โจมตี"), h("button", { class: "btn", onclick: () => { G.helperPick = null; draw(); } }, "ยกเลิก")));
   }
   if (s.phase === "mull") {
@@ -494,7 +496,7 @@ function promptBox(s, p) {
   }
   if (s.trig.length && !G.tmanual && G.tk === s.trig[0].id) return box("กำลังทำงาน…", h("div", { class: "tiny muted" }, (s.cards[s.trig[0].c] || {}).n || ""));
   if (s.trig.length) {
-    const t = s.trig[0]; const d = s.cards[t.c] || {}; const when = { summon: "จุติ", cast: "ใช้ Magic", life: "LIFE หงาย", death: "คำสั่งเสีย", attack: "เมื่อโจมตี", build: "ก่อสร้าง", manual: "สั่งใช้", activate: "สั่งใช้", paid: "ถูกทิ้งเป็นค่า Cost", milled: "ถูกธรณีสูบ", win: "ชนะการต่อสู้", end: "End Phase", mainStart: "เริ่ม Main Phase", attacked: "ถูกโจมตี", hostWin: "Avatar ที่สวมใส่ชนะการต่อสู้" }[t.when] || t.when;
+    const t = s.trig[0]; const d = s.cards[t.c] || {}; const when = { summon: "จุติ", cast: "ใช้ Magic", life: "LIFE หงาย", death: "คำสั่งเสีย", attack: "เมื่อโจมตี", build: "ก่อสร้าง", manual: "สั่งใช้", activate: "สั่งใช้", paid: "ถูกทิ้งเป็นค่า Cost", milled: "ถูกธรณีสูบ", win: "ชนะการต่อสู้", end: "End Phase", mainStart: "เริ่ม Main Phase", attacked: "ถูกโจมตี", hostWin: "Avatar ที่สวมใส่ชนะการต่อสู้", summonedBy: "ถูกอัญเชิญด้วยความสามารถ", retarget: "เปลี่ยนเป้าหมายการโจมตี", stab: "ใช้แทงหลัง", afterFight: "หลังการต่อสู้", onShield: "ใช้โล่มนุษย์", lifeFlip: "LIFE ถูกหงาย", hostAttack: "Avatar ที่สวมใส่โจมตี" }[t.when] || t.when;
     const hint = h("input", { type: "text", placeholder: "บอกชิเอลถ้าต้องเลือกเป้าหมาย เช่น ทำลายพญานาค", "aria-label": "เป้าหมายที่ต้องการ" }); const out = h("div");
     const auto = null;
     return box(`เอฟเฟกต์: ${d.n} (${when})`,
