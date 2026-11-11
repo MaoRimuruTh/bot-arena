@@ -3515,3 +3515,11 @@ Object.assign(SCRIPTS, {
 });
 // ของขวัญจากโอตะ (KD03-019 / BT04-054): worn only by a "ไอดอล" (the wording has no "เท่านั้น", so the text reader misses it)
 SCRIPTS["KD03-019"].modOnly = (E, s, h) => E.named(s, h, "ไอดอล");
+// ขวัญตา เรื่องราว ครุฑเจ้าเวหา (from นักท่องเรื่องราว): one more React "Skill" a turn (engine: E.skillExtra)
+SCRIPTS["BT09-044"].skillExtra = true;
+// ชาช่าจัง ไอดอลคนเก่ง: wears only "โอตะ"
+SCRIPTS["BT07-022"].wearOnly = (E, s, m) => E.named(s, m, "โอตะ");
+// อาดัส มังกรแห่งห้วงเหวน้ำลึก: once a turn, when an Avatar in the opponent's Magic Zone is destroyed, it wakes up
+SCRIPTS["BT12-028"].foeMgDeath = (c) => (c.self && (c.E.locate(c.s, c.self.i) || {}).z === "av" && !c.self.a ? { explain: "อาดัสกลับมาเป็นสภาพตื่น", ops: [{ op: "wake", i: c.self.i, v: true }] } : { explain: "", ops: [] });
+// ไดโนกาฬสินธุ์ - สยามแรปเตอร์: scouted (and not taken) by the ability of one of our {กะปอม} Avatars → it may be summoned (the game always takes the free summon)
+SCRIPTS["BT12-025"].scoutedPut = (E, s, x, src) => ["A", "T"].includes(src.t) && String(src.sy || "").includes("กะปอม");
