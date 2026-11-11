@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261112032847";
-import { fxText, kwGloss } from "../fxtext.js?v=20261112032847";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261112032847";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261112032847";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261112032847";
-import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261112032847";
-import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261112032847";
-import { themeCounts } from "../boxdecks.js?v=20261112032847";
-import { ladder, ladderReset } from "../ladder.js?v=20261112032847";
-import { notify } from "../notify.js?v=20261112032847";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261112032847";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261112032847";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261112032847";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261112032847";
-import { Music } from "../music.js?v=20261112032847";
-import { Sfx } from "../sfx.js?v=20261112032847";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261112032847";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261112032847";
-import { readAura, traits } from "../auras.js?v=20261112032847";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261112032847";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261112033734";
+import { fxText, kwGloss } from "../fxtext.js?v=20261112033734";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261112033734";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261112033734";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261112033734";
+import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261112033734";
+import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261112033734";
+import { themeCounts } from "../boxdecks.js?v=20261112033734";
+import { ladder, ladderReset } from "../ladder.js?v=20261112033734";
+import { notify } from "../notify.js?v=20261112033734";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261112033734";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261112033734";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261112033734";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261112033734";
+import { Music } from "../music.js?v=20261112033734";
+import { Sfx } from "../sfx.js?v=20261112033734";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261112033734";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261112033734";
+import { readAura, traits } from "../auras.js?v=20261112033734";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261112033734";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -25,7 +25,7 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261112032847";
+import { allDecks, deckById } from "./decks.js?v=20261112033734";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -483,7 +483,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261112032847").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261112033734").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", bot: true });
@@ -1037,13 +1037,16 @@ function handZone(s, V, p) {
 // hand cards that can be played this moment, by card (copies alike): what the rules allow now (a summon, a build, a Magic,
 // a hand ability, an answer to an attack), and in a moment the other side just made, the React cards that fit it
 function playableNow(s, p) {
+  // worked out once per game moment (a redraw for a hover or a selection reuses it): up to 8 ms with ten cards in hand
+  const key = [s.id, s.log.length, s.evc || 0, s.turn, s.phase, p, s.P[p].hand.length, s.trig.length, s.rw ? 1 : 0, s.pend ? 1 : 0].join(":");
+  if (G.canKey === key && G.canSet) return G.canSet;
   const out = new Set(), P = s.P[p], inHand = (i) => P.hand.find((y) => y.i === i);
   try {
     const on = s.rw ? (s.rw.by !== p ? s.rw : null) : s.pend && s.pend.by !== p ? { kind: "attack", by: s.pend.by, att: s.pend.att, tk: s.pend.tk, ti: s.pend.ti } : null;
     if (on) for (const x of E.reactsFor(s, p, on)) out.add(x.c);
     if (!s.rw) for (const m of legalMoves(s, p)) { if (m.a.type === "attack") continue; for (const i of [m.a.i, m.a.via]) { const x = i != null ? inHand(i) : null; if (x) out.add(x.c); } }
   } catch (e) { console.warn(e); }
-  return out;
+  G.canKey = key; G.canSet = out; return out;
 }
 function showHandInspect(x) { G.hoverHand = x.i; drawInspector(); }
 // on a computer a hand card can also be dragged up onto the table to play it, as in other card games: let go above the
