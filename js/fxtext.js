@@ -1,6 +1,6 @@
 // Card text made readable: one block per ability, the ability type and keywords as coloured tags,
 // reminder text dimmed, and the data's markup ({symbol X}, {only}, {red …}) drawn instead of printed.
-import { h } from "./util.js?v=20261111235436";
+import { h } from "./util.js?v=20261111235558";
 
 // what each keyword means (from the reminder text printed on the cards / Rule Book 3.2)
 export const KW_HELP = {
@@ -22,6 +22,13 @@ export const KW_HELP = {
   "เตะไข่": "โจมตี LIFE ได้โดยตรงแม้อีกฝ่ายมี Avatar",
   "เลือกปฏิบัติ": "เลือกทำข้อใดข้อหนึ่ง",
 };
+// the keywords in a card's text and what they mean, for a phone (no hovering for the tooltips) and for new players
+export function kwGloss(text) {
+  const t = String(text || ""); const found = Object.keys(KW_HELP).filter((k) => t.includes(k) || (k === "อัตโนมัติ" && t.includes("อัติโนมัติ")));
+  if (!found.length) return null;
+  return h("details", { class: "kwgloss" }, h("summary", null, `คำในการ์ดนี้แปลว่าอะไร (${found.length})`),
+    h("dl", null, found.flatMap((k) => [h("dt", null, k), h("dd", null, KW_HELP[k])])));
+}
 const TYPE = { "ต่อเนื่อง": "cont", "อัตโนมัติ": "auto", "อัติโนมัติ": "auto", "สั่งใช้": "act", "จุติ": "sum", "คำสั่งเสีย": "death" };
 const LEAD = ["เทิร์นละครั้ง", "ต่อเนื่อง", "อัตโนมัติ", "อัติโนมัติ", "สั่งใช้", "จุติ", "คำสั่งเสีย", "พอดี", "โล่มนุษย์", "ลูกฮึด", "สามัคคี", "เตะไข่", "แทงหลัง", "เลือกปฏิบัติ"];
 const INLINE = ["สอดแนม", "ธรณีสูบ", "เนรเทศ", "เซ่นไหว้", "จุติ", "คำสั่งเสีย", "โล่มนุษย์", "ลูกฮึด", "สามัคคี", "เตะไข่", "แทงหลัง", "เทิร์นละครั้ง"];

@@ -1,8 +1,8 @@
-import { h, openSheet, holo, toast, fmtDate } from "./util.js?v=20261111235436";
-import { fxText } from "./fxtext.js?v=20261111235436";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt, priceOf, setCode } from "./cards.js?v=20261111235436";
-import { Data, saveOwned, saveSkins, saveFavs, savePrices } from "./fb.js?v=20261111235436";
-import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261111235436";
+import { h, openSheet, holo, toast, fmtDate } from "./util.js?v=20261111235558";
+import { fxText, kwGloss } from "./fxtext.js?v=20261111235558";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt, priceOf, setCode } from "./cards.js?v=20261111235558";
+import { Data, saveOwned, saveSkins, saveFavs, savePrices } from "./fb.js?v=20261111235558";
+import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261111235558";
 
 export function cardBtn(id, opts = {}) {
   const c = card(id); const b = h("button", { class: "ccard" + (opts.cls ? " " + opts.cls : "") + (opts.note ? " noted" : ""), type: "button", "aria-label": c ? c.n + (opts.note ? " · " + opts.note : "") : "การ์ด", title: c ? c.n : "", onclick: opts.onclick });
@@ -35,7 +35,7 @@ export function showCard(id, extra) {
     const own = h("b", { class: "num" }, ownedOf(c.i));
     const aceBox = h("div");
     return [h("div", { class: "detail" }, holo(h("div", { class: "ccard", style: "cursor:default" }, artImg(c))),
-      h("div", { class: "stack" }, favButton(c), cardInfo(c), c.x ? fxText(c.x) : h("div", { class: "muted small" }, "ไม่มีข้อความความสามารถ"), c.ex ? h("div", { class: "small muted" }, c.ex) : null,
+      h("div", { class: "stack" }, favButton(c), cardInfo(c), c.x ? fxText(c.x) : h("div", { class: "muted small" }, "ไม่มีข้อความความสามารถ"), kwGloss(c.x), c.ex ? h("div", { class: "small muted" }, c.ex) : null,
         h("div", { class: "row" }, h("span", { class: "muted small" }, "ฉันมีจริง"), h("button", { class: "mini", "aria-label": "ลด", onclick: () => { setOwned(c.i, Math.max(0, ownedOf(c.i) - 1)); own.textContent = ownedOf(c.i); } }, "−"), own, h("button", { class: "mini", "aria-label": "เพิ่ม", onclick: () => { setOwned(c.i, ownedOf(c.i) + 1); own.textContent = ownedOf(c.i); } }, "+")),
         others.length ? h("div", { class: "stack", style: "gap:6px" }, h("div", { class: "eyebrow" }, "ชื่อเดียวกันแต่คนละใบ · นับรวมโควตาชื่อ"), h("div", { class: "pick" }, others.map((v) => cardBtn(v.i, { badge: v.p, onclick: () => { api.close(); showCard(v.i, extra); } })))) : null,
         skinPicker(c, api, extra), priceBox(c),
