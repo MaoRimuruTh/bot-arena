@@ -1,28 +1,28 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111133209";
-import { fxText } from "../fxtext.js?v=20261111133209";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111133209";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111133209";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111133209";
-import { Arena, animSetting } from "../arena3d.js?v=20261111133209";
-import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH } from "../achieve.js?v=20261111133209";
-import { ladder, ladderReset } from "../ladder.js?v=20261111133209";
-import { notify } from "../notify.js?v=20261111133209";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261111133209";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261111133209";
-import { autoEffect, resolveEffect } from "../effects.js?v=20261111133209";
-import { Music } from "../music.js?v=20261111133209";
-import { Sfx } from "../sfx.js?v=20261111133209";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261111133209";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111133209";
-import { readAura, traits } from "../auras.js?v=20261111133209";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261111133209";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111143034";
+import { fxText } from "../fxtext.js?v=20261111143034";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111143034";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111143034";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111143034";
+import { Arena, animSetting } from "../arena3d.js?v=20261111143034";
+import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH } from "../achieve.js?v=20261111143034";
+import { ladder, ladderReset } from "../ladder.js?v=20261111143034";
+import { notify } from "../notify.js?v=20261111143034";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261111143034";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261111143034";
+import { autoEffect, resolveEffect } from "../effects.js?v=20261111143034";
+import { Music } from "../music.js?v=20261111143034";
+import { Sfx } from "../sfx.js?v=20261111143034";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261111143034";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111143034";
+import { readAura, traits } from "../auras.js?v=20261111143034";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261111143034";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
   return { game: [`เทิร์น ${s.turn} · ${PHASE_TH[s.phase] || s.phase} · ตาของ ${s.P[s.active].name}`, `เด็คเรา: ${me.deckName || "-"} · เด็คคู่แข่ง: ${op.deckName || "-"}`,
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / ")].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261111133209";
+import { allDecks, deckById } from "./decks.js?v=20261111143034";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -403,7 +403,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261111133209").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261111143034").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", bot: true });
@@ -726,7 +726,8 @@ function turnButtons(s, p) {
     const choose = h("button", { class: "btn sm", onclick: () => { stopGame(true); location.hash = "#play"; } }, "เลือกโจทย์อื่น");
     if (s.phase === "over" && s.winner === G.V) return [h("button", { class: "btn gold sm", onclick: puzzleNext }, "โจทย์ถัดไป"), choose];
     if (s.phase === "over" || G.pzFail) return [undoBtn(), h("button", { class: "btn gold sm", onclick: puzzleRestart }, "เริ่มโจทย์ใหม่"), choose];
-    const b = turnButtons0(s, p); return p === G.V && mine(p) && !s.trig.length && !s.pend && s.phase !== "mull" ? [...b, h("button", { class: "btn ciel sm", onclick: puzzleHint }, "คำใบ้")] : b;
+    const b = turnButtons0(s, p); if (!(p === G.V && mine(p) && !s.trig.length && !s.pend && s.phase !== "mull")) return b;
+    const hint = h("button", { class: "btn ciel sm", onclick: puzzleHint }, "คำใบ้"); return compact() ? [hint, ...b] : [...b, hint]; // the phone bar shows only two
   }
   return turnButtons0(s, p);
 }

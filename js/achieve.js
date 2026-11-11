@@ -1,8 +1,8 @@
 // Achievements: earned only by playing (nothing here can be bought), each one unlocking something for the table:
 // a 3D figure to stand by your side, a colour of lacquer for the mat, or the circle that opens when you summon. Worked out from your own match history.
-import { Data } from "./fb.js?v=20261111133209";
-import { lsGet } from "./util.js?v=20261111133209";
-import { AVATARS, MATS, SIGILS } from "./arena3d.js?v=20261111133209";
+import { Data } from "./fb.js?v=20261111143034";
+import { lsGet } from "./util.js?v=20261111143034";
+import { AVATARS, MATS, SIGILS } from "./arena3d.js?v=20261111143034";
 
 const real = (ms) => ms.filter((m) => m.mode !== "goldfish");
 const wins = (ms) => real(ms).filter((m) => m.result === "win").length;
