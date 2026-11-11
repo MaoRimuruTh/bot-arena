@@ -1,18 +1,18 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261112020418";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261112020418";
-import { AVATARS, MATS, SIGILS, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261112020418";
-import { myFigure, myMat, mySigil, unlocked, needFor } from "./achieve.js?v=20261112020418";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261112020418";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261112020418";
-import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261112020418";
-import { Views, avatarEl } from "./ui.js?v=20261112020418";
-import { Ciel } from "./ai.js?v=20261112020418";
-import "./views/library.js?v=20261112020418";
-import "./views/decks.js?v=20261112020418";
-import "./views/lab.js?v=20261112020418";
-import "./views/history.js?v=20261112020418";
-import { openReport } from "./views/ask.js?v=20261112020418";
-import "./views/play.js?v=20261112020418";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261112024055";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261112024055";
+import { AVATARS, MATS, SIGILS, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261112024055";
+import { myFigure, myMat, mySigil, unlocked, needFor } from "./achieve.js?v=20261112024055";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261112024055";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261112024055";
+import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261112024055";
+import { Views, avatarEl } from "./ui.js?v=20261112024055";
+import { Ciel } from "./ai.js?v=20261112024055";
+import "./views/library.js?v=20261112024055";
+import "./views/decks.js?v=20261112024055";
+import "./views/lab.js?v=20261112024055";
+import "./views/history.js?v=20261112024055";
+import { openReport } from "./views/ask.js?v=20261112024055";
+import "./views/play.js?v=20261112024055";
 
 const root = $("#view");
 let current = null, cardsReady = false;
@@ -86,7 +86,7 @@ function gfxSection() {
   const seg = (label, cur, opts, key, done) => h("div", { class: "seg", role: "group", "aria-label": label }, opts.map(([v, t]) => h("button", { "aria-pressed": String(cur) === String(v) ? "true" : "false", onclick: (e) => {
     try { localStorage.setItem(key, v); } catch {} for (const b of e.currentTarget.parentElement.children) b.setAttribute("aria-pressed", b === e.currentTarget ? "true" : "false"); toast(done(t)); } }, t)));
   return [h("div", { class: "eyebrow", style: "margin-top:12px" }, "ภาพและความเร็ว"),
-    h("div", { class: "small muted" }, "สวยสุด: แสงฟุ้ง เงา และทองสะท้อนแสงทุกเครื่อง · ประหยัดเครื่อง: เหมาะกับมือถือรุ่นเก่า แบตอยู่นานขึ้น · อัตโนมัติ: เริ่มตามขนาดจอ แล้วลดแสงฟุ้งและความละเอียดลงเองถ้าเครื่องเล่นไม่ลื่น · แบบเรียบ 2D: ไม่มีโต๊ะ 3 มิติ การ์ดบนสนามวางเป็นแถว เบาเครื่องที่สุด"),
+    h("div", { class: "small muted" }, "สวยสุด: แสงฟุ้ง เงา และทองสะท้อนแสงทุกเครื่อง · ประหยัดเครื่อง: เหมาะกับมือถือรุ่นเก่า วาดภาพ 30 เฟรมต่อวินาที แบตอยู่นานขึ้น · อัตโนมัติ: เริ่มตามขนาดจอ แล้วลดแสงฟุ้งและความละเอียดลงเองถ้าเครื่องเล่นไม่ลื่น · แบบเรียบ 2D: ไม่มีโต๊ะ 3 มิติ การ์ดบนสนามวางเป็นแถว เบาเครื่องที่สุด"),
     seg("คุณภาพภาพ", gfxSetting(), [["auto", "อัตโนมัติ"], ["high", "สวยสุด"], ["low", "ประหยัดเครื่อง"], ["flat", "แบบเรียบ 2D"]], "bot.gfx", (t) => `ภาพ: ${t} มีผลตอนเปิดสนามครั้งถัดไป`),
     seg("ความเร็วแอนิเมชัน", animSetting(), [[1, "ปกติ"], [1.6, "เร็ว"], [2.5, "เร็วมาก"]], "bot.anim", (t) => `แอนิเมชัน: ${t} มีผลตอนเปิดสนามครั้งถัดไป`),
     // phones that can buzz (Android): a short buzz when our LIFE is hit and when our turn begins

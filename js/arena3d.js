@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261112020418";
-import { E } from "./engine.js?v=20261112020418";
-import { h } from "./util.js?v=20261112020418";
-import { Sfx } from "./sfx.js?v=20261112020418";
+import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261112024055";
+import { E } from "./engine.js?v=20261112024055";
+import { h } from "./util.js?v=20261112024055";
+import { Sfx } from "./sfx.js?v=20261112024055";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -144,8 +144,11 @@ function mount(container, opts = {}) {
   });
   canvas.addEventListener("click", (e) => { const p = pick(e); if (R.onClick) R.onClick(p); }); // null: the empty table (closes what is open)
   const clock = new THREE.Clock();
-  const tick = () => {
+  // "ประหยัดเครื่อง" in Settings: the table is drawn 30 times a second instead of 60 (half the work for the phone's GPU)
+  const cap = Q === "low" ? 1000 / 30 - 3 : 0; let lastDraw = 0;
+  const tick = (now = performance.now()) => {
     if (!R || !R.alive) return;
+    if (cap && now - lastDraw < cap) { requestAnimationFrame(tick); return; } lastDraw = now;
     const dt = Math.min(0.05, clock.getDelta()), t = clock.elapsedTime;
     if (!reduce) {
       for (const pts of [R.motes]) { const a = pts.geometry.attributes.position.array, sp = pts.userData.sp; for (let i = 0; i < sp.length; i++) { a[i * 3 + 1] += sp[i] * 60 * dt * (pts === R.motes ? 0.35 : 1); a[i * 3] += Math.sin(t + i) * 0.002; if (a[i * 3 + 1] > 9) a[i * 3 + 1] = 0; } pts.geometry.attributes.position.needsUpdate = true; }
@@ -557,6 +560,16 @@ export function colorFx(pos, co, big = 1) {
     for (let k = 0; k < 7; k++) puff(new THREE.Vector3(pos.x + (Math.random() - 0.5) * 1.6, 0.3, pos.z + (Math.random() - 0.5) * 1.6), { color: 0x3d1f66, size: 1.1 * big, opacity: 0.5, rise: 1.2 + Math.random(), dur: 1.4 });
   } else burst(p, { color: colorHex(co) });
 }
+// the other side's Magic, shown big for a moment as it is played (as card games show a played spell), then the effect
+function showcase(s, ev) {
+  const L = E.locate(s, ev.i), d = L && s.cards[L.x.c], c = d && d.im != null ? card(d.im) : null; if (!c) return Promise.resolve();
+  const el = h("div", { class: "showcase", "aria-hidden": "true" }, artImg(c, "scimg"), h("b", null, `${(s.P[ev.p] || {}).name || "ฝ่ายตรงข้าม"} ใช้ ${d.n}`));
+  document.body.append(el); const k = 1 / ((R && R.speed) || 1);
+  gsap.set(el, { xPercent: -50, yPercent: -50 });
+  gsap.fromTo(el, { opacity: 0, scale: reduce ? 1 : 0.8 }, { opacity: 1, scale: 1, duration: 0.22 * k, ease: "back.out(1.6)" });
+  gsap.to(el, { opacity: 0, duration: 0.25 * k, delay: 1.1 * k, onComplete: () => el.remove() });
+  return sleepMs(950);
+}
 // the effect strip: newest on top, three at most, each fades by itself (never takes a click)
 function fxCut(s, ev, mine) {
   const d = s.cards[ev.c]; if (!d) return; const c = d.im != null ? card(d.im) : null;
@@ -927,6 +940,7 @@ async function animateEvent(ev, prev, s, V) {
     pillar(mpos, mco ? colorHex(mco) : ev.st === "L" ? 0x8fb0ff : 0xc9a2ff); burst(new THREE.Vector3(0, 0.6, -0.2), { n: 16, map: R.FX.star_06, color: 0xbfd0ff, spread: 3 });
     if (ev.st === "L") decal(R.FX.magic_02, new THREE.Vector3(0, 0, -0.2), mco ? colorHex(mco) : 0x8fb0ff, 9, 1.8, 1.2); else if (mco) colorFx(mpos, mco, 0.8);
     if (d) popText(new THREE.Vector3(0, 1.4, -0.2), d.n, "#8fb0ff");
+    if (!mineSide(ev.p)) await showcase(s, ev);
   } else if (ev.k === "heal") { // a LIFE card turned back face-down: green light rising where that side's LIFE sits
     const mine = mineSide(ev.p), at = new THREE.Vector3(0, 1, mine ? 5.2 : -4.7); Sfx.play("heal");
     popText(at.clone().setY(1.2), "LIFE +1", "#5ef0a0"); pillar(at.clone().setY(0), 0x6dffb0, 0.75); ripple(at.clone().setY(0), 0x7dffb8, 3.4);
@@ -959,6 +973,7 @@ function flatEvents(s, V, opts) {
     else if (e.k === "heal") flatNote(`${e.p === V ? "LIFE เรา" : "LIFE " + ((s.P[e.p] || {}).name || "ฝ่ายตรงข้าม")} +1`);
     else if (e.k === "rps") rpsFx(s, e, V).catch(() => {});
     else if (e.k === "fx") fxCut(s, e, e.p === V); // an effect resolves: the same strip as over the 3D table
+    else if (e.k === "cast" && e.p !== V) showcase(s, e);
     else if (e.k === "life") { flatNote(e.p === V ? "LIFE เรา −1" : `LIFE ${(s.P[e.p] || {}).name || "ฝ่ายตรงข้าม"} −1`); if (e.p === V) buzz([35, 50, 60]); }
     else if (e.k === "turn" && e.p === V) buzz(25);
   }
