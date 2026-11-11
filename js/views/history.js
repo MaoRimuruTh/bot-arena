@@ -1,10 +1,10 @@
-import { h, openSheet, fmtDate, busy } from "../util.js?v=20261112061839";
-import { Data, Me } from "../fb.js?v=20261112061839";
-import { Views, avatarEl } from "../ui.js?v=20261112061839";
-import { ladder, ladderNow, ladderFresh } from "../ladder.js?v=20261112061839";
-import { stars } from "../quests.js?v=20261112061839";
-import { hasReplay, openReplay } from "./play.js?v=20261112061839";
-import { ACH, progress, rewardName } from "../achieve.js?v=20261112061839";
+import { h, openSheet, fmtDate, busy } from "../util.js?v=20261112062602";
+import { Data, Me } from "../fb.js?v=20261112062602";
+import { Views, avatarEl } from "../ui.js?v=20261112062602";
+import { ladder, ladderNow, ladderFresh } from "../ladder.js?v=20261112062602";
+import { stars } from "../quests.js?v=20261112062602";
+import { hasReplay, openReplay } from "./play.js?v=20261112062602";
+import { ACH, progress, rewardName } from "../achieve.js?v=20261112062602";
 
 const MODE_TH = { bot: "บอท", friend: "เพื่อน", solo: "สองฝั่ง", goldfish: "ซ้อมมือเดียว" };
 Views.history = {

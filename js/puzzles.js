@@ -1,8 +1,8 @@
 // Puzzles: positions taken from bot games where the side to play can win this very turn. Each was found and checked
 // by the search below (tools/puzzles), with the other side's hand emptied and every defence it has left tried.
 // Only card numbers and where they lie are kept; names, text and art load live like everywhere else.
-import { E, legalMoves } from "./engine.js?v=20261112061839";
-import { H } from "./ai.js?v=20261112061839";
+import { E, legalMoves } from "./engine.js?v=20261112062602";
+import { H } from "./ai.js?v=20261112062602";
 
 // copies for the search share the card details (they never change during play) and leave the log behind
 const clone = (s) => { const t = JSON.parse(JSON.stringify({ ...s, cards: null, log: [], ev: [] })); t.cards = s.cards; return t; };
