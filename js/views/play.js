@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261112000250";
-import { fxText, kwGloss } from "../fxtext.js?v=20261112000250";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261112000250";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261112000250";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261112000250";
-import { Arena, animSetting } from "../arena3d.js?v=20261112000250";
-import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261112000250";
-import { themeCounts } from "../boxdecks.js?v=20261112000250";
-import { ladder, ladderReset } from "../ladder.js?v=20261112000250";
-import { notify } from "../notify.js?v=20261112000250";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261112000250";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261112000250";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261112000250";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261112000250";
-import { Music } from "../music.js?v=20261112000250";
-import { Sfx } from "../sfx.js?v=20261112000250";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261112000250";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261112000250";
-import { readAura, traits } from "../auras.js?v=20261112000250";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261112000250";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261112000456";
+import { fxText, kwGloss } from "../fxtext.js?v=20261112000456";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261112000456";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261112000456";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261112000456";
+import { Arena, animSetting } from "../arena3d.js?v=20261112000456";
+import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261112000456";
+import { themeCounts } from "../boxdecks.js?v=20261112000456";
+import { ladder, ladderReset } from "../ladder.js?v=20261112000456";
+import { notify } from "../notify.js?v=20261112000456";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261112000456";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261112000456";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261112000456";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261112000456";
+import { Music } from "../music.js?v=20261112000456";
+import { Sfx } from "../sfx.js?v=20261112000456";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261112000456";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261112000456";
+import { readAura, traits } from "../auras.js?v=20261112000456";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261112000456";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -25,7 +25,7 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261112000250";
+import { allDecks, deckById } from "./decks.js?v=20261112000456";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -443,7 +443,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261112000250").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261112000456").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", bot: true });
@@ -895,11 +895,18 @@ function handZone(s, V, p) {
   const P = s.P[V]; const n = P.hand.length; const row = compact(); const zone = h("div", { class: row ? "handzone handrow" : "handzone", "aria-label": "การ์ดบนมือ" });
   const w = Math.min(760, innerWidth * 0.92); const cw = Math.round(Math.max(86, Math.min(128, innerHeight * 0.19))); const gap = Math.min(cw * 0.78, (w - cw) / Math.max(1, n - 1));
   const sel = G.pick || []; const canPlay = p != null && mine(p) && p === V;
+  // a card that just came into the hand slides in from the Deck's side; the clock is kept per card, so a redraw in
+  // the middle of the slide carries on from where it was (negative delay) instead of starting over or jumping
+  const now = performance.now(), born = G.handBorn || (G.handBorn = new Map()), first = !G.handSeenView || G.handSeenView !== V + ":" + (G.id || "");
+  if (first) { G.handSeenView = V + ":" + (G.id || ""); born.clear(); } let nNew = 0;
+  for (const i of [...born.keys()]) if (!P.hand.some((x) => x.i === i)) born.delete(i);
   P.hand.forEach((x, k) => {
+    if (!born.has(x.i)) born.set(x.i, now + 70 * nNew++);
     const d = E.def(s, x); const off = k - (n - 1) / 2; const c = d.im != null ? card(d.im) : null;
+    const age = now - born.get(x.i), fresh = age < 520;
     // the fan: the outer cards dip and turn, but a big hand does not sink below the screen (at most 26px, 16°)
     const half = Math.max(1, (n - 1) / 2), f = off / half, dip = f * f * Math.min(26, 2.2 * half * half), turn = f * Math.min(16, 3.2 * half);
-    const b = h("button", { class: "hcard" + (sel.includes(x.i) ? " sel" : ""), "data-i": x.i, "aria-label": `${d.n} ${TYPE_TH[d.t]} GEM ${d.g || 0}`, style: row ? "" : `width:${cw}px;left:${w / 2 - cw / 2 + off * gap}px;transform:translateY(${dip + (sel.includes(x.i) ? -26 : 0)}px) rotate(${turn}deg);z-index:${k}` },
+    const b = h("button", { class: "hcard" + (sel.includes(x.i) ? " sel" : "") + (fresh ? " fresh" : ""), "data-i": x.i, "aria-label": `${d.n} ${TYPE_TH[d.t]} GEM ${d.g || 0}`, style: (row ? "" : `width:${cw}px;left:${w / 2 - cw / 2 + off * gap}px;transform:translateY(${dip + (sel.includes(x.i) ? -26 : 0)}px) rotate(${turn}deg);z-index:${k};`) + (fresh ? `animation-delay:${Math.round(-age)}ms` : "") },
       c ? artImg(c) : null, h("span", { class: "gem" }, (d.t === "M" ? SUB_TH[d.st][0] : "C" + (d.c ?? 0)) + " · G" + (d.g || 0)),
       touchy() ? h("span", { class: "zoom", role: "button", "aria-label": "ดูการ์ด " + d.n, onclick: (e) => { e.stopPropagation(); cardView(x); } }, "⤢") : null);
     b.addEventListener("mouseenter", () => { G.hover = null; G.hoverEl = b; showHandInspect(x); });
