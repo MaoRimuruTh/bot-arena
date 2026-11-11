@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261111214413";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261111214413";
-import { SCRIPTS } from "./scripts.js?v=20261111214413";
-import { newId, clone } from "./util.js?v=20261111214413";
+import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261111220607";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261111220607";
+import { SCRIPTS } from "./scripts.js?v=20261111220607";
+import { newId, clone } from "./util.js?v=20261111220607";
 export const ZONES = ["deck", "hand", "av", "mg", "cs", "hell", "dark", "life"];
 export const ZONE_TH = { deck: "Deck", hand: "มือ", av: "Avatar Zone", mg: "Magic Zone", cs: "Construct Zone", hell: "นรก", dark: "มิติมืด", life: "LIFE", land: "Land Magic" };
 export const PHASE_TH = { mull: "เปลี่ยนมือ", draw: "Draw", main: "Main", battle: "Battle", end: "End", over: "จบเกม" };
@@ -658,7 +658,7 @@ export const E = {
         if (act.skip && !t.held) E.log(s, p, `ข้ามเอฟเฟกต์ ${nm}`);
         else { const ops0 = t.held ? t.hops : act.ops || [], ex0 = t.held ? t.hex : act.explain;
           if (!t.held) { const doom = E.doomFor(s, ops0, p); if (doom) { s.trig.splice(k, 0, { ...t, held: true, hops: ops0, hex: ex0 }); s.rw = doom; E.log(s, doom.p, `${doom.ids.map((i) => E.name(s, E.locate(s, i).x)).join(", ")} กำลังจะ${doom.kill.length || doom.killCs.length ? "ถูกทำลาย" : "ออกจากสนาม"} (${nm})`); return; } }
-          if (ex0) E.log(s, p, `เอฟเฟกต์ ${nm}: ${ex0}`); s.cur = t.c; s.curI = t.i; s.curSeat = t.seat; if (t.now) s.lifeNow = t.now; try { E.ops(s, ops0, p); } finally { delete s.cur; delete s.curI; delete s.curSeat; delete s.lifeNow; } }
+          if (ex0) { E.log(s, p, `เอฟเฟกต์ ${nm}: ${ex0}`); E.ev(s, { k: "fx", c: t.c, p, t: String(ex0).replace(/^อ่านอัตโนมัติ: /, "").slice(0, 180) }); } s.cur = t.c; s.curI = t.i; s.curSeat = t.seat; if (t.now) s.lifeNow = t.now; try { E.ops(s, ops0, p); } finally { delete s.cur; delete s.curI; delete s.curSeat; delete s.lifeNow; } }
         if (t.toHell) { const L = E.locate(s, t.i); if (L && L.z === "mg" && L.x.on == null && !(scriptOf(s, L.x) || {}).stay) { s.P[L.p].mg.splice(L.idx, 1); s.P[L.x.o].hell.push(L.x); } } // บลัดดี้แมรี่ stays
         if (s.pend && !s.trig.length && s.pend.resolved) s.pend = null;
         if (s.pend && !s.trig.length && s.pend.go) { delete s.pend.go; E.startFight(s); }

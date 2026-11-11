@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111214413";
-import { E } from "./engine.js?v=20261111214413";
-import { h } from "./util.js?v=20261111214413";
-import { Sfx } from "./sfx.js?v=20261111214413";
+import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261111220607";
+import { E } from "./engine.js?v=20261111220607";
+import { h } from "./util.js?v=20261111220607";
+import { Sfx } from "./sfx.js?v=20261111220607";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -11,6 +11,10 @@ export const Arena = {
   get on() { return !!R; },
   mount, unmount, update, idle: () => (R ? R.queue : Promise.resolve()),
   refit: () => R && R.resize(true), // the HUD is drawn: fit an upright phone's table between its bars
+  // where a card on the table is on screen: its centre and its drawn width and height (for the buttons beside it)
+  screenOf: (i) => { const m = R && R.meshes.get(i); if (!m) return null; const P = m.grp.position, c = toScreen(P), sc = m.scale || 1;
+    const a = toScreen(P.clone().add(new THREE.Vector3(-CARD.w * sc / 2, 0, -CARD.h * sc / 2))), b = toScreen(P.clone().add(new THREE.Vector3(CARD.w * sc / 2, 0, CARD.h * sc / 2)));
+    return { x: c.x, y: c.y, w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y), top: Math.min(a.y, b.y) }; },
   // replays can run fast: every animation and pause in the arena speeds up together
   setSpeed: (k) => { const v = k * animSetting(); if (R) R.speed = v; gsap.globalTimeline.timeScale(v); },
   cheer: (p) => R && avatarDo(p, "hop"), // an emote makes the sender's figure hop
@@ -131,7 +135,7 @@ function mount(container, opts = {}) {
     const m = R.meshes.get(p); if (m && !m.busy) { gsap.to(m.grp.position, { y: m.restY + 0.32, duration: 0.2 }); gsap.to(m.grp.rotation, { x: 0.22, duration: 0.25, ease: "power2.out" }); sweep(m, 0.75, 0.6); }
     if (R.onHover) R.onHover(p != null && p !== "life" ? p : null);
   });
-  canvas.addEventListener("click", (e) => { const p = pick(e); if (p != null && R.onClick) R.onClick(p); });
+  canvas.addEventListener("click", (e) => { const p = pick(e); if (R.onClick) R.onClick(p); }); // null: the empty table (closes what is open)
   const clock = new THREE.Clock();
   const tick = () => {
     if (!R || !R.alive) return;
@@ -159,6 +163,7 @@ function mount(container, opts = {}) {
   gsap.from(R.matMat, { emissiveIntensity: 0, duration: reduce ? 0 : 1.8, ease: "power2.out" }); // the gold leaf catches the light once
 }
 function unmount() {
+  document.querySelectorAll(".fxcuts").forEach((x) => x.remove());
   if (!R) return; R.alive = false; removeEventListener("resize", R.onResize); if (R.onVis) document.removeEventListener("visibilitychange", R.onVis); gsap.globalTimeline.timeScale(1);
   for (const el of R.labels.values()) el.remove();
   R.renderer.dispose(); R.canvas.remove(); R = null;
@@ -544,6 +549,16 @@ export function colorFx(pos, co, big = 1) {
     for (let k = 0; k < 7; k++) puff(new THREE.Vector3(pos.x + (Math.random() - 0.5) * 1.6, 0.3, pos.z + (Math.random() - 0.5) * 1.6), { color: 0x3d1f66, size: 1.1 * big, opacity: 0.5, rise: 1.2 + Math.random(), dur: 1.4 });
   } else burst(p, { color: colorHex(co) });
 }
+// the effect strip: newest on top, three at most, each fades by itself (never takes a click)
+function fxCut(s, ev, mine) {
+  const d = s.cards[ev.c]; if (!d) return; const c = d.im != null ? card(d.im) : null;
+  let box = document.querySelector(".fxcuts"); if (!box) { box = h("div", { class: "fxcuts", "aria-live": "polite" }); document.body.append(box); }
+  const el = h("div", { class: "fxcut glass" + (mine ? " mine" : " opp") }, c ? artImg(c, "fxart") : h("div", { class: "fxart tok" }, "✦"),
+    h("div", { class: "fxtx" }, h("b", null, (mine ? "" : (s.P[ev.p] ? s.P[ev.p].name + " · " : "")) + d.n), h("span", null, ev.t || "")));
+  box.prepend(el); while (box.children.length > 3) box.lastChild.remove();
+  const k = Math.max(0.25, 1 / (R.speed || 1)); if (!reduce) gsap.fromTo(el, { opacity: 0, y: -8 }, { opacity: 1, y: 0, duration: 0.25 });
+  gsap.to(el, { opacity: 0, duration: 0.4, delay: 2.6 * k + Math.min(2, String(ev.t || "").length / 60) * k, onComplete: () => el.remove() });
+}
 export function banner(t, s) {
   let b = document.querySelector(".banner"); if (!b) { b = h("div", { class: "banner" }, h("div", { class: "band" }, h("b"), h("span"))); document.body.append(b); }
   b.querySelector("b").textContent = t; b.querySelector("span").textContent = s || ""; const band = b.querySelector(".band");
@@ -825,6 +840,8 @@ async function animateEvent(ev, prev, s, V) {
     pillar(mpos, mco ? colorHex(mco) : ev.st === "L" ? 0x8fb0ff : 0xc9a2ff); burst(new THREE.Vector3(0, 0.6, -0.2), { n: 16, map: R.FX.star_06, color: 0xbfd0ff, spread: 3 });
     if (ev.st === "L") decal(R.FX.magic_02, new THREE.Vector3(0, 0, -0.2), mco ? colorHex(mco) : 0x8fb0ff, 9, 1.8, 1.2); else if (mco) colorFx(mpos, mco, 0.8);
     if (d) popText(new THREE.Vector3(0, 1.4, -0.2), d.n, "#8fb0ff");
+  } else if (ev.k === "fx") { // a card's effect resolves: its picture, its name and what it did, for a moment over the table
+    fxCut(s, ev, mineSide(ev.p)); await sleepMs(350);
   } else if (ev.k === "turn") {
     mood(mineSide(ev.p)); avatarDo(ev.p, "hop"); Sfx.play("turn", { mine: mineSide(ev.p) }); banner(mineSide(ev.p) && !R.watch ? "YOUR TURN" : s.P[ev.p].name, `เทิร์น ${ev.t}`); await sleepMs(500);
   } else if (ev.k === "battle") {

@@ -304,7 +304,8 @@ body.arena-on main{padding:0;max-width:none}
   .handrow .hcard .gem{font-size:.66rem;right:4px;bottom:4px}
   .mbar{position:absolute;left:max(8px,env(safe-area-inset-left,0px));right:max(8px,env(safe-area-inset-right,0px));bottom:calc(8px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:8px;padding:7px 9px}
   .mbar .mturn{display:flex;flex-direction:column;line-height:1.15} .mbar .mturn b{font:700 .9rem var(--f-display)} .mbar .mturn span{font-size:.7rem;color:var(--gold)}
-  .mbar .cry{width:11px;height:16px} .mbar .crys{gap:3px} .mbar .btn.sm{padding:0 10px}
+  .mbar .cry{width:11px;height:16px} .mbar .crys{gap:3px} .mbar .btn.sm{padding:0 10px;flex:none;white-space:nowrap}
+  .mbar .mstat{display:flex;align-items:center;gap:8px;min-width:0} .mbar .mturn b{white-space:nowrap}
   body.arena-on .prompt{bottom:calc(200px + env(safe-area-inset-bottom,0px));max-height:38vh;overflow:auto;padding:12px}
 }
 /* deck pages: the card preview column stays on screen while scrolling */
@@ -316,7 +317,11 @@ body.arena-on main{padding:0;max-width:none}
 /* arena hover preview: big, readable, sized from the screen height */
 .inspector{display:none;position:absolute;left:max(14px,env(safe-area-inset-left,0px));top:50%;transform:translateY(-46%);width:auto;max-width:min(640px,48vw);max-height:calc(100vh - 150px);padding:12px;gap:14px;overflow:hidden;grid-template-columns:auto minmax(220px,310px);align-items:start;pointer-events:none;z-index:9}
 .inspector.show{display:grid}
-.inspector.pinned{pointer-events:auto}
+.inspector.pinned{pointer-events:none} /* the preview never takes a click: the table under it stays usable */
+.inspector.right{left:auto;right:calc(262px + 40px)}
+.inspector .cvnote.canuse{border-color:rgba(142,227,178,.55);color:#bff2d3}
+.cardacts{position:absolute;z-index:12;display:flex;flex-wrap:wrap;justify-content:center;gap:6px;max-width:min(440px,60vw);padding:8px;transform:translate(-50%,-100%);pointer-events:auto}
+.cardacts .btn{white-space:normal;text-align:left;height:auto;min-height:34px}
 .inspector>.cimg,.inspector>.tok{height:min(54vh,400px);width:auto;max-width:none;aspect-ratio:388/528;border-radius:12px;display:block;object-fit:cover}
 .inspector>.tok{display:grid;place-items:center;background:var(--panel-2);font:700 1.2rem var(--f-display)}
 .inspector .txt{display:flex;flex-direction:column;gap:8px;min-width:0;max-height:min(54vh,400px);overflow-y:auto;overflow-x:hidden}
@@ -535,3 +540,21 @@ table.t th{white-space:nowrap}
 .quests .qrow .grow{min-width:0}
 .quests .qrow.done{border-color:rgba(216,168,74,.55);background:rgba(216,168,74,.09)}
 .quests .qmark{color:var(--gold);font-size:1.1rem;line-height:1}
+
+/* the effect strip: a card's effect as it resolves (its picture, name and what it did), over the top of the table */
+.fxcuts{position:fixed;left:50%;top:calc(132px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:40;display:flex;flex-direction:column;gap:6px;width:min(520px,calc(100vw - 32px));pointer-events:none}
+.fxcut{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:center;padding:7px 12px 7px 7px;border-left:3px solid var(--gold);border-radius:12px}
+.fxcut.opp{border-left-color:#ff5a62}
+.fxcut .fxart{width:46px;aspect-ratio:388/528;height:auto;border-radius:5px;object-fit:cover;display:block}
+.fxcut .fxart.tok{display:grid;place-items:center;background:var(--panel-2);font-size:1rem}
+.fxcut .fxtx{display:flex;flex-direction:column;gap:2px;min-width:0}
+.fxcut .fxtx b{font:700 .86rem var(--f-display);line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fxcut .fxtx span{font-size:.8rem;line-height:1.4;color:var(--fg);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+@media (max-width:760px){.fxcuts{top:calc(64px + env(safe-area-inset-top,0px))}.fxcut .fxart{width:38px}.fxcut .fxtx span{-webkit-line-clamp:2}}
+
+/* narrow phones: the turn line and our LIFE stack, so both buttons keep their whole label */
+@media (max-width:380px){
+  .mbar{gap:6px;padding:6px 8px} .mbar .mstat{flex-direction:column;align-items:flex-start;gap:3px}
+  .mbar .mturn{flex-direction:row;gap:5px;align-items:baseline} .mbar .mturn b{font-size:.82rem} .mbar .mturn span{font-size:.68rem}
+  .mbar .cry{width:9px;height:13px} .mbar .crys{gap:2px} .mbar .btn.sm{padding:0 9px;font-size:.84rem}
+}
