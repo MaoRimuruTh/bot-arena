@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111084555";
-import { E } from "./engine.js?v=20261111084555";
-import { h } from "./util.js?v=20261111084555";
-import { Sfx } from "./sfx.js?v=20261111084555";
+import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111091418";
+import { E } from "./engine.js?v=20261111091418";
+import { h } from "./util.js?v=20261111091418";
+import { Sfx } from "./sfx.js?v=20261111091418";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -630,6 +630,12 @@ async function animateEvent(ev, prev, s, V) {
     Sfx.play("battle"); banner("BATTLE PHASE", ""); gsap.fromTo(R.div.material, { opacity: 0.9 }, { opacity: 0, duration: 1.4, ease: "power2.out" });
   } else if (ev.k === "over") {
     Sfx.play(ev.w === V ? "win" : "lose"); banner(ev.w === V ? "VICTORY" : "DEFEAT", ""); flash(ev.w === V ? "rgba(255,210,120,.5)" : "rgba(80,0,10,.6)", 0.6);
+    if (!reduce) for (let k = 0; k < (ev.w === V ? 90 : 40); k++) gsap.delayedCall(Math.random() * 1.6, () => { // gold leaf rains for a win, ash and embers drift down for a loss
+      if (!R) return; const win = ev.w === V, p0 = new THREE.Vector3((Math.random() - 0.5) * 15, 6 + Math.random() * 2, (Math.random() - 0.5) * 10 - 0.5);
+      const sp = sprite(win && Math.random() < 0.4 ? R.FX.star_06 : R.FX.dot, win ? [0xffd27a, 0xffe9b0, 0xd8a84a, 0xff9a4a][k % 4] : k % 3 ? 0x3a2622 : 0xff5a3a, win ? 0.28 + Math.random() * 0.2 : 0.2 + Math.random() * 0.25, p0, 0.95);
+      const d = 2.2 + Math.random() * 1.6; gsap.to(sp.position, { y: 0.1, x: p0.x + (Math.random() - 0.5) * 2, z: p0.z + (Math.random() - 0.5) * 1.5, duration: d, ease: "sine.in" }); gsap.to(sp.material, { rotation: (Math.random() - 0.5) * 8, duration: d });
+      gsap.to(sp.material, { opacity: 0, duration: 0.6, delay: d - 0.6, onComplete: () => { R && R.scene.remove(sp); sp.material.dispose(); } });
+    });
   }
 }
 const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -641,8 +647,8 @@ function update(s, V, opts = {}) {
     const evs = (s.ev || []).filter((e) => e.id > R.lastEv); R.lastEv = s.evc || R.lastEv;
     const drops = new Set(evs.filter((e) => e.k === "summon").map((e) => e.i)), burned = new Set(evs.filter((e) => e.k === "destroy").map((e) => e.i));
     for (const e of evs) if (e.k !== "summon") { try { await animateEvent(e, null, s, V); } catch (err) { console.warn(err); } }
-    sync(s, V, drops, burned, !!opts.reset);
+    try { sync(s, V, drops, burned, !!opts.reset); } catch (err) { console.warn(err); } // a drawing problem must never stall the queue the bot waits on
     if (drops.size) await sleepMs(reduce ? 200 : 1150); else if (burned.size) await sleepMs(reduce ? 100 : 600);
-  });
+  }).catch((err) => console.warn(err));
   return R.queue;
 }
