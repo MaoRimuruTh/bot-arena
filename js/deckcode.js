@@ -1,6 +1,6 @@
 // Sharing decks as a short code or a plain list, and reading either back.
 // Cards are named by print code (e.g. SD01-001), which stays the same when the card data is updated.
-import { CARDS, card, baseId, isBase, deckEntries, TYPE_TH } from "./cards.js?v=20261111201540";
+import { CARDS, card, baseId, isBase, deckEntries, TYPE_TH } from "./cards.js?v=20261111211257";
 
 const CODE_HEAD = "BoT1";
 const printOf = (id) => { const c = card(baseId(id)); return c ? c.p : null; };
@@ -34,6 +34,11 @@ function byPrint(p) {
   const P = String(p).toUpperCase(); const all = CARDS.filter((c) => c.p === P); if (!all.length) return null;
   return all.find(isBase) || card(baseId(all[0].i));
 }
+// a print code as people write it: maybe with the rarity after it, the way other sites list cards ("BT01-040-C",
+// "BT01-038-SR"), or with a part that belongs to the code itself ("PRMO-153-A"); the whole thing is tried as a code
+// first, then the code without that last part
+const PRINT_RE = /\b([A-Z][A-Z0-9]{2,4}-[0-9A-Z]{2,4})(?:-([0-9A-Z]{1,4}))?\b/i;
+export function printCard(code) { const m = String(code || "").trim().match(PRINT_RE); return m ? (m[2] && byPrint(m[1] + "-" + m[2])) || byPrint(m[1]) : null; }
 // versions of a name that play differently (same name, different text); alternate arts of one card count once
 function versionsOf(name) {
   const vs = (CARDS.byName.get(name) || nameIndex().get(norm(name)) || []).filter(isBase); const seen = new Map();
@@ -63,9 +68,9 @@ export function parseDeck(text) {
     let n = 1, rest = raw; let m;
     if ((m = rest.match(/^(\d+)\s*[x×*]?\s+(.+)$/i))) { n = +m[1]; rest = m[2]; }
     else if ((m = rest.match(/^(.+?)\s*[x×*]\s*(\d+)$/i))) { n = +m[2]; rest = m[1]; }
-    const pm = rest.match(/\b([A-Z][A-Z0-9]{2,4}-[0-9A-Z]{2,3}(?:-[0-9A-Z])?)\b/i);
-    let c = pm ? byPrint(pm[1]) : null;
-    const name = rest.replace(/\[[^\]]*\]|\([^)]*\)/g, "").replace(pm ? pm[1] : "\u0000", "").trim();
+    const pm = rest.match(PRINT_RE);
+    let c = pm ? printCard(pm[0]) : null;
+    const name = rest.replace(/\[[^\]]*\]|\([^)]*\)/g, "").replace(pm ? pm[0] : "\u0000", "").trim();
     if (!c && name) { const vs = versionsOf(name); if (vs.length === 1) c = vs[0]; else if (vs.length > 1) { amb.push({ name, n, vers: vs }); continue; } }
     if (c) items.push({ c, n: Math.max(1, Math.min(n, 50)) }); else miss.push(raw);
   }

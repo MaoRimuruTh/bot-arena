@@ -1,17 +1,17 @@
-import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261111201540";
-import { plain, isOwnerNow } from "../persona.js?v=20261111201540";
-import { fxText } from "../fxtext.js?v=20261111201540";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261111201540";
-import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261111201540";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261111201540";
-import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261111201540";
-import { filterBar, filterCards } from "./library.js?v=20261111201540";
-import { openingOdds, simGame } from "./lab.js?v=20261111201540";
-import { freeBuild } from "../builder.js?v=20261111201540";
-import { deckCode, deckText, parseDeck } from "../deckcode.js?v=20261111201540";
-import { CIEL_DECKS } from "../cieldecks.js?v=20261111201540";
-import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261111201540";
-import { deckLocked, deckLockAch } from "../achieve.js?v=20261111201540";
+import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261111211257";
+import { plain, isOwnerNow } from "../persona.js?v=20261111211257";
+import { fxText } from "../fxtext.js?v=20261111211257";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261111211257";
+import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261111211257";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261111211257";
+import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261111211257";
+import { filterBar, filterCards } from "./library.js?v=20261111211257";
+import { openingOdds, simGame } from "./lab.js?v=20261111211257";
+import { freeBuild } from "../builder.js?v=20261111211257";
+import { deckCode, deckText, parseDeck, printCard } from "../deckcode.js?v=20261111211257";
+import { CIEL_DECKS } from "../cieldecks.js?v=20261111211257";
+import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261111211257";
+import { deckLocked, deckLockAch } from "../achieve.js?v=20261111211257";
 
 // Ciel's theme decks: print codes → card ids (resolved once the card data is loaded). They are Ciel's decks for Rimuru,
 // so only the owner's account sees them: other accounts get none (not in the deck list, the duel setup, the lab or the bot's picks)
@@ -408,10 +408,12 @@ export function openShare(d) {
 // read a deck code or a pasted list (from a chat, another site or BoT Arena itself) into a deck
 function openTextImport(target, done) {
   openSheet((api) => {
-    const ta = h("textarea", { rows: 9, class: "sharebox", "aria-label": "โค้ดหรือรายการเด็ค", placeholder: "วางโค้ดเด็ค (BoT1|…) หรือรายการ เช่น\n3 พระอิศวร\n2x เทวดาแบงค์\nSD01-004" });
+    const ta = h("textarea", { rows: 9, class: "sharebox", "aria-label": "โค้ดหรือรายการเด็ค", placeholder: "วางโค้ดเด็ค (BoT1|…) หรือรายการ เช่น\n3 พระอิศวร\n2x เทวดาแบงค์\nSD01-004\n2x BT01-038-SR (รายการจาก bottcg.com)" });
     const out = h("div", { class: "stack small" });
     const read = () => {
       const r = parseDeck(ta.value);
+      // a link to a deck on another site: that site does not let other sites read its decks, so only its list can be pasted
+      if (!r.items.length && !r.amb.length && /https?:\/\/\S+/.test(ta.value)) return out.replaceChildren(h("div", { class: "muted" }, "ลิงก์เด็คจากเว็บอื่นเปิดอ่านจากที่นี่ไม่ได้ เพราะเว็บนั้นไม่ให้เว็บอื่นดึงข้อมูลเด็ค ให้เปิดลิงก์นั้นเอง คัดลอกรายการการ์ด (เช่นที่ปุ่ม \"ดูรหัสเด็ค\" ของ bottcg.com ซึ่งเป็นบรรทัดแบบ 2x BT01-038-SR) แล้วนำมาวางที่นี่แทน"));
       if (!r.items.length && !r.amb.length) return out.replaceChildren(h("div", { class: "muted" }, ta.value.trim() ? "อ่านไม่ออกสักบรรทัด ลองตรวจชื่อการ์ดหรือรหัสอีกครั้ง" : "วางโค้ดหรือรายการก่อน"));
       const d = target(); const nm = ta.value.match(/^#\s*(.+)$/m); if (nm && !d.id && !deckCount(d)) d.name = nm[1].trim().slice(0, 60);
       for (const { c, n } of r.items) for (let k = 0; k < n; k++) addToDeck(d, baseId(c.i), 1);
@@ -434,7 +436,7 @@ function openImport(d, done) {
         try {
           const r = await cielReadImport(inp.files); const miss = [], amb = []; let added = 0;
           for (const it of (r && r.cards) || []) {
-            const n = Math.max(1, it.n | 0); let c = it.print && CARDS.find((x) => x.p === it.print);
+            const n = Math.max(1, it.n | 0); let c = it.print && printCard(it.print);
             if (!c) { const vers = (CARDS.byName.get(it.name) || []).filter(isBase); if (vers.length > 1) { amb.push({ name: it.name, n, vers }); continue; } c = vers[0]; }
             if (!c) { miss.push(it.name); continue; } for (let k = 0; k < n; k++) addToDeck(d, baseId(c.i), 1); added++;
           }
