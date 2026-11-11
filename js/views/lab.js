@@ -1,9 +1,9 @@
-import { h, busy, lsGet, lsSet } from "../util.js?v=20261111112725";
-import { card, deckEntries, deckToList, validateDeck, TYPE_TH } from "../cards.js?v=20261111112725";
-import { E } from "../engine.js?v=20261111112725";
-import { H } from "../ai.js?v=20261111112725";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261111112725";
-import { allDecks } from "./decks.js?v=20261111112725";
+import { h, busy, lsGet, lsSet } from "../util.js?v=20261111123125";
+import { card, deckEntries, deckToList, validateDeck, TYPE_TH } from "../cards.js?v=20261111123125";
+import { E } from "../engine.js?v=20261111123125";
+import { H } from "../ai.js?v=20261111123125";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261111123125";
+import { allDecks } from "./decks.js?v=20261111123125";
 
 // exact hypergeometric: P(at least one of k copies within m cards from a deck of N)
 function atLeastOne(N, k, m) { if (k <= 0) return 0; if (m >= N) return 1; let p = 1; for (let i = 0; i < m; i++) p *= (N - k - i) / (N - i); return 1 - Math.max(0, p); }
@@ -15,24 +15,26 @@ export function openingOdds(d, ids) {
 }
 
 // a bot-vs-bot game (deck A is seat 0) with every card effect working; also notes which of A's cards got played
-export function simGame(dA, dB, seed) {
+// dummy: side B is a training dummy (หุ่นซ้อม) that keeps its hand, never plays a card and never answers, and A always starts,
+// so the games show how fast deck A can win on its own
+export function simGame(dA, dB, seed, dummy) {
   const decks = [{ ...deckToList(dA), name: dA.name, id: dA.id }, { ...deckToList(dB), name: dB.name, id: dB.id }];
-  const s = E.newGame({ players: [{ name: "A", bot: true }, { name: "B", bot: true }], decks, seed, first: seed & 1, mode: "sim" });
+  const s = E.newGame({ players: [{ name: "A", bot: true }, { name: "B", bot: true }], decks, seed, first: dummy ? 0 : seed & 1, mode: "sim" });
   const played = new Set(); let seen = s.evc || 0;
   const act = (a, p) => {
     E.apply(s, a, p);
     for (const e of s.ev || []) if (e.id > seen) { seen = e.id; if ((e.k === "summon" || e.k === "cast") && e.p === 0) { const L = E.locate(s, e.i); if (L) played.add(E.def(s, L.x).n); } }
     for (const x of s.P[0].cs) played.add(E.def(s, x).n); // Constructs are built without an event
   };
-  for (const p of [0, 1]) act({ type: "mull", iids: H.mulligan(s, p) }, p);
+  for (const p of [0, 1]) act({ type: "mull", iids: dummy && p === 1 ? [] : H.mulligan(s, p) }, p);
   for (let step = 0; step < 4000 && s.phase !== "over"; step++) {
     try {
-      if (s.rw) { const q = 1 - s.rw.by; act(H.react(s, q) || { type: "pass" }, q); continue; }
+      if (s.rw) { const q = 1 - s.rw.by; act((dummy && q === 1 ? null : H.react(s, q)) || { type: "pass" }, q); continue; }
       if (s.trig.length) { const t = s.trig[0]; act(H.trig(s, t), t.seat); continue; }
-      if (s.pend) { const p = 1 - s.pend.by; const r = H.react(s, p); if (r) { act(r, p); continue; } const m = H.pick(s, p); act(m ? m.a : { type: "respond" }, p); continue; }
+      if (s.pend) { const p = 1 - s.pend.by; if (dummy && p === 1) { act({ type: "respond" }, p); continue; } const r = H.react(s, p); if (r) { act(r, p); continue; } const m = H.pick(s, p); act(m ? m.a : { type: "respond" }, p); continue; }
       const p = s.active;
       if (s.phase === "end" && s.need) { act({ type: "discard", iids: H.discard(s, p) }, p); continue; }
-      const m = H.pick(s, p); act(m ? m.a : { type: "end" }, p);
+      const m = dummy && p === 1 ? null : H.pick(s, p); act(m ? m.a : { type: "end" }, p);
     } catch (e) { const p = s.active; try { act({ type: "end" }, p); } catch { E.lose(s, p, "ติดสถานะ"); } }
     if (s.turn > 80) { s.phase = "over"; s.winner = null; s.reason = "ยาวเกิน 80 เทิร์น"; }
   }
@@ -76,7 +78,7 @@ Views.lab = {
     const decks = allDecks().filter((d) => validateDeck(d).ok);
     if (!decks.length) { root.replaceChildren(h("div", { class: "pagehead" }, h("h1", null, "ห้องทดลอง")), h("div", { class: "empty" }, "ต้องมีเด็คที่ถูกกติกาอย่างน้อย 1 เด็ค")); return; }
     if (!decks.some((d) => d.id === LabState.a)) LabState.a = decks[0].id;
-    if (LabState.b !== "*" && !decks.some((d) => d.id === LabState.b)) LabState.b = (decks[1] || decks[0]).id;
+    if (LabState.b !== "*" && LabState.b !== "~" && !decks.some((d) => d.id === LabState.b)) LabState.b = (decks[1] || decks[0]).id;
     const sel = (key, extra = []) => h("select", { "aria-label": key === "a" ? "เด็คที่ทดสอบ" : "เด็คคู่แข่ง", onchange: (e) => { LabState[key] = e.target.value; lsSet("bot.lab", LabState); draw(); } },
       [...extra.map(([v, t]) => h("option", { value: v, selected: v === LabState[key] }, t)), ...decks.map((d) => h("option", { value: d.id, selected: d.id === LabState[key] }, d.name + (d.starter ? " (ทางการ)" : "")))]);
     const oddsBox = h("div", { class: "panel stack" }); const handBox = h("div", { class: "panel stack" }); const simBox = h("div", { class: "panel stack" });
@@ -97,14 +99,14 @@ Views.lab = {
     };
     const official = decks.filter((d) => d.starter || d.ciel); // the official Starter Decks and Ciel's sample decks
     simBox.append(h("div", { class: "eyebrow" }, "จำลองบอทชนบอท"), h("div", { class: "small muted" }, "บอทเล่นตามกติกา Rule Book 3.2 และเอฟเฟกต์การ์ดทุกใบทำงานอัตโนมัติ ผลที่ได้ใช้ดูแนวโน้มของเด็ค บอทยังเล่นไม่เก่งเท่าคน"),
-      h("div", { class: "row" }, h("span", { class: "small" }, "ชน"), sel("b", official.length > 1 ? [["*", `ทุกเด็คตัวอย่าง (${official.length} เด็ค)`]] : []),
+      h("div", { class: "row" }, h("span", { class: "small" }, "ชน"), sel("b", [...(official.length > 1 ? [["*", `ทุกเด็คตัวอย่าง (${official.length} เด็ค)`]] : []), ["~", "หุ่นซ้อม (ไม่เล่นอะไรเลย)"]]),
         h("select", { "aria-label": "จำนวนเกม", onchange: (e) => { LabState.n = +e.target.value; lsSet("bot.lab", LabState); } }, [50, 100, 300].map((n) => h("option", { value: n, selected: n === LabState.n }, n + " เกม"))),
         h("button", { class: "btn gold", onclick: async (e) => {
           const btn = e.currentTarget; btn.disabled = true; const out = simBox.querySelector(".simout");
-          const A = decks.find((x) => x.id === LabState.a), opps = LabState.b === "*" ? official : [decks.find((x) => x.id === LabState.b)];
+          const dummy = LabState.b === "~", A = decks.find((x) => x.id === LabState.a), opps = dummy ? [{ ...A, name: "หุ่นซ้อม" }] : LabState.b === "*" ? official : [decks.find((x) => x.id === LabState.b)];
           const per = Math.max(10, Math.round(LabState.n / opps.length)), total = per * opps.length, res = [];
           for (const B of opps) for (let j = 0; j < per; j++) {
-            const r = simGame(A, B, (Date.now() + res.length * 7919) | 0); r.opp = B.name; res.push(r);
+            const r = simGame(A, B, (Date.now() + res.length * 7919) | 0, dummy); r.opp = B.name; res.push(r);
             if (res.length % 4 === 0) { out.replaceChildren(busy(`จำลองแล้ว ${res.length}/${total}`)); await new Promise((ok) => setTimeout(ok, 0)); }
           }
           showSim(out, A, opps, res); btn.disabled = false;

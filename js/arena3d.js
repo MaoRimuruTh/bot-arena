@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111112725";
-import { E } from "./engine.js?v=20261111112725";
-import { h } from "./util.js?v=20261111112725";
-import { Sfx } from "./sfx.js?v=20261111112725";
+import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111123125";
+import { E } from "./engine.js?v=20261111123125";
+import { h } from "./util.js?v=20261111123125";
+import { Sfx } from "./sfx.js?v=20261111123125";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -11,17 +11,24 @@ export const Arena = {
   get on() { return !!R; },
   mount, unmount, update, idle: () => (R ? R.queue : Promise.resolve()),
   // replays can run fast: every animation and pause in the arena speeds up together
-  setSpeed: (k) => { if (R) R.speed = k; gsap.globalTimeline.timeScale(k); }, setHover: (fn) => R && (R.onHover = fn), setClick: (fn) => R && (R.onClick = fn),
+  setSpeed: (k) => { const v = k * animSetting(); if (R) R.speed = v; gsap.globalTimeline.timeScale(v); },
+  cheer: (p) => R && avatarDo(p, "hop"), // an emote makes the sender's figure hop
+  setHover: (fn) => R && (R.onHover = fn), setClick: (fn) => R && (R.onClick = fn),
   highlight, setLifeTarget, banner, flash, shake, popText, mood,
 };
 
-function mount(container) {
+// how much the 3D table draws, from Settings: "high" everywhere, "low" for weak phones, "auto" by screen size
+export const gfxSetting = () => { try { return localStorage.getItem("bot.gfx") || "auto"; } catch { return "auto"; } };
+export const animSetting = () => { try { return +(localStorage.getItem("bot.anim") || 1) || 1; } catch { return 1; } };
+const gfxLevel = () => { const g = gfxSetting(); return g === "low" ? "low" : g === "high" ? "high" : innerWidth < 760 ? "mid" : "high"; };
+function mount(container, opts = {}) {
   unmount();
+  const Q = gfxLevel(); // high: bloom, shadows, reflections everywhere · mid: none of those, only the brass reflects · low: no reflections, fewer motes, lower resolution
   const canvas = h("canvas", { "aria-label": "สนามดวล 3 มิติ" }); container.prepend(canvas);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, innerWidth < 760 ? 1.5 : 1.75));
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, Q === "low" ? 1 : Q === "mid" ? 1.5 : 1.75));
   renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.92;
-  renderer.shadowMap.enabled = innerWidth >= 760; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.enabled = Q === "high"; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0x0b0605, 0.026);
   const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 200);
   const loader = new THREE.TextureLoader(); loader.setCrossOrigin("anonymous");
@@ -37,7 +44,7 @@ function mount(container) {
   R.redL = new THREE.PointLight(0xff4a3a, 0.55, 16, 2); R.redL.position.set(0, 4.2, -4.4); scene.add(R.redL);
 
   // the play mat: black lacquer with gold-leaf line-work (ลายรดน้ำ), stepped corners (ย่อมุม) round every zone
-  const small = innerWidth < 760; R.small = small; const mt = matTextures(small);
+  const small = innerWidth < 760; R.small = small; R.Q = Q; const mt = matTextures(small || Q === "low", MATS[opts.mat] || MATS.black);
   R.matMat = new THREE.MeshStandardMaterial({ map: mt.base, emissiveMap: mt.glow, emissive: new THREE.Color(0xe0982c), emissiveIntensity: 0.2, roughness: 0.62, roughnessMap: mt.rough, metalness: 0 }); R.matGlow = mt.glow;
   const top = new THREE.Mesh(new THREE.PlaneGeometry(MW, MD), R.matMat); top.rotation.x = -Math.PI / 2; top.position.set(0, 0, MZ); top.receiveShadow = true; scene.add(top);
   const lacq = new THREE.MeshStandardMaterial({ color: 0x5a1812, roughness: 0.34, metalness: 0, envMapIntensity: 0.3 }); R.lacq = lacq;
@@ -47,7 +54,7 @@ function mount(container) {
   const shade = new THREE.Mesh(new THREE.PlaneGeometry(MW * 1.9, MD * 1.9), new THREE.MeshBasicMaterial({ map: softShadow(), transparent: true, depthWrite: false })); shade.rotation.x = -Math.PI / 2; shade.position.set(0, -0.31, MZ); scene.add(shade);
   // the centre band lights up when the Battle Phase starts
   const div = new THREE.Mesh(new THREE.PlaneGeometry(MW - 3.4, 0.62), new THREE.MeshBasicMaterial({ map: R.FX.light_02, color: 0xffc35a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })); div.rotation.x = -Math.PI / 2; div.position.set(1.2, 0.02, MZ); scene.add(div); R.div = div;
-  R.motes = points(small ? 34 : 80, 0xffd27a, 0.1, FX.star_06, 9);
+  R.motes = points(Q === "low" ? 12 : small ? 34 : 80, 0xffd27a, 0.1, FX.star_06, 9);
   R.lifeT = new THREE.Mesh(new THREE.OctahedronGeometry(0.55), new THREE.MeshStandardMaterial({ color: 0xff7a80, emissive: 0xff2a3a, emissiveIntensity: 1.6, roughness: 0.15 })); R.lifeT.position.set(0, 1, -4.7); R.lifeT.visible = false; scene.add(R.lifeT);
   R.lifeHalo = sprite(FX.light_02, 0xff4a52, 3.2, R.lifeT.position, 0.5); R.lifeHalo.visible = false;
   FX.dot = dotTexture(); R.beamTex = beamTexture(); R.backTex = backTexture(); R.rimTex = haloTexture(18, 5); R.shadowTex = haloTexture(24, 0); R.sigilTex = sigilTexture();
@@ -77,10 +84,10 @@ function mount(container) {
     g.scene.name = "props"; scene.add(g.scene); for (const c of R.candles) c.onStand(); envProps();
   }, undefined, () => {});
   // on phones only the small brass pieces reflect the hall: the mat covers most of the screen and stays cheap to draw
-  const envProps = () => { const g = scene.getObjectByName("props"); if (!small || !g || !R.env) return; g.traverse((o) => { if (o.isMesh && /brass|water/.test(o.material.name)) { o.material.envMap = R.env; o.material.needsUpdate = true; } }); };
-  if (THREE.RGBELoader) new THREE.RGBELoader().setDataType(THREE.UnsignedByteType).load(envUrl("hall.hdr"), (t) => {
+  const envProps = () => { const g = scene.getObjectByName("props"); if (Q === "high" || !g || !R.env) return; g.traverse((o) => { if (o.isMesh && /brass|water/.test(o.material.name)) { o.material.envMap = R.env; o.material.needsUpdate = true; } }); };
+  if (THREE.RGBELoader && Q !== "low") new THREE.RGBELoader().setDataType(THREE.UnsignedByteType).load(envUrl("hall.hdr"), (t) => {
     if (!R) return; const pm = new THREE.PMREMGenerator(renderer); R.env = pm.fromEquirectangular(t).texture; t.dispose(); pm.dispose();
-    if (small) { if (R.avatars) for (const a of R.avatars) if (a && a.model) a.model.traverse((o) => { if (o.isMesh && o.material.metalness > 0.5) { o.material.envMap = R.env; o.material.needsUpdate = true; } }); return envProps(); }
+    if (Q !== "high") { if (R.avatars) for (const a of R.avatars) if (a && a.model) a.model.traverse((o) => { if (o.isMesh && o.material.metalness > 0.5) { o.material.envMap = R.env; o.material.needsUpdate = true; } }); return envProps(); }
     scene.environment = R.env;
     // with something to reflect, the gold leaf on the mat becomes real metal (without it, metal would look dark)
     Object.assign(R.matMat, { metalness: 0.7, metalnessMap: R.matGlow, envMapIntensity: 2.4 });
@@ -89,7 +96,7 @@ function mount(container) {
     R.matMat.needsUpdate = true;
   }, undefined, () => {});
 
-  if (THREE.EffectComposer && innerWidth >= 760) {
+  if (THREE.EffectComposer && Q === "high") {
     R.composer = new THREE.EffectComposer(renderer); R.composer.addPass(new THREE.RenderPass(scene, camera));
     R.composer.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.4, 0.9));
   }
@@ -137,6 +144,7 @@ function mount(container) {
     requestAnimationFrame(tick);
   };
   tick();
+  R.speed = animSetting(); gsap.globalTimeline.timeScale(R.speed); // "fast animations" in Settings speed up every move and pause on the table
   gsap.from(R.camBase, { y: 22, z: 18, duration: reduce ? 0 : 2, ease: "power3.out" });
   gsap.from(R.matMat, { emissiveIntensity: 0, duration: reduce ? 0 : 1.8, ease: "power2.out" }); // the gold leaf catches the light once
 }
@@ -148,8 +156,10 @@ function unmount() {
 
 // ---------- 3D avatars: a small figure for each player who has chosen one, at the left end of the centre band ----------
 // Original designs made in Blender (tools/avatars). A model with idle / hit / win / lose clips plays them; one without gets the same moves from code.
-export const AVATARS = { chang: { name: "ช้างน้อย", file: "chang.glb", h: 1.25 } };
-export const my3D = () => { try { const k = localStorage.getItem("bot.av3"); return k && AVATARS[k] ? k : ""; } catch { return ""; } };
+export const AVATARS = { chang: { name: "ช้างน้อย", file: "chang.glb", h: 1.25 }, naga: { name: "ลูกพญานาค", file: "naga.glb", h: 1.3 }, maew: { name: "แมววิเชียรมาศ", file: "maew.glb", h: 1.2 } };
+// lacquer colours for the mat (the gold line-work stays); the edge colour washes in on the opponent's side
+export const MATS = { black: { name: "รักดำ", lac: "#120b09", edge: "rgba(150,34,24," }, red: { name: "รักแดง", lac: "#3a0d09", edge: "rgba(190,60,30," },
+  navy: { name: "กรมท่า", lac: "#0b1324", edge: "rgba(60,90,170," }, jade: { name: "เขียวหยก", lac: "#0a1c15", edge: "rgba(40,140,100," }, violet: { name: "ม่วงไพลิน", lac: "#190e22", edge: "rgba(130,70,170," } };
 const avCache = new Map();
 const loadAvatar = (key) => {
   const a = AVATARS[key]; if (!a || !THREE.GLTFLoader) return Promise.resolve(null);
@@ -173,7 +183,7 @@ function syncAvatars(s, V) {
 function placeAvatar(a, mine) { const sp = avSpot(mine); a.mine = mine; a.grp.position.set(sp.x, 0, sp.z); a.grp.rotation.y = sp.ry; }
 function buildAvatar(slot, g, mine) {
   const model = THREE.SkeletonUtils ? THREE.SkeletonUtils.clone(g.scene) : g.scene.clone(true);
-  model.traverse((o) => { if (!o.isMesh) return; o.material = o.material.clone(); o.castShadow = true; if (R.env && innerWidth < 760 && o.material.metalness > 0.5) o.material.envMap = R.env; });
+  model.traverse((o) => { if (!o.isMesh) return; o.material = o.material.clone(); o.castShadow = true; if (R.env && R.Q !== "high" && o.material.metalness > 0.5) o.material.envMap = R.env; });
   const box = new THREE.Box3().setFromObject(model), size = box.getSize(new THREE.Vector3()), k = ((AVATARS[slot.key].h || 1.25) * (R.small ? 0.82 : 1)) / Math.max(0.01, size.y);
   model.scale.setScalar(k); model.position.set((-(box.min.x + box.max.x) / 2) * k, -box.min.y * k, (-(box.min.z + box.max.z) / 2) * k);
   // layers: grp places it, bob breathes for a model without an idle clip, spin takes the moves made in code, the model plays its own clips
@@ -238,16 +248,16 @@ function prajamyam(g, cx, cy, r, ground) {
   for (let k = 0; k < 4; k++) { const a = (k * Math.PI) / 2 + Math.PI / 4; g.beginPath(); g.arc(cx + Math.cos(a) * r * 0.62, cy + Math.sin(a) * r * 0.62, r * 0.09, 0, 7); g.fill(); }
   if (ground) { const f = g.fillStyle; g.fillStyle = ground; g.beginPath(); g.moveTo(cx, cy - r * 0.2); g.lineTo(cx + r * 0.2, cy); g.lineTo(cx, cy + r * 0.2); g.lineTo(cx - r * 0.2, cy); g.closePath(); g.fill(); g.fillStyle = f; }
 }
-function matTextures(small) {
+function matTextures(small, theme = MATS.black) {
   const S = small ? 84 : 128; const CW = Math.round(MW * S), CH = Math.round(MD * S);
   const mk = () => { const c = document.createElement("canvas"); c.width = CW; c.height = CH; return c; };
   const base = mk(), glow = mk(), rough = mk(); const g = base.getContext("2d"), q = glow.getContext("2d"), rq = rough.getContext("2d");
   const X = (x) => (x + MW / 2) * S, Y = (z) => (z - MZ + MD / 2) * S, U = (v) => v * S;
-  const LAC = "#120b09";
+  const LAC = theme.lac;
   // lacquer: a warm black with a soft pool of light, flecks of gold leaf, red lacquer creeping in on the opponent's side
   g.fillStyle = LAC; g.fillRect(0, 0, CW, CH); q.fillStyle = "#000"; q.fillRect(0, 0, CW, CH); rq.fillStyle = "#c0c0c0"; rq.fillRect(0, 0, CW, CH); // roughness: lacquer satin, so the hall reflects in it only as a soft glow; gold leaf a little glossier
   let gr = g.createRadialGradient(CW / 2, CH * 0.55, CW * 0.05, CW / 2, CH * 0.55, CW * 0.62); gr.addColorStop(0, "rgba(64,38,28,.55)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, 0, CW, CH);
-  gr = g.createLinearGradient(0, 0, 0, CH * 0.42); gr.addColorStop(0, "rgba(150,34,24,.30)"); gr.addColorStop(1, "rgba(150,34,24,0)"); g.fillStyle = gr; g.fillRect(0, 0, CW, CH * 0.42);
+  gr = g.createLinearGradient(0, 0, 0, CH * 0.42); gr.addColorStop(0, theme.edge + ".30)"); gr.addColorStop(1, theme.edge + "0)"); g.fillStyle = gr; g.fillRect(0, 0, CW, CH * 0.42);
   gr = g.createLinearGradient(0, CH, 0, CH * 0.6); gr.addColorStop(0, "rgba(216,168,74,.10)"); gr.addColorStop(1, "rgba(216,168,74,0)"); g.fillStyle = gr; g.fillRect(0, CH * 0.6, CW, CH * 0.4);
   for (let k = 0; k < CW * CH / 900; k++) { const v = Math.random(); g.fillStyle = v < 0.5 ? "rgba(255,255,255,.018)" : "rgba(0,0,0,.05)"; g.fillRect(Math.random() * CW, Math.random() * CH, 1 + Math.random() * 2, 1 + Math.random() * 2); }
   for (let k = 0; k < (small ? 260 : 520); k++) { const x = Math.random() * CW, y = Math.random() * CH, r = Math.random() * 1.6 + 0.4, a = Math.random() * 0.22 + 0.04; g.fillStyle = `rgba(232,186,92,${a})`; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); q.fillStyle = `rgba(255,255,255,${a * 0.6})`; q.beginPath(); q.arc(x, y, r, 0, 7); q.fill(); }

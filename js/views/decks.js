@@ -1,15 +1,15 @@
-import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261111112725";
-import { plain, isOwnerNow } from "../persona.js?v=20261111112725";
-import { fxText } from "../fxtext.js?v=20261111112725";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, starterDecks, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261111112725";
-import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261111112725";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261111112725";
-import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261111112725";
-import { filterBar, filterCards } from "./library.js?v=20261111112725";
-import { openingOdds, simGame } from "./lab.js?v=20261111112725";
-import { freeBuild } from "../builder.js?v=20261111112725";
-import { deckCode, deckText, parseDeck } from "../deckcode.js?v=20261111112725";
-import { CIEL_DECKS } from "../cieldecks.js?v=20261111112725";
+import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261111123125";
+import { plain, isOwnerNow } from "../persona.js?v=20261111123125";
+import { fxText } from "../fxtext.js?v=20261111123125";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, starterDecks, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261111123125";
+import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261111123125";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261111123125";
+import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261111123125";
+import { filterBar, filterCards } from "./library.js?v=20261111123125";
+import { openingOdds, simGame } from "./lab.js?v=20261111123125";
+import { freeBuild } from "../builder.js?v=20261111123125";
+import { deckCode, deckText, parseDeck } from "../deckcode.js?v=20261111123125";
+import { CIEL_DECKS } from "../cieldecks.js?v=20261111123125";
 
 // Ciel's theme decks: print codes → card ids (resolved once the card data is loaded)
 let cielCache = null;
@@ -100,7 +100,7 @@ const Manage = { on: false, sel: new Set() };
 
 const deckColors = (d) => { const st = deckStats(d); return Object.entries(st.colors).filter(([k]) => COLORS.includes(k)).sort((a, b) => b[1] - a[1]).map(([k]) => k); };
 function deckTile(d) {
-  const ace = deckAce(d); const v = validateDeck(d); const ms = Data.matches.filter((m) => m.deckId === d.id); const w = ms.filter((m) => m.result === "win").length;
+  const ace = deckAce(d); const v = validateDeck(d); const ms = Data.matches.filter((m) => m.deckId === d.id && m.mode !== "goldfish"); const w = ms.filter((m) => m.result === "win").length;
   const cols = deckColors(d); const band = cols.length ? `linear-gradient(180deg,${cols.map(colorOf).join(",")}${cols.length === 1 ? "," + colorOf(cols[0]) : ""})` : "var(--c-none)";
   const mine = isMine(d); const picking = mine && Manage.on; const on = picking && Manage.sel.has(d.id);
   const body = (tag, attrs) => h(tag, attrs, ace ? artImg(ace, "", "") : null, h("div", { class: "wash" }), h("div", { class: "band", style: "background:" + band }),
@@ -147,7 +147,7 @@ Views.decks = {
     const d = deckById(id); if (!d) { root.replaceChildren(busy("กำลังโหลดเด็ค…")); return; }
     const st = deckStats(d), v = validateDeck(d), ace = deckAce(d), shop = shoppingList(d);
     const need = shop.reduce((a, x) => a + x.need, 0), have = shop.reduce((a, x) => a + Math.min(x.need, x.have), 0);
-    const ms = Data.matches.filter((m) => m.deckId === d.id); const w = ms.filter((m) => m.result === "win").length;
+    const ms = Data.matches.filter((m) => m.deckId === d.id && m.mode !== "goldfish"); const w = ms.filter((m) => m.result === "win").length;
     const preview = h("div", { class: "stack", style: "gap:10px" });
     const showPrev = (c) => preview.replaceChildren(h("div", { class: "row", style: "align-items:flex-start;gap:14px;flex-wrap:nowrap" }, holo(h("div", { class: "ccard", style: "width:150px;flex:none;cursor:default" }, artImg(c))),
       h("div", { class: "stack", style: "gap:6px;min-width:0" }, h("b", { style: "font-family:var(--f-display)" }, c.n), h("div", { class: "small muted" }, cardLine(c, 0).split(" : ")[0].replace(c.n + " ", "")), fxText(c.x || "", "small bare", "max-height:190px;overflow:auto"))));

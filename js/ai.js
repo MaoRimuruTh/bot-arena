@@ -1,10 +1,10 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261111112725";
-import { plain } from "./persona.js?v=20261111112725";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261111112725";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261111112725";
-import { Data } from "./fb.js?v=20261111112725";
-import { lsGet, clone } from "./util.js?v=20261111112725";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261111123125";
+import { plain } from "./persona.js?v=20261111123125";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261111123125";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261111123125";
+import { Data } from "./fb.js?v=20261111123125";
+import { lsGet, clone } from "./util.js?v=20261111123125";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -308,7 +308,7 @@ export function normalizeBuild(r, aceCards) {
 }
 export async function cielAnalyze(deck) {
   const ents = deckEntries(deck); const st = deckStats(deck);
-  const ms = Data.matches.filter((m) => m.deckId === deck.id).slice(0, 15);
+  const ms = Data.matches.filter((m) => m.deckId === deck.id && m.mode !== "goldfish").slice(0, 15);
   const cols = Object.keys(st.colors).filter((c) => COLORS.includes(c));
   const pool = poolFor(cols, { ace: deck.ace }).filter((c) => !deck.main[c.i]);
   const prompt = `คุณคือชิเอล นักวิเคราะห์เด็ค Battle of Talingchan ของริมุรุ ตอบตรงไปตรงมา\n${RULES}\n\nเด็ค "${deck.name}" (${st.total} ใบ):\n${ents.map((e) => `${e.n}x id${e.id} ${cardLine(e.c, 200)}`).join("\n")}\nLIFE: ${(deck.life || []).map((i) => cardLine(card(i), 120)).join(" | ")}\nการ์ดเอซ: ${(deck.ace || []).map((i) => card(i).n).join(", ") || "ไม่ได้กำหนด"}\nเส้น Cost Avatar/Construct (0-8+): ${st.curve.join(",")} · GEM รวม ${st.gem} · POWER เฉลี่ย ${st.avgPw.toFixed(1)}\n\nผลการเล่น ${ms.length} เกมล่าสุด:\n${ms.map((m) => `- ${m.result === "win" ? "ชนะ" : "แพ้"} vs ${m.oppDeck || m.opp} ใน ${m.turns} เทิร์น (${m.reason || ""}) · บันทึกท้ายเกม: ${(m.log || []).slice(-6).join(" / ")}`).join("\n") || "ยังไม่มี"}\n\nการ์ดอื่นในสีเดียวกันที่อาจใส่แทน (id|...):\n${poolText(pool, 500)}\n\nตอบ JSON เท่านั้น:\n{"summary":"ภาพรวม 2 ประโยค","score":0-100,"strengths":["..."],"weaknesses":["..."],"swaps":[{"out_id":123,"in_id":456,"n":1,"why":"..."}],"tips":["เคล็ดลับการเล่น"],"matchups":"เด็คนี้ถนัด/แพ้ทางแบบไหน 1-2 ประโยค"}`;

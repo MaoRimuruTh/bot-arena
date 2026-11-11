@@ -1,23 +1,24 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111112725";
-import { fxText } from "../fxtext.js?v=20261111112725";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111112725";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111112725";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111112725";
-import { Arena, my3D } from "../arena3d.js?v=20261111112725";
-import { autoEffect, resolveEffect } from "../effects.js?v=20261111112725";
-import { Music } from "../music.js?v=20261111112725";
-import { Sfx } from "../sfx.js?v=20261111112725";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261111112725";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111112725";
-import { readAura, traits } from "../auras.js?v=20261111112725";
-import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261111112725";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111123125";
+import { fxText } from "../fxtext.js?v=20261111123125";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111123125";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111123125";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111123125";
+import { Arena, animSetting } from "../arena3d.js?v=20261111123125";
+import { myFigure, myMat, newlyEarned, rewardName } from "../achieve.js?v=20261111123125";
+import { autoEffect, resolveEffect } from "../effects.js?v=20261111123125";
+import { Music } from "../music.js?v=20261111123125";
+import { Sfx } from "../sfx.js?v=20261111123125";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261111123125";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111123125";
+import { readAura, traits } from "../auras.js?v=20261111123125";
+import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261111123125";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
   return { game: [`เทิร์น ${s.turn} · ${PHASE_TH[s.phase] || s.phase} · ตาของ ${s.P[s.active].name}`, `เด็คเรา: ${me.deckName || "-"} · เด็คคู่แข่ง: ${op.deckName || "-"}`,
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / ")].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261111112725";
+import { allDecks, deckById } from "./decks.js?v=20261111123125";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -63,13 +64,17 @@ Views.play = {
       const body = h("div", { class: "stack" });
       if (Setup.mode === "bot") {
         body.append(h("div", { class: "row" }, h("span", { class: "small muted" }, "เด็คของบอท"), deckSel("opp", decks, h("option", { value: "random", selected: Setup.opp === "random" }, "สุ่มจาก Starter Deck"))),
-          h("div", { class: "row" }, h("span", { class: "small muted" }, "สมองบอท"), h("div", { class: "seg", role: "group", "aria-label": "สมองบอท" }, [["ciel", "ชิเอล"], ["basic", "พื้นฐาน"]].map(([k, t]) => h("button", { "aria-pressed": Setup.brain === k ? "true" : "false", onclick: () => { Setup.brain = k; save(); draw(); } }, t)))),
-          h("div", { class: "tiny muted" }, Setup.brain === "ciel" ? (Ciel.on() ? "ชิเอลคิดทุกจังหวะและอ่านเอฟเฟกต์การ์ดให้ (ใช้ API key ของคุณ)" : "ยังไม่ได้ใส่ API key จะใช้บอทพื้นฐานแทน") : "บอทพื้นฐานเล่นตามกติกา ข้ามเอฟเฟกต์ข้อความของตัวเอง"),
+          h("div", { class: "row" }, h("span", { class: "small muted" }, "สมองบอท"), h("div", { class: "seg", role: "group", "aria-label": "สมองบอท" }, [["easy", "ง่าย"], ["basic", "ปกติ"], ["hard", "เก่ง"], ["ciel", "ชิเอล"]].map(([k, t]) => h("button", { "aria-pressed": Setup.brain === k ? "true" : "false", onclick: () => { Setup.brain = k; save(); draw(); } }, t)))),
+          h("div", { class: "tiny muted" }, Setup.brain === "ciel" ? (Ciel.on() ? "ชิเอลคิดทุกจังหวะและอ่านเอฟเฟกต์การ์ดให้ (ใช้ API key ของคุณ)" : "ยังไม่ได้ใส่ API key จะใช้บอทระดับปกติแทน") : BOT_LEVEL[Setup.brain] ? BOT_LEVEL[Setup.brain].about : BOT_LEVEL.basic.about),
           h("button", { class: "btn gold lg", disabled: !d, onclick: () => startLocal("bot") }, "เริ่มดวล"));
       } else if (Setup.mode === "learn") {
         body.append(h("div", { class: "small" }, "เกมสอนเล่นใช้ Starter Deck 01 สู้กับบอทที่ใช้ Starter Deck 02 ระหว่างเล่นจะมีคำอธิบายขึ้นทีละเรื่องเมื่อถึงจังหวะนั้นในเกม เช่น การจ่าย GEM การโจมตี และ LIFE"),
           h("div", { class: "tiny muted" }, "กติกาตาม Rule Book 3.2 เหมือนเกมจริงทุกอย่าง ปิดคำอธิบายได้ทุกเมื่อ"),
           h("button", { class: "btn gold lg", onclick: startLearn }, "เริ่มสอนเล่น"));
+      } else if (Setup.mode === "goldfish") {
+        body.append(h("div", { class: "small" }, "คู่แข่งเป็นหุ่นซ้อมที่ไม่ลงการ์ดและไม่ตอบโต้เลย ใช้ดูว่าเด็คนี้ออกตัวได้แค่ไหนและชนะได้เร็วสุดเทิร์นไหน"),
+          h("div", { class: "tiny muted" }, "เราเล่นก่อนทุกเกม ผลจะเก็บแยกในประวัติ ไม่นับรวมอัตราชนะ และย้อนตาได้"),
+          h("button", { class: "btn gold lg", disabled: !d, onclick: () => startLocal("goldfish") }, "เริ่มซ้อม"));
       } else if (Setup.mode === "solo") {
         body.append(h("div", { class: "row" }, h("span", { class: "small muted" }, "เด็คฝั่งที่ 2"), deckSel("opp", decks, h("option", { value: "random", selected: Setup.opp === "random" }, "สุ่มจาก Starter Deck"))),
           h("div", { class: "tiny muted" }, "ควบคุมทั้งสองฝั่งเอง เหมาะกับลองคอมโบหรือเล่นกับเพื่อนบนเครื่องเดียวกัน"), h("button", { class: "btn gold lg", disabled: !d, onclick: () => startLocal("solo") }, "เริ่มเกม"));
@@ -83,7 +88,7 @@ Views.play = {
         body.append(h("div", { class: "tiny muted" }, "สร้างห้องแล้วให้เพื่อนที่ได้รับอนุมัติกดเข้าร่วมจากหน้านี้ เกมซิงก์ผ่านฐานข้อมูลแบบเรียลไทม์"),
           h("button", { class: "btn gold lg", disabled: !d, onclick: createRoom }, "สร้างห้อง"), h("div", { class: "eyebrow" }, "ห้องที่รออยู่"), lobby);
       }
-      right.replaceChildren(h("div", { class: "modes" }, modeBtn("bot", "ดวลกับบอท", "ซ้อมมือกับชิเอล"), modeBtn("friend", "ดวลกับเพื่อน", "ออนไลน์ผ่านห้อง"), modeBtn("solo", "เล่นสองฝั่ง", "ทดลองคอมโบเอง"), modeBtn("learn", "สอนเล่น", "เรียนกติกาทีละขั้น")), h("div", { class: "panel" }, body));
+      right.replaceChildren(h("div", { class: "modes" }, modeBtn("bot", "ดวลกับบอท", "ซ้อมมือกับชิเอล"), modeBtn("friend", "ดวลกับเพื่อน", "ออนไลน์ผ่านห้อง"), modeBtn("solo", "เล่นสองฝั่ง", "ทดลองคอมโบเอง"), modeBtn("goldfish", "ซ้อมมือเดียว", "วัดว่าเด็คชนะเร็วแค่ไหน"), modeBtn("learn", "สอนเล่น", "เรียนกติกาทีละขั้น")), h("div", { class: "panel" }, body));
     };
     root.replaceChildren(h("div", { class: "pagehead" }, h("div", null, h("h1", null, "สนามดวล"), h("div", { class: "muted small" }, "เล่นตาม Rule Book 3.2 · เอฟเฟกต์การ์ดให้ชิเอลอ่าน หรือจัดการเองด้วยเครื่องมือ")),
       saved && saved.s && saved.s.phase !== "over" ? h("button", { class: "btn ciel", onclick: () => resume(saved) }, `เล่นต่อ: ${saved.s.P[saved.V || 0].deckName} · เทิร์น ${saved.s.turn}`) : null),
@@ -97,11 +102,12 @@ Views.play = {
     document.body.classList.add("arena-on");
     const stage = h("div", { id: "arena" }); const hud = h("div", { class: "hud" }); G.hud = hud;
     root.replaceChildren(stage, h("div", { class: "vign" }), hud);
-    try { Arena.mount(stage); } catch (e) { console.warn("3D off", e); }
+    try { Arena.mount(stage, { mat: myMat() }); } catch (e) { console.warn("3D off", e); }
     Arena.setHover((i) => { if (G.hover === i) return; G.hover = i; drawInspector(); });
     Arena.setClick(fieldClick);
     Arena.update(G.s, view(), { reset: true });
     Music.start(); draw(); drive();
+    if (G.mode === "friend") { clearInterval(G.idleTick); const g = G; G.idleTick = setInterval(() => { if (G !== g) return clearInterval(g.idleTick); const idle = oppIdle() > IDLE_MS; if (idle !== !!G.idleShown) { G.idleShown = idle; draw(); } }, 5000); }
   },
 };
 
@@ -109,16 +115,17 @@ Views.play = {
 const pickOpp = () => { if (Setup.opp !== "random") return deckById(Setup.opp); const st = allDecks().filter((d) => d.starter); return st[Math.floor(Math.random() * st.length)]; };
 const pack = (d) => ({ ...deckToList(d), name: d.name, id: d.id });
 function startLocal(mode) {
-  const me = deckById(Setup.deck), op = pickOpp(); if (!me || !op) return toast("เลือกเด็คก่อน");
-  const botName = Setup.brain === "ciel" && Ciel.on() ? "ชิเอล" : "บอท";
-  const init = { players: [{ uid: Me.uid, name: myName(), ava: myAvatar(), av3: my3D() }, mode === "bot" ? { name: botName, bot: true } : { uid: Me.uid, name: "ฝั่งที่ 2" }], decks: [pack(me), pack(op)], seed: (Math.random() * 2 ** 31) | 0, first: Math.random() < 0.5 ? 0 : 1, mode };
+  // goldfish (ซ้อมมือเดียว): the other side is a training dummy that never plays a card, so the game shows how fast this deck can win
+  const fish = mode === "goldfish"; const me = deckById(Setup.deck), op = fish ? me : pickOpp(); if (!me || !op) return toast("เลือกเด็คก่อน");
+  const botName = Setup.brain === "ciel" && Ciel.on() ? "ชิเอล" : (BOT_LEVEL[Setup.brain] || BOT_LEVEL.basic).name;
+  const init = { players: [{ uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure() }, fish ? { name: "หุ่นซ้อม", bot: true } : mode === "bot" ? { name: botName, bot: true, av3: myFigure() ? "chang" : "" } : { uid: Me.uid, name: "ฝั่งที่ 2" }], decks: [pack(me), pack(op)], seed: (Math.random() * 2 ** 31) | 0, first: fish ? 0 : Math.random() < 0.5 ? 0 : 1, mode: fish ? "bot" : mode };
   const s = E.newGame(init);
-  G = { s, V: 0, mode, brain: mode === "bot" && Setup.brain === "ciel" && Ciel.on() ? "ciel" : "basic", id: s.id, saved: false, rec: { init: { ...init, id: s.id }, acts: [] } };
+  G = { s, V: 0, mode: fish ? "bot" : mode, fish, brain: fish ? "goldfish" : mode !== "bot" ? "basic" : Setup.brain === "ciel" ? (Ciel.on() ? "ciel" : "basic") : BOT_LEVEL[Setup.brain] ? Setup.brain : "basic", id: s.id, saved: false, rec: { init: { ...init, id: s.id }, acts: [] } };
   persist(); go();
 }
 function startLearn() {
   const st = allDecks().filter((d) => d.starter); const me = st.find((d) => /01/.test(d.name)) || st[0], op = st.find((d) => /02/.test(d.name)) || st[1]; if (!me || !op) return toast("ไม่พบ Starter Deck");
-  const init = { players: [{ uid: Me.uid, name: myName(), ava: myAvatar(), av3: my3D() }, { name: "บอท", bot: true }], decks: [pack(me), pack(op)], seed: 20261111, first: 0, mode: "bot" };
+  const init = { players: [{ uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure() }, { name: "บอท", bot: true, av3: myFigure() ? "chang" : "" }], decks: [pack(me), pack(op)], seed: 20261111, first: 0, mode: "bot" };
   const s = E.newGame(init);
   G = { s, V: 0, mode: "bot", brain: "basic", id: s.id, saved: false, learn: { seen: {} }, rec: { init: { ...init, id: s.id }, acts: [] } };
   persist(); go();
@@ -136,13 +143,13 @@ function resume(saved) {
 function persist() { if (!G || G.replay) return; if (G.mode === "friend") lsSet(SAVE, { mode: "friend", id: G.id, V: G.V, s: G.s }); else lsSet(SAVE, { s: G.s, V: G.V, mode: G.mode, brain: G.brain, id: G.id, learn: G.learn || null, rec: G.rec || null }); }
 function stopGame(clear) {
   if (!G) return; if (G.unsub) G.unsub(); if (clear) lsDel(SAVE); else persist();
-  Arena.unmount(); Music.stop(); document.body.classList.remove("arena-on"); document.querySelectorAll(".banner,.dmg").forEach((e) => e.remove()); G = null;
+  clearInterval(G.idleTick); Arena.unmount(); Music.stop(); document.body.classList.remove("arena-on"); document.querySelectorAll(".banner,.dmg,.emo").forEach((e) => e.remove()); G = null;
 }
 // ---------- friends ----------
 async function createRoom() {
   const me = deckById(Setup.deck); if (!me) return;
   const id = newGameId();
-  await F.setDoc(gameRef(id), { status: "waiting", host: Me.uid, hostName: myName(), hostAva: myAvatar(), hostAv3: my3D(), hostDeck: pack(me), seats: [Me.uid], createdAt: Date.now(), updatedAt: Date.now() });
+  await F.setDoc(gameRef(id), { status: "waiting", host: Me.uid, hostName: myName(), hostAva: myAvatar(), hostAv3: myFigure(), hostDeck: pack(me), seats: [Me.uid], createdAt: Date.now(), updatedAt: Date.now() });
   toast("สร้างห้องแล้ว รอเพื่อนเข้าร่วม"); openOnline(id, 0);
 }
 async function joinRoom(r) {
@@ -150,7 +157,7 @@ async function joinRoom(r) {
   try {
     await F.runTransaction(db, async (tx) => {
       const snap = await tx.get(gameRef(r.id)); const g = snap.data(); if (!g || g.status !== "waiting") throw new Error("ห้องนี้เริ่มไปแล้ว");
-      const s = E.newGame({ players: [{ uid: g.host, name: g.hostName, ava: g.hostAva || "", av3: g.hostAv3 || "" }, { uid: Me.uid, name: myName(), ava: myAvatar(), av3: my3D() }], decks: [g.hostDeck, pack(me)], seed: (Math.random() * 2 ** 31) | 0, first: Math.random() < 0.5 ? 0 : 1, mode: "friend", id: r.id });
+      const s = E.newGame({ players: [{ uid: g.host, name: g.hostName, ava: g.hostAva || "", av3: g.hostAv3 || "" }, { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure() }], decks: [g.hostDeck, pack(me)], seed: (Math.random() * 2 ** 31) | 0, first: Math.random() < 0.5 ? 0 : 1, mode: "friend", id: r.id });
       tx.update(gameRef(r.id), { status: "playing", guest: Me.uid, guestName: myName(), seats: [g.host, Me.uid], state: JSON.stringify(s), updatedAt: Date.now() });
     });
     openOnline(r.id, 1);
@@ -162,10 +169,48 @@ function openOnline(id, V) {
   G.unsub = F.onSnapshot(gameRef(id), (snap) => {
     if (!G) return; const g = snap.data();
     if (!g) { toast("ห้องถูกปิดแล้ว"); stopGame(true); location.hash = "#play"; return; }
-    if (!g.state) return;
+    G.updatedAt = g.updatedAt || G.updatedAt;
+    G.emoSeen = G.emoSeen || {};
+    for (const p of [0, 1]) { const e = g["emo" + p]; if (e && e.at > (G.emoSeen[p] || 0)) { G.emoSeen[p] = e.at; if (p !== G.V && Date.now() - e.at < 15000 && G.s) showEmote(p, e.k); } }
+    if (!g.state || g.state === G.lastState) return; G.lastState = g.state;
     const s = JSON.parse(g.state); const first = !G.s; G.s = s; persist();
     if (first) Views.play.mountGame(document.getElementById("view")); else { Arena.update(s, view()); draw(); drive(); }
   }, (e) => { console.warn(e); toast("เชื่อมต่อห้องไม่ได้", "bad"); });
+}
+
+// ---------- emotes: short friendly lines, shown by the player who sent them (and the little 3D figure hops) ----------
+const EMOTES = [["hi", "สวัสดี 👋"], ["glhf", "ขอให้สนุกนะ"], ["wow", "ว้าว!"], ["gg", "เก่งมาก!"], ["oops", "อุ๊ย!"], ["think", "ขอคิดแป๊บ 🤔"], ["ty", "ขอบคุณนะ"], ["ggwp", "GG เกมดี!"]];
+const EMO_TH = Object.fromEntries(EMOTES);
+const BOT_REPLY = { hi: "hi", glhf: "glhf", gg: "ty", ty: "hi", ggwp: "ggwp", wow: "ty" }; // the bot answers a greeting or a compliment
+function sendEmote(k) {
+  if (!G || !G.s || G.replay) return; const now = Date.now(); if (now - (G.emoAt || 0) < 2500) return toast("รอแป๊บค่อยส่งอีกนะ"); G.emoAt = now;
+  showEmote(G.V, k);
+  if (G.mode === "friend") F.updateDoc(gameRef(G.id), { ["emo" + G.V]: { k, at: now } }).catch(() => {});
+  else if (G.mode === "bot" && !G.fish && BOT_REPLY[k]) { const g = G; setTimeout(() => G === g && showEmote(1 - g.V, BOT_REPLY[k]), 1300); }
+}
+function showEmote(p, k) {
+  if (!G || !EMO_TH[k]) return; const mine = p === G.V; if (!mine && lsGet("bot.muteEmo", false)) return;
+  const anchor = document.querySelector(mine ? (compact() ? ".mbar" : ".meplate") : ".oppbar"); if (!anchor) return;
+  const r = anchor.getBoundingClientRect(); document.querySelectorAll(".emo." + (mine ? "me" : "op")).forEach((e) => e.remove());
+  const el = h("div", { class: "emo glass " + (mine ? "me" : "op"), role: "status" }, h("b", null, G.s.P[p].name), " ", EMO_TH[k]);
+  el.style.left = Math.max(8, Math.min(innerWidth - 220, r.left + 12)) + "px"; el.style.top = (mine ? r.top - 46 : r.bottom + 8) + "px"; document.body.append(el);
+  Arena.cheer(p); Sfx.play("click");
+  if (window.gsap) window.gsap.fromTo(el, { y: mine ? 8 : -8, opacity: 0 }, { y: 0, opacity: 1, duration: 0.25, ease: "back.out(2)" });
+  setTimeout(() => { if (window.gsap) window.gsap.to(el, { opacity: 0, duration: 0.4, onComplete: () => el.remove() }); else el.remove(); }, 3200);
+}
+function emotePicker() {
+  openSheet((api) => [h("div", { class: "emogrid" }, EMOTES.map(([k, t]) => h("button", { class: "btn", onclick: () => { api.close(); sendEmote(k); } }, t))),
+    G.mode !== "bot" ? h("label", { class: "row small muted" }, h("input", { type: "checkbox", checked: lsGet("bot.muteEmo", false), onchange: (e) => lsSet("bot.muteEmo", e.target.checked) }), "ไม่แสดงอีโมตของคู่แข่ง") : null],
+    { title: "ส่งอีโมต", sub: G.mode === "friend" ? "เพื่อนจะเห็นข้อความนี้ทันที" : "บอทอาจตอบกลับ" });
+}
+// online: when the other side has made no move for a while on their own decision, the waiting player may claim the game
+const IDLE_MS = 4 * 60e3;
+const oppIdle = () => { if (!G || G.mode !== "friend" || !G.s || G.s.phase === "over") return 0; const p = whoActs(G.s); if (p == null || p === G.V) return 0; return Math.max(0, Date.now() - (G.updatedAt || Date.now())); };
+async function claimIdle() {
+  const V = G.V;
+  try { await F.runTransaction(db, async (tx) => { const snap = await tx.get(gameRef(G.id)); const g = snap.data(); if (Date.now() - (g.updatedAt || 0) < IDLE_MS) throw new Error("คู่แข่งเพิ่งเล่น"); const s = JSON.parse(g.state); if (s.phase === "over") return;
+    E.lose(s, 1 - V, `${s.P[1 - V].name} ไม่ได้เล่นนานเกิน 4 นาที`); tx.update(gameRef(G.id), { state: JSON.stringify(s), status: "over", updatedAt: Date.now() }); }); }
+  catch (e) { toast(e.message || "ทำไม่ได้", "bad"); }
 }
 
 // ---------- actions ----------
@@ -204,6 +249,11 @@ function autoRespond(s, p) {
   const key = [s.turn, s.pend.att, s.pend.tk, s.pend.ti, s.log.length].join(":"); if (G.autoKey === key) return; G.autoKey = key;
   setTimeout(() => { const n = G && G.s; if (!n || !n.pend || G.castFor || [n.turn, n.pend.att, n.pend.tk, n.pend.ti, n.log.length].join(":") !== key || !nothingToAnswer(n, p)) return; doAct((legalMoves(n, p)[0] || {}).a || { type: "respond" }, p); }, 900);
 }
+// bot levels: how many promising moves it plays out on a copy before choosing (more = stronger and slower), and how often
+// the easy one just does something at random. In 24-game tests hard beat normal 15-9 and normal beat easy 19-5.
+const BOT_LEVEL = { easy: { name: "บอทมือใหม่", look: 0, rnd: 0.35, about: "บอทมือใหม่ เล่นถูกกติกาแต่ตัดสินใจไม่ค่อยดี บางทีก็มั่ว และไม่ใช้ React" },
+  basic: { name: "บอท", look: 4, rnd: 0, about: "บอทระดับปกติ คิดล่วงหน้าหนึ่งจังหวะ ข้ามเอฟเฟกต์ข้อความของตัวเอง" },
+  hard: { name: "บอทมือโปร", look: 8, rnd: 0, about: "บอทมือโปร ลองเล่นตาที่น่าสนใจล่วงหน้ามากขึ้นก่อนเลือก คิดนานขึ้นนิดหน่อย" } };
 // bot / auto driver
 async function drive() {
   if (!G || G.driving || !G.s || G.replay) return; const s = G.s;
@@ -212,10 +262,11 @@ async function drive() {
   if (!isBot(s, p)) { if (s.trig.length && mine(p)) humanTrig(s, p); else autoRespond(s, p); return; }
   G.driving = true;
   try {
-    await Arena.idle(); await sleep(G.brain === "ciel" ? 250 : 650); if (!G || G.s !== s) return;
-    let a = null;
-    if (s.phase === "mull") a = { type: "mull", iids: H.mulligan(s, p) };
-    else if (s.rw) a = H.react(s, p) || { type: "pass" };
+    await Arena.idle(); await sleep((G.brain === "ciel" ? 250 : 650) / animSetting()); if (!G || G.s !== s) return;
+    let a = null; const lv = BOT_LEVEL[G.brain]; if (lv) H.look = lv.look;
+    if (G.brain === "goldfish" && !s.trig.length && !(s.phase === "end" && s.need)) a = s.phase === "mull" ? { type: "mull", iids: [] } : s.rw ? { type: "pass" } : s.pend ? { type: "respond" } : { type: "end" }; // the dummy keeps its hand and never answers
+    else if (s.phase === "mull") a = { type: "mull", iids: G.brain === "easy" ? [] : H.mulligan(s, p) };
+    else if (s.rw) a = (G.brain === "easy" ? null : H.react(s, p)) || { type: "pass" };
     else if (s.trig.length) {
       const t = s.trig[0];
       if (G.brain === "ciel") { G.thinking = "ชิเอลกำลังอ่านเอฟเฟกต์ " + (s.cards[t.c] || {}).n; draw(); try { const r = await cielResolve(s, t); a = { type: "trig", id: t.id, ...r }; } catch (e) { a = H.trig(s, t); toast(aiErr(e), "bad"); } }
@@ -223,8 +274,9 @@ async function drive() {
     } else if (s.phase === "end" && s.need) a = { type: "discard", iids: H.discard(s, p) };
     else {
       let m = null;
-      const rx = s.pend ? H.react(s, p) : null;
+      const rx = s.pend && G.brain !== "easy" ? H.react(s, p) : null;
       if (rx) m = { a: rx, say: "ใช้ React ตอบโต้!" };
+      else if (lv && lv.rnd && !s.pend && Math.random() < lv.rnd) { const ms = legalMoves(s, p).filter((x) => x.a.type !== "concede"); if (ms.length) m = ms[Math.floor(Math.random() * ms.length)]; }
       else if (G.brain === "ciel") { G.thinking = "ชิเอลกำลังคิด…"; draw(); m = await cielPick(s, p); }
       else m = H.pick(s, p);
       if (m && m.say) G.say = m.say;
@@ -233,7 +285,7 @@ async function drive() {
     G.thinking = null; if (!G || G.s !== s) return;
     G.driving = false;
     if (!(await doAct(a, p))) { try { E.apply(G.s, { type: "end" }, p); if (G.rec) G.rec.acts.push([p, { type: "end" }]); } catch { E.lose(G.s, p, "บอทติดสถานะ"); if (G.rec) G.rec.acts.push([p, { type: "__lose", reason: "บอทติดสถานะ" }]); } Arena.update(G.s, view()); draw(); }
-  } finally { if (G) G.driving = false; }
+  } finally { if (G) G.driving = false; H.look = BOT_LEVEL.basic.look; }
 }
 // player's own effects: run by themselves; stop only to ask for a choice or when unreadable
 function humanTrig(s, p) {
@@ -250,12 +302,20 @@ function finish() {
   const seats = G.mode === "solo" ? [] : [G.V];
   for (const V of seats) {
     const P = s.P[V], O = s.P[1 - V]; const rp = keepReplay(s.id + "-" + V);
-    saveMatch(s.id + "-" + V, { rp: rp ? 1 : 0, uid: Me.uid, mode: G.mode, deckId: P.deckId, deckName: P.deckName, opp: O.name, oppDeck: O.deckName, result: s.winner === V ? "win" : s.winner == null ? "draw" : "loss", turns: s.turn, reason: s.reason, first: s.first === V, at: Date.now(), log: s.log.slice(-14).map((l) => l.m) }).catch((e) => console.warn(e));
+    const rec = { id: s.id + "-" + V, mode: G.fish ? "goldfish" : G.mode, brain: G.brain || null, lifeLost: P.life.filter((x) => x.up).length, deckId: P.deckId, result: s.winner === V ? "win" : s.winner == null ? "draw" : "loss", turns: s.turn };
+    const fresh = newlyEarned(rec); if (fresh.length) setTimeout(() => celebrate(fresh), 1800); // what this game unlocked
+    saveMatch(s.id + "-" + V, { rp: rp ? 1 : 0, undo: G.undos || 0, brain: rec.brain, lifeLost: rec.lifeLost, uid: Me.uid, mode: G.fish ? "goldfish" : G.mode, deckId: P.deckId, deckName: P.deckName, opp: O.name, oppDeck: O.deckName, result: s.winner === V ? "win" : s.winner == null ? "draw" : "loss", turns: s.turn, reason: s.reason, first: s.first === V, at: Date.now(), log: s.log.slice(-14).map((l) => l.m) }).catch((e) => console.warn(e));
   }
   lsDel(SAVE); draw();
   if (G.rec && G.mode !== "friend") { const g = G; setTimeout(() => { if (G === g) openSummary(g); }, 2600); } // after the banner and the falling gold or ash
 }
 
+// an achievement earned this game: a gold notice with what it opened up
+function celebrate(list) {
+  for (const [k, a] of list.entries()) setTimeout(() => { const el = h("div", { class: "achpop glass", role: "status" }, h("span", { class: "eyebrow" }, "ปลดล็อคความสำเร็จ"), h("b", null, a.name), a.gives ? h("span", { class: "small" }, "ได้ " + rewardName(a.gives) + " · เลือกใช้ในหน้าตั้งค่า") : null);
+    document.body.append(el); Sfx.play("win"); if (window.gsap) window.gsap.fromTo(el, { y: -30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: "back.out(2)" });
+    setTimeout(() => (window.gsap ? window.gsap.to(el, { opacity: 0, duration: 0.5, onComplete: () => el.remove() }) : el.remove()), 4200); }, k * 4600);
+}
 // ---------- replays: a local game keeps its set-up and every action, so the history page can play it back ----------
 const RP = "bot.rp.", RPIDX = "bot.rp.idx", RP_KEEP = 30;
 function keepReplay(mid) {
@@ -318,12 +378,13 @@ function openSummary(g) {
   openSheet((api) => [h("div", { class: "statrow" }, h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "ผล"), h("b", { style: `color:${res === "ชนะ" ? "#8ee3b2" : res === "แพ้" ? "#ffb0b2" : "inherit"}` }, res)),
       h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "ยาว"), h("b", null, s.turn + " เทิร์น"))),
     h("div", { class: "small muted" }, s.reason || ""),
+    g.fish && s.winner === V ? h("div", { class: "small" }, h("b", null, "ซ้อมมือเดียว: "), `ชนะในเทิร์นที่ ${s.turn} ของเกม คือตาที่ ${s.first === V ? Math.ceil(s.turn / 2) : Math.floor(s.turn / 2)} ของเรา`, g.undos ? ` · ย้อนตา ${g.undos} ครั้ง` : "") : null,
     h("div", { class: "sumtab" }, h("div", { class: "sumrow head tiny muted" }, h("span"), h("span", null, s.P[V].name), h("span", null, s.P[1 - V].name)),
       row("อัญเชิญ Avatar", me.summon, op.summon), row("ใช้ Magic", me.cast, op.cast), row("ประกาศโจมตี", me.attack, op.attack), row("ทำลายการ์ดคู่แข่ง", me.broke, op.broke), row("ทำ LIFE คู่แข่งหงาย", me.lifeHit, op.lifeHit)),
     h("div", { class: "small" }, h("b", null, "ลงบ่อยของเรา: "), top(me)), h("div", { class: "small muted" }, h("b", null, "ของคู่แข่ง: "), top(op)),
     h("div", { class: "row" }, g.mode !== "replay" ? h("button", { class: "btn gold", onclick: () => { api.close(); if (G === g) rematch(); } }, "ดวลอีกครั้ง") : null,
       hasReplay(s.id + "-" + V) ? h("button", { class: "btn", onclick: () => { api.close(); openReplay(s.id + "-" + V); } }, "ดูรีเพลย์") : null,
-      h("button", { class: "btn", onclick: () => api.close() }, "ดูกระดาน"))], { title: "สรุปเกม", sub: `${s.P[V].deckName} vs ${s.P[1 - V].deckName}` });
+      h("button", { class: "btn", onclick: () => api.close() }, "ดูกระดาน"))], { title: "สรุปเกม", sub: g.fish ? `${s.P[V].deckName} · ซ้อมมือเดียว` : `${s.P[V].deckName} vs ${s.P[1 - V].deckName}` });
 }
 // ---------- field interaction ----------
 function fieldClick(i) {
@@ -346,7 +407,9 @@ function attack(att, tk, ti) {
 
 // ---------- HUD ----------
 const ICON = { coach: "M12 3v4M12 17v4M3 12h4M17 12h4M12 8.5l1.2 2.3 2.3 1.2-2.3 1.2L12 15.5l-1.2-2.3L8.5 12l2.3-1.2z", tools: "M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4", hell: "M12 4l8 4-8 4-8-4zM4 12l8 4 8-4M4 16l8 4 8-4",
-  ask: "M4 6h16v12H4zM4 7l8 6 8-6", sound: "M5 10v4h3l4 3V7L8 10zM16 9a4 4 0 010 6M18.5 6.5a7.5 7.5 0 010 11", mute: "M5 10v4h3l4 3V7L8 10zM16 10l4 4M20 10l-4 4" };
+  ask: "M4 6h16v12H4zM4 7l8 6 8-6", emote: "M4 5h16v10H10l-4 4v-4H4zM9 10h.01M12 10h.01M15 10h.01", sound: "M5 10v4h3l4 3V7L8 10zM16 9a4 4 0 010 6M18.5 6.5a7.5 7.5 0 010 11", mute: "M5 10v4h3l4 3V7L8 10zM16 10l4 4M20 10l-4 4" };
+const idleBar = () => (G && G.idleShown && oppIdle() > IDLE_MS ? h("div", { class: "idlebar glass", role: "status" }, h("span", null, `${G.s.P[1 - G.V].name} ไม่ได้เล่นมา ${Math.floor(oppIdle() / 60e3)} นาที`),
+  h("button", { class: "btn sm gold", onclick: () => confirmBox("ขอชนะเกมนี้เพราะคู่แข่งไม่อยู่?", "ขอชนะ", claimIdle) }, "ขอชนะเกมนี้")) : null);
 function tool(icon, label, short, fn, off) {
   const ic = h("span", { class: "ic" }); ic.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICON[icon]}"/></svg>`;
   return h("button", { class: "tool", type: "button", title: label, "aria-label": label, disabled: !!off, onclick: fn }, ic, h("span", null, short));
@@ -366,7 +429,7 @@ function draw() {
     G.hud.replaceChildren(
       h("div", { class: "oppbar glass" }, op.bot && !op.ava ? h("span", { class: "ava sm" }, "✦") : avatarEl(op.ava, op.name, "sm"), h("div", { class: "pname" }, h("b", null, op.name), h("span", null, `มือ ${op.hand.length} · Deck ${op.deck.length}`)), crystals(op, true, "pcOp")),
       hint ? h("div", { class: "hint" }, G.say && !mine(p ?? -1) ? "✦ " + G.say : hint) : null,
-      handZone(s, V, p), promptBox(s, p), tutorBox(s, V, p),
+      handZone(s, V, p), promptBox(s, p), tutorBox(s, V, p), idleBar(),
       h("div", { class: "mbar glass" },
         h("button", { class: "btn sm", "aria-label": "เมนูเกม", onclick: () => gameMenu(s, V) }, "☰"),
         h("div", { class: "mturn" }, h("b", null, `เทิร์น ${s.turn}`), h("span", null, s.phase === "mull" ? "เปลี่ยนมือ" : PHASE_TH[s.phase])),
@@ -389,13 +452,13 @@ function draw() {
           return wait ? h("div", { class: "hubwait" }, !mine(p) ? h("span", { class: "dots", "aria-hidden": "true" }, h("i"), h("i"), h("i")) : null, wait) : null; })(),
         E.critical(me) ? h("span", { class: "chip bad" }, "สาหัส! ถูกตี LIFE อีกครั้งจะแพ้") : null,
         E.deckOpen(s) ? h("span", { class: "chip", title: "การ์ดบนสุดของ Deck ถูกหงายหน้าอยู่ (ความสามารถต่อเนื่อง)" }, `บนสุดของ Deck · ${[E.deckOpen(s, V) ? `เรา: ${me.deck[0] ? E.name(s, me.deck[0]) : "-"}` : null, E.deckOpen(s, 1 - V) ? `${op.name}: ${op.deck[0] ? E.name(s, op.deck[0]) : "-"}` : null].filter(Boolean).join(" · ")}`) : null,
-        h("div", { class: "meplate" }, avatarEl(me.ava, me.name, "me sm"), h("b", null, me.name), crystals(me, false, "pcMe")),
+        h("div", { class: "meplate" }, avatarEl(me.ava, me.name, "me sm"), h("b", null, me.name), crystals(me, false, "pcMe"), G.replay ? null : h("button", { class: "btn sm emobtn", title: "ส่งอีโมต", "aria-label": "ส่งอีโมต", onclick: emotePicker }, "💬")),
         h("div", { class: "pilebar" }, pile(me, "deck", "Deck"), pile(me, "hell", "นรก"), pile(me, "dark", "มิติมืด"))),
       h("div", { class: "rail hidem" }, tool("coach", "ชิเอลแนะนำ", "แนะนำ", coach, s.phase === "over"), tool("tools", "เครื่องมือจัดการสนามเอง", "เครื่องมือ", tools, s.phase === "over"), tool("hell", "ดูนรกของคู่แข่ง", "นรกคู่แข่ง", () => openPile(op, "hell")),
         isOwner() ? tool("ask", "ถามชิเอลเกี่ยวกับตานี้", "ถามชิเอล", () => openAsk()) : null, tool(Sfx.on || Music.on ? "sound" : "mute", "เสียงเอฟเฟกต์และเพลง", "เสียง", soundSheet)),
       G.coach ? h("div", { class: "coachbox" }, G.coach) : null,
       h("div", { class: "feed", "aria-live": "polite", tabindex: "0", "aria-label": "บันทึกเกม" }, s.log.slice(-30).reverse().map((l) => h("div", { class: l.s === V ? "mine" : l.s === 1 - V ? "opp" : "" }, l.m)))),
-    handZone(s, V, p), promptBox(s, p), tutorBox(s, V, p),
+    handZone(s, V, p), promptBox(s, p), tutorBox(s, V, p), idleBar(),
     h("button", { class: "btn sm arena-exit", onclick: () => (s.phase === "over" ? exitGame() : confirmBox("ออกจากสนาม? เกมที่ค้างจะเก็บไว้ให้เล่นต่อ", "ออก", exitGame)) }, "← ออก"));
   afterDraw(s, V, op, myTurn);
 }
@@ -477,6 +540,8 @@ function gameMenu(s, V) {
     isOwner() ? h("div", { class: "row" }, h("button", { class: "btn sm ciel", onclick: () => { api.close(); openAsk(); } }, "✉ ถามชิเอล (แนบสถานะเกม)")) : null,
     h("div", { class: "row" }, h("button", { class: "btn sm ciel", disabled: s.phase === "over", onclick: () => { api.close(); coach().then(() => G && G.coach && openSheet(h("div", { class: "coachbox" }, G.coach), { title: "ชิเอลแนะนำ" })); } }, "ชิเอลแนะนำ"), h("button", { class: "btn sm", disabled: s.phase === "over", onclick: () => { api.close(); tools(); } }, "เครื่องมือ"),
       h("button", { class: "btn sm", onclick: () => { api.close(); soundSheet(); } }, Sfx.on || Music.on ? "🔊 เสียงและเพลง" : "🔇 เสียงและเพลง"),
+      undoPoint() >= 0 ? h("button", { class: "btn sm", onclick: () => { api.close(); undoLast(); } }, "↶ ย้อนตา") : null,
+      G.replay ? null : h("button", { class: "btn sm", onclick: () => { api.close(); emotePicker(); } }, "💬 อีโมต"),
       h("button", { class: "btn sm danger", onclick: () => { api.close(); s.phase === "over" ? exitGame() : confirmBox("ออกจากสนาม? เกมที่ค้างจะเก็บไว้ให้เล่นต่อ", "ออก", exitGame); } }, "ออกจากสนาม")),
     G.coach ? h("div", { class: "coachbox" }, G.coach) : null,
     h("div", { class: "eyebrow" }, "บันทึกเกม"), h("div", { class: "glog", style: "max-height:44vh" }, s.log.slice(-40).reverse().map((l) => h("div", { class: l.s === V ? "mine" : "" }, l.m)))], { title: `เทิร์น ${s.turn} · ${s.P[s.active].name}` });
@@ -515,21 +580,39 @@ function cardView(x) {
       d.x ? fxText(d.x) : h("div", { class: "muted small" }, "ไม่มีข้อความความสามารถ"))), { title: d.n, sub: s.P[L.p].name });
 }
 // the same decks again straight away (a random opponent is drawn again); learn mode replays its lesson game
-function rematch() { const learn = G && G.learn, mode = G && G.mode; stopGame(true); if (learn) startLearn(); else startLocal(mode === "solo" ? "solo" : "bot"); }
+// take-back (local games): rebuild the game from its start without my last deliberate move and everything after it;
+// effects resolving on their own, answers and passes are stepped over, so the move undone is the one I actually chose
+const UNDO_SKIP = new Set(["trig", "respond", "pass", "answer"]);
+function undoPoint() {
+  if (!G || !G.rec || G.replay || G.mode === "friend" || !G.s || G.s.phase === "over") return -1;
+  const acts = G.rec.acts, human = (p) => G.mode === "solo" || p === G.V;
+  for (let k = acts.length - 1; k >= 0; k--) if (human(acts[k][0]) && !UNDO_SKIP.has(acts[k][1].type) && acts[k][1].type !== "mull") return k;
+  return -1;
+}
+function undoLast() {
+  const k = undoPoint(); if (k < 0 || G.driving) return toast(G && G.driving ? "รอฝั่งตรงข้ามเล่นจบก่อนนะ" : "ยังไม่มีตาที่ย้อนได้");
+  const s = E.newGame(G.rec.init); for (let j = 0; j < k; j++) { try { replayApply(s, G.rec.acts[j]); } catch (e) { return toast("ย้อนไม่ได้: " + e.message, "bad"); } }
+  G.rec.acts.length = k; G.s = s; G.undos = (G.undos || 0) + 1; G.say = null;
+  G.pick = null; G.att = null; G.host = null; G.payFor = null; G.payVia = null; G.callVia = null; G.helperPick = null; G.castFor = null; G.tk = null; G.ask = null;
+  persist(); Arena.update(s, view(), { reset: true, flush: true }); draw(); drive(); toast("ย้อนตาแล้ว");
+}
+const undoBtn = () => (undoPoint() >= 0 ? h("button", { class: "btn sm", title: "ย้อนตาล่าสุด (Ctrl+Z)", onclick: undoLast }, "↶ ย้อนตา") : null);
+addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "z" && G && !G.replay && !/INPUT|TEXTAREA|SELECT/.test((e.target || {}).tagName || "")) { e.preventDefault(); undoLast(); } });
+function rematch() { const learn = G && G.learn, mode = G && G.mode, fish = G && G.fish; stopGame(true); if (learn) startLearn(); else startLocal(fish ? "goldfish" : mode === "solo" ? "solo" : "bot"); }
 function exitGame() { if (G && G.replay) { stopGame(false); location.hash = "#history"; return; } const over = G && G.s && G.s.phase === "over"; stopGame(over); location.hash = "#play"; }
 function turnButtons(s, p) {
   if (G.replay) return [h("button", { class: "btn sm", onclick: exitGame }, "กลับหน้าประวัติ")];
-  if (s.phase === "over") return [G.mode !== "friend" ? h("button", { class: "btn gold sm", onclick: rematch }, "ดวลอีกครั้ง") : null,
+  if (s.phase === "over") return [G.mode !== "friend" ? h("button", { class: "btn gold sm", onclick: rematch }, G.fish ? "ซ้อมอีกรอบ" : "ดวลอีกครั้ง") : null,
     G.rec && G.mode !== "friend" ? h("button", { class: "btn sm", onclick: () => openSummary(G) }, "สรุปเกม") : null,
     h("button", { class: "btn sm", onclick: () => { stopGame(true); location.hash = "#play"; } }, "กลับหน้าเตรียมเกม"), h("a", { class: "btn sm", href: "#history", onclick: () => stopGame(true) }, "ดูประวัติ")];
   if (p == null || !mine(p) || s.trig.length || s.pend || s.phase === "mull") return [];
   if (s.phase === "main") { // abilities used from hell / the dark zone have no card on the table to tap, so offer them here
     const far = [...s.P[p].hand, ...s.P[p].hell, ...s.P[p].dark, ...uniqDeckActs(s, s.P[p])].filter((x) => { const sc = scriptOf(s, x); return sc && sc.activate && x.used !== s.turn && sc.activate.can(E, s, x, E.locate(s, x.i)); }).slice(0, 4);
-    return [h("button", { class: "btn gold sm", onclick: () => doAct({ type: "battle" }, p) }, s.turn === 1 ? "จบเทิร์น" : "ไป Battle Phase"), s.turn === 1 ? null : h("button", { class: "btn sm", onclick: () => doAct({ type: "end" }, p) }, "จบเทิร์นเลย"),
+    return [h("button", { class: "btn gold sm", onclick: () => doAct({ type: "battle" }, p) }, s.turn === 1 ? "จบเทิร์น" : "ไป Battle Phase"), s.turn === 1 ? null : h("button", { class: "btn sm", onclick: () => doAct({ type: "end" }, p) }, "จบเทิร์นเลย"), compact() ? null : undoBtn(),
       ...far.map((x) => h("button", { class: "btn ciel sm", title: scriptOf(s, x).activate.label, onclick: () => doAct({ type: "activate", i: x.i }, p) }, `สั่งใช้ ${E.name(s, x)} (${ZONE_TH[E.locate(s, x.i).z]})`)),
       ...legalMoves(s, p).filter((m) => m.a.type === "cast" && m.a.from === "hell").slice(0, 4).map((m) => h("button", { class: "btn ciel sm", onclick: () => doAct(m.a, p) }, m.d))]; }
   if (s.phase === "battle") { const far = [...s.P[p].hand, ...s.P[p].hell, ...s.P[p].dark, ...s.P[p].mg].filter((x) => { const sc = scriptOf(s, x); return sc && sc.activate && sc.activate.battle && x.used !== s.turn && sc.activate.can(E, s, x, E.locate(s, x.i)); }).slice(0, 3);
-    return [h("button", { class: "btn gold sm", onclick: () => doAct({ type: "end" }, p) }, "จบเทิร์น"), G.att ? h("button", { class: "btn sm", onclick: () => { G.att = null; draw(); } }, "ยกเลิกการเลือก") : null,
+    return [h("button", { class: "btn gold sm", onclick: () => doAct({ type: "end" }, p) }, "จบเทิร์น"), G.att ? h("button", { class: "btn sm", onclick: () => { G.att = null; draw(); } }, "ยกเลิกการเลือก") : compact() ? null : undoBtn(),
       ...far.map((x) => h("button", { class: "btn ciel sm", title: scriptOf(s, x).activate.label, onclick: () => doAct({ type: "activate", i: x.i }, p) }, `สั่งใช้ ${E.name(s, x)} (${ZONE_TH[E.locate(s, x.i).z]})`))]; }
   return [];
 }

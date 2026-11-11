@@ -1,16 +1,17 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261111112725";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261111112725";
-import { AVATARS, my3D } from "./arena3d.js?v=20261111112725";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261111112725";
-import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261111112725";
-import { Views, avatarEl } from "./ui.js?v=20261111112725";
-import { Ciel } from "./ai.js?v=20261111112725";
-import "./views/library.js?v=20261111112725";
-import "./views/decks.js?v=20261111112725";
-import "./views/lab.js?v=20261111112725";
-import "./views/history.js?v=20261111112725";
-import "./views/ask.js?v=20261111112725";
-import "./views/play.js?v=20261111112725";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261111123125";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261111123125";
+import { AVATARS, MATS, gfxSetting, animSetting } from "./arena3d.js?v=20261111123125";
+import { myFigure, myMat, unlocked, needFor } from "./achieve.js?v=20261111123125";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261111123125";
+import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261111123125";
+import { Views, avatarEl } from "./ui.js?v=20261111123125";
+import { Ciel } from "./ai.js?v=20261111123125";
+import "./views/library.js?v=20261111123125";
+import "./views/decks.js?v=20261111123125";
+import "./views/lab.js?v=20261111123125";
+import "./views/history.js?v=20261111123125";
+import "./views/ask.js?v=20261111123125";
+import "./views/play.js?v=20261111123125";
 
 const root = $("#view");
 let current = null, cardsReady = false;
@@ -65,21 +66,32 @@ function meArea() {
   const na = document.getElementById("nav-ask"); if (na) na.hidden = p.role !== "owner";
   $("#me").replaceChildren(h("button", { class: "btn sm", onclick: settings, "aria-label": "ตั้งค่า" }, avatarEl(myAvatar(), myName(), "hd"), h("span", null, myName()), pending && p.role === "owner" ? h("span", { class: "chip warn" }, pending + " รออนุมัติ") : null, Ciel.on() ? h("span", { class: "chip gold" }, "✦ ชิเอล") : null));
 }
-// the little 3D figure that stands by your side of the table (kept in this browser; used from the next game)
+// the little 3D figure by your side of the table, and the colour of the mat's lacquer: some are opened by achievements (kept per browser)
 function avatarSection() {
-  const cur = my3D(); const set = (k) => { try { if (k) localStorage.setItem("bot.av3", k); else localStorage.removeItem("bot.av3"); } catch {} };
-  const opts = [["", "ไม่มี"], ...Object.entries(AVATARS).map(([k, a]) => [k, a.name])];
-  return [h("div", { class: "eyebrow", style: "margin-top:12px" }, "อวตาร 3 มิติบนโต๊ะ"),
-    h("div", { class: "small muted" }, "ตัวเล็กๆ ที่ยืนข้างแถบกลางสนามฝั่งคุณ เด้งตอนเริ่มเทิร์น สะดุ้งตอนเสีย LIFE ดีใจหรือคอตกตอนจบเกม เปลี่ยนแล้วใช้ตั้งแต่เกมถัดไป"),
-    h("div", { class: "seg", role: "group", "aria-label": "อวตาร 3 มิติ" }, opts.map(([k, t]) => h("button", { "aria-pressed": cur === k ? "true" : "false", onclick: (e) => {
-      set(k); for (const b of e.currentTarget.parentElement.children) b.setAttribute("aria-pressed", b === e.currentTarget ? "true" : "false");
-      toast(k ? `เลือก${t}แล้ว ใช้ตั้งแต่เกมถัดไป` : "ปิดอวตาร 3 มิติแล้ว"); } }, t)))];
+  const seg = (label, key, cur, opts, kind, done) => h("div", { class: "seg wrap", role: "group", "aria-label": label }, opts.map(([k, t]) => { const open = !k || unlocked(kind, k);
+    return h("button", { "aria-pressed": cur === k ? "true" : "false", disabled: !open, title: open ? t : "ล็อคอยู่ · " + needFor(kind, k), onclick: (e) => {
+      try { if (k) localStorage.setItem(key, k); else localStorage.removeItem(key); } catch {} for (const b of e.currentTarget.parentElement.children) b.setAttribute("aria-pressed", b === e.currentTarget ? "true" : "false"); toast(done(t)); } }, open ? t : "🔒 " + t); }));
+  const locked = [...Object.keys(AVATARS).filter((k) => !unlocked("av", k)).map((k) => [AVATARS[k].name, needFor("av", k)]), ...Object.keys(MATS).filter((k) => !unlocked("mat", k)).map((k) => ["ผ้าปู" + MATS[k].name, needFor("mat", k)])];
+  return [h("div", { class: "eyebrow", style: "margin-top:12px" }, "อวตาร 3 มิติและผ้าปูโต๊ะ"),
+    h("div", { class: "small muted" }, "อวตารยืนข้างแถบกลางสนามฝั่งคุณ เด้งตอนเริ่มเทิร์น สะดุ้งตอนเสีย LIFE ดีใจหรือคอตกตอนจบเกม เปลี่ยนแล้วใช้ตั้งแต่เกมถัดไป"),
+    seg("อวตาร 3 มิติ", "bot.av3", myFigure(), [["", "ไม่มี"], ...Object.entries(AVATARS).map(([k, a]) => [k, a.name])], "av", (t) => `เลือก${t}แล้ว ใช้ตั้งแต่เกมถัดไป`),
+    seg("ผ้าปูโต๊ะ", "bot.mat", myMat(), Object.entries(MATS).map(([k, m]) => [k, m.name]), "mat", (t) => `ผ้าปู${t} ใช้ตั้งแต่เปิดสนามครั้งถัดไป`),
+    locked.length ? h("div", { class: "tiny muted" }, "ปลดล็อคได้จากการเล่นเท่านั้น: " + locked.map(([n, w]) => `${n} (${w})`).join(" · ")) : null];
+}
+// how much the 3D table draws, and how fast its animations run (both per browser; used the next time the table opens)
+function gfxSection() {
+  const seg = (label, cur, opts, key, done) => h("div", { class: "seg", role: "group", "aria-label": label }, opts.map(([v, t]) => h("button", { "aria-pressed": String(cur) === String(v) ? "true" : "false", onclick: (e) => {
+    try { localStorage.setItem(key, v); } catch {} for (const b of e.currentTarget.parentElement.children) b.setAttribute("aria-pressed", b === e.currentTarget ? "true" : "false"); toast(done(t)); } }, t)));
+  return [h("div", { class: "eyebrow", style: "margin-top:12px" }, "ภาพและความเร็ว"),
+    h("div", { class: "small muted" }, "สวยสุด: แสงฟุ้ง เงา และทองสะท้อนแสงทุกเครื่อง · ประหยัดเครื่อง: เหมาะกับมือถือรุ่นเก่า แบตอยู่นานขึ้น · อัตโนมัติ: เลือกตามขนาดจอ"),
+    seg("คุณภาพภาพ", gfxSetting(), [["auto", "อัตโนมัติ"], ["high", "สวยสุด"], ["low", "ประหยัดเครื่อง"]], "bot.gfx", (t) => `ภาพ: ${t} มีผลตอนเปิดสนามครั้งถัดไป`),
+    seg("ความเร็วแอนิเมชัน", animSetting(), [[1, "ปกติ"], [1.6, "เร็ว"], [2.5, "เร็วมาก"]], "bot.anim", (t) => `แอนิเมชัน: ${t} มีผลตอนเปิดสนามครั้งถัดไป`)];
 }
 function settings() {
   openSheet((api) => {
     const key = h("input", { type: "password", value: Ciel.key(), placeholder: "sk-ant-…", autocomplete: "off", "aria-label": "Claude API key" });
     const model = h("select", { "aria-label": "โมเดลหลัก" }, ["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-5-5"].map((m) => h("option", { value: m, selected: m === Ciel.model() }, m)));
-    const out = [...profileSection(api), ...avatarSection(), ...appSection(api), h("div", { class: "eyebrow", style: "margin-top:12px" }, "ชิเอล (Claude API)"),
+    const out = [...profileSection(api), ...avatarSection(), ...gfxSection(), ...appSection(api), h("div", { class: "eyebrow", style: "margin-top:12px" }, "ชิเอล (Claude API)"),
       h("div", { class: "small muted" }, "ใส่ API key ของคุณเองเพื่อให้ชิเอลคิดเป็นบอท อ่านเอฟเฟกต์การ์ด และจัดเด็ค key เก็บเฉพาะในเบราว์เซอร์นี้ ไม่ส่งขึ้นฐานข้อมูล ค่าใช้จ่ายคิดกับบัญชี API ของคุณ ถ้าไม่ใส่ ยังเล่นกับบอทพื้นฐานได้"),
       key, h("div", { class: "row" }, h("span", { class: "small muted" }, "โมเดลจัดเด็ค/อ่านการ์ด"), model),
       h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => { const v = key.value.trim(); if (v) lsSet("bot.apiKey", v); else lsDel("bot.apiKey"); lsSet("bot.model", model.value); toast(v ? "บันทึก key ของชิเอลแล้ว" : "ลบ key แล้ว"); meArea(); api.close(); } }, "บันทึก"), Ciel.on() ? h("button", { class: "btn danger sm", onclick: () => { lsDel("bot.apiKey"); meArea(); api.close(); toast("ลบ key แล้ว"); } }, "ลบ key") : null)];
