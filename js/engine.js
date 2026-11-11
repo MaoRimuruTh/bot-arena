@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261111211257";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261111211257";
-import { SCRIPTS } from "./scripts.js?v=20261111211257";
-import { newId, clone } from "./util.js?v=20261111211257";
+import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261111212615";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261111212615";
+import { SCRIPTS } from "./scripts.js?v=20261111212615";
+import { newId, clone } from "./util.js?v=20261111212615";
 export const ZONES = ["deck", "hand", "av", "mg", "cs", "hell", "dark", "life"];
 export const ZONE_TH = { deck: "Deck", hand: "มือ", av: "Avatar Zone", mg: "Magic Zone", cs: "Construct Zone", hell: "นรก", dark: "มิติมืด", life: "LIFE", land: "Land Magic" };
 export const PHASE_TH = { mull: "เปลี่ยนมือ", draw: "Draw", main: "Main", battle: "Battle", end: "End", over: "จบเกม" };
@@ -179,6 +179,9 @@ export const E = {
   handed(s, x) { const sc = x.mute ? null : scriptOf(s, x); const src = s.cur != null ? s.cards[s.cur] : null; if (sc && sc.handed && (!sc.handedOk || sc.handedOk(E, s, x, src))) s.trig.push({ id: tid(s), seat: x.o, i: x.i, c: x.c, when: "handed", optional: true }); },
   oneAttack(s) { return !!E.landSc(s, "oneAttack"); },
   lands(s) { return [s.land, s.land2].filter(Boolean); }, // two Land Magic cards only while แบ่งแยกดินแดน is on the Land Magic Zone
+  // Land Magic is shared by both players: either may use its "สั่งใช้" abilities, and "ฝ่ายเรา" on it means whoever
+  // uses it. The card's place with p set to that player, for the ability's own checks (other cards: just where it is)
+  actLoc(s, i, p) { const L = E.locate(s, i); return L && L.z === "land" ? { ...L, p } : L; },
   landSc(s, k) { for (const l of E.lands(s)) { if (l.mute) continue; const sc = scriptOf(s, l); if (sc && sc[k]) return sc; } return null; },
   placeLand(s, x) { // x goes onto the Land Magic Zone: it replaces the Land there, or (แบ่งแยกดินแดน) only its owner's own Land
     const split = !!E.landSc(s, "splitLand"); const gone = E.lands(s).filter((l) => l !== x && (!split || l.o === x.o));
@@ -215,7 +218,7 @@ export const E = {
     for (const P of s.P) for (const m of P.mg) if (m.on === x.i && !m.mute) { const sc = scriptOf(s, m); if (sc && sc.wornCost) c += sc.wornCost; }
     for (const { x: y, L: Ly } of fieldCards(s)) { if (y.mute) continue; const sc = scriptOf(s, y); if (sc && sc.costAura) c += sc.costAura(E, s, y, Ly, x, L) || 0; }
     return Math.max(0, c); },
-  capSync(s) { for (const p of [0, 1]) { const P = s.P[p]; const sc = E.lands(s).filter((l) => l.o === p && !l.mute).map((l) => scriptOf(s, l)).find((y) => y && y.cap6) || null; if (sc && sc.cap6 && P.av.every((x) => sc.cap6(E, s, x))) P.c6 = true; else delete P.c6; }
+  capSync(s) { for (const p of [0, 1]) { const P = s.P[p]; const sc = E.lands(s).filter((l) => !l.mute).map((l) => scriptOf(s, l)).find((y) => y && y.cap6) || null; /* a Land Magic: for either player */ if (sc && sc.cap6 && P.av.every((x) => sc.cap6(E, s, x))) P.c6 = true; else delete P.c6; }
     { const sc = E.landSc(s, "cap3"); for (const P of s.P) if (sc && sc.cap3) P.c3 = true; else delete P.c3; } },
   // may Avatar x join p's Avatar Zone? (only a card that keeps the six-slot rule may use the two extra slots)
   fits6(s, p, x) { const P = s.P[p]; if (!P.c6) return true; const sc = E.landSc(s, "cap6"); return !!(sc && sc.cap6 && sc.cap6(E, s, x)) || P.av.filter((y) => !y.tok).length < 4; },
@@ -601,7 +604,7 @@ export const E = {
         return;
       }
       case "answer": { // an ability usable when the opponent attacks (from the hand or the field)
-        need(s.pend && s.pend.by === 1 - p && !s.trig.length, "ยังไม่ถึงจังหวะ"); const L = E.locate(s, act.i); need(L && L.p === p, "ไม่พบการ์ดของคุณ"); const sc = scriptOf(s, L.x);
+        need(s.pend && s.pend.by === 1 - p && !s.trig.length, "ยังไม่ถึงจังหวะ"); const L = E.actLoc(s, act.i, p); need(L && L.p === p, "ไม่พบการ์ดของคุณ"); const sc = scriptOf(s, L.x);
         need(sc && sc.answer && sc.answer.can(E, s, L.x, L) && L.x.ans !== s.turn, "ใช้ความสามารถนี้ตอนนี้ไม่ได้"); L.x.ans = s.turn;
         s.trig.push({ id: tid(s), seat: p, i: L.x.i, c: L.x.c, when: "answer" }); E.log(s, p, `ใช้ความสามารถของ ${E.name(s, L.x)}`); return; }
       case "respond": {
@@ -649,7 +652,7 @@ export const E = {
         return;
       }
       case "activate": { // scripted once-per-turn ability on the field
-        const L = E.locate(s, act.i); need(L && L.p === p, "ไม่พบการ์ดของคุณ"); const sc = scriptOf(s, L.x);
+        const L = E.actLoc(s, act.i, p); need(L && L.p === p, "ไม่พบการ์ดของคุณ"); const sc = scriptOf(s, L.x);
         need(E.canAct(s, p) && (s.phase === "main" || (s.phase === "battle" && sc && sc.activate && sc.activate.battle)), "สั่งใช้ตอนนี้ไม่ได้");
         if (act.k != null) { // an ability read from the card text (see effects.js)
           need(s.phase === "main" && E.ext.acts && E.ext.acts(s, L.x, L).some((a) => a.k === act.k), "ใช้ความสามารถนี้ไม่ได้ตอนนี้");
@@ -1097,8 +1100,8 @@ export function legalMoves(s, p) {
     for (const x of P.hell) { const d = E.def(s, x); if (d.t !== "M" || d.st === "R" || !E.hellCastOk(s, p, x) || (s.mu[p][d.st] && !E.extraMagic(s, p, x)) || (d.st === "D" && E.modBlocked(s, p, x)) || E.magicLocked(s, p, d.st) || (scriptOf(s, x).canCast && !scriptOf(s, x).canCast(E, s, p))) continue; // Magic usable from hell
       if (d.st === "D") { for (const y of P.av.filter((h) => E.modOk(s, x, h)).slice(0, 4)) out.push({ d: `สวมใส่ ${d.n} จากนรก ให้ ${E.name(s, y)}`, a: { type: "cast", i: x.i, on: y.i, from: "hell" } }); }
       else if (d.st !== "L") out.push({ d: `ใช้ ${SUB_TH[d.st]} Magic ${d.n} จากนรก`, a: { type: "cast", i: x.i, from: "hell" } }); }
-    for (const x of [...P.av, ...P.cs, ...P.mg, ...P.dark, ...P.hell, ...P.hand, ...uniqDeckActs(s, P), ...E.lands(s).filter((l) => l.o === p)]) { const L = E.locate(s, x.i); const sc = scriptOf(s, x); if (sc && sc.activate && (sc.activate.multi || x.used !== s.turn) && x.noAct !== s.turn && !E.actBlocked(s, p, x) && sc.activate.can(E, s, x, L)) out.push({ d: `สั่งใช้ ${E.name(s, x)}: ${sc.activate.label}`, a: { type: "activate", i: x.i } }); }
-    if (E.ext.acts) for (const x of [...P.av, ...P.cs, ...E.lands(s).filter((l) => l.o === p)]) for (const a of E.ext.acts(s, x, E.locate(s, x.i))) out.push({ d: `สั่งใช้ ${E.name(s, x)}: ${a.label}`, a: { type: "activate", i: x.i, k: a.k } });
+    for (const x of [...P.av, ...P.cs, ...P.mg, ...P.dark, ...P.hell, ...P.hand, ...uniqDeckActs(s, P), ...E.lands(s)]) { const L = E.actLoc(s, x.i, p); const sc = scriptOf(s, x); if (sc && sc.activate && (sc.activate.multi || x.used !== s.turn) && x.noAct !== s.turn && !E.actBlocked(s, p, x) && sc.activate.can(E, s, x, L)) out.push({ d: `สั่งใช้ ${E.name(s, x)}: ${sc.activate.label}`, a: { type: "activate", i: x.i } }); }
+    if (E.ext.acts) for (const x of [...P.av, ...P.cs, ...E.lands(s)]) for (const a of E.ext.acts(s, x, E.actLoc(s, x.i, p))) out.push({ d: `สั่งใช้ ${E.name(s, x)}: ${a.label}`, a: { type: "activate", i: x.i, k: a.k } });
     out.push(...anytimeReacts(s, p));
     out.push({ d: s.turn === 1 ? "จบเทิร์น (เทิร์นแรกไม่มี Battle)" : "ไป Battle Phase", a: { type: "battle" } });
   } else if (s.phase === "battle") {
