@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261112040856";
-import { E } from "./engine.js?v=20261112040856";
-import { h } from "./util.js?v=20261112040856";
-import { Sfx } from "./sfx.js?v=20261112040856";
+import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261112041016";
+import { E } from "./engine.js?v=20261112041016";
+import { h } from "./util.js?v=20261112041016";
+import { Sfx } from "./sfx.js?v=20261112041016";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -564,7 +564,7 @@ export function colorFx(pos, co, big = 1) {
 function showcase(s, ev) {
   const L = E.locate(s, ev.i), d = L && s.cards[L.x.c], c = d && d.im != null ? card(d.im) : null; if (!c) return Promise.resolve();
   const el = h("div", { class: "showcase", "aria-hidden": "true" }, artImg(c, "scimg"), h("b", null, `${(s.P[ev.p] || {}).name || "ฝ่ายตรงข้าม"} ใช้ ${d.n}`));
-  document.body.append(el); const k = 1 / ((R && R.speed) || 1);
+  document.querySelectorAll(".showcase").forEach((x) => x.remove()); document.body.append(el); // one at a time (fast replays) const k = 1 / ((R && R.speed) || 1);
   gsap.set(el, { xPercent: -50, yPercent: -50 });
   gsap.fromTo(el, { opacity: 0, scale: reduce ? 1 : 0.8 }, { opacity: 1, scale: 1, duration: 0.22 * k, ease: "back.out(1.6)" });
   gsap.to(el, { opacity: 0, duration: 0.25 * k, delay: 1.1 * k, onComplete: () => el.remove() });
