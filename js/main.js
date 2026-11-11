@@ -1,15 +1,15 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261111082758";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261111082758";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261111082758";
-import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261111082758";
-import { Views, avatarEl } from "./ui.js?v=20261111082758";
-import { Ciel } from "./ai.js?v=20261111082758";
-import "./views/library.js?v=20261111082758";
-import "./views/decks.js?v=20261111082758";
-import "./views/lab.js?v=20261111082758";
-import "./views/history.js?v=20261111082758";
-import "./views/ask.js?v=20261111082758";
-import "./views/play.js?v=20261111082758";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261111083344";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261111083344";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261111083344";
+import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261111083344";
+import { Views, avatarEl } from "./ui.js?v=20261111083344";
+import { Ciel } from "./ai.js?v=20261111083344";
+import "./views/library.js?v=20261111083344";
+import "./views/decks.js?v=20261111083344";
+import "./views/lab.js?v=20261111083344";
+import "./views/history.js?v=20261111083344";
+import "./views/ask.js?v=20261111083344";
+import "./views/play.js?v=20261111083344";
 
 const root = $("#view");
 let current = null, cardsReady = false;
