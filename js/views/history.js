@@ -1,6 +1,7 @@
-import { h, openSheet, fmtDate, busy } from "../util.js?v=20261111101313";
-import { Data } from "../fb.js?v=20261111101313";
-import { Views } from "../ui.js?v=20261111101313";
+import { h, openSheet, fmtDate, busy } from "../util.js?v=20261111111214";
+import { Data } from "../fb.js?v=20261111111214";
+import { Views } from "../ui.js?v=20261111111214";
+import { hasReplay, openReplay } from "./play.js?v=20261111111214";
 
 const MODE_TH = { bot: "บอท", friend: "เพื่อน", solo: "สองฝั่ง" };
 Views.history = {
@@ -16,7 +17,8 @@ Views.history = {
       h("div", { class: "statrow" }, h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "เกมทั้งหมด"), h("b", null, ms.length)), h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "ชนะ"), h("b", { style: "color:#8ee3b2" }, Math.round((w / ms.length) * 100) + "%")),
         h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "เทิร์นเฉลี่ย"), h("b", null, (ms.reduce((a, m) => a + (m.turns || 0), 0) / ms.length).toFixed(1)))),
       h("div", { class: "setup", style: "margin-top:18px" },
-        h("div", { class: "stack", style: "gap:8px" }, ms.slice(0, 100).map((m) => h("button", { class: "mrow", onclick: () => openSheet(() => [h("div", { class: "small muted" }, `${fmtDate(m.at)} · ${MODE_TH[m.mode] || ""} · ${m.first ? "เล่นก่อน" : "เล่นหลัง"} · ${m.turns} เทิร์น`), h("div", null, m.reason || ""), h("div", { class: "glog", style: "max-height:none" }, (m.log || []).map((l) => h("div", null, l)))], { title: `${m.deckName} vs ${m.oppDeck}` }) },
+        h("div", { class: "stack", style: "gap:8px" }, ms.slice(0, 100).map((m) => h("button", { class: "mrow", onclick: () => openSheet((api) => [h("div", { class: "small muted" }, `${fmtDate(m.at)} · ${MODE_TH[m.mode] || ""} · ${m.first ? "เล่นก่อน" : "เล่นหลัง"} · ${m.turns} เทิร์น`), h("div", null, m.reason || ""),
+            hasReplay(m.id) ? h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => { api.close(); openReplay(m.id); } }, "ดูรีเพลย์")) : m.rp ? h("div", { class: "tiny muted" }, "รีเพลย์ของเกมนี้เก็บไว้ในเครื่องที่เล่น") : null, h("div", { class: "glog", style: "max-height:none" }, (m.log || []).map((l) => h("div", null, l)))], { title: `${m.deckName} vs ${m.oppDeck}` }) },
           h("span", { class: "chip " + (m.result === "win" ? "good" : m.result === "loss" ? "bad" : "") }, m.result === "win" ? "ชนะ" : m.result === "loss" ? "แพ้" : "เสมอ"),
           h("div", { class: "grow", style: "min-width:0" }, h("b", null, `${m.deckName} vs ${m.oppDeck || m.opp}`), h("div", { class: "tiny muted" }, `${m.opp} · ${MODE_TH[m.mode] || ""} · ${m.turns} เทิร์น · ${m.reason || ""}`)),
           h("span", { class: "tiny muted" }, fmtDate(m.at))))),

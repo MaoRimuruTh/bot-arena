@@ -474,3 +474,12 @@ table.t th{white-space:nowrap}
 .modes{grid-template-columns:repeat(4,1fr)}
 @media (max-width:1180px){.modes{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:560px){.modes{grid-template-columns:1fr}}
+/* replays: the controls sit at the bottom left on wide screens and under the hint on phones; the summary is a three-column table */
+.rpbar{position:absolute;left:max(16px,env(safe-area-inset-left,0px));bottom:calc(66px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:14px;max-width:calc(100vw - 32px)}
+.rpbar input[type=range]{width:min(190px,28vw);min-width:0;accent-color:var(--gold)}
+.rpbar .num{min-width:4.2em;text-align:center}
+@media (max-width:760px){body.arena-on .rpbar{left:50%;transform:translateX(-50%);bottom:auto;top:calc(96px + env(safe-area-inset-top,0px));gap:4px;padding:4px 6px}body.arena-on .rpbar .btn.sm{padding:0 9px}body.arena-on .rpbar input[type=range]{width:min(120px,24vw)}body.arena-on .rpbar .num{display:none}}
+.sumtab{display:grid;gap:2px;border:1px solid var(--line-2);border-radius:12px;overflow:hidden}
+.sumrow{display:grid;grid-template-columns:minmax(0,1fr) 6.5em 6.5em;gap:8px;padding:8px 12px;background:var(--panel);align-items:center}
+.sumrow b{text-align:right;font:600 1rem var(--f-mono)}
+.sumrow.head span{text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111101313";
-import { fxText } from "../fxtext.js?v=20261111101313";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111101313";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111101313";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111101313";
-import { Arena } from "../arena3d.js?v=20261111101313";
-import { autoEffect, resolveEffect } from "../effects.js?v=20261111101313";
-import { Music } from "../music.js?v=20261111101313";
-import { Sfx } from "../sfx.js?v=20261111101313";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261111101313";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111101313";
-import { readAura, traits } from "../auras.js?v=20261111101313";
-import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261111101313";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111111214";
+import { fxText } from "../fxtext.js?v=20261111111214";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111111214";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111111214";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111111214";
+import { Arena } from "../arena3d.js?v=20261111111214";
+import { autoEffect, resolveEffect } from "../effects.js?v=20261111111214";
+import { Music } from "../music.js?v=20261111111214";
+import { Sfx } from "../sfx.js?v=20261111111214";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261111111214";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111111214";
+import { readAura, traits } from "../auras.js?v=20261111111214";
+import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261111111214";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
   return { game: [`เทิร์น ${s.turn} · ${PHASE_TH[s.phase] || s.phase} · ตาของ ${s.P[s.active].name}`, `เด็คเรา: ${me.deckName || "-"} · เด็คคู่แข่ง: ${op.deckName || "-"}`,
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / ")].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261111101313";
+import { allDecks, deckById } from "./decks.js?v=20261111111214";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -36,7 +36,7 @@ const isBot = (s, p) => !!s.P[p].bot;
 // phones/tablets: tap opens a big card view with actions instead of acting right away
 const compact = () => matchMedia("(max-width: 760px)").matches;
 const touchy = () => compact() || matchMedia("(pointer: coarse)").matches;
-const mine = (p) => G && (G.mode === "solo" || p === G.V);
+const mine = (p) => G && !G.replay && (G.mode === "solo" || p === G.V);
 
 Views.play = {
   render(root, parts) {
@@ -111,14 +111,16 @@ const pack = (d) => ({ ...deckToList(d), name: d.name, id: d.id });
 function startLocal(mode) {
   const me = deckById(Setup.deck), op = pickOpp(); if (!me || !op) return toast("เลือกเด็คก่อน");
   const botName = Setup.brain === "ciel" && Ciel.on() ? "ชิเอล" : "บอท";
-  const s = E.newGame({ players: [{ uid: Me.uid, name: myName(), ava: myAvatar() }, mode === "bot" ? { name: botName, bot: true } : { uid: Me.uid, name: "ฝั่งที่ 2" }], decks: [pack(me), pack(op)], seed: (Math.random() * 2 ** 31) | 0, first: Math.random() < 0.5 ? 0 : 1, mode });
-  G = { s, V: 0, mode, brain: mode === "bot" && Setup.brain === "ciel" && Ciel.on() ? "ciel" : "basic", id: s.id, saved: false };
+  const init = { players: [{ uid: Me.uid, name: myName(), ava: myAvatar() }, mode === "bot" ? { name: botName, bot: true } : { uid: Me.uid, name: "ฝั่งที่ 2" }], decks: [pack(me), pack(op)], seed: (Math.random() * 2 ** 31) | 0, first: Math.random() < 0.5 ? 0 : 1, mode };
+  const s = E.newGame(init);
+  G = { s, V: 0, mode, brain: mode === "bot" && Setup.brain === "ciel" && Ciel.on() ? "ciel" : "basic", id: s.id, saved: false, rec: { init: { ...init, id: s.id }, acts: [] } };
   persist(); go();
 }
 function startLearn() {
   const st = allDecks().filter((d) => d.starter); const me = st.find((d) => /01/.test(d.name)) || st[0], op = st.find((d) => /02/.test(d.name)) || st[1]; if (!me || !op) return toast("ไม่พบ Starter Deck");
-  const s = E.newGame({ players: [{ uid: Me.uid, name: myName(), ava: myAvatar() }, { name: "บอท", bot: true }], decks: [pack(me), pack(op)], seed: 20261111, first: 0, mode: "bot" });
-  G = { s, V: 0, mode: "bot", brain: "basic", id: s.id, saved: false, learn: { seen: {} } };
+  const init = { players: [{ uid: Me.uid, name: myName(), ava: myAvatar() }, { name: "บอท", bot: true }], decks: [pack(me), pack(op)], seed: 20261111, first: 0, mode: "bot" };
+  const s = E.newGame(init);
+  G = { s, V: 0, mode: "bot", brain: "basic", id: s.id, saved: false, learn: { seen: {} }, rec: { init: { ...init, id: s.id }, acts: [] } };
   persist(); go();
 }
 function go() { if (location.hash === "#play/game") Views.play.render(document.getElementById("view"), ["game"]); else location.hash = "#play/game"; }
@@ -131,7 +133,7 @@ function resume(saved) {
   if (G.mode === "friend") return openOnline(G.id, G.V);
   go();
 }
-function persist() { if (!G) return; if (G.mode === "friend") lsSet(SAVE, { mode: "friend", id: G.id, V: G.V, s: G.s }); else lsSet(SAVE, { s: G.s, V: G.V, mode: G.mode, brain: G.brain, id: G.id, learn: G.learn || null }); }
+function persist() { if (!G || G.replay) return; if (G.mode === "friend") lsSet(SAVE, { mode: "friend", id: G.id, V: G.V, s: G.s }); else lsSet(SAVE, { s: G.s, V: G.V, mode: G.mode, brain: G.brain, id: G.id, learn: G.learn || null, rec: G.rec || null }); }
 function stopGame(clear) {
   if (!G) return; if (G.unsub) G.unsub(); if (clear) lsDel(SAVE); else persist();
   Arena.unmount(); Music.stop(); document.body.classList.remove("arena-on"); document.querySelectorAll(".banner,.dmg").forEach((e) => e.remove()); G = null;
@@ -179,7 +181,9 @@ async function doAct(a, p) {
     finally { if (G) G.lock = false; }
   }
   const fromHand = a.i != null && /^(summon|cast|build)$/.test(a.type) && G.s.P[view()].hand.some((x) => x.i === a.i);
+  const copy = G.rec ? JSON.parse(JSON.stringify(a)) : null;
   try { E.apply(G.s, a, p); } catch (e) { toast(e.message, "bad"); return false; }
+  if (G.rec) G.rec.acts.push([p, copy]);
   if (fromHand) flyFromHand(a.i);
   G.pick = null; G.att = null; G.host = null; G.payFor = null; G.payVia = null; G.callVia = null; G.helperPick = null; G.castFor = null; persist();
   Arena.update(G.s, view()); draw(); drive();
@@ -202,7 +206,7 @@ function autoRespond(s, p) {
 }
 // bot / auto driver
 async function drive() {
-  if (!G || G.driving || !G.s) return; const s = G.s;
+  if (!G || G.driving || !G.s || G.replay) return; const s = G.s;
   if (s.phase === "over") return finish();
   const p = whoActs(s); if (p == null) return;
   if (!isBot(s, p)) { if (s.trig.length && mine(p)) humanTrig(s, p); else autoRespond(s, p); return; }
@@ -228,7 +232,7 @@ async function drive() {
     }
     G.thinking = null; if (!G || G.s !== s) return;
     G.driving = false;
-    if (!(await doAct(a, p))) { try { E.apply(G.s, { type: "end" }, p); } catch { E.lose(G.s, p, "บอทติดสถานะ"); } Arena.update(G.s, view()); draw(); }
+    if (!(await doAct(a, p))) { try { E.apply(G.s, { type: "end" }, p); if (G.rec) G.rec.acts.push([p, { type: "end" }]); } catch { E.lose(G.s, p, "บอทติดสถานะ"); if (G.rec) G.rec.acts.push([p, { type: "__lose", reason: "บอทติดสถานะ" }]); } Arena.update(G.s, view()); draw(); }
   } finally { if (G) G.driving = false; }
 }
 // player's own effects: run by themselves; stop only to ask for a choice or when unreadable
@@ -245,12 +249,82 @@ function finish() {
   if (!G || G.saved) { draw(); return; } G.saved = true; const s = G.s;
   const seats = G.mode === "solo" ? [] : [G.V];
   for (const V of seats) {
-    const P = s.P[V], O = s.P[1 - V];
-    saveMatch(s.id + "-" + V, { uid: Me.uid, mode: G.mode, deckId: P.deckId, deckName: P.deckName, opp: O.name, oppDeck: O.deckName, result: s.winner === V ? "win" : s.winner == null ? "draw" : "loss", turns: s.turn, reason: s.reason, first: s.first === V, at: Date.now(), log: s.log.slice(-14).map((l) => l.m) }).catch((e) => console.warn(e));
+    const P = s.P[V], O = s.P[1 - V]; const rp = keepReplay(s.id + "-" + V);
+    saveMatch(s.id + "-" + V, { rp: rp ? 1 : 0, uid: Me.uid, mode: G.mode, deckId: P.deckId, deckName: P.deckName, opp: O.name, oppDeck: O.deckName, result: s.winner === V ? "win" : s.winner == null ? "draw" : "loss", turns: s.turn, reason: s.reason, first: s.first === V, at: Date.now(), log: s.log.slice(-14).map((l) => l.m) }).catch((e) => console.warn(e));
   }
   lsDel(SAVE); draw();
+  if (G.rec && G.mode !== "friend") { const g = G; setTimeout(() => { if (G === g) openSummary(g); }, 2600); } // after the banner and the falling gold or ash
 }
 
+// ---------- replays: a local game keeps its set-up and every action, so the history page can play it back ----------
+const RP = "bot.rp.", RPIDX = "bot.rp.idx", RP_KEEP = 30;
+function keepReplay(mid) {
+  if (!G.rec) return false; lsSet(RP + mid, { rec: G.rec, V: G.V, at: Date.now() }); if (!lsGet(RP + mid, null)) return false; // the browser may be out of room
+  const idx = [mid, ...lsGet(RPIDX, []).filter((x) => x !== mid)]; for (const old of idx.slice(RP_KEEP)) lsDel(RP + old); lsSet(RPIDX, idx.slice(0, RP_KEEP)); return true;
+}
+export const hasReplay = (mid) => lsGet(RP + mid, null) != null;
+export function openReplay(mid) {
+  const r = lsGet(RP + mid, null); if (!r) return toast("รีเพลย์ของเกมนี้ไม่ได้เก็บไว้ในเครื่องนี้");
+  if (G) stopGame(!!(G.s && G.s.phase === "over")); // a finished game leaves nothing to resume
+  G = { s: E.newGame(r.rec.init), V: r.V, mode: "replay", replay: { rec: r.rec, k: 0, play: false }, saved: true }; G.id = G.s.id;
+  go();
+}
+const replayApply = (s, [p, a]) => (a.type === "__lose" ? E.lose(s, p, a.reason) : E.apply(s, JSON.parse(JSON.stringify(a)), p));
+function replayStep() {
+  const R = G && G.replay; if (!R || R.k >= R.rec.acts.length) { if (R) { R.play = false; draw(); } return false; }
+  try { replayApply(G.s, R.rec.acts[R.k]); } catch (e) { toast("รีเพลย์ไปต่อไม่ได้: " + e.message, "bad"); R.play = false; draw(); return false; }
+  R.k++; Arena.update(G.s, view()); draw(); return true;
+}
+// jumping (back, to a turn, along the bar) rebuilds the game from its start; the table is laid out without animation
+function replaySeek(k, toTurn) {
+  const R = G.replay; R.play = false; const n = R.rec.acts.length; k = Math.max(0, Math.min(n, k));
+  const s = E.newGame(R.rec.init); let j = 0;
+  for (; j < (toTurn ? n : k); j++) { if (toTurn && s.turn >= toTurn) break; try { replayApply(s, R.rec.acts[j]); } catch { break; } }
+  G.s = s; R.k = j; Arena.update(s, view(), { reset: true, flush: true }); draw();
+}
+async function replayRun() { const R = G.replay; while (G && G.replay === R && R.play) { await Arena.idle(); await sleep(450 / (R.speed || 1)); if (!G || G.replay !== R || !R.play || !replayStep()) break; } }
+function replayBar() {
+  const R = G.replay, n = R.rec.acts.length;
+  const ib = (icon, label, disabled, fn) => h("button", { class: "btn sm", title: label, "aria-label": label, disabled, onclick: fn }, icon);
+  return h("div", { class: "rpbar glass", role: "toolbar", "aria-label": "ควบคุมรีเพลย์" },
+    ib("⏮\uFE0E", "กลับไปเริ่มเกม", R.k === 0, () => replaySeek(0)),
+    ib("◀\uFE0E", "ย้อนหนึ่งจังหวะ", R.k === 0, () => replaySeek(R.k - 1)),
+    h("button", { class: "btn sm gold", disabled: R.k >= n && !R.play, onclick: () => { R.play = !R.play; draw(); if (R.play) replayRun(); } }, R.play ? "หยุด" : "เล่น"),
+    ib("▶\uFE0E", "ไปข้างหน้าหนึ่งจังหวะ", R.k >= n, () => { R.play = false; replayStep(); }),
+    ib("⏭\uFE0E", "ไปเทิร์นถัดไป", R.k >= n, () => replaySeek(0, G.s.turn + 1)),
+    h("button", { class: "btn sm", title: "ความเร็ว", "aria-label": `ความเร็ว ${R.speed || 1} เท่า`, onclick: () => { R.speed = { 1: 2, 2: 4, 4: 1 }[R.speed || 1]; Arena.setSpeed(R.speed); draw(); } }, `×${R.speed || 1}`),
+    h("input", { type: "range", min: 0, max: n, value: R.k, "aria-label": "ตำแหน่งในรีเพลย์", onchange: (e) => replaySeek(+e.target.value) }),
+    h("span", { class: "tiny muted num" }, `${R.k}/${n}`));
+}
+// ---------- the summary after a game: what each side did, worked out by replaying the record ----------
+function gameStats(rec) {
+  const s = E.newGame(rec.init); const st = [0, 1].map(() => ({ summon: 0, cast: 0, attack: 0, lifeHit: 0, broke: 0, played: {} })); let seen = s.evc || 0;
+  for (const a of rec.acts) {
+    try { replayApply(s, a); } catch { break; }
+    for (const e of s.ev || []) if (e.id > seen) {
+      seen = e.id; const L = e.i != null ? E.locate(s, e.i) : null; const nm = L ? E.name(s, L.x) : null;
+      if (e.k === "summon" || e.k === "cast") { st[e.p][e.k]++; if (nm) st[e.p].played[nm] = (st[e.p].played[nm] || 0) + 1; }
+      else if (e.k === "declare") st[e.by].attack++;
+      else if (e.k === "life") st[1 - e.p].lifeHit++;
+      else if (e.k === "destroy") st[1 - e.p].broke++;
+    }
+  }
+  return st;
+}
+function openSummary(g) {
+  if (!g || !g.rec) return; const s = g.s, V = g.V, st = gameStats(g.rec), me = st[V], op = st[1 - V];
+  const res = s.winner === V ? "ชนะ" : s.winner == null ? "เสมอ" : "แพ้", top = (o) => Object.entries(o.played).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([n, k]) => `${n}${k > 1 ? " ×" + k : ""}`).join(", ") || "-";
+  const row = (t, a, b) => h("div", { class: "sumrow" }, h("span", null, t), h("b", { class: "num" }, a), h("b", { class: "num" }, b));
+  openSheet((api) => [h("div", { class: "statrow" }, h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "ผล"), h("b", { style: `color:${res === "ชนะ" ? "#8ee3b2" : res === "แพ้" ? "#ffb0b2" : "inherit"}` }, res)),
+      h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "ยาว"), h("b", null, s.turn + " เทิร์น"))),
+    h("div", { class: "small muted" }, s.reason || ""),
+    h("div", { class: "sumtab" }, h("div", { class: "sumrow head tiny muted" }, h("span"), h("span", null, s.P[V].name), h("span", null, s.P[1 - V].name)),
+      row("อัญเชิญ Avatar", me.summon, op.summon), row("ใช้ Magic", me.cast, op.cast), row("ประกาศโจมตี", me.attack, op.attack), row("ทำลายการ์ดคู่แข่ง", me.broke, op.broke), row("ทำ LIFE คู่แข่งหงาย", me.lifeHit, op.lifeHit)),
+    h("div", { class: "small" }, h("b", null, "ลงบ่อยของเรา: "), top(me)), h("div", { class: "small muted" }, h("b", null, "ของคู่แข่ง: "), top(op)),
+    h("div", { class: "row" }, g.mode !== "replay" ? h("button", { class: "btn gold", onclick: () => { api.close(); if (G === g) rematch(); } }, "ดวลอีกครั้ง") : null,
+      hasReplay(s.id + "-" + V) ? h("button", { class: "btn", onclick: () => { api.close(); openReplay(s.id + "-" + V); } }, "ดูรีเพลย์") : null,
+      h("button", { class: "btn", onclick: () => api.close() }, "ดูกระดาน"))], { title: "สรุปเกม", sub: `${s.P[V].deckName} vs ${s.P[1 - V].deckName}` });
+}
 // ---------- field interaction ----------
 function fieldClick(i) {
   if (!G || !G.s) return; const s = G.s; const p = whoActs(s);
@@ -284,7 +358,7 @@ function crystals(P, opp, prevKey) {
 function draw() {
   if (!G || !G.hud || !G.s) return; if (G.hoverHand != null && !G.s.P[view()].hand.some((x) => x.i === G.hoverHand)) G.hoverHand = null; const s = G.s; const V = view(); const me = s.P[V], op = s.P[1 - V]; const p = whoActs(s);
   const myTurn = p != null && mine(p);
-  const hint = s.phase === "over" ? (s.winner === V ? "ชนะ! " : s.winner == null ? "เสมอ · " : "แพ้ · ") + s.reason
+  const hint = G.replay ? `รีเพลย์ · เทิร์น ${s.turn} · ${s.phase === "over" ? "จบเกม" : "ตาของ " + s.P[s.active].name}` : s.phase === "over" ? (s.winner === V ? "ชนะ! " : s.winner == null ? "เสมอ · " : "แพ้ · ") + s.reason
     : G.thinking || (p == null ? "" : !mine(p) ? `รอ ${s.P[p].name}…` : s.phase === "mull" ? "เลือกการ์ดที่จะเปลี่ยน หรือเก็บมือเดิม" : s.trig.length ? "มีเอฟเฟกต์ต้องจัดการ" : s.pend ? "ถูกโจมตี เลือกการตอบโต้" : s.phase === "main" ? "Main Phase · แตะการ์ดบนมือเพื่อเล่น" : s.phase === "battle" ? (G.att ? "เลือกเป้าหมายบนสนาม" : "Battle · เลือก Avatar ที่ตื่นเพื่อโจมตี") : s.phase === "end" && s.need ? `ทิ้งการ์ด ${s.need} ใบ` : "");
   const pile = (P, z, t) => h("button", { onclick: () => openPile(P, z) }, h("b", null, P[z].length), h("span", null, t));
   const ph = ["draw", "main", "battle", "end"];
@@ -388,7 +462,7 @@ function musicMood(s, V) {
   return crit ? (fight ? "climax" : "tense") : fight ? "battle" : s.phase === "mull" || s.active === V ? "mine" : "foe";
 }
 function afterDraw(s, V, op, myTurn) {
-  const me = s.P[V]; Music.mood(musicMood(s, V));
+  const me = s.P[V]; Music.mood(musicMood(s, V)); if (G.replay) G.hud.append(replayBar());
   drawInspector();
   const targets = [];
   if (G.att) { targets.push(...op.av.map((x) => x.i), ...op.cs.map((x) => x.i)); }
@@ -442,9 +516,11 @@ function cardView(x) {
 }
 // the same decks again straight away (a random opponent is drawn again); learn mode replays its lesson game
 function rematch() { const learn = G && G.learn, mode = G && G.mode; stopGame(true); if (learn) startLearn(); else startLocal(mode === "solo" ? "solo" : "bot"); }
-function exitGame() { const over = G && G.s && G.s.phase === "over"; stopGame(over); location.hash = "#play"; }
+function exitGame() { if (G && G.replay) { stopGame(false); location.hash = "#history"; return; } const over = G && G.s && G.s.phase === "over"; stopGame(over); location.hash = "#play"; }
 function turnButtons(s, p) {
+  if (G.replay) return [h("button", { class: "btn sm", onclick: exitGame }, "กลับหน้าประวัติ")];
   if (s.phase === "over") return [G.mode !== "friend" ? h("button", { class: "btn gold sm", onclick: rematch }, "ดวลอีกครั้ง") : null,
+    G.rec && G.mode !== "friend" ? h("button", { class: "btn sm", onclick: () => openSummary(G) }, "สรุปเกม") : null,
     h("button", { class: "btn sm", onclick: () => { stopGame(true); location.hash = "#play"; } }, "กลับหน้าเตรียมเกม"), h("a", { class: "btn sm", href: "#history", onclick: () => stopGame(true) }, "ดูประวัติ")];
   if (p == null || !mine(p) || s.trig.length || s.pend || s.phase === "mull") return [];
   if (s.phase === "main") { // abilities used from hell / the dark zone have no card on the table to tap, so offer them here

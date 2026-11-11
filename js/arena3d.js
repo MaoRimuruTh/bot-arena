@@ -1,15 +1,17 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111101313";
-import { E } from "./engine.js?v=20261111101313";
-import { h } from "./util.js?v=20261111101313";
-import { Sfx } from "./sfx.js?v=20261111101313";
+import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111111214";
+import { E } from "./engine.js?v=20261111111214";
+import { h } from "./util.js?v=20261111111214";
+import { Sfx } from "./sfx.js?v=20261111111214";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 let R = null; // runtime
 export const Arena = {
   get on() { return !!R; },
-  mount, unmount, update, idle: () => (R ? R.queue : Promise.resolve()), setHover: (fn) => R && (R.onHover = fn), setClick: (fn) => R && (R.onClick = fn),
+  mount, unmount, update, idle: () => (R ? R.queue : Promise.resolve()),
+  // replays can run fast: every animation and pause in the arena speeds up together
+  setSpeed: (k) => { if (R) R.speed = k; gsap.globalTimeline.timeScale(k); }, setHover: (fn) => R && (R.onHover = fn), setClick: (fn) => R && (R.onClick = fn),
   highlight, setLifeTarget, banner, flash, shake, popText, mood,
 };
 
@@ -36,9 +38,9 @@ function mount(container) {
 
   // the play mat: black lacquer with gold-leaf line-work (ลายรดน้ำ), stepped corners (ย่อมุม) round every zone
   const small = innerWidth < 760; const mt = matTextures(small);
-  R.matMat = new THREE.MeshStandardMaterial({ map: mt.base, emissiveMap: mt.glow, emissive: new THREE.Color(0xe0982c), emissiveIntensity: 0.2, roughness: 0.52, metalness: 0 });
+  R.matMat = new THREE.MeshStandardMaterial({ map: mt.base, emissiveMap: mt.glow, emissive: new THREE.Color(0xe0982c), emissiveIntensity: 0.2, roughness: 0.62, roughnessMap: mt.rough, metalness: 0 }); R.matGlow = mt.glow;
   const top = new THREE.Mesh(new THREE.PlaneGeometry(MW, MD), R.matMat); top.rotation.x = -Math.PI / 2; top.position.set(0, 0, MZ); top.receiveShadow = true; scene.add(top);
-  const lacq = new THREE.MeshStandardMaterial({ color: 0x5a1812, roughness: 0.34, metalness: 0 });
+  const lacq = new THREE.MeshStandardMaterial({ color: 0x5a1812, roughness: 0.34, metalness: 0, envMapIntensity: 0.3 }); R.lacq = lacq;
   const body = new THREE.Mesh(new THREE.BoxGeometry(MW, 0.28, MD), lacq); body.position.set(0, -0.18, MZ); body.receiveShadow = true; scene.add(body);
   const trimM = new THREE.MeshStandardMaterial({ color: 0xc99a3e, emissive: 0x7a5414, emissiveIntensity: 0.6, roughness: 0.35, metalness: 0.3 });
   for (const [w, d, x, z] of [[MW + 0.08, 0.05, 0, MZ - MD / 2], [MW + 0.08, 0.05, 0, MZ + MD / 2], [0.05, MD, -MW / 2, MZ], [0.05, MD, MW / 2, MZ]]) { const t = new THREE.Mesh(new THREE.BoxGeometry(w, 0.05, d), trimM); t.position.set(x, 0.005, z); scene.add(t); }
@@ -60,7 +62,32 @@ function mount(container) {
   const wood = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ map: woodTexture(small), vertexColors: true }));
   wood.rotation.x = -Math.PI / 2; wood.position.set(0, -0.335, -2); scene.add(wood);
   R.flameTex = flameTexture();
-  R.candles = [[-4.6, -8.7], [4.6, -8.7], [-9.4, -4.8], [9.4, -4.8]].map(([x, z]) => candle(x, z));
+  // two candles at the far corners of the mat show at the top of a wide screen, two further back show on a phone
+  R.candles = [[-4.2, -8.2], [4.2, -8.2], [-8.7, -5.4], [8.7, -5.4]].map(([x, z]) => candle(x, z));
+  // made in Blender (tools/env): a seamless teak top with the candlelight baked into a light map, brass candlesticks, a jasmine garland,
+  // a water bowl, and a dim hall that the gold and brass reflect. Each part swaps in when it has loaded; the drawn table stays as the fallback.
+  const envUrl = (f) => `assets/env/${f}?v=${ENV_V}`;
+  { let n = 0; const ok = () => { if (++n < 2 || !R) return;
+      woodT.encoding = THREE.sRGBEncoding; woodT.wrapS = woodT.wrapT = THREE.RepeatWrapping; woodT.repeat.set(70 / 12, 50 / 12); woodT.anisotropy = 8; lightT.encoding = THREE.sRGBEncoding;
+      tg.setAttribute("uv2", tg.attributes.uv); wood.material.dispose(); wood.material = new THREE.MeshBasicMaterial({ map: woodT, lightMap: lightT, lightMapIntensity: LIGHT_MAX }); shade.visible = false; };
+    const woodT = loader.load(envUrl("wood.jpg"), ok), lightT = loader.load(envUrl("table-light.jpg"), ok); }
+  if (THREE.GLTFLoader) new THREE.GLTFLoader().load(envUrl("props.glb"), (g) => {
+    if (!R) return;
+    g.scene.traverse((o) => { if (!o.isMesh) return; const m = o.material; if (/wax/.test(m.name)) { m.emissive = new THREE.Color(0x5a2c0a); m.emissiveIntensity = 0.55; } if (/brass/.test(m.name)) m.envMapIntensity = 1.6; });
+    g.scene.name = "props"; scene.add(g.scene); for (const c of R.candles) c.onStand(); envProps();
+  }, undefined, () => {});
+  // on phones only the small brass pieces reflect the hall: the mat covers most of the screen and stays cheap to draw
+  const envProps = () => { const g = scene.getObjectByName("props"); if (!small || !g || !R.env) return; g.traverse((o) => { if (o.isMesh && /brass|water/.test(o.material.name)) { o.material.envMap = R.env; o.material.needsUpdate = true; } }); };
+  if (THREE.RGBELoader) new THREE.RGBELoader().setDataType(THREE.UnsignedByteType).load(envUrl("hall.hdr"), (t) => {
+    if (!R) return; const pm = new THREE.PMREMGenerator(renderer); R.env = pm.fromEquirectangular(t).texture; t.dispose(); pm.dispose();
+    if (small) return envProps();
+    scene.environment = R.env;
+    // with something to reflect, the gold leaf on the mat becomes real metal (without it, metal would look dark)
+    Object.assign(R.matMat, { metalness: 0.7, metalnessMap: R.matGlow, envMapIntensity: 2.4 });
+    // the lacquer between the gold keeps only a faint reflection of the hall, so the hall's columns never streak across the mat
+    R.matMat.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace("#include <lights_fragment_maps>", "#include <lights_fragment_maps>\n\tradiance *= mix(0.22, 1.0, metalnessFactor);"); };
+    R.matMat.needsUpdate = true;
+  }, undefined, () => {});
 
   if (THREE.EffectComposer && innerWidth >= 760) {
     R.composer = new THREE.EffectComposer(renderer); R.composer.addPass(new THREE.RenderPass(scene, camera));
@@ -113,7 +140,7 @@ function mount(container) {
   gsap.from(R.matMat, { emissiveIntensity: 0, duration: reduce ? 0 : 1.8, ease: "power2.out" }); // the gold leaf catches the light once
 }
 function unmount() {
-  if (!R) return; R.alive = false; removeEventListener("resize", R.resize);
+  if (!R) return; R.alive = false; removeEventListener("resize", R.resize); gsap.globalTimeline.timeScale(1);
   for (const el of R.labels.values()) el.remove();
   R.renderer.dispose(); R.canvas.remove(); R = null;
 }
@@ -133,6 +160,7 @@ function points(n, color, size, map, spread) {
 // ---------- lacquer and gold leaf ----------
 // world ↔ mat canvas: x ∈ [-MW/2, MW/2], z ∈ [MZ - MD/2, MZ + MD/2]; the top of the canvas is the opponent's side
 const MW = 15.4, MD = 11.6, MZ = -0.2;
+const ENV_V = 1, LIGHT_MAX = 3; // bump ENV_V when a file in assets/env changes; the light map stores light / LIGHT_MAX
 const GOLD = "#d8a84a";
 // a frame with stepped corners (ย่อมุม), the corner shape of Thai thrones and temple bases
 function stepPath(g, x0, y0, x1, y1, st) {
@@ -153,18 +181,18 @@ function prajamyam(g, cx, cy, r, ground) {
 function matTextures(small) {
   const S = small ? 84 : 128; const CW = Math.round(MW * S), CH = Math.round(MD * S);
   const mk = () => { const c = document.createElement("canvas"); c.width = CW; c.height = CH; return c; };
-  const base = mk(), glow = mk(); const g = base.getContext("2d"), q = glow.getContext("2d");
+  const base = mk(), glow = mk(), rough = mk(); const g = base.getContext("2d"), q = glow.getContext("2d"), rq = rough.getContext("2d");
   const X = (x) => (x + MW / 2) * S, Y = (z) => (z - MZ + MD / 2) * S, U = (v) => v * S;
   const LAC = "#120b09";
   // lacquer: a warm black with a soft pool of light, flecks of gold leaf, red lacquer creeping in on the opponent's side
-  g.fillStyle = LAC; g.fillRect(0, 0, CW, CH); q.fillStyle = "#000"; q.fillRect(0, 0, CW, CH);
+  g.fillStyle = LAC; g.fillRect(0, 0, CW, CH); q.fillStyle = "#000"; q.fillRect(0, 0, CW, CH); rq.fillStyle = "#c0c0c0"; rq.fillRect(0, 0, CW, CH); // roughness: lacquer satin, so the hall reflects in it only as a soft glow; gold leaf a little glossier
   let gr = g.createRadialGradient(CW / 2, CH * 0.55, CW * 0.05, CW / 2, CH * 0.55, CW * 0.62); gr.addColorStop(0, "rgba(64,38,28,.55)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, 0, CW, CH);
   gr = g.createLinearGradient(0, 0, 0, CH * 0.42); gr.addColorStop(0, "rgba(150,34,24,.30)"); gr.addColorStop(1, "rgba(150,34,24,0)"); g.fillStyle = gr; g.fillRect(0, 0, CW, CH * 0.42);
   gr = g.createLinearGradient(0, CH, 0, CH * 0.6); gr.addColorStop(0, "rgba(216,168,74,.10)"); gr.addColorStop(1, "rgba(216,168,74,0)"); g.fillStyle = gr; g.fillRect(0, CH * 0.6, CW, CH * 0.4);
   for (let k = 0; k < CW * CH / 900; k++) { const v = Math.random(); g.fillStyle = v < 0.5 ? "rgba(255,255,255,.018)" : "rgba(0,0,0,.05)"; g.fillRect(Math.random() * CW, Math.random() * CH, 1 + Math.random() * 2, 1 + Math.random() * 2); }
   for (let k = 0; k < (small ? 260 : 520); k++) { const x = Math.random() * CW, y = Math.random() * CH, r = Math.random() * 1.6 + 0.4, a = Math.random() * 0.22 + 0.04; g.fillStyle = `rgba(232,186,92,${a})`; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); q.fillStyle = `rgba(255,255,255,${a * 0.6})`; q.beginPath(); q.arc(x, y, r, 0, 7); q.fill(); }
-  // everything gilded is drawn twice: in gold on the mat, in white on the glow map
-  const gild = (fn) => { for (const [c, col] of [[g, GOLD], [q, "#fff"]]) { c.save(); c.strokeStyle = c.fillStyle = col; c.lineJoin = "miter"; fn(c, c === g ? LAC : "#000"); c.restore(); } };
+  // everything gilded is drawn three times: in gold on the mat, in white on the glow (and metal) map, in grey on the roughness map
+  const gild = (fn) => { for (const [c, col, gr] of [[g, GOLD, LAC], [q, "#fff", "#000"], [rq, "#a0a0a0", "#c0c0c0"]]) { c.save(); c.strokeStyle = c.fillStyle = col; c.lineJoin = "miter"; fn(c, gr); c.restore(); } };
   const frame = (c, x0, z0, x1, z1, st, w = 0.035) => { c.lineWidth = U(w); stepPath(c, X(x0), Y(z0), X(x1), Y(z1), U(st)); c.stroke(); c.lineWidth = U(w * 0.38); stepPath(c, X(x0) + U(0.1), Y(z0) + U(0.1), X(x1) - U(0.1), Y(z1) - U(0.1), U(st * 0.8)); c.stroke(); };
   const label = (c, text, x, z, flip, align = "left", size = 0.19) => { c.save(); c.translate(X(x), Y(z)); if (flip) c.rotate(Math.PI); c.font = `600 ${U(size)}px "Chakra Petch", "IBM Plex Sans Thai", sans-serif`; c.textAlign = align; c.textBaseline = "middle"; c.globalAlpha = 0.8; c.fillText(text, 0, 0); c.restore(); };
   const inLabel = (c, text, x0, z0, x1, z1, flip) => (flip ? label(c, text, x1 - 0.32, z1 - 0.3, true) : label(c, text, x0 + 0.32, z0 + 0.3, false));
@@ -191,10 +219,10 @@ function matTextures(small) {
     for (const x of [-4.6, 6.85]) prajamyam(c, X(x), Y(MZ), U(0.3), ground);
   });
   draw();
-  const tb = new THREE.CanvasTexture(base), tg = new THREE.CanvasTexture(glow); tb.encoding = THREE.sRGBEncoding; tb.anisotropy = 8; tg.anisotropy = 8;
+  const tb = new THREE.CanvasTexture(base), tg = new THREE.CanvasTexture(glow), tr = new THREE.CanvasTexture(rough); tb.encoding = THREE.sRGBEncoding; tb.anisotropy = tg.anisotropy = tr.anisotropy = 8;
   // the labels need the display font: redraw once it has loaded
-  if (document.fonts && document.fonts.status !== "loaded") document.fonts.ready.then(() => { if (!R) return; draw(); tb.needsUpdate = true; tg.needsUpdate = true; });
-  return { base: tb, glow: tg };
+  if (document.fonts && document.fonts.status !== "loaded") document.fonts.ready.then(() => { if (!R) return; draw(); tb.needsUpdate = tg.needsUpdate = tr.needsUpdate = true; });
+  return { base: tb, glow: tg, rough: tr };
 }
 // dark teak planks: grain running along each plank, a seam between them, each plank a slightly different tone
 function woodTexture(small) {
@@ -223,7 +251,9 @@ function candle(x, z) { // no real light: a lamp per candle would make every lit
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: R.FX.dot, color: 0xffa040, transparent: true, opacity: 0.32, blending: THREE.AdditiveBlending, depthWrite: false })); halo.scale.set(1.3, 1.3, 1); halo.position.y = 0.86;
   const pool = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 3.2), new THREE.MeshBasicMaterial({ map: R.FX.dot, color: 0xff9a40, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false })); pool.rotation.x = -Math.PI / 2; pool.position.y = 0.004;
   grp.add(dish, wax, flame, halo, pool);
-  R.scene.add(grp); return { flame, halo, pool, ph: Math.random() * 10 };
+  // once the brass candlesticks have loaded, the drawn dish and candle give way and the flame moves up to the wick
+  const onStand = () => { dish.visible = wax.visible = false; flame.position.y = halo.position.y = 1.7; };
+  R.scene.add(grp); return { flame, halo, pool, ph: Math.random() * 10, onStand };
 }
 function softShadow() {
   const c = document.createElement("canvas"); c.width = c.height = 256; const g = c.getContext("2d");
@@ -460,7 +490,7 @@ function home(m, d = 0.4, delay = 0) {
   gsap.to(m.grp.position, { x: w.pos.x, y: m.sel ? m.restY + 0.4 : w.pos.y, z: w.pos.z, duration: d, ease: "power2.out", ...o });
   gsap.to(m.grp.rotation, { x: 0, y: w.rotY, z: 0, duration: d + 0.05, ease: "power2.inOut", ...o }); gsap.to(m.grp.scale, { x: w.scale, y: w.scale, z: w.scale, duration: d * 0.75, ...o });
 }
-function done(m) { m.busy = false; home(m, 0.3); if (!m.pulse) gsap.to(m.glow.material, { opacity: m.sel ? GLOW.sel : GLOW.rest, duration: 0.4 }); }
+function done(m) { m.busy = false; if (!R) return; home(m, 0.3); if (!m.pulse) gsap.to(m.glow.material, { opacity: m.sel ? GLOW.sel : GLOW.rest, duration: 0.4 }); }
 function settle(m, delay) { // the table as it stands (resuming a game): cards just come down into place
   const w = m.want, g = m.grp; g.rotation.set(0, w.rotY, 0); g.scale.setScalar(w.scale); g.position.set(w.pos.x, w.pos.y, w.pos.z); if (reduce) return;
   m.busy = true; g.position.y = w.pos.y + 0.9; m.shOp = 0; gsap.to(m, { shOp: 0.6, duration: 0.4, delay }); gsap.to(g.position, { y: w.pos.y, duration: 0.35, delay, ease: "power2.in", onComplete: () => done(m) });
@@ -475,13 +505,13 @@ function summonIn(m, L, co, cHex) {
     .to(g.position, { x: P.x, y: hy, z: hz, duration: 0.5, ease: "power2.out" }, 0)
     .to(g.rotation, { x: Math.PI / 2 - 0.12, z: 0, duration: 0.55, ease: "power2.inOut" }, 0.02)
     .to(g.scale, { x: s * 1.3, y: s * 1.3, z: s * 1.3, duration: 0.5, ease: "power2.out" }, 0)
-    .add(() => sweep(m, 1.2, 0.55), 0.34)
+    .add(() => R && sweep(m, 1.2, 0.55), 0.34)
     .to(m, { shOp: 0.6, duration: 0.5 }, 0.3)
     .to(g.position, { y: hy + 0.14, duration: 0.24, ease: "sine.inOut" }, 0.5)
     .to(g.position, { x: P.x, y: P.y, z: P.z, duration: 0.22, ease: "power4.in" }, 0.76)
     .to(g.rotation, { x: 0, y: m.want.rotY, duration: 0.22, ease: "power3.in" }, 0.76)
     .to(g.scale, { x: s, y: s, z: s, duration: 0.22, ease: "power3.in" }, 0.76)
-    .add(() => { landFx(P, s, co, cHex); ringOut(ring, s); Sfx.play("summon", { color: co }); m.glow.material.opacity = 1; }, 0.98)
+    .add(() => { if (!R) return; landFx(P, s, co, cHex); ringOut(ring, s); Sfx.play("summon", { color: co }); m.glow.material.opacity = 1; }, 0.98)
     .to(g.position, { y: P.y + 0.12, duration: 0.08, ease: "power2.out" }, 0.98)
     .to(g.position, { y: P.y, duration: 0.3, ease: "bounce.out" }, 1.06);
 }
@@ -494,7 +524,7 @@ function placeIn(m, L) {
     .to(g.rotation, { x: 0, duration: 0.42, ease: "power2.in" }, 0)
     .to(g.scale, { x: s, y: s, z: s, duration: 0.42, ease: "power2.in" }, 0)
     .to(m, { shOp: 0.6, duration: 0.42 }, 0)
-    .add(() => { dust(P, s * 0.8, 6); sweep(m, 0.9, 0.6); }, 0.42);
+    .add(() => { if (!R) return; dust(P, s * 0.8, 6); sweep(m, 0.9, 0.6); }, 0.42);
 }
 function landFx(P, s, co, cHex) {
   shockwave(P, cHex, 6 * s); dust(P, s, 10); pillar(P, cHex); colorFx(P, co);
@@ -608,7 +638,7 @@ async function animateEvent(ev, prev, s, V) {
       .to(m.grp.position, { y: 1.3, duration: 0.22, ease: "power2.out" }).to(m.glow.material, { opacity: 1, duration: 0.2 }, "<").to(m.grp.rotation, { x: mineSide(ev.by) ? -0.42 : 0.42, duration: 0.22, ease: "power2.out" }, "<")
       .to(m.grp.position, { x: hit.x, z: hit.z, y: 0.6, duration: 0.26, ease: "power4.in" })
       .add(() => {
-        Sfx.play("clash"); hitFx(ev.ti != null && R.meshes.get(ev.ti)); sweep(m, 1, 0.4); const sl = sprite(R.FX.slash_02, tint, 3.6, hit.clone().setY(1)); sl.material.rotation = Math.random() * 2;
+        if (!R) return; Sfx.play("clash"); hitFx(ev.ti != null && R.meshes.get(ev.ti)); sweep(m, 1, 0.4); const sl = sprite(R.FX.slash_02, tint, 3.6, hit.clone().setY(1)); sl.material.rotation = Math.random() * 2;
         gsap.fromTo(sl.scale, { x: 0.5, y: 0.5 }, { x: 4.2, y: 4.2, duration: 0.25, ease: "power3.out" }); gsap.to(sl.material, { opacity: 0, duration: 0.35, delay: 0.1, onComplete: () => R && R.scene.remove(sl) });
         burst(hit.clone().setY(0.8), { n: 22, color: 0xffd27a, spread: 2.6, size: 0.24 }); burst(hit.clone().setY(0.8), { n: 6, map: R.FX.star_06, color: 0xfff1c9, spread: 1.6, size: 0.5, dur: 0.5 }); shockwave(hit, aco ? tint : 0xff8a4a, 5); if (aco) colorFx(hit, aco, 0.6); shake(0.42, 0.6); flash("rgba(255,240,210,.5)", 0.45);
       })
@@ -641,11 +671,14 @@ async function animateEvent(ev, prev, s, V) {
     });
   }
 }
-const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms));
+const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms / ((R && R.speed) || 1)));
 function update(s, V, opts = {}) {
   if (!R) return Promise.resolve();
+  // flush: a jump (a replay seek) drops the animations still waiting in the queue, and the banner they raised
+  if (opts.flush) { R.token = (R.token || 0) + 1; const band = document.querySelector(".banner .band"); if (band) { gsap.killTweensOf(band); gsap.set(band, { opacity: 0 }); } }
+  const token = R.token || 0;
   R.queue = R.queue.then(async () => {
-    if (!R) return;
+    if (!R || (R.token || 0) !== token) return;
     if (opts.reset || R.view !== V) { R.lastEv = s.evc || 0; R.view = V; }
     const evs = (s.ev || []).filter((e) => e.id > R.lastEv); R.lastEv = s.evc || R.lastEv;
     const drops = new Set(evs.filter((e) => e.k === "summon").map((e) => e.i)), burned = new Set(evs.filter((e) => e.k === "destroy").map((e) => e.i));
