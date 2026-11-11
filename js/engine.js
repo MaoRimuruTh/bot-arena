@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261111161416";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261111161416";
-import { SCRIPTS } from "./scripts.js?v=20261111161416";
-import { newId, clone } from "./util.js?v=20261111161416";
+import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261111162323";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261111162323";
+import { SCRIPTS } from "./scripts.js?v=20261111162323";
+import { newId, clone } from "./util.js?v=20261111162323";
 export const ZONES = ["deck", "hand", "av", "mg", "cs", "hell", "dark", "life"];
 export const ZONE_TH = { deck: "Deck", hand: "มือ", av: "Avatar Zone", mg: "Magic Zone", cs: "Construct Zone", hell: "นรก", dark: "มิติมืด", life: "LIFE", land: "Land Magic" };
 export const PHASE_TH = { mull: "เปลี่ยนมือ", draw: "Draw", main: "Main", battle: "Battle", end: "End", over: "จบเกม" };
@@ -191,6 +191,7 @@ export const E = {
   battleMod(s, me, foe) { const sc = scriptOf(s, me); let n = sc && sc.battle ? sc.battle(E, s, me, foe) : 0; const fo = foe ? scriptOf(s, foe) : null; if (fo && fo.foeBattle && E.def(s, me).t !== "C") n += fo.foeBattle(E, s, foe, me) || 0; return n; },
   locked(s, p, x) { const d = E.def(s, x); { const ls = E.landSc(s, "summonCap"); if (ls && E.summonedNow(s, p).length >= ls.summonCap) return true; } if (s.lock && s.lock[p] === "dragon") return !(String(d.sy || "").includes("มังกร") || String(d.n || "").includes("ผู้ฝึกมังกร"));
     if (s.lock && s.lock[p] === "blueAlien" && !(E.hasSy(s, x, "เอเลี่ยน") && colorIs(d, "ฟ้า", false))) return true;
+    for (const { x: y, L: Ly } of fieldCards(s)) { if (y.mute) continue; const sy = scriptOf(s, y); if (sy && sy.limitAv && sy.limitAv(E, s, y, Ly, p, x)) return true; } // a continuous limit on what may be summoned (คุณปลาชด)
     const t = s.tlock && s.tlock[p]; if (t && t.t === s.turn) { if (t.sy && !E.hasSy(s, x, t.sy)) return true; if (t.names && t.names.includes(d.n)) return true; if (t.only && !String(d.n || "").includes(t.only)) return true; } return false; },
   locate(s, i) {
     for (let p = 0; p < 2; p++) for (const z of ZONES) { const idx = s.P[p][z].findIndex((x) => x.i === i); if (idx >= 0) return { p, z, idx, x: s.P[p][z][idx] }; }

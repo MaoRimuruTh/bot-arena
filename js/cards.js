@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261111161416";
-import { h } from "./util.js?v=20261111161416";
-import { Data } from "./fb.js?v=20261111161416";
+import { CARD_SOURCE } from "./config.js?v=20261111162323";
+import { h } from "./util.js?v=20261111162323";
+import { Data } from "./fb.js?v=20261111162323";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -183,6 +183,8 @@ export function validateDeck(d) {
   if (ents.some((e) => e.c.fl === "le")) out.push({ ok: true, warn: true, msg: "มีการ์ดลำเอียง ใช้แข่งงานทางการไม่ได้" });
   // "ถ้าใส่การ์ดใบนี้ใน Deck จะต้องใส่ {only} สุวาน ใน Deck อีก 1 ใบ" (พญายม With The Shotgun)
   if (ents.some((e) => e.c.n === "พญายม With The Shotgun")) { const ok = ents.some((e) => e.c.n === "สุวาน" && e.c.o1); out.push({ ok, msg: ok ? "พญายม With The Shotgun มี สุวาน (Only) คู่กันแล้ว" : "ใส่ พญายม With The Shotgun ต้องใส่ สุวาน (Only #1) ด้วย" }); }
+  // "จะต้องใส่การ์ด Avatar "เพมมุ" ไว้ใน Deck ด้วยเสมอ" (สไปรท์ ยอดสุนัข)
+  if (ents.some((e) => e.c.n === "สไปรท์ ยอดสุนัข")) { const ok = ents.some((e) => e.c.t === "A" && String(e.c.n || "").includes("เพมมุ")); out.push({ ok, msg: ok ? "สไปรท์ ยอดสุนัข มี เพมมุ ใน Deck แล้ว" : "ใส่ สไปรท์ ยอดสุนัข ต้องมี Avatar \"เพมมุ\" ใน Deck ด้วย" }); }
   return { ok: out.every((x) => x.ok), items: out };
 }
 export function deckStats(d) {

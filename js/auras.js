@@ -1,7 +1,7 @@
 // Free reader for continuous POWER effects ("ต่อเนื่อง ... POWER +N").
 // Conservative like effects.js: anything it can't express exactly is ignored (returns no aura).
 // readAura(def) -> null or { desc, run(E, s, src, L) -> [{ seat, test(x), n }] }
-import { nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261111161416";
+import { nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261111162323";
 const cache = new Map();
 
 const ON_FIELD = { A: "av", T: "av", C: "cs" };
@@ -10,24 +10,25 @@ const BAIL = /Text Box|\[Link\]|แทน|สวมใส่|Token|Modification|
 
 function filterOf(t) {
   const f = {};
-  const sy = t.match(/\{\s*[Ss]ymbol\s+([^}]+?)\s*\}/); if (sy) f.symbol = sy[1].trim();
+  const sys = [...t.matchAll(/\{\s*[Ss]ymbol\s+([^}]+?)\s*\}/g)].map((m) => m[1].trim()); if (sys.length === 1) f.symbol = sys[0]; else if (sys.length > 1) f.symbols = sys; // "Avatar {Symbol คน} และ Avatar {Symbol ต้นไม้}": either
   const names = [...t.matchAll(/["“]([^"”]{1,40})["”]/g)].map((m) => m[1].trim()).filter(Boolean); if (names.length) f.names = names;
   const co = t.match(/สี(แดง|ฟ้า|เขียว|ม่วง)/); if (co) f.color = co[1];
   const c = t.match(/Cost\s*(\d+)/); if (c) f.cost = +c[1];
   if (/POWER\s*\d/.test(t.replace(/POWER\s*[+\-−–]\s*\d+/g, ""))) f.bad = true;
   return f;
 }
-const named = (f) => !!(f.symbol || f.names || f.color || f.cost != null || f.text);
+const named = (f) => !!(f.symbol || f.symbols || f.names || f.color || f.cost != null || f.text);
 function fits(E, s, x, f) {
   let d = E.def(s, x); { const so = E.syNow ? E.syNow(s, x) : null; if (so) { d = { ...d, sy: so }; delete d.al; } } if (!["A", "T"].includes(d.t)) return false; const on = hasFieldAlias(d) && E.onField(s, x);
   if (f.symbol && !allSy(d, on) && !syText(d, on).includes(f.symbol)) return false;
+  if (f.symbols && !allSy(d, on) && !f.symbols.some((k) => syText(d, on).includes(k))) return false;
   if (f.names && !f.names.some((n) => nameText(d, on).includes(normName(n)))) return false;
   if (f.color && !colorIs(d, f.color, on)) return false;
   if (f.cost != null && (d.c || 0) !== f.cost) return false;
   if (f.text && !String(d.x || "").includes(f.text)) return false;
   return true;
 }
-const fitsDef = (d, f, on = false) => !(f.symbol && !allSy(d, on) && !syText(d, on).includes(f.symbol)) && !(f.names && !f.names.some((n) => nameText(d, on).includes(normName(n)))) && !(f.color && !colorIs(d, f.color, on)) && !(f.text && !String(d.x || "").includes(f.text));
+const fitsDef = (d, f, on = false) => !(f.symbol && !allSy(d, on) && !syText(d, on).includes(f.symbol)) && !(f.symbols && !allSy(d, on) && !f.symbols.some((k) => syText(d, on).includes(k))) && !(f.names && !f.names.some((n) => nameText(d, on).includes(normName(n)))) && !(f.color && !colorIs(d, f.color, on)) && !(f.text && !String(d.x || "").includes(f.text));
 // one "ต่อเนื่อง" clause → aura spec or null
 function parse(seg) {
   let t = seg.replace(/\{red\s*/gi, "").replace(/\s+/g, " ").trim();

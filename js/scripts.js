@@ -3523,3 +3523,31 @@ SCRIPTS["BT07-022"].wearOnly = (E, s, m) => E.named(s, m, "โอตะ");
 SCRIPTS["BT12-028"].foeMgDeath = (c) => (c.self && (c.E.locate(c.s, c.self.i) || {}).z === "av" && !c.self.a ? { explain: "อาดัสกลับมาเป็นสภาพตื่น", ops: [{ op: "wake", i: c.self.i, v: true }] } : { explain: "", ops: [] });
 // ไดโนกาฬสินธุ์ - สยามแรปเตอร์: scouted (and not taken) by the ability of one of our {กะปอม} Avatars → it may be summoned (the game always takes the free summon)
 SCRIPTS["BT12-025"].scoutedPut = (E, s, x, src) => ["A", "T"].includes(src.t) && String(src.sy || "").includes("กะปอม");
+Object.assign(SCRIPTS, {
+  // สไปรท์ ยอดสุนัข: at our End Phase, asleep → it wakes, and it gets POWER +2 until our next Draw Phase
+  "BT09-009": { endPhase: (E, s, x, L) => (L.z === "av" && s.active === L.p ? [...(!x.a ? [{ op: "wake", i: x.i, v: true }] : []), { op: "power", i: x.i, n: 2, temp: "next" }] : []) },
+  // บึงทมิฬ People - คุณปลาชด: while "บึงทมิฬ" is on the Land Magic Zone every player controls at most one Avatar that is not {ปลา}
+  "CC02-009": { limitAv: (E, s, src, L, p, x) => L.z === "av" && E.lands(s).some((l) => E.named(s, l, "บึงทมิฬ")) && !sy(E, s, x, "ปลา") && s.P[p].av.some((y) => !y.tok && !sy(E, s, y, "ปลา")),
+    check: (E, s, x, L) => (L.z === "av" && E.lands(s).some((l) => E.named(s, l, "บึงทมิฬ")) ? [0, 1].flatMap((q) => { const non = s.P[q].av.filter((y) => !y.tok && !sy(E, s, y, "ปลา")); return non.length > 1 ? [...non].sort(cheapCard(E, s)).slice(0, non.length - 1).map((y) => ({ op: "move", i: y.i, to: "hell" })) : []; }) : []) },
+});
+Object.assign(SCRIPTS, {
+  // บึงทมิฬ People - คุณตะพาบ (คำสั่งเสีย): a "วอเตอร์แมน" from our hell back into the Deck and shuffle, then draw 1 (the name is written without quotes, which the text reader misses)
+  "BT07-017": { death: (c) => { const { E, s, seat: p } = c; const t = s.P[p].hell.find((y) => E.named(s, y, "วอเตอร์แมน"));
+    return { explain: `${t ? `${E.name(s, t)} กลับเข้า Deck แล้วสับ · ` : "ไม่มี วอเตอร์แมน ในนรก · "}จั่ว 1 ใบ`, ops: [...(t ? [{ op: "move", i: t.i, to: "deckBottom" }, { op: "shuffle", seat: p }] : []), { op: "draw", seat: p, n: 1 }] }; } },
+  // ริน บันนี่เกิร์ล (จุติ): take control of an opposing POWER 0 Avatar, then that Avatar gets POWER +1
+  "BT09-023": { summon: (c) => { const { E, s, seat: p } = c; const pool = s.P[1 - p].av.filter((y) => E.power(s, y) === 0 && !E.noAim(s, y));
+    if (!pool.length) return { explain: "ไม่มี Avatar POWER 0 ฝ่ายตรงข้าม", ops: [] }; if (E.avatars(s.P[p]) >= 4 || s.P[p].av.length >= 6) return { explain: "Avatar Zone เราเต็ม", ops: [] };
+    const t = c.choose([...pool].sort(strongFirst(E, s)), 1, "เลือก Avatar POWER 0 ฝ่ายตรงข้ามที่จะควบคุม")[0];
+    return t ? { explain: `ควบคุม ${E.name(s, t)} แล้ว POWER +1`, ops: [{ op: "control", i: t.i, seat: p }, { op: "power", i: t.i, n: 1, temp: false }] } : { explain: "ไม่ได้เลือก", ops: [] }; } },
+});
+Object.assign(SCRIPTS, {
+  // ซุนเกี๋ยน (คำสั่งเสีย): a "ขุนพล" {ชาวต่างชาติ} of ours gets POWER +2 until the end of the opponent's next turn
+  "SD07-005": { death: (c) => { const { E, s, seat: p } = c; const pool = s.P[p].av.filter((y) => E.named(s, y, "ขุนพล") && sy(E, s, y, "ต่างชาติ")).sort(strongFirst(E, s));
+    const t = c.choose(pool, 1, "เลือกขุนพล {ชาวต่างชาติ} ฝ่ายเรา POWER +2")[0]; if (!t) return { explain: "ไม่มีขุนพล {ชาวต่างชาติ} บนสนาม", ops: [] };
+    const end = s.active === p ? s.turn + 1 : s.turn + 2;
+    return { explain: `${E.name(s, t)} POWER +2 จนจบเทิร์นถัดไปของฝ่ายตรงข้าม`, ops: [{ op: "power", i: t.i, n: 2, temp: false }, { op: "atEnd", turn: end, ops: [{ op: "power", i: t.i, n: -2, temp: false }], why: "POWER +2 จากซุนเกี๋ยนหมดเวลา" }] }; } },
+  // ยอดมนุษย์หัวยางลบ (พอดี, once a turn): an opposing Avatar loses all its abilities until the end of the opponent's next turn — only when this one was summoned paying exactly
+  "BT10-030": { activate: { label: "พอดี: Avatar ฝ่ายตรงข้ามสูญเสียความสามารถจนจบเทิร์นถัดไปของฝ่ายตรงข้าม", can: (E, s, x, L) => L.z === "av" && !!x.px && s.P[1 - L.p].av.some((y) => !E.noAim(s, y)),
+    run: (c) => { const { E, s, seat: p } = c; const t = c.choose(s.P[1 - p].av.filter((y) => !E.noAim(s, y)).sort(strongFirst(E, s)), 1, "เลือก Avatar ฝ่ายตรงข้ามที่จะสูญเสียความสามารถ")[0];
+      return t ? { explain: `${E.name(s, t)} สูญเสียความสามารถทั้งหมดจนจบเทิร์นถัดไปของฝ่ายตรงข้าม`, ops: [{ op: "mute", i: t.i, until: "oppturn" }] } : { explain: "ไม่มีเป้าหมาย", ops: [] }; } } },
+});
