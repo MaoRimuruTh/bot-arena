@@ -2670,7 +2670,9 @@ Object.assign(SCRIPTS, {
   "BT10-066": { react: { kinds: ["attack", "react"], can: (E, s, p) => !!s.pend && s.pend.tk === "av" && [s.pend.att, s.pend.ti].some((i) => { const L = E.locate(s, i); return !!L && L.p === p && wizard(E, s, L.x); }) && s.P[p].hell.some((y) => spell(E, s, y)), botV: (E, s, q) => 2 * s.P[q].hell.filter((y) => spell(E, s, y)).length - 1 },
     cast: (c) => { const { E, s, seat: p } = c; const L = s.pend ? [s.pend.att, s.pend.ti].map((i) => E.locate(s, i)).find((L) => L && L.p === p && wizard(E, s, L.x)) : null; const n = 2 * s.P[p].hell.filter((y) => spell(E, s, y)).length; return L && n ? { explain: `${E.name(s, L.x)} POWER +${n} จนจบการต่อสู้`, ops: [{ op: "power", i: L.x.i, n, temp: "fight" }] } : { explain: "", ops: [] }; } },
   // หยินหยางทอร์นาโด: only ตั๊กแตนหยิน/หยาง · wearer attacks and wins: use a face-up LIFE of ours now
-  "BT10-068": { modOnly: (E, s, h) => E.named(s, h, "ตั๊กแตนหยิน") || E.named(s, h, "ตั๊กแตนหยาง"), hostWin: (c) => useLife(c, true) },
+  "BT10-068": { modOnly: (E, s, h) => E.named(s, h, "ตั๊กแตนหยิน") || E.named(s, h, "ตั๊กแตนหยาง"), hostWin: (c) => useLife(c, true),
+    // for the bots (it was never played in 104 test games): worth it on หยิน/หยาง while our face-up LIFE cards have something to use
+    modV: (E, s, m, host) => { if (!host || !(E.named(s, host, "ตั๊กแตนหยิน") || E.named(s, host, "ตั๊กแตนหยาง"))) return 0; const up = s.P[host.o].life.filter((y) => y.up).length; return up ? 2 + Math.min(3, up) * 0.8 : 0.4; } },
   // อาวุธของเพมมุ ดาบมารไร้พ่าย: เพมมุ only, +1 · wearer attacks and wins: destroy an opposing Avatar of base POWER ≤ the loser's, then may destroy this and wake a เพมมุ
   "BT10-069": { modOnly: (E, s, h) => { const L = E.locate(s, h.i); return E.named(s, h, "เพมมุ") && !(L && s.P[L.p].mg.some((z) => z.on != null && E.named(s, z, "อาวุธของเพมมุ"))); }, worn: () => 1,
     hostWin: (c) => { const { E, s, seat: p, self: m } = c; const dp = c.t.dp | 0; const t = c.choose(s.P[1 - p].av.filter((y) => !E.noAim(s, y) && (E.def(s, y).pw || 0) <= dp).sort((a, b) => worth(E, s, b) - worth(E, s, a)), 1, `เลือก Avatar POWER ตั้งต้นไม่เกิน ${dp}`, { exact: true })[0];
