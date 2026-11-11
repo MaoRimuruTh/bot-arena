@@ -1,14 +1,15 @@
-import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261111094506";
-import { plain, isOwnerNow } from "../persona.js?v=20261111094506";
-import { fxText } from "../fxtext.js?v=20261111094506";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, starterDecks, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261111094506";
-import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261111094506";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261111094506";
-import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261111094506";
-import { filterBar, filterCards } from "./library.js?v=20261111094506";
-import { openingOdds, simGame } from "./lab.js?v=20261111094506";
-import { freeBuild } from "../builder.js?v=20261111094506";
-import { CIEL_DECKS } from "../cieldecks.js?v=20261111094506";
+import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261111101313";
+import { plain, isOwnerNow } from "../persona.js?v=20261111101313";
+import { fxText } from "../fxtext.js?v=20261111101313";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, starterDecks, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261111101313";
+import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261111101313";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261111101313";
+import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261111101313";
+import { filterBar, filterCards } from "./library.js?v=20261111101313";
+import { openingOdds, simGame } from "./lab.js?v=20261111101313";
+import { freeBuild } from "../builder.js?v=20261111101313";
+import { deckCode, deckText, parseDeck } from "../deckcode.js?v=20261111101313";
+import { CIEL_DECKS } from "../cieldecks.js?v=20261111101313";
 
 // Ciel's theme decks: print codes → card ids (resolved once the card data is loaded)
 let cielCache = null;
@@ -90,6 +91,7 @@ export function openDeckMenu(d) {
       h("div", { class: "stack", style: "gap:6px" }, h("span", { class: "eyebrow" }, "ชื่อเด็ค"), h("div", { class: "row", style: "flex-wrap:nowrap" }, name, renameBtn)),
       h("div", { class: "row" }, h("a", { class: "btn", href: "#decks/edit/" + d.id, onclick: () => api.close() }, "แก้ไขการ์ดในเด็ค"),
         h("button", { class: "btn", onclick: async (e) => { e.currentTarget.disabled = true; try { const id = await copyDeck(d); api.close(); toast("ทำสำเนาแล้ว"); location.hash = "#decks/view/" + id; } catch (err) { toast("ทำสำเนาไม่สำเร็จ: " + err.message, "bad"); e.currentTarget.disabled = false; } } }, "ทำสำเนา")),
+      h("div", { class: "row" }, h("button", { class: "btn", onclick: () => { api.close(); openShare(d); } }, "แชร์เด็ค (โค้ด/รายการ)")),
       h("div", { class: "tiny muted" }, `${deckCount(d)} ใบ + LIFE ${(d.life || []).length} ใบ`), del)];
   }, { title: "จัดการเด็ค", sub: d.name });
 }
@@ -120,7 +122,8 @@ Views.decks = {
     }
     const mine = Data.decks.filter((d) => d.owner === Me.uid), friends = Data.decks.filter((d) => d.owner !== Me.uid);
     root.replaceChildren(...[h("div", { class: "pagehead" }, h("div", null, h("h1", null, "เด็ค"), h("div", { class: "muted small" }, "จัดเด็คก่อนซื้อจริง ลองเล่น แล้วดูว่าต้องซื้อการ์ดอะไรเพิ่ม")),
-      h("div", { class: "row" }, h("button", { class: "btn ciel", onclick: () => openFavBuilder() }, "♥ จัดเด็คจากการ์ดที่ชอบ"), h("button", { class: "btn ciel", onclick: () => openAceBuilder([]) }, "ให้ชิเอลจัดรอบการ์ดเอซ"), h("a", { class: "btn gold", href: "#decks/new", onclick: () => { Editing = blank(); } }, "สร้างเด็คใหม่"))),
+      h("div", { class: "row" }, h("button", { class: "btn ciel", onclick: () => openFavBuilder() }, "♥ จัดเด็คจากการ์ดที่ชอบ"), h("button", { class: "btn ciel", onclick: () => openAceBuilder([]) }, "ให้ชิเอลจัดรอบการ์ดเอซ"),
+        h("button", { class: "btn", onclick: () => { let fresh = null; openTextImport(() => fresh || (fresh = blank()), (d) => { Editing = d; queueSave(d); const want = d.id ? "#decks/edit/" + d.id : "#decks/new"; if (location.hash !== want) location.hash = want; else redraw(); }); } }, "นำเข้าเด็ค"), h("a", { class: "btn gold", href: "#decks/new", onclick: () => { Editing = blank(); } }, "สร้างเด็คใหม่"))),
       !Data.ready.decks ? busy("กำลังโหลดเด็ค…") : mine.length ? h("div", { class: "stack" }, this.mineBar(mine), h("div", { class: "tiles" }, mine.map(deckTile))) : h("div", { class: "empty" }, "ยังไม่มีเด็คของคุณ เริ่มจากเลือกการ์ดเอซให้ชิเอลจัด หรือคัดลอก Starter Deck ด้านล่างไปแก้ต่อ"),
       friends.length ? h("div", { class: "stack", style: "margin-top:28px" }, h("h2", null, "เด็คของเพื่อน"), h("div", { class: "tiles" }, friends.map(deckTile))) : null,
       h("div", { class: "stack", style: "margin-top:28px" }, h("h2", null, "✦ เด็คแนะนำจากชิเอล"), h("div", { class: "muted small" }, plain("เด็คธีมที่ชิเอลจัดให้ริมุรุ เปิดดูแผนการเล่น ลงสนามได้เลย หรือคัดลอกไปแก้ต่อ")), h("div", { class: "tiles" }, cielDecks().map(deckTile))),
@@ -231,6 +234,8 @@ Views.decks = {
             h("button", { class: "btn sm", disabled: !canUndo(d), onclick: () => { if (undoLast(d)) changed(); } }, "↶ เลิกทำ")),
           h("div", { class: "row" },
             h("button", { class: "btn sm ciel", onclick: () => openAnalysis(d) }, "ชิเอลวิเคราะห์"),
+            hasCards() ? h("button", { class: "btn sm", onclick: () => openShare(d) }, "แชร์เด็ค") : null,
+            h("button", { class: "btn sm", onclick: () => { remember(d); openTextImport(() => d, () => { queueSave(d); changed(); }); } }, "นำเข้าโค้ด/รายการ"),
             h("button", { class: "btn sm", onclick: () => { remember(d); openImport(d, () => { queueSave(d); changed(); }); } }, "นำเข้าจากภาพ"),
             hasCards() ? h("button", { class: "btn sm danger", onclick: () => confirmBox("เอาการ์ดทั้งหมดออกจากเด็คนี้? (ย้อนได้ด้วยปุ่ม เลิกทำ)", "ล้างการ์ดทั้งหมด", () => { remember(d); d.main = {}; d.life = []; d.ace = []; queueSave(d); changed(); }, true) }, "ล้างการ์ดทั้งหมด") : null,
             d.id ? h("button", { class: "btn sm danger", onclick: () => confirmBox(`ลบเด็ค "${d.name}" ถาวร กู้คืนไม่ได้`, "ลบเด็ค", async () => { try { await removeDecks([d]); location.hash = "#decks"; toast("ลบเด็คแล้ว"); } catch (e) { toast("ลบไม่สำเร็จ: " + e.message, "bad"); } }, true) }, "ลบเด็ค") : null)),
@@ -366,6 +371,35 @@ export function openShopping(d) {
     ...Object.entries(bySet).map(([k, xs]) => h("div", { class: "stack", style: "gap:6px" }, h("div", { class: "eyebrow" }, k), h("div", { class: "scroll-x" }, h("table", { class: "t" }, h("thead", null, h("tr", null, ...["การ์ด", "ความหายาก", "ต้องใช้", "มี", "ขาด", "อัตราออก", "ราคาที่จด"].map((t) => h("th", null, t)))),
       h("tbody", null, xs.map((x) => h("tr", null, h("td", null, h("a", { href: "#", onclick: (e) => { e.preventDefault(); showCard(x.c.i); } }, x.c.n)), h("td", { class: "num" }, x.c.r), h("td", { class: "num" }, x.need), h("td", { class: "num" }, x.have), h("td", { class: "num" }, h("b", { style: "color:var(--warn)" }, x.miss)), h("td", { class: "small" }, x.c.dr || "-"), h("td", { class: "num small" }, (() => { const p = buyPrice(x.c); return p ? `฿${p.p.toLocaleString()}${p.c.i !== x.c.i ? " (" + p.c.r + ")" : ""}` : "-"; })()))))))))]
     : h("div", { class: "empty" }, "มีครบทุกใบแล้ว"), { title: "รายการต้องซื้อ: " + d.name, wide: true });
+}
+// share a deck as a short code, or as a list that reads well in a chat
+export function openShare(d) {
+  const box = (label, value, rows) => {
+    const f = h(rows ? "textarea" : "input", { readonly: true, rows, "aria-label": label, class: "sharebox", onfocus: (e) => e.target.select() }); f.value = value;
+    const copy = h("button", { class: "btn sm gold", onclick: async () => { try { await navigator.clipboard.writeText(value); toast(`คัดลอก${label}แล้ว`); } catch { f.focus(); f.select(); toast("เลือกข้อความไว้ให้แล้ว กดคัดลอกได้เลย"); } } }, "คัดลอก");
+    return h("div", { class: "stack", style: "gap:6px" }, h("div", { class: "row" }, h("span", { class: "eyebrow grow" }, label), copy), f);
+  };
+  openSheet([h("div", { class: "small muted" }, "ส่งให้เพื่อน แล้วให้เขากด \"นำเข้าเด็ค\" ที่หน้าเด็ค วางโค้ดหรือรายการนี้ได้เลย รายการการ์ดยังใช้จดไปซื้อการ์ดจริงได้ด้วย"),
+    box("โค้ดเด็ค", deckCode(d)), box("รายการการ์ด", deckText(d), 10)], { title: "แชร์เด็ค", sub: d.name });
+}
+// read a deck code or a pasted list (from a chat, another site or BoT Arena itself) into a deck
+function openTextImport(target, done) {
+  openSheet((api) => {
+    const ta = h("textarea", { rows: 9, class: "sharebox", "aria-label": "โค้ดหรือรายการเด็ค", placeholder: "วางโค้ดเด็ค (BoT1|…) หรือรายการ เช่น\n3 พระอิศวร\n2x เทวดาแบงค์\nSD01-004" });
+    const out = h("div", { class: "stack small" });
+    const read = () => {
+      const r = parseDeck(ta.value);
+      if (!r.items.length && !r.amb.length) return out.replaceChildren(h("div", { class: "muted" }, ta.value.trim() ? "อ่านไม่ออกสักบรรทัด ลองตรวจชื่อการ์ดหรือรหัสอีกครั้ง" : "วางโค้ดหรือรายการก่อน"));
+      const d = target(); const nm = ta.value.match(/^#\s*(.+)$/m); if (nm && !d.id && !deckCount(d)) d.name = nm[1].trim().slice(0, 60);
+      for (const { c, n } of r.items) for (let k = 0; k < n; k++) addToDeck(d, baseId(c.i), 1);
+      out.replaceChildren(h("div", null, `เพิ่ม ${r.items.reduce((a, x) => a + x.n, 0)} ใบ · ตอนนี้ ${deckCount(d)} ใบ + LIFE ${(d.life || []).length} ใบ`),
+        r.miss.length ? h("div", { class: "muted" }, "อ่านไม่ออก: " + r.miss.join(" · ")) : null,
+        ...r.amb.map((a) => { const b = h("div", { class: "stack", style: "gap:4px" }, h("b", null, `"${a.name}" มี ${a.vers.length} เวอร์ชันที่ความสามารถต่างกัน เลือกใบที่ใช่ (×${a.n})`), h("div", { class: "pick" }, a.vers.map((v) => cardBtn(v.i, { badge: v.p, onclick: () => { for (let k = 0; k < a.n; k++) addToDeck(d, v.i, 1); b.remove(); done(d); } })))); return b; }),
+        h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => { api.close(); done(d); } }, "เสร็จ")));
+      done(d);
+    };
+    return [ta, h("div", { class: "row" }, h("button", { class: "btn gold", onclick: read }, "อ่าน")), out];
+  }, { title: "นำเข้าเด็คจากโค้ดหรือรายการ" });
 }
 function openImport(d, done) {
   openSheet(() => {
