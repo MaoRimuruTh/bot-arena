@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111074841";
-import { E } from "./engine.js?v=20261111074841";
-import { h } from "./util.js?v=20261111074841";
-import { Sfx } from "./sfx.js?v=20261111074841";
+import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111080830";
+import { E } from "./engine.js?v=20261111080830";
+import { h } from "./util.js?v=20261111080830";
+import { Sfx } from "./sfx.js?v=20261111080830";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -576,7 +576,8 @@ async function animateEvent(ev, prev, s, V) {
       .to(m.grp.position, { x: from.x, y: from.y, z: from.z, duration: 0.42, ease: "power2.out" }, "+=0.1").to(m.grp.rotation, { x: 0, duration: 0.42, ease: "power2.out" }, "<")
       .add(() => done(m)));
   } else if (ev.k === "life") {
-    const mine = mineSide(ev.p); Sfx.play("life"); flash(mine ? "rgba(255,40,60,.5)" : "rgba(255,200,90,.35)", 0.5);
+    const mine = mineSide(ev.p); Sfx.play("life");
+    if (E.critical(s.P[ev.p]) && R.crit !== ev.p + ":" + s.turn) { R.crit = ev.p + ":" + s.turn; setTimeout(() => R && Sfx.play("crit"), 450); } // one LIFE from losing flash(mine ? "rgba(255,40,60,.5)" : "rgba(255,200,90,.35)", 0.5);
     popText(new THREE.Vector3(0, 1.2, mine ? 5.2 : -4.7), "LIFE −1", "#ff4d55");
     burst(new THREE.Vector3(0, 1, mine ? 5.2 : -4.7), { n: 26, color: 0xff6a70, spread: 2.2 });
   } else if (ev.k === "destroy") {

@@ -17,3 +17,4 @@
 - Particle textures: [Kenney Particle Pack](https://kenney.nl/assets/particle-pack) (CC0)
 - ฟอนต์: Chakra Petch, IBM Plex Sans Thai (Google Fonts, OFL)
 - สนามดวลลายรดน้ำ (ลงรักปิดทอง ย่อมุม ลายประจำยาม) วาดด้วยโค้ดใน `js/arena3d.js`
+- เพลงประกอบแนวปี่พาทย์ (บันไดเสียงไทย 7 เสียง ระนาด ฆ้องวง ขลุ่ย ฉิ่งฉาบ กลอง) และเสียงเอฟเฟกต์ทั้งหมดสังเคราะห์สดด้วย Web Audio ใน `js/music.js` และ `js/sfx.js` ไม่มีไฟล์เสียงจากภายนอก

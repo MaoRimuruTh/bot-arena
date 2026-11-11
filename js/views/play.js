@@ -1,22 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111074841";
-import { fxText } from "../fxtext.js?v=20261111074841";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111074841";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111074841";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111074841";
-import { Arena } from "../arena3d.js?v=20261111074841";
-import { autoEffect, resolveEffect } from "../effects.js?v=20261111074841";
-import { Sfx } from "../sfx.js?v=20261111074841";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261111074841";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111074841";
-import { readAura, traits } from "../auras.js?v=20261111074841";
-import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261111074841";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111080830";
+import { fxText } from "../fxtext.js?v=20261111080830";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111080830";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111080830";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111080830";
+import { Arena } from "../arena3d.js?v=20261111080830";
+import { autoEffect, resolveEffect } from "../effects.js?v=20261111080830";
+import { Music } from "../music.js?v=20261111080830";
+import { Sfx } from "../sfx.js?v=20261111080830";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261111080830";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111080830";
+import { readAura, traits } from "../auras.js?v=20261111080830";
+import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261111080830";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
   return { game: [`เทิร์น ${s.turn} · ${PHASE_TH[s.phase] || s.phase} · ตาของ ${s.P[s.active].name}`, `เด็คเรา: ${me.deckName || "-"} · เด็คคู่แข่ง: ${op.deckName || "-"}`,
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / ")].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261111074841";
+import { allDecks, deckById } from "./decks.js?v=20261111080830";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -100,7 +101,7 @@ Views.play = {
     Arena.setHover((i) => { if (G.hover === i) return; G.hover = i; drawInspector(); });
     Arena.setClick(fieldClick);
     Arena.update(G.s, view(), { reset: true });
-    draw(); drive();
+    Music.start(); draw(); drive();
   },
 };
 
@@ -133,7 +134,7 @@ function resume(saved) {
 function persist() { if (!G) return; if (G.mode === "friend") lsSet(SAVE, { mode: "friend", id: G.id, V: G.V, s: G.s }); else lsSet(SAVE, { s: G.s, V: G.V, mode: G.mode, brain: G.brain, id: G.id, learn: G.learn || null }); }
 function stopGame(clear) {
   if (!G) return; if (G.unsub) G.unsub(); if (clear) lsDel(SAVE); else persist();
-  Arena.unmount(); document.body.classList.remove("arena-on"); document.querySelectorAll(".banner,.dmg").forEach((e) => e.remove()); G = null;
+  Arena.unmount(); Music.stop(); document.body.classList.remove("arena-on"); document.querySelectorAll(".banner,.dmg").forEach((e) => e.remove()); G = null;
 }
 // ---------- friends ----------
 async function createRoom() {
@@ -307,7 +308,7 @@ function draw() {
         h("div", { class: "meplate" }, avatarEl(me.ava, me.name, "me sm"), h("b", null, me.name), crystals(me, false, "pcMe")),
         h("div", { class: "pilebar" }, pile(me, "deck", "Deck"), pile(me, "hell", "นรก"), pile(me, "dark", "มิติมืด"))),
       h("div", { class: "rail hidem" }, tool("coach", "ชิเอลแนะนำ", "แนะนำ", coach, s.phase === "over"), tool("tools", "เครื่องมือจัดการสนามเอง", "เครื่องมือ", tools, s.phase === "over"), tool("hell", "ดูนรกของคู่แข่ง", "นรกคู่แข่ง", () => openPile(op, "hell")),
-        isOwner() ? tool("ask", "ถามชิเอลเกี่ยวกับตานี้", "ถามชิเอล", () => openAsk()) : null, tool(Sfx.on ? "sound" : "mute", Sfx.on ? "ปิดเสียง" : "เปิดเสียง", "เสียง", () => { Sfx.toggle(); Sfx.play("click"); draw(); })),
+        isOwner() ? tool("ask", "ถามชิเอลเกี่ยวกับตานี้", "ถามชิเอล", () => openAsk()) : null, tool(Sfx.on || Music.on ? "sound" : "mute", "เสียงเอฟเฟกต์และเพลง", "เสียง", soundSheet)),
       G.coach ? h("div", { class: "coachbox" }, G.coach) : null,
       h("div", { class: "feed", "aria-live": "polite", tabindex: "0", "aria-label": "บันทึกเกม" }, s.log.slice(-30).reverse().map((l) => h("div", { class: l.s === V ? "mine" : l.s === 1 - V ? "opp" : "" }, l.m)))),
     handZone(s, V, p), promptBox(s, p), tutorBox(s, V, p),
@@ -361,8 +362,23 @@ function tutorBox(s, V, p) {
   return h("aside", { class: "tutor" + (fresh ? " fresh" : ""), "aria-live": "polite" }, h("div", { class: "in" }, h("b", null, k.t), h("ul", null, k.b(s, V).map((t) => h("li", null, t))),
     h("div", { class: "row" }, h("button", { class: "btn gold sm", onclick: () => { seen[k.k] = 1; persist(); draw(); } }, "เข้าใจแล้ว"), h("button", { class: "btn sm", onclick: () => { G.learn = null; persist(); draw(); } }, "ปิดคำอธิบาย"))));
 }
+// sound settings: effects and music each switch on and off and have their own volume
+function soundSheet() {
+  const row = (label, sub, on, set, vol, setVol) => h("div", { class: "sndrow" },
+    h("label", { class: "chk" }, h("input", { type: "checkbox", checked: on, onchange: (e) => { set(e.target.checked); Sfx.play("click"); } }), h("b", null, label)),
+    h("span", { class: "tiny muted" }, sub),
+    h("input", { type: "range", min: 0, max: 1, step: 0.05, value: vol, "aria-label": "ความดัง" + label, oninput: (e) => setVol(+e.target.value), onchange: () => Sfx.play("click") }));
+  openSheet([row("เสียงเอฟเฟกต์", "อัญเชิญ โจมตี ทำลาย เปลี่ยนเทิร์น", Sfx.on, (v) => { if (v !== Sfx.on) Sfx.toggle(); }, Sfx.vol, (v) => Sfx.setVolume(v)),
+    row("เพลงประกอบ", "วงปี่พาทย์ที่แต่งสดตามจังหวะเกม", Music.on, (v) => { if (v !== Music.on) Music.toggle(); }, Music.vol, (v) => Music.setVolume(v))], { title: "เสียง", onClose: () => draw() });
+}
+// the music follows the game: our turn or theirs, a fight, someone one LIFE from losing, the end
+function musicMood(s, V) {
+  if (s.phase === "over") return s.winner === V ? "win" : "lose";
+  const crit = E.critical(s.P[V]) || E.critical(s.P[1 - V]), fight = s.phase === "battle" || !!s.pend;
+  return crit ? (fight ? "climax" : "tense") : fight ? "battle" : s.phase === "mull" || s.active === V ? "mine" : "foe";
+}
 function afterDraw(s, V, op, myTurn) {
-  const me = s.P[V];
+  const me = s.P[V]; Music.mood(musicMood(s, V));
   drawInspector();
   const targets = [];
   if (G.att) { targets.push(...op.av.map((x) => x.i), ...op.cs.map((x) => x.i)); }
@@ -376,7 +392,7 @@ function gameMenu(s, V) {
     h("div", { class: "row" }, ...[[me, "deck", "Deck"], [me, "hell", "นรกเรา"], [me, "dark", "มิติมืดเรา"], [op, "hell", "นรกคู่แข่ง"]].map(([P, z, t]) => h("button", { class: "btn sm", onclick: () => { api.close(); openPile(P, z); } }, `${t} ${P[z].length}`))),
     isOwner() ? h("div", { class: "row" }, h("button", { class: "btn sm ciel", onclick: () => { api.close(); openAsk(); } }, "✉ ถามชิเอล (แนบสถานะเกม)")) : null,
     h("div", { class: "row" }, h("button", { class: "btn sm ciel", disabled: s.phase === "over", onclick: () => { api.close(); coach().then(() => G && G.coach && openSheet(h("div", { class: "coachbox" }, G.coach), { title: "ชิเอลแนะนำ" })); } }, "ชิเอลแนะนำ"), h("button", { class: "btn sm", disabled: s.phase === "over", onclick: () => { api.close(); tools(); } }, "เครื่องมือ"),
-      h("button", { class: "btn sm", onclick: (e) => { Sfx.toggle(); Sfx.play("click"); e.currentTarget.textContent = Sfx.on ? "🔊 เสียงเปิด" : "🔇 เสียงปิด"; } }, Sfx.on ? "🔊 เสียงเปิด" : "🔇 เสียงปิด"),
+      h("button", { class: "btn sm", onclick: () => { api.close(); soundSheet(); } }, Sfx.on || Music.on ? "🔊 เสียงและเพลง" : "🔇 เสียงและเพลง"),
       h("button", { class: "btn sm danger", onclick: () => { api.close(); s.phase === "over" ? exitGame() : confirmBox("ออกจากสนาม? เกมที่ค้างจะเก็บไว้ให้เล่นต่อ", "ออก", exitGame); } }, "ออกจากสนาม")),
     G.coach ? h("div", { class: "coachbox" }, G.coach) : null,
     h("div", { class: "eyebrow" }, "บันทึกเกม"), h("div", { class: "glog", style: "max-height:44vh" }, s.log.slice(-40).reverse().map((l) => h("div", { class: l.s === V ? "mine" : "" }, l.m)))], { title: `เทิร์น ${s.turn} · ${s.P[s.active].name}` });
