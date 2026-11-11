@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261112025715";
-import { fxText, kwGloss } from "../fxtext.js?v=20261112025715";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261112025715";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261112025715";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261112025715";
-import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261112025715";
-import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261112025715";
-import { themeCounts } from "../boxdecks.js?v=20261112025715";
-import { ladder, ladderReset } from "../ladder.js?v=20261112025715";
-import { notify } from "../notify.js?v=20261112025715";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261112025715";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261112025715";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261112025715";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261112025715";
-import { Music } from "../music.js?v=20261112025715";
-import { Sfx } from "../sfx.js?v=20261112025715";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261112025715";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261112025715";
-import { readAura, traits } from "../auras.js?v=20261112025715";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261112025715";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261112031100";
+import { fxText, kwGloss } from "../fxtext.js?v=20261112031100";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261112031100";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261112031100";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261112031100";
+import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261112031100";
+import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261112031100";
+import { themeCounts } from "../boxdecks.js?v=20261112031100";
+import { ladder, ladderReset } from "../ladder.js?v=20261112031100";
+import { notify } from "../notify.js?v=20261112031100";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261112031100";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261112031100";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261112031100";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261112031100";
+import { Music } from "../music.js?v=20261112031100";
+import { Sfx } from "../sfx.js?v=20261112031100";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261112031100";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261112031100";
+import { readAura, traits } from "../auras.js?v=20261112031100";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261112031100";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -25,7 +25,7 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261112025715";
+import { allDecks, deckById } from "./decks.js?v=20261112031100";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -375,11 +375,12 @@ function autoRespond(s, p) {
   const key = [s.turn, s.pend.att, s.pend.tk, s.pend.ti, s.log.length].join(":"); if (G.autoKey === key) return; G.autoKey = key;
   setTimeout(() => { const n = G && G.s; if (!n || !n.pend || G.castFor || [n.turn, n.pend.att, n.pend.tk, n.pend.ti, n.log.length].join(":") !== key || !nothingToAnswer(n, p)) return; doAct((legalMoves(n, p)[0] || {}).a || { type: "respond" }, p); }, 900);
 }
-// bot levels: how many promising moves it plays out on a copy before choosing (more = stronger and slower), and how often
-// the easy one just does something at random. In 24-game tests hard beat normal 15-9 and normal beat easy 19-5.
+// bot levels: how many promising moves it plays out on a copy before choosing, how often the easy one just does something
+// at random, and whether it plays its options out to its next turn before choosing (mc: play-outs per option, see
+// H.mcPick). In 300 games with the same decks the pro bot beat the normal one 65%; normal beat easy 19-5 in 24.
 const BOT_LEVEL = { easy: { name: "บอทมือใหม่", look: 0, rnd: 0.35, about: "บอทมือใหม่ เล่นถูกกติกาแต่ตัดสินใจไม่ค่อยดี บางทีก็มั่ว และไม่ใช้ React" },
   basic: { name: "บอท", look: 4, rnd: 0, about: "บอทระดับปกติ คิดล่วงหน้าหนึ่งจังหวะ ข้ามเอฟเฟกต์ข้อความของตัวเอง" },
-  hard: { name: "บอทมือโปร", look: 8, rnd: 0, about: "บอทมือโปร ลองเล่นตาที่น่าสนใจล่วงหน้ามากขึ้นก่อนเลือก และเมื่อเรา LIFE เหลือน้อยจะค้นหาทางปิดเกมให้จบในเทิร์นเดียว" } };
+  hard: { name: "บอทมือโปร", look: 4, rnd: 0, mc: 2, about: "บอทมือโปร ลองเล่นแต่ละทางเลือกต่อไปจนถึงตาของมันอีกรอบ (เดามือเราจากการ์ดที่ยังไม่เห็น ไม่แอบดู) แล้วเลือกทางที่ออกมาดีที่สุด และเมื่อเรา LIFE เหลือน้อยจะค้นหาทางปิดเกมให้จบในเทิร์นเดียว" } };
 // bot / auto driver
 async function drive() {
   if (!G || G.driving || !G.s || G.replay) return; const s = G.s;
@@ -406,7 +407,7 @@ async function drive() {
       if (rx) m = { a: rx, say: "ใช้ React ตอบโต้!" };
       else if (lv && lv.rnd && !s.pend && Math.random() < lv.rnd) { const ms = legalMoves(s, p).filter((x) => x.a.type !== "concede"); if (ms.length) m = ms[Math.floor(Math.random() * ms.length)]; }
       else if (G.brain === "ciel") { G.thinking = "ชิเอลกำลังคิด…"; draw(); m = lethalMove(s, p) || (await cielPick(s, p)); }
-      else m = (G.brain === "hard" && lethalMove(s, p)) || H.pick(s, p);
+      else m = (G.brain === "hard" && lethalMove(s, p)) || (lv && lv.mc && !s.pend && s.active === p && ["main", "battle"].includes(s.phase) ? H.mcPick(s, p, lv.mc) : H.pick(s, p));
       if (m && m.say) G.say = m.say;
       a = m ? m.a : s.pend ? { type: "respond" } : { type: "end" };
     }
@@ -480,7 +481,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261112025715").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261112031100").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", bot: true });

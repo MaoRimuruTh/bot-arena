@@ -1,9 +1,9 @@
 // A small tournament among friends, set up by the owner: everyone plays everyone once; a win is a point, a draw half.
 // The set-up lives in the shared settings (only the owner can write those). Results are the finished friend games
 // tagged with the tournament, read the same way as the friends' ladder.
-import { h, toast, openSheet, newId, confirmBox } from "./util.js?v=20261112025715";
-import { Data, Me, setMeta } from "./fb.js?v=20261112025715";
-import { avatarEl } from "./ui.js?v=20261112025715";
+import { h, toast, openSheet, newId, confirmBox } from "./util.js?v=20261112031100";
+import { Data, Me, setMeta } from "./fb.js?v=20261112031100";
+import { avatarEl } from "./ui.js?v=20261112031100";
 
 export const tourNow = () => { const t = Data.meta && Data.meta.tour; return t && t.id && !t.done ? t : null; };
 export const pairKey = (a, b) => [a, b].sort().join("|");
