@@ -1,8 +1,8 @@
 // "ถามชิเอล": questions written inside the app, read later by Ciel in Rimuru's chat (owner account only).
 // Each question can carry a short snapshot of where it was asked (page, deck, or the game in progress).
-import { h, openSheet, toast, fmtDate, busy } from "../util.js?v=20261112041016";
-import { Me, addQuestion, watchInbox, answerQuestion, deleteQuestion } from "../fb.js?v=20261112041016";
-import { Views } from "../ui.js?v=20261112041016";
+import { h, openSheet, toast, fmtDate, busy } from "../util.js?v=20261112060906";
+import { Me, addQuestion, watchInbox, answerQuestion, deleteQuestion } from "../fb.js?v=20261112060906";
+import { Views } from "../ui.js?v=20261112060906";
 
 const ctxProviders = [];
 // views register a function that describes what is on screen right now (e.g. the game state)
