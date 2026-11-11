@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261112002434";
-import { E } from "./engine.js?v=20261112002434";
-import { h } from "./util.js?v=20261112002434";
-import { Sfx } from "./sfx.js?v=20261112002434";
+import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261112013911";
+import { E } from "./engine.js?v=20261112013911";
+import { h } from "./util.js?v=20261112013911";
+import { Sfx } from "./sfx.js?v=20261112013911";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -22,11 +22,16 @@ export const Arena = {
   cheer: (p) => R && avatarDo(p, "hop"), // an emote makes the sender's figure hop
   setHover: (fn) => R && (R.onHover = fn), setClick: (fn) => R && (R.onClick = fn),
   highlight, setLifeTarget, banner, flash, shake, popText, mood,
+  setQuiet: (v) => { quiet = !!v; },
 };
 
 // how much the 3D table draws, from Settings: "high" everywhere, "low" for weak phones, "auto" by screen size
 export const gfxSetting = () => { try { return localStorage.getItem("bot.gfx") || "auto"; } catch { return "auto"; } };
 export const animSetting = () => { try { return +(localStorage.getItem("bot.anim") || 1) || 1; } catch { return 1; } };
+// a short buzz on phones that have one (Android; iPhones have none for web pages): our LIFE is hit, our turn begins
+export const buzzOn = () => { try { return localStorage.getItem("bot.buzz") !== "0"; } catch { return true; } };
+let quiet = false; // watching someone's game or a replay: no buzz
+function buzz(pattern) { try { if (!quiet && buzzOn() && navigator.vibrate) navigator.vibrate(pattern); } catch { /* not on this device */ } }
 const gfxLevel = () => { const g = gfxSetting(); return g === "low" ? "low" : g === "high" ? "high" : innerWidth < 760 ? "mid" : "high"; };
 function mount(container, opts = {}) {
   unmount();
@@ -559,7 +564,7 @@ function fxCut(s, ev, mine) {
   const el = h("div", { class: "fxcut glass" + (mine ? " mine" : " opp") }, c ? artImg(c, "fxart") : h("div", { class: "fxart tok" }, "✦"),
     h("div", { class: "fxtx" }, h("b", null, (mine ? "" : (s.P[ev.p] ? s.P[ev.p].name + " · " : "")) + d.n), h("span", null, ev.t || "")));
   box.prepend(el); while (box.children.length > 3) box.lastChild.remove();
-  const k = Math.max(0.25, 1 / (R.speed || 1)); if (!reduce) gsap.fromTo(el, { opacity: 0, y: -8 }, { opacity: 1, y: 0, duration: 0.25 });
+  const k = Math.max(0.25, 1 / ((R && R.speed) || 1)); if (!reduce) gsap.fromTo(el, { opacity: 0, y: -8 }, { opacity: 1, y: 0, duration: 0.25 });
   gsap.to(el, { opacity: 0, duration: 0.4, delay: 2.6 * k + Math.min(2, String(ev.t || "").length / 60) * k, onComplete: () => el.remove() });
 }
 export function banner(t, s) {
@@ -910,7 +915,7 @@ async function animateEvent(ev, prev, s, V) {
       .to(m.grp.position, { x: from.x, y: from.y, z: from.z, duration: 0.42, ease: "power2.out" }, "+=0.1").to(m.grp.rotation, { x: 0, duration: 0.42, ease: "power2.out" }, "<")
       .add(() => done(m)));
   } else if (ev.k === "life") {
-    const mine = mineSide(ev.p); Sfx.play("life"); avatarDo(ev.p, "hit");
+    const mine = mineSide(ev.p); Sfx.play("life"); avatarDo(ev.p, "hit"); if (mine) buzz([35, 50, 60]);
     if (E.critical(s.P[ev.p]) && R.crit !== ev.p + ":" + s.turn) { R.crit = ev.p + ":" + s.turn; setTimeout(() => R && Sfx.play("crit"), 450); } // one LIFE from losing flash(mine ? "rgba(255,40,60,.5)" : "rgba(255,200,90,.35)", 0.5);
     popText(new THREE.Vector3(0, 1.2, mine ? 5.2 : -4.7), "LIFE −1", "#ff4d55");
     burst(new THREE.Vector3(0, 1, mine ? 5.2 : -4.7), { n: 26, color: 0xff6a70, spread: 2.2 });
@@ -931,7 +936,7 @@ async function animateEvent(ev, prev, s, V) {
   } else if (ev.k === "fx") { // a card's effect resolves: its picture, its name and what it did, for a moment over the table
     fxCut(s, ev, mineSide(ev.p)); await sleepMs(350);
   } else if (ev.k === "turn") {
-    mood(mineSide(ev.p)); avatarDo(ev.p, "hop"); Sfx.play("turn", { mine: mineSide(ev.p) }); banner(mineSide(ev.p) && !R.watch ? "YOUR TURN" : s.P[ev.p].name, `เทิร์น ${ev.t}`); await sleepMs(500);
+    mood(mineSide(ev.p)); avatarDo(ev.p, "hop"); Sfx.play("turn", { mine: mineSide(ev.p) }); if (mineSide(ev.p)) buzz(25); banner(mineSide(ev.p) && !R.watch ? "YOUR TURN" : s.P[ev.p].name, `เทิร์น ${ev.t}`); await sleepMs(500);
   } else if (ev.k === "battle") {
     Sfx.play("battle"); banner("BATTLE PHASE", ""); gsap.fromTo(R.div.material, { opacity: 0.9 }, { opacity: 0, duration: 1.4, ease: "power2.out" });
   } else if (ev.k === "over") {
@@ -953,6 +958,9 @@ function flatEvents(s, V, opts) {
     if (e.k === "roll") flatNote(`${e.sides === 2 ? "ทอยเหรียญ" : "ทอยลูกเต๋า"}${e.why ? " (" + e.why + ")" : ""}: ${e.sides === 2 ? (e.r === 1 ? "ออกหัว" : "ออกก้อย") : "ได้ " + (e.r2 != null ? `${e.r} และ ${e.r2}` : e.r)}`);
     else if (e.k === "heal") flatNote(`${e.p === V ? "LIFE เรา" : "LIFE " + ((s.P[e.p] || {}).name || "ฝ่ายตรงข้าม")} +1`);
     else if (e.k === "rps") rpsFx(s, e, V).catch(() => {});
+    else if (e.k === "fx") fxCut(s, e, e.p === V); // an effect resolves: the same strip as over the 3D table
+    else if (e.k === "life") { flatNote(e.p === V ? "LIFE เรา −1" : `LIFE ${(s.P[e.p] || {}).name || "ฝ่ายตรงข้าม"} −1`); if (e.p === V) buzz([35, 50, 60]); }
+    else if (e.k === "turn" && e.p === V) buzz(25);
   }
   flatLast = s.evc || flatLast;
 }

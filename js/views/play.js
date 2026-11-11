@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261112002434";
-import { fxText, kwGloss } from "../fxtext.js?v=20261112002434";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261112002434";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261112002434";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261112002434";
-import { Arena, animSetting } from "../arena3d.js?v=20261112002434";
-import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261112002434";
-import { themeCounts } from "../boxdecks.js?v=20261112002434";
-import { ladder, ladderReset } from "../ladder.js?v=20261112002434";
-import { notify } from "../notify.js?v=20261112002434";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261112002434";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261112002434";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261112002434";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261112002434";
-import { Music } from "../music.js?v=20261112002434";
-import { Sfx } from "../sfx.js?v=20261112002434";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261112002434";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261112002434";
-import { readAura, traits } from "../auras.js?v=20261112002434";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261112002434";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261112013911";
+import { fxText, kwGloss } from "../fxtext.js?v=20261112013911";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261112013911";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261112013911";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261112013911";
+import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261112013911";
+import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261112013911";
+import { themeCounts } from "../boxdecks.js?v=20261112013911";
+import { ladder, ladderReset } from "../ladder.js?v=20261112013911";
+import { notify } from "../notify.js?v=20261112013911";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261112013911";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261112013911";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261112013911";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261112013911";
+import { Music } from "../music.js?v=20261112013911";
+import { Sfx } from "../sfx.js?v=20261112013911";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261112013911";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261112013911";
+import { readAura, traits } from "../auras.js?v=20261112013911";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261112013911";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -25,7 +25,7 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261112002434";
+import { allDecks, deckById } from "./decks.js?v=20261112013911";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -147,13 +147,16 @@ Views.play = {
       h("div", { class: "rotph", "aria-hidden": "true" }), h("b", null, "หมุนมือถือเป็นแนวตั้ง"), h("span", { class: "muted small" }, "สนามบนมือถือจัดไว้สำหรับแนวตั้ง การ์ดจะใหญ่และกดง่ายกว่า"),
       h("button", { class: "btn sm", onclick: (e) => { try { sessionStorage.setItem("bot.landok", "1"); } catch { /* storage may be off */ } e.currentTarget.closest(".rotatehint").hidden = true; } }, "เล่นแนวนอนต่อ"));
     root.replaceChildren(stage, h("div", { class: "vign" }), hud, rot);
-    try { Arena.mount(stage, { mat: myMat(), watch: !!G.watch }); } catch (e) { console.warn("3D off", e); }
+    Arena.setQuiet(!!(G.watch || G.replay));
+    if (gfxSetting() !== "flat") try { Arena.mount(stage, { mat: myMat(), watch: !!G.watch }); } catch (e) { console.warn("3D off", e); } // "แบบเรียบ 2D" in the settings: no 3D at all
+    G.flat = Arena.on ? null : h("div", { class: "flatboard", role: "group", "aria-label": "สนาม" }); if (G.flat) stage.append(G.flat); // no 3D here: the flat table
     Arena.setHover((i) => { if (G.hover === i) return; G.hover = i; drawInspector(); });
     Arena.setClick(fieldClick);
     // right-click a card on the table: the whole card in a sheet that scrolls (long effects included)
     stage.addEventListener("contextmenu", (e) => { const L = G && G.s && G.hover != null && E.locate(G.s, G.hover); if (!L) return; e.preventDefault(); G.hover = null; drawInspector(); cardView(L.x); });
     Arena.update(G.s, view(), { reset: true });
     Music.start(); draw(); Arena.refit(); drive();
+    clearInterval(G.dog); G.dog = setInterval(watchdog, 1500);
     if (G.mode === "friend") { clearInterval(G.idleTick); const g = G; G.idleTick = setInterval(() => { if (G !== g) return clearInterval(g.idleTick); const idle = oppIdle() > IDLE_MS; if (idle !== !!G.idleShown) { G.idleShown = idle; draw(); } }, 5000); }
   },
 };
@@ -201,7 +204,7 @@ function persist() { if (!G || G.replay || G.watch) return; if (G.mode === "frie
 function stopGame(clear) {
   if (!G) return; if (G.unsub) G.unsub(); if (clear) { if (!G.watch) lsDel(SAVE); } else persist(); // a watcher never touches their own saved game
   if (G.mode === "friend" && !G.watch && G.s && G.s.phase === "over") trimGame(G.id, G.s);
-  clearInterval(G.idleTick); Arena.unmount(); Music.stop(); document.body.classList.remove("arena-on"); document.querySelectorAll(".banner,.dmg,.emo").forEach((e) => e.remove()); G = null;
+  clearInterval(G.idleTick); clearInterval(G.dog); Arena.unmount(); Music.stop(); document.body.classList.remove("arena-on"); document.querySelectorAll(".banner,.dmg,.emo").forEach((e) => e.remove()); G = null;
 }
 // ---------- friends ----------
 async function createRoom(extra = {}) { // extra: a tournament match ({ tour, vs, vsName }) only that friend may join
@@ -314,14 +317,48 @@ async function doAct(a, p) {
     finally { if (G) G.lock = false; }
   }
   const fromHand = a.i != null && /^(summon|cast|build)$/.test(a.type) && G.s.P[view()].hand.some((x) => x.i === a.i);
-  const copy = G.rec ? JSON.parse(JSON.stringify(a)) : null;
-  try { E.apply(G.s, a, p); } catch (e) { toast(e.message, "bad"); return false; }
+  const copy = G.rec ? JSON.parse(JSON.stringify(a)) : null; const before = stateSig(G.s);
+  try { E.apply(G.s, a, p); } catch (e) {
+    toast(e.message, "bad");
+    // it broke part way through (a rule was refused before anything happened otherwise): keep what it did, in the record
+    // too so the replay goes the same way, show the table as it now is and let the game carry on
+    if (stateSig(G.s) !== before) { if (G.rec) G.rec.acts.push([p, { ...copy, __fail: 1 }]); persist(); Arena.update(G.s, view()); draw(); setTimeout(drive, 50); }
+    return false;
+  }
   if (G.rec) G.rec.acts.push([p, copy]);
   if (G.puzzle && mine(p)) G.say = null; // an old hint no longer fits
   if (fromHand) flyFromHand(a.i);
   G.pick = null; G.att = null; G.host = null; G.payFor = null; G.payVia = null; G.callVia = null; G.helperPick = null; G.castFor = null; persist();
   Arena.update(G.s, view()); draw(); drive();
   return true;
+}
+const stateSig = (s) => [s.log.length, s.trig.length, s.phase, s.turn, s.rw ? 1 : 0, s.pend ? 1 : 0, ...s.P.flatMap((P) => [P.hand.length, P.av.length, P.cs.length, P.mg.length, P.hell.length, P.deck.length, P.life.filter((y) => y.up).length])].join(",");
+// nothing stays stuck: a bot that should act and is not thinking gets nudged, an own effect nobody started gets started,
+// and an own effect still "working" after a few seconds (most of a minute while Ciel reads it) offers to let the system
+// choose for it or to skip it
+function watchdog() {
+  if (!G || !G.s || G.replay || G.watch) return; const s = G.s; if (s.phase === "over") return;
+  const t = s.trig[0], key = stateSig(s) + ":" + (t ? t.id : "");
+  if (G.dogKey !== key) { G.dogKey = key; G.dogAt = Date.now(); G.stuck = null; return; }
+  const idle = Date.now() - G.dogAt, p = whoActs(s); if (p == null) return;
+  if (G.mode !== "friend" && isBot(s, p)) { if (!G.driving && idle > 5000) { G.dogAt = Date.now(); drive(); } return; }
+  if (!t || s.rw || !mine(p) || t.seat !== p || G.lock) return;
+  if (G.tk !== t.id) { if (idle > 2000) { G.dogAt = Date.now(); drive(); } return; }
+  if (!G.ask && G.stuck !== t.id && idle > (G.tbusy ? 45000 : 4000)) { G.stuck = t.id; draw(); }
+}
+// the buttons out of an effect that cannot go on by itself: the system makes the card's choices, or the effect is skipped
+function trigEscape(s, t, p, note) {
+  const reset = () => { G.ask = null; G.askSel = []; G.tbusy = false; G.thinking = null; G.tk = null; };
+  const auto = () => { reset(); let r = null; try { r = resolveEffect(s, t); } catch (err) { console.warn(err); }
+    doAct(r && r.ops ? { type: "trig", id: t.id, explain: r.explain, ops: r.ops } : { type: "trig", id: t.id, skip: true }, p).then((ok) => { if (!ok) trigFailed(s, t, p); }); };
+  const skip = () => { reset(); doAct({ type: "trig", id: t.id, skip: true }, p); };
+  return [h("div", { class: "small muted" }, note), h("div", { class: "row" }, h("button", { class: "btn gold", onclick: auto }, "ให้ระบบเลือกให้"), h("button", { class: "btn", onclick: skip }, "ข้ามเอฟเฟกต์"))];
+}
+// an own effect whose result could not be carried out: skipped, so the game goes on (whatever it already did stays)
+function trigFailed(s, t, p) {
+  if (!G || G.s !== s || G.mode === "friend") return;
+  if (s.trig.some((x) => x.id === t.id)) { try { E.apply(s, { type: "trig", id: t.id, skip: true }, p); if (G.rec) G.rec.acts.push([p, { type: "trig", id: t.id, skip: true }]); } catch (e) { console.warn(e); } }
+  persist(); Arena.update(s, view()); draw(); setTimeout(drive, 50);
 }
 // a card played from the hand leaves it visibly, lifting toward the table where the 3D card takes over
 function flyFromHand(i) {
@@ -350,7 +387,7 @@ async function drive() {
   if (G.watch) return; // watching: nothing here acts for either side
   if (G.puzzle && s.active !== G.V) { if (!G.pzFail) { G.pzFail = true; draw(); } return; } // a puzzle is lost once the turn passes
   const p = whoActs(s); if (p == null) return;
-  if (!isBot(s, p)) { if (s.trig.length && mine(p)) humanTrig(s, p); else autoRespond(s, p); return; }
+  if (!isBot(s, p)) { if (s.trig.length && !s.rw && s.trig[0].seat === p && mine(p)) humanTrig(s, p); else autoRespond(s, p); return; } // a React moment comes before any effect
   G.driving = true;
   try {
     await Arena.idle(); await sleep((G.brain === "ciel" ? 250 : 650) / animSetting()); if (!G || G.s !== s) return;
@@ -397,7 +434,7 @@ function humanTrig(s, p) {
   if (r && r.ask) { if (!G.ask || G.ask.idx !== r.ask.idx) { G.ask = r.ask; G.askSel = []; draw(); } return; }
   if (!(r && r.ops)) { try { r = resolveEffect(s, t); } catch (e) { console.warn(e); r = null; } } // the card's choices made the automatic way
   G.ask = null;
-  if (r && r.ops) { if (!Arena.on) toast(`${(s.cards[t.c] || {}).n}: ${String(r.explain || "").replace(/^อ่านอัตโนมัติ: /, "")}`); doAct({ type: "trig", id: t.id, explain: r.explain, ops: r.ops }, p); return; }
+  if (r && r.ops) { doAct({ type: "trig", id: t.id, explain: r.explain, ops: r.ops }, p).then((ok) => { if (!ok) trigFailed(s, t, p); }); return; }
   // the rules engine could not work this one out: Ciel reads it when she is on, otherwise it is skipped (and noted, to be fixed)
   noteUnread(s, t);
   if (Ciel.on()) { G.tbusy = true; G.thinking = "ชิเอลกำลังอ่านเอฟเฟกต์ " + ((s.cards[t.c] || {}).n || ""); draw();
@@ -443,7 +480,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261112002434").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261112013911").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", bot: true });
@@ -477,7 +514,11 @@ export function openReplay(mid) {
   G = { s: recStart(r.rec), V: r.V, mode: "replay", replay: { rec: r.rec, k: 0, play: false }, saved: true }; G.id = G.s.id;
   go();
 }
-const replayApply = (s, [p, a]) => (a.type === "__lose" ? E.lose(s, p, a.reason) : E.apply(s, JSON.parse(JSON.stringify(a)), p));
+const replayApply = (s, [p, a]) => {
+  if (a.type === "__lose") return E.lose(s, p, a.reason);
+  if (a.__fail) { try { E.apply(s, JSON.parse(JSON.stringify(a)), p); } catch { /* it broke here in the game too */ } return; }
+  return E.apply(s, JSON.parse(JSON.stringify(a)), p);
+};
 function replayStep() {
   const R = G && G.replay; if (!R || R.k >= R.rec.acts.length) { if (R) { R.play = false; draw(); } return false; }
   try { replayApply(G.s, R.rec.acts[R.k]); } catch (e) { toast("รีเพลย์ไปต่อไม่ได้: " + e.message, "bad"); R.play = false; draw(); return false; }
@@ -592,7 +633,7 @@ function draw() {
   const hint0 = G.replay ? `รีเพลย์ · เทิร์น ${s.turn} · ${s.phase === "over" ? "จบเกม" : "ตาของ " + s.P[s.active].name}`
     : G.puzzle && (G.pzFail || s.phase === "over") ? (s.phase === "over" && s.winner === V ? `ไขโจทย์ที่ ${G.puzzle.k + 1} สำเร็จ!` : "หมดเทิร์นแล้วยังไม่ชนะ · ย้อนตาหรือเริ่มโจทย์ใหม่")
     : G.watch ? (s.phase === "over" ? (s.winner == null ? "เสมอ · " : s.P[s.winner].name + " ชนะ · ") + s.reason : "กำลังชม" + (p == null ? "" : ` · รอ ${s.P[p].name}…`)) : s.phase === "over" ? (s.winner === V ? "ชนะ! " : s.winner == null ? "เสมอ · " : "แพ้ · ") + s.reason
-    : G.thinking || (p == null ? "" : !mine(p) ? `รอ ${s.P[p].name}…` : s.phase === "mull" ? "เลือกการ์ดที่จะเปลี่ยน หรือเก็บมือเดิม" : s.trig.length ? "มีเอฟเฟกต์ต้องจัดการ" : s.pend ? "ถูกโจมตี เลือกการตอบโต้" : s.phase === "main" ? "Main Phase · แตะการ์ดบนมือเพื่อเล่น" : s.phase === "battle" ? (G.att ? "เลือกเป้าหมายบนสนาม" : "Battle · เลือก Avatar ที่ตื่นเพื่อโจมตี") : s.phase === "end" && s.need ? `ทิ้งการ์ด ${s.need} ใบ` : "");
+    : G.thinking || (p == null ? "" : !mine(p) ? `รอ ${s.P[p].name}…` : s.phase === "mull" ? "เลือกการ์ดที่จะเปลี่ยน หรือเก็บมือเดิม" : s.trig.length ? "มีเอฟเฟกต์ต้องจัดการ" : s.rw ? "ใช้ React ตอบโต้ หรือกด ไม่ตอบโต้" : s.pend ? "ถูกโจมตี เลือกการตอบโต้" : s.phase === "main" ? "Main Phase · แตะการ์ดบนมือเพื่อเล่น" : s.phase === "battle" ? (G.att ? "เลือกเป้าหมายบนสนาม" : "Battle · เลือก Avatar ที่ตื่นเพื่อโจมตี") : s.phase === "end" && s.need ? `ทิ้งการ์ด ${s.need} ใบ` : "");
   const hint = G.puzzle && !G.pzFail && s.phase !== "over" && hint0 ? `โจทย์ที่ ${G.puzzle.k + 1} · ` + hint0 : hint0;
   const pile = (P, z, t) => h("button", { onclick: () => openPile(P, z) }, h("b", null, P[z].length), h("span", null, t));
   const ph = ["draw", "main", "battle", "end"];
@@ -710,8 +751,40 @@ function afterDraw(s, V, op, myTurn) {
   if (!G.att && !G.host && myTurn && s.active === V && ["main", "battle"].includes(s.phase) && !s.pend && !s.trig.length && !s.rw && !G.replay)
     for (const m of legalMoves(s, V)) if (m.a.type === "activate") { const L = E.locate(s, m.a.i); if (L && ["av", "cs", "mg", "land"].includes(L.z)) targets.push(m.a.i); }
   if (G.host) targets.push(...s.P[0].av.map((x) => x.i), ...s.P[1].av.map((x) => x.i));
-  Arena.highlight(targets); const AL = G.att && E.locate(s, G.att); Arena.setLifeTarget(!!AL && (!op.av.length || E.kw(s, AL.x, "เตะไข่")));
+  Arena.highlight(targets); const AL = G.att && E.locate(s, G.att); const lifeOk = !!AL && (!op.av.length || E.kw(s, AL.x, "เตะไข่")); Arena.setLifeTarget(lifeOk);
+  if (G.flat) drawFlat(s, V, new Set(targets), lifeOk);
   attackArrow();
+}
+// no 3D (WebGL off or missing on this device): the table drawn flat, each side's zones as rows of cards, pressed the way
+// the 3D cards are (choose an attacker, its target, an ability), right-click or the card view to read one
+function drawFlat(s, V, lit, lifeOk) {
+  const me = s.P[V], op = s.P[1 - V], small = compact();
+  const fcard = (x, z) => {
+    const d = E.def(s, x), c = d.im != null ? card(d.im) : null, fights = z === "av" || z === "cs", host = x.on != null && E.locate(s, x.on);
+    const b = h("button", { class: "fcard" + (z === "av" && !x.a ? " asleep" : "") + (G.att === x.i || G.sel === x.i ? " sel" : "") + (lit.has(x.i) ? " can" : ""), "data-i": x.i,
+      title: host ? `${d.n} · ติดอยู่กับ ${E.name(s, host.x)}` : d.n, "aria-label": `${d.n}${fights ? ` POWER ${E.power(s, x)}` : ""}${z === "av" && !x.a ? " (นอน)" : ""}`, onclick: () => fieldClick(x.i) },
+      c ? artImg(c) : h("span", { class: "fname" }, d.n), fights ? h("span", { class: "fpow num" }, E.power(s, x)) : null, z === "av" && !x.a ? h("span", { class: "fnap" }, "นอน") : null);
+    b.addEventListener("contextmenu", (e) => { e.preventDefault(); cardView(x); });
+    b.addEventListener("mouseenter", () => { G.hover = x.i; drawInspector(); });
+    b.addEventListener("mouseleave", () => { if (G.hover === x.i) { G.hover = null; drawInspector(); } });
+    return b;
+  };
+  const zone = (label, list, z) => h("div", { class: "fzone fz-" + z }, h("span", { class: "fzl" }, label), ...list.map((x) => fcard(x, z)));
+  // each side: its Avatar Zone, and a row of Construct, Magic and Land Magic (on a phone only the ones with cards in them)
+  const side = (P, seat, top) => {
+    const more = [["Construct", P.cs, "cs"], ["Magic", P.mg, "mg"], ["Land Magic", [s.land, s.land2].filter((y) => y && y.o === seat), "land"]].filter(([, l]) => !small || l.length);
+    const rows = [h("div", { class: "frow" }, zone("Avatar Zone", P.av, "av")), more.length ? h("div", { class: "frow" }, ...more.map(([t, l, z]) => zone(t, l, z))) : null].filter(Boolean);
+    return { n: rows.length, el: h("div", { class: "fside " + (top ? "fopp" : "fme"), "aria-label": top ? `สนามของ ${P.name}` : "สนามของเรา" }, ...(top ? rows.reverse() : rows)) };
+  };
+  const A = side(op, 1 - V, true), B = side(me, V, false), n = A.n + B.n, gap = small ? 6 : 8;
+  // the band between the bars on top and the hand below (on a computer also room for the one-row prompt), with the cards
+  // sized so every row fits in it
+  const bot = (q) => { const el = document.querySelector(q); return el ? el.getBoundingClientRect().bottom : 0; };
+  const hand = document.querySelector(".hud .handrow") || document.querySelector(".hud .handzone");
+  const top = Math.max(bot(".hud .oppbar"), bot(".hud .hint")) + 8, below = Math.max(hand ? innerHeight - hand.getBoundingClientRect().top + 8 : 200, small ? 0 : 236);
+  const fw = Math.round(Math.max(30, Math.min(small ? (innerWidth - 60) / 6.2 : 80, (innerHeight - top - below - n * 16 - (n + 1) * gap - 14) / (1.36 * n))));
+  Object.assign(G.flat.style, { top: top + "px", bottom: below + "px" }); G.flat.style.setProperty("--fw", fw + "px");
+  G.flat.replaceChildren(A.el, h("div", { class: "fmid" }, lifeOk ? h("button", { class: "btn sm gold", onclick: () => fieldClick("life") }, "ตี LIFE ฝ่ายตรงข้าม (ตีบ้าน)") : null), B.el);
 }
 // choosing a target on a computer: an arrow from the attacker follows the mouse and snaps onto a card it may attack
 const SVGNS = "http://www.w3.org/2000/svg"; let ptr = null;
@@ -869,7 +942,7 @@ function turnButtons0(s, p) {
       : G.offer ? h("button", { class: "btn gold sm", onclick: acceptRematch }, "รับคำท้า ดวลอีกครั้ง") : h("button", { class: "btn gold sm", onclick: friendRematch }, "ขอดวลอีกครั้ง"),
     G.rec && G.mode !== "friend" ? h("button", { class: "btn sm", onclick: () => openSummary(G) }, "สรุปเกม") : null,
     h("button", { class: "btn sm", onclick: () => { stopGame(true); location.hash = "#play"; } }, "กลับหน้าเตรียมเกม"), h("a", { class: "btn sm", href: "#history", onclick: () => stopGame(true) }, "ดูประวัติ")];
-  if (p == null || !mine(p) || s.trig.length || s.pend || s.phase === "mull") return [];
+  if (p == null || !mine(p) || s.trig.length || s.pend || s.rw || s.phase === "mull") return []; // a React moment is answered in its box
   const farBtns = (n) => farActs(s, p).slice(0, n).map((f) => h("button", { class: "btn ciel sm", title: f.title || "", onclick: () => doAct(f.a, p) }, f.d));
   if (s.phase === "main") return [h("button", { class: "btn gold sm", onclick: () => doAct({ type: "battle" }, p) }, s.turn === 1 ? "จบเทิร์น" : "ไป Battle Phase"), s.turn === 1 ? null : h("button", { class: "btn sm", onclick: () => doAct({ type: "end" }, p) }, "จบเทิร์นเลย"), compact() ? null : undoBtn(), ...farBtns(6)];
   if (s.phase === "battle") return [h("button", { class: "btn gold sm", onclick: () => doAct({ type: "end" }, p) }, "จบเทิร์น"), G.att ? h("button", { class: "btn sm", onclick: () => { G.att = null; draw(); } }, "ยกเลิกการเลือก") : compact() ? null : undoBtn(), ...farBtns(4)];
@@ -930,6 +1003,9 @@ function handZone(s, V, p) {
   const P = s.P[V]; const n = P.hand.length; const row = compact(); const zone = h("div", { class: row ? "handzone handrow" : "handzone", "aria-label": "การ์ดบนมือ" });
   const w = Math.min(760, innerWidth * 0.92); const cw = Math.round(Math.max(86, Math.min(128, innerHeight * 0.19))); const gap = Math.min(cw * 0.78, (w - cw) / Math.max(1, n - 1));
   const sel = G.pick || []; const canPlay = p != null && mine(p) && p === V;
+  // the cards that can be played right now glow green, as in other card games (not while picking GEM, a mulligan or a discard)
+  const choosing = G.payFor || G.host || G.castFor || G.callVia != null || G.helperPick || s.phase === "mull" || (s.phase === "end" && s.need) || s.trig.length;
+  const can = canPlay && !choosing ? playableNow(s, p) : null;
   // a card that just came into the hand slides in from the Deck's side; the clock is kept per card, so a redraw in
   // the middle of the slide carries on from where it was (negative delay) instead of starting over or jumping
   const now = performance.now(), born = G.handBorn || (G.handBorn = new Map()), first = !G.handSeenView || G.handSeenView !== V + ":" + (G.id || "");
@@ -941,7 +1017,8 @@ function handZone(s, V, p) {
     const age = now - born.get(x.i), fresh = age < 520;
     // the fan: the outer cards dip and turn, but a big hand does not sink below the screen (at most 26px, 16°)
     const half = Math.max(1, (n - 1) / 2), f = off / half, dip = f * f * Math.min(26, 2.2 * half * half), turn = f * Math.min(16, 3.2 * half);
-    const b = h("button", { class: "hcard" + (sel.includes(x.i) ? " sel" : "") + (fresh ? " fresh" : ""), "data-i": x.i, "aria-label": `${d.n} ${TYPE_TH[d.t]} GEM ${d.g || 0}`, style: (row ? "" : `width:${cw}px;left:${w / 2 - cw / 2 + off * gap}px;transform:translateY(${dip + (sel.includes(x.i) ? -26 : 0)}px) rotate(${turn}deg);z-index:${k};`) + (fresh ? `animation-delay:${Math.round(-age)}ms` : "") },
+    const ok = can && can.has(x.c);
+    const b = h("button", { class: "hcard" + (sel.includes(x.i) ? " sel" : "") + (fresh ? " fresh" : "") + (ok ? " can" : ""), "data-i": x.i, "aria-label": `${d.n} ${TYPE_TH[d.t]} GEM ${d.g || 0}${ok ? " · เล่นได้ตอนนี้" : ""}`, style: (row ? "" : `width:${cw}px;left:${w / 2 - cw / 2 + off * gap}px;transform:translateY(${dip + (sel.includes(x.i) ? -26 : 0)}px) rotate(${turn}deg);z-index:${k};`) + (fresh ? `animation-delay:${Math.round(-age)}ms` : "") },
       c ? artImg(c) : null, h("span", { class: "gem" }, (d.t === "M" ? SUB_TH[d.st][0] : "C" + (d.c ?? 0)) + " · G" + (d.g || 0)),
       touchy() ? h("span", { class: "zoom", role: "button", "aria-label": "ดูการ์ด " + d.n, onclick: (e) => { e.stopPropagation(); cardView(x); } }, "⤢") : null);
     b.addEventListener("mouseenter", () => { G.hover = null; G.hoverEl = b; showHandInspect(x); });
@@ -952,6 +1029,17 @@ function handZone(s, V, p) {
     zone.append(b);
   });
   return zone;
+}
+// hand cards that can be played this moment, by card (copies alike): what the rules allow now (a summon, a build, a Magic,
+// a hand ability, an answer to an attack), and in a moment the other side just made, the React cards that fit it
+function playableNow(s, p) {
+  const out = new Set(), P = s.P[p], inHand = (i) => P.hand.find((y) => y.i === i);
+  try {
+    const on = s.rw ? (s.rw.by !== p ? s.rw : null) : s.pend && s.pend.by !== p ? { kind: "attack", by: s.pend.by, att: s.pend.att, tk: s.pend.tk, ti: s.pend.ti } : null;
+    if (on) for (const x of E.reactsFor(s, p, on)) out.add(x.c);
+    if (!s.rw) for (const m of legalMoves(s, p)) { if (m.a.type === "attack") continue; for (const i of [m.a.i, m.a.via]) { const x = i != null ? inHand(i) : null; if (x) out.add(x.c); } }
+  } catch (e) { console.warn(e); }
+  return out;
 }
 function showHandInspect(x) { G.hoverHand = x.i; drawInspector(); }
 function handClick(x) {
@@ -966,7 +1054,15 @@ function handClick(x) {
   if (d.t === "A" && (E.avatars(s.P[p]) >= 4 || s.P[p].av.length >= 6)) { toast("Avatar Zone เต็มแล้ว (Avatar ได้ 4 ใบ)", "bad"); return showHandInspect(x); }
   if (d.t === "A" && (E.hooks(s, x) || {}).noHand) { toast("การ์ดใบนี้ลงสนามจากบนมือไม่ได้", "bad"); return showHandInspect(x); }
   if (d.t === "C" && s.P[p].cs.length >= 3) { toast("Construct Zone เต็มแล้ว (3 ใบ)", "bad"); return showHandInspect(x); }
-  if (d.t === "A" || d.t === "C") { const auto = E.autoPay(s, p, x.i); if (!auto) { toast(`GEM บนมือไม่พอจ่าย ${d.n} (Cost ${d.c || 0})`); return showHandInspect(x); } G.payFor = x.i; G.pick = auto; return draw(); }
+  if (d.t === "A" || d.t === "C") { const auto = E.autoPay(s, p, x.i);
+    if (!auto) {
+      // not enough GEM the usual way: a dragon can still come down by discarding ซาร์อึก (Cost −6), from either card
+      const via = d.t === "A" ? legalMoves(s, p).find((m) => m.a.type === "summon" && m.a.via != null && (m.a.i === x.i || m.a.via === x.i)) : null;
+      if (via && via.a.i !== x.i) { G.callVia = x.i; return draw(); }
+      if (via) { G.payFor = x.i; G.payVia = via.a.via; G.pick = via.a.pay || []; return draw(); }
+      toast(`GEM บนมือไม่พอจ่าย ${d.n} (Cost ${d.c || 0})`); return showHandInspect(x);
+    }
+    G.payFor = x.i; G.pick = auto; return draw(); }
   if (d.t === "M" && d.st === "D" && (scriptOf(s, x) || {}).castFree) return doAct({ type: "cast", i: x.i }, p);
   if (d.t === "M" && d.st === "D") { G.host = x.i; return draw(); }
   if (d.t === "M") { G.castFor = x.i; return draw(); } // always confirm before a Magic goes off
@@ -975,10 +1071,8 @@ function handClick(x) {
 function promptBox(s, p) {
   try { return promptBox0(s, p); } catch (e) {
     console.warn(e); const t = s.trig[0]; if (!t || !mine(p)) return null; const d = s.cards[t.c] || {};
-    const auto = () => { G.ask = null; G.askSel = []; let r = null; try { r = resolveEffect(s, t); } catch (err) { console.warn(err); } doAct(r && r.ops ? { type: "trig", id: t.id, explain: r.explain, ops: r.ops } : { type: "trig", id: t.id, skip: true }, p); };
     return h("div", { class: "prompt glass" }, h("b", { style: "font-family:var(--f-display)" }, `${d.n || "เอฟเฟกต์"}: แสดงตัวเลือกไม่ได้`),
-      h("div", { class: "small muted" }, "ระบบเลือกให้แบบอัตโนมัติได้ หรือข้ามเอฟเฟกต์นี้ แจ้งปัญหาได้จากเมนู ☰"),
-      h("div", { class: "row" }, h("button", { class: "btn gold", onclick: auto }, "ให้ระบบเลือกให้"), h("button", { class: "btn", onclick: () => { G.ask = null; doAct({ type: "trig", id: t.id, skip: true }, p); } }, "ข้ามเอฟเฟกต์")));
+      ...trigEscape(s, t, p, "ระบบเลือกให้แบบอัตโนมัติได้ หรือข้ามเอฟเฟกต์นี้ แจ้งปัญหาได้จากเมนู ☰"));
   }
 }
 function promptBox0(s, p) {
@@ -1064,7 +1158,8 @@ function promptBox0(s, p) {
       h("div", { class: "row" }, h("button", { class: "btn gold", disabled: !okN, onclick: () => { G.tpicks[a.idx] = G.askSel || []; G.ask = null; G.askSel = []; humanTrig(G.s, p); } }, "ยืนยัน"),
         a.optional ? h("button", { class: "btn", onclick: () => { G.tpicks[a.idx] = []; G.ask = null; G.askSel = []; humanTrig(G.s, p); } }, "ไม่เลือก") : null));
   }
-  if (s.trig.length) return box("กำลังทำงาน…", h("div", { class: "tiny muted" }, (s.cards[s.trig[0].c] || {}).n || ""));
+  if (s.trig.length) { const t = s.trig[0];
+    return box("กำลังทำงาน…", h("div", { class: "tiny muted" }, (s.cards[t.c] || {}).n || ""), G.stuck === t.id && t.seat === p ? trigEscape(s, t, p, "เอฟเฟกต์นี้ยังไม่จบ: ให้ระบบเลือกให้ หรือข้ามไปก็ได้") : null); }
   if (s.pend) {
     const moves = legalMoves(s, p); const reacts = P.hand.filter((x) => { const d = E.def(s, x); return d.t === "M" && d.st === "R" && !s.mu[p].R; });
     const att = E.locate(s, s.pend.att); const tgt = s.pend.tk === "life" ? "LIFE" : (E.locate(s, s.pend.ti) || { x: null }).x ? E.name(s, E.locate(s, s.pend.ti).x) : "?";
@@ -1080,9 +1175,9 @@ function promptBox0(s, p) {
   }
   if (s.phase === "battle" && s.active === p) {
     const att = s.P[p].av.filter((x) => x.a); if (!att.length) return null; const O = s.P[1 - p];
-    // on a computer with the 3D table the cards are clicked on the table, so the box is one slim row of names instead
+    // on a computer the cards are clicked on the table (3D or flat), so the box is one slim row of names instead
     // of a panel of pictures over the middle of the table (the buttons stay, for the keyboard and for small cards)
-    const slim = Arena.on && !touchy();
+    const slim = (Arena.on || G.flat) && !touchy();
     const pickAtt = (x) => { G.att = x.i; Arena.select(x.i); draw(); };
     if (!G.att) return slim
       ? h("div", { class: "prompt glass slim" }, h("b", null, "คลิก Avatar ที่เรืองแสงเพื่อโจมตี"), ...att.map((x) => h("button", { class: "btn sm", onclick: () => pickAtt(x) }, `${E.name(s, x)} P${E.power(s, x)}`)))

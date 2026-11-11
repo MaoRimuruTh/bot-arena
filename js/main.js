@@ -1,18 +1,18 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261112002434";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261112002434";
-import { AVATARS, MATS, SIGILS, gfxSetting, animSetting } from "./arena3d.js?v=20261112002434";
-import { myFigure, myMat, mySigil, unlocked, needFor } from "./achieve.js?v=20261112002434";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261112002434";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261112002434";
-import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261112002434";
-import { Views, avatarEl } from "./ui.js?v=20261112002434";
-import { Ciel } from "./ai.js?v=20261112002434";
-import "./views/library.js?v=20261112002434";
-import "./views/decks.js?v=20261112002434";
-import "./views/lab.js?v=20261112002434";
-import "./views/history.js?v=20261112002434";
-import { openReport } from "./views/ask.js?v=20261112002434";
-import "./views/play.js?v=20261112002434";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261112013911";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261112013911";
+import { AVATARS, MATS, SIGILS, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261112013911";
+import { myFigure, myMat, mySigil, unlocked, needFor } from "./achieve.js?v=20261112013911";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261112013911";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261112013911";
+import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261112013911";
+import { Views, avatarEl } from "./ui.js?v=20261112013911";
+import { Ciel } from "./ai.js?v=20261112013911";
+import "./views/library.js?v=20261112013911";
+import "./views/decks.js?v=20261112013911";
+import "./views/lab.js?v=20261112013911";
+import "./views/history.js?v=20261112013911";
+import { openReport } from "./views/ask.js?v=20261112013911";
+import "./views/play.js?v=20261112013911";
 
 const root = $("#view");
 let current = null, cardsReady = false;
@@ -86,9 +86,11 @@ function gfxSection() {
   const seg = (label, cur, opts, key, done) => h("div", { class: "seg", role: "group", "aria-label": label }, opts.map(([v, t]) => h("button", { "aria-pressed": String(cur) === String(v) ? "true" : "false", onclick: (e) => {
     try { localStorage.setItem(key, v); } catch {} for (const b of e.currentTarget.parentElement.children) b.setAttribute("aria-pressed", b === e.currentTarget ? "true" : "false"); toast(done(t)); } }, t)));
   return [h("div", { class: "eyebrow", style: "margin-top:12px" }, "ภาพและความเร็ว"),
-    h("div", { class: "small muted" }, "สวยสุด: แสงฟุ้ง เงา และทองสะท้อนแสงทุกเครื่อง · ประหยัดเครื่อง: เหมาะกับมือถือรุ่นเก่า แบตอยู่นานขึ้น · อัตโนมัติ: เริ่มตามขนาดจอ แล้วลดแสงฟุ้งและความละเอียดลงเองถ้าเครื่องเล่นไม่ลื่น"),
-    seg("คุณภาพภาพ", gfxSetting(), [["auto", "อัตโนมัติ"], ["high", "สวยสุด"], ["low", "ประหยัดเครื่อง"]], "bot.gfx", (t) => `ภาพ: ${t} มีผลตอนเปิดสนามครั้งถัดไป`),
-    seg("ความเร็วแอนิเมชัน", animSetting(), [[1, "ปกติ"], [1.6, "เร็ว"], [2.5, "เร็วมาก"]], "bot.anim", (t) => `แอนิเมชัน: ${t} มีผลตอนเปิดสนามครั้งถัดไป`)];
+    h("div", { class: "small muted" }, "สวยสุด: แสงฟุ้ง เงา และทองสะท้อนแสงทุกเครื่อง · ประหยัดเครื่อง: เหมาะกับมือถือรุ่นเก่า แบตอยู่นานขึ้น · อัตโนมัติ: เริ่มตามขนาดจอ แล้วลดแสงฟุ้งและความละเอียดลงเองถ้าเครื่องเล่นไม่ลื่น · แบบเรียบ 2D: ไม่มีโต๊ะ 3 มิติ การ์ดบนสนามวางเป็นแถว เบาเครื่องที่สุด"),
+    seg("คุณภาพภาพ", gfxSetting(), [["auto", "อัตโนมัติ"], ["high", "สวยสุด"], ["low", "ประหยัดเครื่อง"], ["flat", "แบบเรียบ 2D"]], "bot.gfx", (t) => `ภาพ: ${t} มีผลตอนเปิดสนามครั้งถัดไป`),
+    seg("ความเร็วแอนิเมชัน", animSetting(), [[1, "ปกติ"], [1.6, "เร็ว"], [2.5, "เร็วมาก"]], "bot.anim", (t) => `แอนิเมชัน: ${t} มีผลตอนเปิดสนามครั้งถัดไป`),
+    // phones that can buzz (Android): a short buzz when our LIFE is hit and when our turn begins
+    "vibrate" in navigator ? seg("สั่นเมื่อโดนตี LIFE และถึงตาเรา", buzzOn() ? "1" : "0", [["1", "สั่น"], ["0", "ไม่สั่น"]], "bot.buzz", (t) => (t === "สั่น" ? "มือถือจะสั่นเมื่อโดนตี LIFE และถึงตาเรา" : "ปิดการสั่นแล้ว")) : null];
 }
 // notices while the app is in the background (your turn, a friend joining, a new room)
 function notifySection() {
