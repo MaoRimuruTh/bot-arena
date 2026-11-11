@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111111214";
-import { E } from "./engine.js?v=20261111111214";
-import { h } from "./util.js?v=20261111111214";
-import { Sfx } from "./sfx.js?v=20261111111214";
+import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111112725";
+import { E } from "./engine.js?v=20261111112725";
+import { h } from "./util.js?v=20261111112725";
+import { Sfx } from "./sfx.js?v=20261111112725";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -37,7 +37,7 @@ function mount(container) {
   R.redL = new THREE.PointLight(0xff4a3a, 0.55, 16, 2); R.redL.position.set(0, 4.2, -4.4); scene.add(R.redL);
 
   // the play mat: black lacquer with gold-leaf line-work (ลายรดน้ำ), stepped corners (ย่อมุม) round every zone
-  const small = innerWidth < 760; const mt = matTextures(small);
+  const small = innerWidth < 760; R.small = small; const mt = matTextures(small);
   R.matMat = new THREE.MeshStandardMaterial({ map: mt.base, emissiveMap: mt.glow, emissive: new THREE.Color(0xe0982c), emissiveIntensity: 0.2, roughness: 0.62, roughnessMap: mt.rough, metalness: 0 }); R.matGlow = mt.glow;
   const top = new THREE.Mesh(new THREE.PlaneGeometry(MW, MD), R.matMat); top.rotation.x = -Math.PI / 2; top.position.set(0, 0, MZ); top.receiveShadow = true; scene.add(top);
   const lacq = new THREE.MeshStandardMaterial({ color: 0x5a1812, roughness: 0.34, metalness: 0, envMapIntensity: 0.3 }); R.lacq = lacq;
@@ -80,7 +80,7 @@ function mount(container) {
   const envProps = () => { const g = scene.getObjectByName("props"); if (!small || !g || !R.env) return; g.traverse((o) => { if (o.isMesh && /brass|water/.test(o.material.name)) { o.material.envMap = R.env; o.material.needsUpdate = true; } }); };
   if (THREE.RGBELoader) new THREE.RGBELoader().setDataType(THREE.UnsignedByteType).load(envUrl("hall.hdr"), (t) => {
     if (!R) return; const pm = new THREE.PMREMGenerator(renderer); R.env = pm.fromEquirectangular(t).texture; t.dispose(); pm.dispose();
-    if (small) return envProps();
+    if (small) { if (R.avatars) for (const a of R.avatars) if (a && a.model) a.model.traverse((o) => { if (o.isMesh && o.material.metalness > 0.5) { o.material.envMap = R.env; o.material.needsUpdate = true; } }); return envProps(); }
     scene.environment = R.env;
     // with something to reflect, the gold leaf on the mat becomes real metal (without it, metal would look dark)
     Object.assign(R.matMat, { metalness: 0.7, metalnessMap: R.matGlow, envMapIntensity: 2.4 });
@@ -129,6 +129,7 @@ function mount(container) {
         if (t > m.nextSweep && !m.busy) { sweep(m, 0.22 + m.u.uFoil.value * 0.35, 1.3); m.nextSweep = t + 7 + Math.random() * 10; } // now and then the lamps catch a card
       }
     }
+    if (R.avatars) for (const a of R.avatars) { if (!a || a.loading) continue; a.mixer.update(dt * (R.speed || 1)); if (!a.acts.idle && !reduce) { a.bob.position.y = Math.max(0, Math.sin(t * 2.6 + a.ph)) * 0.025; a.bob.scale.y = 1 + Math.sin(t * 2.6 + a.ph) * 0.018; } }
     R.t = t; for (const m of R.meshes.values()) placeShadow(m); for (const m of R.dying) placeShadow(m);
     camera.position.set(R.camBase.x + Math.sin(t * 0.15) * 0.35 + R.off.x, R.camBase.y + R.off.y, R.camBase.z + Math.cos(t * 0.12) * 0.2); camera.lookAt(R.look);
     for (const [i, el] of R.labels) { const m = R.meshes.get(i); if (!m) continue; const s = toScreen(m.grp.position.clone().add(new THREE.Vector3(-0.55 * m.scale, 0.1, (m.side === "me" ? 0.85 : -0.85) * m.scale))); el.style.left = s.x + "px"; el.style.top = s.y + "px"; }
@@ -143,6 +144,65 @@ function unmount() {
   if (!R) return; R.alive = false; removeEventListener("resize", R.resize); gsap.globalTimeline.timeScale(1);
   for (const el of R.labels.values()) el.remove();
   R.renderer.dispose(); R.canvas.remove(); R = null;
+}
+
+// ---------- 3D avatars: a small figure for each player who has chosen one, at the left end of the centre band ----------
+// Original designs made in Blender (tools/avatars). A model with idle / hit / win / lose clips plays them; one without gets the same moves from code.
+export const AVATARS = { chang: { name: "ช้างน้อย", file: "chang.glb", h: 1.25 } };
+export const my3D = () => { try { const k = localStorage.getItem("bot.av3"); return k && AVATARS[k] ? k : ""; } catch { return ""; } };
+const avCache = new Map();
+const loadAvatar = (key) => {
+  const a = AVATARS[key]; if (!a || !THREE.GLTFLoader) return Promise.resolve(null);
+  if (!avCache.has(key)) avCache.set(key, new Promise((res) => new THREE.GLTFLoader().load(`assets/avatars/${a.file}?v=${ENV_V}`, res, undefined, () => res(null))));
+  return avCache.get(key);
+};
+// mine stands between the centre band and my Avatar Zone, the opponent's between the band and theirs; both turn a little toward the board
+// (a phone shows less of the mat's sides, so there they stand further in and a little smaller)
+const avSpot = (mine) => { const x = R.small ? -3.55 : -4.75; return mine ? { x, z: 0.6, ry: 0.5 } : { x, z: -1.0, ry: 0.3 }; };
+function syncAvatars(s, V) {
+  R.avatars = R.avatars || [null, null];
+  for (const p of [0, 1]) {
+    const key = (s.P[p] && AVATARS[s.P[p].av3]) ? s.P[p].av3 : ""; const cur = R.avatars[p];
+    if (cur && cur.key === key) { if (cur.grp && cur.mine !== (p === V)) placeAvatar(cur, p === V); continue; }
+    if (cur && cur.grp) R.scene.remove(cur.grp);
+    R.avatars[p] = null; if (!key) continue;
+    const slot = { key, loading: true }; R.avatars[p] = slot;
+    loadAvatar(key).then((g) => { if (R && R.avatars && R.avatars[p] === slot && g) buildAvatar(slot, g, p === V); });
+  }
+}
+function placeAvatar(a, mine) { const sp = avSpot(mine); a.mine = mine; a.grp.position.set(sp.x, 0, sp.z); a.grp.rotation.y = sp.ry; }
+function buildAvatar(slot, g, mine) {
+  const model = THREE.SkeletonUtils ? THREE.SkeletonUtils.clone(g.scene) : g.scene.clone(true);
+  model.traverse((o) => { if (!o.isMesh) return; o.material = o.material.clone(); o.castShadow = true; if (R.env && innerWidth < 760 && o.material.metalness > 0.5) o.material.envMap = R.env; });
+  const box = new THREE.Box3().setFromObject(model), size = box.getSize(new THREE.Vector3()), k = ((AVATARS[slot.key].h || 1.25) * (R.small ? 0.82 : 1)) / Math.max(0.01, size.y);
+  model.scale.setScalar(k); model.position.set((-(box.min.x + box.max.x) / 2) * k, -box.min.y * k, (-(box.min.z + box.max.z) / 2) * k);
+  // layers: grp places it, bob breathes for a model without an idle clip, spin takes the moves made in code, the model plays its own clips
+  const spin = new THREE.Group(), bob = new THREE.Group(), grp = new THREE.Group(); spin.add(model); bob.add(spin); grp.add(bob);
+  const mixer = new THREE.AnimationMixer(model), acts = {};
+  for (const c of g.animations || []) { const n = c.name.toLowerCase(); for (const w of ["idle", "hit", "win", "lose"]) if (n.includes(w) && !acts[w]) acts[w] = mixer.clipAction(c); }
+  for (const w of ["hit", "win", "lose"]) if (acts[w]) { acts[w].setLoop(THREE.LoopOnce, 1); acts[w].clampWhenFinished = true; }
+  if (acts.idle) acts.idle.play();
+  mixer.addEventListener("finished", (e) => { if (e.action === acts.lose) return; e.action.fadeOut(0.25); if (acts.idle) acts.idle.reset().fadeIn(0.25).play(); });
+  Object.assign(slot, { loading: false, grp, bob, spin, model, mixer, acts, ph: Math.random() * 6 }); placeAvatar(slot, mine);
+  R.scene.add(grp); if (!reduce) gsap.from(spin.position, { y: 1.4, duration: 0.6, ease: "bounce.out" });
+}
+// what a player's avatar does: hop (their turn starts), hit (they lose a LIFE), win, lose, rest (back to standing)
+function avatarDo(p, what) {
+  const a = R.avatars && R.avatars[p]; if (!a || a.loading) return;
+  const s = a.spin; gsap.killTweensOf([s.position, s.scale, s.rotation]);
+  if (what === "rest") { s.position.set(0, 0, 0); s.scale.set(1, 1, 1); s.rotation.set(0, 0, 0); for (const w of ["hit", "win", "lose"]) if (a.acts[w]) a.acts[w].stop(); if (a.acts.idle) a.acts.idle.reset().setEffectiveWeight(1).play(); return; }
+  if (what === "hop") { if (!reduce) gsap.timeline().to(s.position, { y: 0.16, duration: 0.14, ease: "power2.out" }).to(s.position, { y: 0, duration: 0.2, ease: "bounce.out" }); return; }
+  if (what === "hit") flashAvatar(a);
+  const act = a.acts[what];
+  if (act) { if (a.acts.idle) a.acts.idle.fadeOut(0.08); for (const w of ["hit", "win", "lose"]) if (w !== what && a.acts[w]) a.acts[w].stop(); act.reset().setEffectiveWeight(1).fadeIn(0.06).play(); return; }
+  if (reduce) return;
+  if (what === "hit") gsap.timeline().to(s.scale, { x: 1.16, y: 0.8, z: 1.16, duration: 0.07 }).to(s.scale, { x: 0.95, y: 1.08, z: 0.95, duration: 0.14 }).to(s.scale, { x: 1, y: 1, z: 1, duration: 0.22 }).fromTo(s.rotation, { x: -0.3 }, { x: 0, duration: 0.5, ease: "elastic.out(1, 0.35)" }, 0);
+  if (what === "win") gsap.timeline().to(s.position, { y: 0.32, duration: 0.18, ease: "power2.out" }).to(s.position, { y: 0, duration: 0.18, ease: "power2.in" }).to(s.position, { y: 0.2, duration: 0.16, ease: "power2.out" }).to(s.position, { y: 0, duration: 0.16, ease: "power2.in" }).to(s.rotation, { y: Math.PI * 2, duration: 0.5, ease: "power2.inOut" }, 0).set(s.rotation, { y: 0 });
+  if (what === "lose") gsap.timeline().to(s.scale, { y: 0.88, x: 1.04, z: 1.04, duration: 0.6, ease: "power2.out" }).to(s.rotation, { x: 0.22, duration: 0.6, ease: "power2.out" }, 0);
+}
+// a red flush over the whole figure when it is hit
+function flashAvatar(a) {
+  a.model.traverse((o) => { if (!o.isMesh || !o.material.emissive) return; const m = o.material; gsap.killTweensOf(m.emissive); m.emissive.setRGB(0.9, 0.08, 0.05); gsap.to(m.emissive, { r: 0, g: 0, b: 0, duration: 0.45, ease: "power2.out" }); });
 }
 
 // ---------- helpers ----------
@@ -345,7 +405,7 @@ function faceMat(d) {
   const u = { uBurn: { value: 0 }, uSweep: { value: -2 }, uSheen: { value: 0 }, uFoil: { value: (c && FOIL[c.r]) || 0 }, uFlash: { value: 0 }, uEdge: { value: new THREE.Color(0xff8a2a) }, uTint: { value: new THREE.Color(d.co ? colorHex(d.co) : 0xffd9a0) } };
   const mat = new THREE.MeshBasicMaterial({ map: token ? tokenTexture(d) : R.texCache.get(d.im) || R.backTex, color: 0xdedede, toneMapped: false });
   mat.userData.u = u; mat.userData.own = token; mat.onBeforeCompile = FACE_HOOK;
-  if (!token && mat.map === R.backTex) resolveArt(c).then((url) => { if (!url || !R) return; R.loader.load(corsUrl(url), (t) => { t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; R.texCache.set(d.im, t); mat.map = t; mat.needsUpdate = true; }); });
+  if (!token && mat.map === R.backTex) resolveArt(c).then((url) => { if (!url || !R) return; R.loader.load(corsUrl(url), (t) => { if (!R) return t.dispose(); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; R.texCache.set(d.im, t); mat.map = t; mat.needsUpdate = true; }); });
   return mat;
 }
 const toScreen = (v) => { const p = v.clone().project(R.camera); const r = R.canvas.getBoundingClientRect(); return { x: r.left + (p.x * 0.5 + 0.5) * r.width, y: r.top + (-p.y * 0.5 + 0.5) * r.height }; };
@@ -645,7 +705,7 @@ async function animateEvent(ev, prev, s, V) {
       .to(m.grp.position, { x: from.x, y: from.y, z: from.z, duration: 0.42, ease: "power2.out" }, "+=0.1").to(m.grp.rotation, { x: 0, duration: 0.42, ease: "power2.out" }, "<")
       .add(() => done(m)));
   } else if (ev.k === "life") {
-    const mine = mineSide(ev.p); Sfx.play("life");
+    const mine = mineSide(ev.p); Sfx.play("life"); avatarDo(ev.p, "hit");
     if (E.critical(s.P[ev.p]) && R.crit !== ev.p + ":" + s.turn) { R.crit = ev.p + ":" + s.turn; setTimeout(() => R && Sfx.play("crit"), 450); } // one LIFE from losing flash(mine ? "rgba(255,40,60,.5)" : "rgba(255,200,90,.35)", 0.5);
     popText(new THREE.Vector3(0, 1.2, mine ? 5.2 : -4.7), "LIFE −1", "#ff4d55");
     burst(new THREE.Vector3(0, 1, mine ? 5.2 : -4.7), { n: 26, color: 0xff6a70, spread: 2.2 });
@@ -658,11 +718,11 @@ async function animateEvent(ev, prev, s, V) {
     if (ev.st === "L") decal(R.FX.magic_02, new THREE.Vector3(0, 0, -0.2), mco ? colorHex(mco) : 0x8fb0ff, 9, 1.8, 1.2); else if (mco) colorFx(mpos, mco, 0.8);
     if (d) popText(new THREE.Vector3(0, 1.4, -0.2), d.n, "#8fb0ff");
   } else if (ev.k === "turn") {
-    mood(mineSide(ev.p)); Sfx.play("turn", { mine: mineSide(ev.p) }); banner(mineSide(ev.p) ? "YOUR TURN" : s.P[ev.p].name, `เทิร์น ${ev.t}`); await sleepMs(500);
+    mood(mineSide(ev.p)); avatarDo(ev.p, "hop"); Sfx.play("turn", { mine: mineSide(ev.p) }); banner(mineSide(ev.p) ? "YOUR TURN" : s.P[ev.p].name, `เทิร์น ${ev.t}`); await sleepMs(500);
   } else if (ev.k === "battle") {
     Sfx.play("battle"); banner("BATTLE PHASE", ""); gsap.fromTo(R.div.material, { opacity: 0.9 }, { opacity: 0, duration: 1.4, ease: "power2.out" });
   } else if (ev.k === "over") {
-    Sfx.play(ev.w === V ? "win" : "lose"); banner(ev.w === V ? "VICTORY" : "DEFEAT", ""); flash(ev.w === V ? "rgba(255,210,120,.5)" : "rgba(80,0,10,.6)", 0.6);
+    Sfx.play(ev.w === V ? "win" : "lose"); banner(ev.w === V ? "VICTORY" : "DEFEAT", ""); for (const p of [0, 1]) avatarDo(p, ev.w === p ? "win" : "lose"); flash(ev.w === V ? "rgba(255,210,120,.5)" : "rgba(80,0,10,.6)", 0.6);
     if (!reduce) for (let k = 0; k < (ev.w === V ? 90 : 40); k++) gsap.delayedCall(Math.random() * 1.6, () => { // gold leaf rains for a win, ash and embers drift down for a loss
       if (!R) return; const win = ev.w === V, p0 = new THREE.Vector3((Math.random() - 0.5) * 15, 6 + Math.random() * 2, (Math.random() - 0.5) * 10 - 0.5);
       const sp = sprite(win && Math.random() < 0.4 ? R.FX.star_06 : R.FX.dot, win ? [0xffd27a, 0xffe9b0, 0xd8a84a, 0xff9a4a][k % 4] : k % 3 ? 0x3a2622 : 0xff5a3a, win ? 0.28 + Math.random() * 0.2 : 0.2 + Math.random() * 0.25, p0, 0.95);
@@ -680,6 +740,7 @@ function update(s, V, opts = {}) {
   R.queue = R.queue.then(async () => {
     if (!R || (R.token || 0) !== token) return;
     if (opts.reset || R.view !== V) { R.lastEv = s.evc || 0; R.view = V; }
+    syncAvatars(s, V); if (opts.reset) for (const p of [0, 1]) avatarDo(p, s.phase === "over" ? (s.winner === p ? "win" : "lose") : "rest");
     const evs = (s.ev || []).filter((e) => e.id > R.lastEv); R.lastEv = s.evc || R.lastEv;
     const drops = new Set(evs.filter((e) => e.k === "summon").map((e) => e.i)), burned = new Set(evs.filter((e) => e.k === "destroy").map((e) => e.i));
     for (const e of evs) if (e.k !== "summon") { try { await animateEvent(e, null, s, V); } catch (err) { console.warn(err); } }

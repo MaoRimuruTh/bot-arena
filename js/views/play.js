@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111111214";
-import { fxText } from "../fxtext.js?v=20261111111214";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111111214";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111111214";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111111214";
-import { Arena } from "../arena3d.js?v=20261111111214";
-import { autoEffect, resolveEffect } from "../effects.js?v=20261111111214";
-import { Music } from "../music.js?v=20261111111214";
-import { Sfx } from "../sfx.js?v=20261111111214";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261111111214";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111111214";
-import { readAura, traits } from "../auras.js?v=20261111111214";
-import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261111111214";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111112725";
+import { fxText } from "../fxtext.js?v=20261111112725";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111112725";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111112725";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111112725";
+import { Arena, my3D } from "../arena3d.js?v=20261111112725";
+import { autoEffect, resolveEffect } from "../effects.js?v=20261111112725";
+import { Music } from "../music.js?v=20261111112725";
+import { Sfx } from "../sfx.js?v=20261111112725";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261111112725";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111112725";
+import { readAura, traits } from "../auras.js?v=20261111112725";
+import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261111112725";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
   return { game: [`เทิร์น ${s.turn} · ${PHASE_TH[s.phase] || s.phase} · ตาของ ${s.P[s.active].name}`, `เด็คเรา: ${me.deckName || "-"} · เด็คคู่แข่ง: ${op.deckName || "-"}`,
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / ")].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261111111214";
+import { allDecks, deckById } from "./decks.js?v=20261111112725";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -111,14 +111,14 @@ const pack = (d) => ({ ...deckToList(d), name: d.name, id: d.id });
 function startLocal(mode) {
   const me = deckById(Setup.deck), op = pickOpp(); if (!me || !op) return toast("เลือกเด็คก่อน");
   const botName = Setup.brain === "ciel" && Ciel.on() ? "ชิเอล" : "บอท";
-  const init = { players: [{ uid: Me.uid, name: myName(), ava: myAvatar() }, mode === "bot" ? { name: botName, bot: true } : { uid: Me.uid, name: "ฝั่งที่ 2" }], decks: [pack(me), pack(op)], seed: (Math.random() * 2 ** 31) | 0, first: Math.random() < 0.5 ? 0 : 1, mode };
+  const init = { players: [{ uid: Me.uid, name: myName(), ava: myAvatar(), av3: my3D() }, mode === "bot" ? { name: botName, bot: true } : { uid: Me.uid, name: "ฝั่งที่ 2" }], decks: [pack(me), pack(op)], seed: (Math.random() * 2 ** 31) | 0, first: Math.random() < 0.5 ? 0 : 1, mode };
   const s = E.newGame(init);
   G = { s, V: 0, mode, brain: mode === "bot" && Setup.brain === "ciel" && Ciel.on() ? "ciel" : "basic", id: s.id, saved: false, rec: { init: { ...init, id: s.id }, acts: [] } };
   persist(); go();
 }
 function startLearn() {
   const st = allDecks().filter((d) => d.starter); const me = st.find((d) => /01/.test(d.name)) || st[0], op = st.find((d) => /02/.test(d.name)) || st[1]; if (!me || !op) return toast("ไม่พบ Starter Deck");
-  const init = { players: [{ uid: Me.uid, name: myName(), ava: myAvatar() }, { name: "บอท", bot: true }], decks: [pack(me), pack(op)], seed: 20261111, first: 0, mode: "bot" };
+  const init = { players: [{ uid: Me.uid, name: myName(), ava: myAvatar(), av3: my3D() }, { name: "บอท", bot: true }], decks: [pack(me), pack(op)], seed: 20261111, first: 0, mode: "bot" };
   const s = E.newGame(init);
   G = { s, V: 0, mode: "bot", brain: "basic", id: s.id, saved: false, learn: { seen: {} }, rec: { init: { ...init, id: s.id }, acts: [] } };
   persist(); go();
@@ -142,7 +142,7 @@ function stopGame(clear) {
 async function createRoom() {
   const me = deckById(Setup.deck); if (!me) return;
   const id = newGameId();
-  await F.setDoc(gameRef(id), { status: "waiting", host: Me.uid, hostName: myName(), hostAva: myAvatar(), hostDeck: pack(me), seats: [Me.uid], createdAt: Date.now(), updatedAt: Date.now() });
+  await F.setDoc(gameRef(id), { status: "waiting", host: Me.uid, hostName: myName(), hostAva: myAvatar(), hostAv3: my3D(), hostDeck: pack(me), seats: [Me.uid], createdAt: Date.now(), updatedAt: Date.now() });
   toast("สร้างห้องแล้ว รอเพื่อนเข้าร่วม"); openOnline(id, 0);
 }
 async function joinRoom(r) {
@@ -150,7 +150,7 @@ async function joinRoom(r) {
   try {
     await F.runTransaction(db, async (tx) => {
       const snap = await tx.get(gameRef(r.id)); const g = snap.data(); if (!g || g.status !== "waiting") throw new Error("ห้องนี้เริ่มไปแล้ว");
-      const s = E.newGame({ players: [{ uid: g.host, name: g.hostName, ava: g.hostAva || "" }, { uid: Me.uid, name: myName(), ava: myAvatar() }], decks: [g.hostDeck, pack(me)], seed: (Math.random() * 2 ** 31) | 0, first: Math.random() < 0.5 ? 0 : 1, mode: "friend", id: r.id });
+      const s = E.newGame({ players: [{ uid: g.host, name: g.hostName, ava: g.hostAva || "", av3: g.hostAv3 || "" }, { uid: Me.uid, name: myName(), ava: myAvatar(), av3: my3D() }], decks: [g.hostDeck, pack(me)], seed: (Math.random() * 2 ** 31) | 0, first: Math.random() < 0.5 ? 0 : 1, mode: "friend", id: r.id });
       tx.update(gameRef(r.id), { status: "playing", guest: Me.uid, guestName: myName(), seats: [g.host, Me.uid], state: JSON.stringify(s), updatedAt: Date.now() });
     });
     openOnline(r.id, 1);
