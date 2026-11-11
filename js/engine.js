@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261111212615";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261111212615";
-import { SCRIPTS } from "./scripts.js?v=20261111212615";
-import { newId, clone } from "./util.js?v=20261111212615";
+import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261111214413";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261111214413";
+import { SCRIPTS } from "./scripts.js?v=20261111214413";
+import { newId, clone } from "./util.js?v=20261111214413";
 export const ZONES = ["deck", "hand", "av", "mg", "cs", "hell", "dark", "life"];
 export const ZONE_TH = { deck: "Deck", hand: "มือ", av: "Avatar Zone", mg: "Magic Zone", cs: "Construct Zone", hell: "นรก", dark: "มิติมืด", life: "LIFE", land: "Land Magic" };
 export const PHASE_TH = { mull: "เปลี่ยนมือ", draw: "Draw", main: "Main", battle: "Battle", end: "End", over: "จบเกม" };
@@ -67,6 +67,21 @@ export const E = {
     if (me && me.z === "av" && [...s.P[0].mg, ...s.P[1].mg].some((m) => { if (m.on !== x.i || m.mute) return false; const nl = (scriptOf(s, m) || {}).noLower; return typeof nl === "function" ? !!nl(E, s, m, x) : !!nl; })) return Math.max(0, (x.zero ? 0 : d.pw || 0) + Math.max(0, x.pm || 0) + Math.max(0, x.tm || 0) + Math.max(0, x.fm || 0) + Math.max(0, tn) + Math.max(0, mb) + Math.max(0, au));
     const v = Math.max(0, (x.zero ? 0 : d.pw || 0) + (x.pm || 0) + (x.tm || 0) + (x.fm || 0) + tn + mb + au);
     return me && me.z === "av" && E.landSc(s, "halvePower") ? Math.floor(v / 2) : v;
+  },
+  // where a card's POWER comes from, for the card view: [what, amount] pairs in the order power() adds them, the
+  // printed POWER first; the total is power() itself (it may stop at 0, be halved by a Land, or ignore some parts)
+  powerParts(s, x) {
+    const d = E.def(s, x), me = E.locate(s, x.i), parts = [[x.zero ? "POWER ตั้งต้นถูกปรับเป็น 0" : "ตั้งต้น", x.zero ? 0 : d.pw || 0]];
+    for (const P of s.P) for (const m of P.mg) if (m.on === x.i) { const sm = scriptOf(s, m); const n = sm && sm.worn ? sm.worn(E, s, m, x) : modBonus(E.def(s, m).x) || modPowerFor(E, s, m, x); if (n) parts.push([`${E.name(s, m)} ที่สวมใส่`, n]); }
+    if (s.pend && s.pend.tk === "av" && s.pend.ti === x.i) { const A = E.locate(s, s.pend.att); if (A) for (const P of s.P) for (const m of P.mg) if (m.on === A.x.i) { const sm = scriptOf(s, m); const n = sm && sm.foeWorn ? sm.foeWorn(E, s, m, A.x, x) || 0 : 0; if (n) parts.push([`${E.name(s, m)} ของผู้โจมตี`, n]); } }
+    if (x.pm) parts.push(["จากเอฟเฟกต์ (ติดตัวจนออกจากสนาม)", x.pm]); if (x.tm) parts.push(["จนจบเทิร์นนี้", x.tm]); if (x.fm) parts.push(["ระหว่างการต่อสู้นี้", x.fm]);
+    const tn = x.tn ? Object.values(x.tn).reduce((a, b) => a + b, 0) : 0; if (tn) parts.push(["จนจบเทิร์นถัดไป", tn]);
+    if (me && (me.z === "av" || me.z === "cs")) for (const { x: src, L } of fieldCards(s)) {
+      const sc = me.z === "cs" ? !src.mute && scriptOf(s, src) : scriptOf(s, src); const ra = me.z === "av" && !(sc && sc.aura) && !src.mute ? readAura(E.def(s, src)) : null;
+      const list = sc && sc.aura ? sc.aura(E, s, src, L) : ra ? ra.run(E, s, src, L) : []; let n = 0; for (const a of list) if (a.seat === me.p && (me.z === "av" || a.cs) && a.test(x)) n += a.n;
+      if (n) parts.push([`${E.name(s, src)}${src.i === x.i ? " (ตัวเอง)" : ""} ความสามารถต่อเนื่อง`, n]);
+    }
+    return { total: E.power(s, x), parts, halved: !!(me && me.z === "av" && E.landSc(s, "halvePower")) };
   },
   hellGem(s, p, x) { const ids = new Set(); for (const { x: y, L: Ly } of fieldCards(s)) { if (Ly.p !== p || y.mute) continue; const sc = scriptOf(s, y); if (sc && sc.hellGem) for (const z of sc.hellGem(E, s, y, Ly, x) || []) ids.add(z); } const list = s.P[p].hell.filter((z) => ids.has(z.i)); return { list, n: list.reduce((a, z) => a + (E.def(s, z).g || 0), 0) }; },
   costOf(s, p, x, noHell) { // Cost after continuous reductions (e.g. ซาร์อึก)

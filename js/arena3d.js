@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111212615";
-import { E } from "./engine.js?v=20261111212615";
-import { h } from "./util.js?v=20261111212615";
-import { Sfx } from "./sfx.js?v=20261111212615";
+import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111214413";
+import { E } from "./engine.js?v=20261111214413";
+import { h } from "./util.js?v=20261111214413";
+import { Sfx } from "./sfx.js?v=20261111214413";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -10,6 +10,7 @@ let R = null; // runtime
 export const Arena = {
   get on() { return !!R; },
   mount, unmount, update, idle: () => (R ? R.queue : Promise.resolve()),
+  refit: () => R && R.resize(true), // the HUD is drawn: fit an upright phone's table between its bars
   // replays can run fast: every animation and pause in the arena speeds up together
   setSpeed: (k) => { const v = k * animSetting(); if (R) R.speed = v; gsap.globalTimeline.timeScale(v); },
   cheer: (p) => R && avatarDo(p, "hop"), // an emote makes the sender's figure hop
@@ -44,7 +45,7 @@ function mount(container, opts = {}) {
   R.redL = new THREE.PointLight(0xff4a3a, 0.55, 16, 2); R.redL.position.set(0, 4.2, -4.4); scene.add(R.redL);
 
   // the play mat: black lacquer with gold-leaf line-work (ลายรดน้ำ), stepped corners (ย่อมุม) round every zone
-  const small = innerWidth < 760; R.small = small; R.Q = Q; R.watch = !!opts.watch; /* a friend looking on: no "your turn", and the winner gets the banner */ const mt = matTextures(small || Q === "low", MATS[opts.mat] || MATS.black);
+  const small = innerWidth < 760; R.small = small; R.Q = Q; R.watch = !!opts.watch; /* a friend looking on: no "your turn", and the winner gets the banner */ R.matKey = [small || Q === "low", MATS[opts.mat] || MATS.black]; R.zones = tallScreen(container) ? ZONES.tall : ZONES.wide; const mt = matTextures(...R.matKey, R.zones);
   R.matMat = new THREE.MeshStandardMaterial({ map: mt.base, emissiveMap: mt.glow, emissive: new THREE.Color(0xe0982c), emissiveIntensity: 0.2, roughness: 0.62, roughnessMap: mt.rough, metalness: 0 }); R.matGlow = mt.glow;
   const top = new THREE.Mesh(new THREE.PlaneGeometry(MW, MD), R.matMat); top.rotation.x = -Math.PI / 2; top.position.set(0, 0, MZ); top.receiveShadow = true; scene.add(top);
   const lacq = new THREE.MeshStandardMaterial({ color: 0x5a1812, roughness: 0.34, metalness: 0, envMapIntensity: 0.3 }); R.lacq = lacq;
@@ -100,14 +101,19 @@ function mount(container, opts = {}) {
     R.composer = new THREE.EffectComposer(renderer); R.composer.addPass(new THREE.RenderPass(scene, camera));
     R.composer.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.4, 0.9));
   }
-  R.resize = () => {
+  R.resize = (smooth) => {
     const w = container.clientWidth || innerWidth, hh = container.clientHeight || innerHeight; renderer.setSize(w, hh, false); camera.aspect = w / hh;
     const portrait = w / hh < 0.9; const k = portrait ? 1 : Math.min(1.45, Math.max(1, 820 / hh, 1250 / w));
-    R.camBase.set(0, portrait ? 17.5 : 11.2 * k, portrait ? 12.5 : 9.6 * k); R.look.set(0, 0, portrait ? 1.9 : 0.4); camera.fov = portrait ? 50 : 38; camera.updateProjectionMatrix();
+    const Z = portrait ? ZONES.tall : ZONES.wide; if (Z !== R.zones) { R.zones = Z; swapMat(); if (R.last) update(R.last.s, R.last.V); } // turned the phone: the other table
+    camera.fov = portrait ? 50 : 38; camera.updateProjectionMatrix();
+    const cam = portrait ? fitTall(camera, w, hh) : { pos: new THREE.Vector3(0, 11.2 * k, 9.6 * k), look: new THREE.Vector3(0, 0, 0.4) };
+    gsap.killTweensOf(R.camBase); gsap.killTweensOf(R.look);
+    if (smooth && !reduce) { gsap.to(R.camBase, { x: cam.pos.x, y: cam.pos.y, z: cam.pos.z, duration: 0.5, ease: "power2.out" }); gsap.to(R.look, { x: cam.look.x, y: cam.look.y, z: cam.look.z, duration: 0.5, ease: "power2.out" }); }
+    else { R.camBase.copy(cam.pos); R.look.copy(cam.look); }
     if (R.composer) R.composer.setSize(w, hh);
     document.documentElement.style.setProperty("--handDrop", hh < 620 ? "-28px" : hh < 760 ? "-40px" : "-44px");
   };
-  addEventListener("resize", R.resize); R.resize();
+  R.onResize = () => R.resize(); addEventListener("resize", R.onResize); R.resize();
   // automatic quality: if the table keeps running under ~28 frames a second, give up the glow first, then resolution
   R.autoQ = gfxSetting() === "auto" ? { t0: performance.now(), born: performance.now(), sum: 0, n: 0, slow: 0, last: 0 } : null;
   R.onVis = () => { if (R && R.autoQ) R.autoQ.last = 0; }; document.addEventListener("visibilitychange", R.onVis);
@@ -153,7 +159,7 @@ function mount(container, opts = {}) {
   gsap.from(R.matMat, { emissiveIntensity: 0, duration: reduce ? 0 : 1.8, ease: "power2.out" }); // the gold leaf catches the light once
 }
 function unmount() {
-  if (!R) return; R.alive = false; removeEventListener("resize", R.resize); if (R.onVis) document.removeEventListener("visibilitychange", R.onVis); gsap.globalTimeline.timeScale(1);
+  if (!R) return; R.alive = false; removeEventListener("resize", R.onResize); if (R.onVis) document.removeEventListener("visibilitychange", R.onVis); gsap.globalTimeline.timeScale(1);
   for (const el of R.labels.values()) el.remove();
   R.renderer.dispose(); R.canvas.remove(); R = null;
 }
@@ -234,6 +240,18 @@ function points(n, color, size, map, spread) {
 // ---------- lacquer and gold leaf ----------
 // world ↔ mat canvas: x ∈ [-MW/2, MW/2], z ∈ [MZ - MD/2, MZ + MD/2]; the top of the canvas is the opponent's side
 const MW = 15.4, MD = 11.6, MZ = -0.2;
+// where the zones sit on the mat. "wide" is the table for screens held sideways; "tall" is for phones held upright,
+// where the screen is too narrow for the wide table: the Land Magic Zone moves in from the left edge to the middle
+// band, the Construct and Magic Zones close in, and five or six Avatars stand closer together, so every card fits
+// on the screen and can be tapped
+const ZONES = {
+  wide: { avGap: (n) => 2.05, cs: [-5.8, -1.8], mg: [-1.2, 5.8], csX: (k) => -5.1 + k * 1.3, csS: 0.68, mgX: (k) => 5.1 - k * 1.15, mgS: 0.6,
+    land: { x0: -6.98, x1: -5.12, dz: 1.72, x: -6.05, s: 0.72, s2: 0.6, dz2: 0.8, lx: -6.05, lz: MZ + 1.95, align: "center" }, band: [-4.6, 6.85] },
+  tall: { avGap: (n) => (n > 4 ? Math.min(2.05, 8.1 / (n - 1)) : 2.05), cs: [-4.35, -1.15], mg: [-0.75, 4.35], csX: (k) => -3.75 + k * 1.0, csS: 0.6, mgX: (k) => 3.8 - k * 0.92, mgS: 0.55,
+    land: { x0: -4.45, x1: -2.85, dz: 1.08, x: -3.65, s: 0.62, s2: 0.5, dz2: 0.55, lx: -2.65, lz: MZ - 0.62, align: "left" }, band: [-2.45, 4.35],
+    // the part of the table that must be on screen: the zones' outer edges (six Avatars included)
+    fit: [[-4.95, -5.3], [4.95, -5.3], [-4.95, 4.95], [4.95, 4.95], [-4.95, MZ], [4.95, MZ]] },
+};
 const ENV_V = 1, LIGHT_MAX = 3; // bump ENV_V when a file in assets/env changes; the light map stores light / LIGHT_MAX
 const GOLD = "#d8a84a";
 // a frame with stepped corners (ย่อมุม), the corner shape of Thai thrones and temple bases
@@ -264,7 +282,7 @@ function lowerQuality() {
   const pr = R.renderer.getPixelRatio(); if (pr > 1) { R.renderer.setPixelRatio(Math.max(1, pr - 0.25)); R.resize(); console.info("3D: resolution", Math.max(1, pr - 0.25)); return; }
   R.autoQ = null; // nothing left to lower
 }
-function matTextures(small, theme = MATS.black) {
+function matTextures(small, theme = MATS.black, Z = ZONES.wide) {
   const S = small ? 84 : 128; const CW = Math.round(MW * S), CH = Math.round(MD * S);
   const mk = () => { const c = document.createElement("canvas"); c.width = CW; c.height = CH; return c; };
   const base = mk(), glow = mk(), rough = mk(); const g = base.getContext("2d"), q = glow.getContext("2d"), rq = rough.getContext("2d");
@@ -295,14 +313,14 @@ function matTextures(small, theme = MATS.black) {
       const zc = zs > 0 ? 2.15 : -2.55, zo = zs > 0 ? 4.17 : -4.5;
       frame(c, -4.35, zc - 1.18, 4.35, zc + 1.18, 0.16); inLabel(c, "Avatar Zone", -4.35, zc - 1.18, 4.35, zc + 1.18, flip);
       prajamyam(c, X(0), Y(zc - zs * 1.18), U(0.2), ground); prajamyam(c, X(0), Y(zc + zs * 1.18), U(0.13), ground);
-      frame(c, -5.8, zo - 0.76, -1.8, zo + 0.76, 0.11, 0.028); inLabel(c, "Construct Zone", -5.8, zo - 0.76, -1.8, zo + 0.76, flip);
-      frame(c, -1.2, zo - 0.76, 5.8, zo + 0.76, 0.11, 0.028); inLabel(c, "Magic Zone", -1.2, zo - 0.76, 5.8, zo + 0.76, flip);
+      frame(c, Z.cs[0], zo - 0.76, Z.cs[1], zo + 0.76, 0.11, 0.028); inLabel(c, "Construct Zone", Z.cs[0], zo - 0.76, Z.cs[1], zo + 0.76, flip);
+      frame(c, Z.mg[0], zo - 0.76, Z.mg[1], zo + 0.76, 0.11, 0.028); inLabel(c, "Magic Zone", Z.mg[0], zo - 0.76, Z.mg[1], zo + 0.76, flip);
     }
     // Land Magic Zone, shared in the middle on the left; the centre band of ประจำยาม runs from it
-    frame(c, -6.98, MZ - 1.72, -5.12, MZ + 1.72, 0.13, 0.03); label(c, "Land Magic", -6.05, MZ + 1.95, false, "center");
-    c.lineWidth = U(0.022); for (const dz of [-0.24, 0.24]) { c.beginPath(); c.moveTo(X(-4.6), Y(MZ + dz)); c.lineTo(X(6.85), Y(MZ + dz)); c.stroke(); }
-    for (let x = -4.2; x <= 6.6; x += 0.9) prajamyam(c, X(x), Y(MZ), U(0.14), ground);
-    for (const x of [-4.6, 6.85]) prajamyam(c, X(x), Y(MZ), U(0.3), ground);
+    const Ld = Z.land, [b0, b1] = Z.band; frame(c, Ld.x0, MZ - Ld.dz, Ld.x1, MZ + Ld.dz, 0.13, 0.03); label(c, "Land Magic", Ld.lx, Ld.lz, false, Ld.align);
+    c.lineWidth = U(0.022); for (const dz of [-0.24, 0.24]) { c.beginPath(); c.moveTo(X(b0), Y(MZ + dz)); c.lineTo(X(b1), Y(MZ + dz)); c.stroke(); }
+    for (let x = b0 + 0.4; x <= b1 - 0.25; x += 0.9) prajamyam(c, X(x), Y(MZ), U(0.14), ground);
+    for (const x of [b0, b1]) prajamyam(c, X(x), Y(MZ), U(0.3), ground);
   });
   draw();
   const tb = new THREE.CanvasTexture(base), tg = new THREE.CanvasTexture(glow), tr = new THREE.CanvasTexture(rough); tb.encoding = THREE.sRGBEncoding; tb.anisotropy = tg.anisotropy = tr.anisotropy = 8;
@@ -547,15 +565,50 @@ export function select(i) { if (!R) return; for (const m of R.meshes.values()) {
 Arena.select = select;
 
 // ---------- layout ----------
+const tallScreen = (el) => (el.clientWidth || innerWidth) / (el.clientHeight || innerHeight) < 0.9;
+// phones held upright: the band of the screen the table must fit in, between the opponent's bar and our hand (both
+// drawn over the table); measured when the game's HUD is on screen, otherwise its usual size
+function tallBand(w, hh) {
+  const top = document.querySelector(".hud .oppbar"), hand = document.querySelector(".hud .handrow") || document.querySelector(".hud .handzone"), side = document.querySelector(".hud .matchp");
+  const t = top ? top.getBoundingClientRect().bottom + 6 : 64; const hr = hand && hand.getBoundingClientRect(); const sr = side && side.getBoundingClientRect();
+  const handTop = hr && hr.height > 40 ? hr.top + (hand.classList.contains("handrow") ? 6 : 30) : hh - 205;
+  // a tablet held upright keeps the side panel of the wide screen: the table moves left of it
+  const r = sr && sr.width > 40 && sr.left > w * 0.45 ? sr.left - 4 : w;
+  return { t, b: Math.max(t + 160, handTop), l: 0, r };
+}
+// the camera for an upright screen: the same downward tilt, moved back just far enough that the whole tall table (its
+// fit points) fits across the screen and between the bars, then centred in that band
+function fitTall(camera, w, hh) {
+  const V3 = THREE.Vector3, dir = new V3(0, -17.5, -10.6).normalize(), band = tallBand(w, hh), M = 10, q = new V3();
+  const pts = ZONES.tall.fit.map(([x, z]) => new V3(x, 0, z));
+  const proj = (d, xc, zc) => { const look = new V3(xc, 0, zc); camera.position.copy(look).addScaledVector(dir, -d); camera.lookAt(look); camera.updateMatrixWorld(true);
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for (const p of pts) { q.copy(p).project(camera); const sx = (q.x * 0.5 + 0.5) * w, sy = (-q.y * 0.5 + 0.5) * hh; x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy); }
+    return { x0, x1, y0, y1 }; };
+  let xc = 0, zc = 1.9, d = 20.5;
+  for (let it = 0; it < 5; it++) {
+    let lo = 6, hi = 120; for (let k = 0; k < 30; k++) { const m = (lo + hi) / 2, r = proj(m, xc, zc); if (r.x1 - r.x0 <= band.r - band.l - 2 * M && r.y1 - r.y0 <= band.b - band.t) hi = m; else lo = m; } d = hi;
+    // then move the view so the table sits in the middle of the band, across and down (a step of 0.5 measures how far it moves)
+    const r = proj(d, xc, zc), my = (r.y0 + r.y1) / 2, mx = (r.x0 + r.x1) / 2, wy = (band.t + band.b) / 2, wx = (band.l + band.r) / 2;
+    const rz = proj(d, xc, zc + 0.5), rx = proj(d, xc + 0.5, zc), pz = ((rz.y0 + rz.y1) / 2 - my) / 0.5, px = ((rx.x0 + rx.x1) / 2 - mx) / 0.5;
+    if (Math.abs(wy - my) < 1 && Math.abs(wx - mx) < 1) break; if (pz) zc += (wy - my) / pz; if (px) xc += (wx - mx) / px;
+  }
+  const look = new V3(xc, 0, zc); return { pos: look.clone().addScaledVector(dir, -d), look };
+}
+// the mat redrawn for the other table (the phone was turned)
+function swapMat() {
+  if (!R || !R.matMat || !R.matKey) return; const mt = matTextures(...R.matKey, R.zones), M = R.matMat;
+  for (const k of ["map", "emissiveMap", "roughnessMap"]) if (M[k] && M[k].dispose) M[k].dispose();
+  M.map = mt.base; M.emissiveMap = mt.glow; M.roughnessMap = mt.rough; if (M.metalnessMap) M.metalnessMap = mt.glow; R.matGlow = mt.glow; M.needsUpdate = true;
+}
 function layout(s, V) {
-  const out = new Map();
+  const out = new Map(); const Z = R.zones || ZONES.wide;
   for (const p of [0, 1]) {
     const side = p === V ? "me" : "opp"; const P = s.P[p]; const zs = side === "me" ? 1 : -1;
-    const n = P.av.length; P.av.forEach((x, k) => out.set(x.i, { x, p, side, zone: "av", pos: new THREE.Vector3((k - (n - 1) / 2) * 2.05, 0.04, side === "me" ? 2.15 : -2.55), scale: 1 }));
-    P.cs.forEach((x, k) => out.set(x.i, { x, p, side, zone: "cs", pos: new THREE.Vector3(-5.1 + k * 1.3, 0.04, zs * 4.15 - (side === "me" ? 0 : 0.35)), scale: 0.68 }));
-    P.mg.forEach((x, k) => out.set(x.i, { x, p, side, zone: "mg", pos: new THREE.Vector3(5.1 - k * 1.15, 0.04, zs * 4.15 - (side === "me" ? 0 : 0.35)), scale: 0.6 }));
+    const n = P.av.length, gap = Z.avGap(n); P.av.forEach((x, k) => out.set(x.i, { x, p, side, zone: "av", pos: new THREE.Vector3((k - (n - 1) / 2) * gap, 0.04, side === "me" ? 2.15 : -2.55), scale: 1 }));
+    P.cs.forEach((x, k) => out.set(x.i, { x, p, side, zone: "cs", pos: new THREE.Vector3(Z.csX(k), 0.04, zs * 4.15 - (side === "me" ? 0 : 0.35)), scale: Z.csS }));
+    P.mg.forEach((x, k) => out.set(x.i, { x, p, side, zone: "mg", pos: new THREE.Vector3(Z.mgX(k), 0.04, zs * 4.15 - (side === "me" ? 0 : 0.35)), scale: Z.mgS }));
   }
-  { const two = !!(s.land && s.land2); for (const l of [s.land, s.land2]) if (l) out.set(l.i, { x: l, p: l.o, side: l.o === V ? "me" : "opp", zone: "land", pos: new THREE.Vector3(-6.05, 0.04, two ? (l.o === V ? 0.6 : -1.0) : -0.2), scale: two ? 0.6 : 0.72 }); } // แบ่งแยกดินแดน: one Land per side
+  { const two = !!(s.land && s.land2), Ld = Z.land; for (const l of [s.land, s.land2]) if (l) out.set(l.i, { x: l, p: l.o, side: l.o === V ? "me" : "opp", zone: "land", pos: new THREE.Vector3(Ld.x, 0.04, MZ + (two ? (l.o === V ? Ld.dz2 : -Ld.dz2) : 0)), scale: two ? Ld.s2 : Ld.s }); } // แบ่งแยกดินแดน: one Land per side
   return out;
 }
 function makeMesh(s, L) {
@@ -788,7 +841,7 @@ async function animateEvent(ev, prev, s, V) {
 }
 const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms / ((R && R.speed) || 1)));
 function update(s, V, opts = {}) {
-  if (!R) return Promise.resolve();
+  if (!R) return Promise.resolve(); R.last = { s, V };
   // flush: a jump (a replay seek) drops the animations still waiting in the queue, and the banner they raised
   if (opts.flush) { R.token = (R.token || 0) + 1; const band = document.querySelector(".banner .band"); if (band) { gsap.killTweensOf(band); gsap.set(band, { opacity: 0 }); } }
   const token = R.token || 0;

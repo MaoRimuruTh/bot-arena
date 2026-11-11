@@ -197,14 +197,15 @@ Object.assign(SCRIPTS, {
     summon: (c) => { const m = virusMill(c, 3); let ops = m.ops, say = "ทุกคนธรณีสูบ 3 ใบ";
       if (m.avatars >= 4) { const o = c.choose(c.s.P[1 - c.seat].av.filter((x) => !c.E.noAim(c.s, x)).sort(strongFirst(c.E, c.s)), 1, "เลือก Avatar ฝ่ายตรงข้าม POWER -2", { optional: true })[0];
         const v = c.choose(c.s.P[c.seat].av.filter((x) => virus(c.E, c.s, x)).sort(strongFirst(c.E, c.s)), 1, "เลือกไวรัสฝ่ายเรา POWER +2", { optional: true })[0];
-        if (o) ops.push({ op: "power", i: o.i, n: -2, temp: true }); if (v) ops.push({ op: "power", i: v.i, n: 2, temp: true }); say += ` · ได้ Avatar ${m.avatars} ใบ`; }
+        if (o) ops.push({ op: "power", i: o.i, n: -2, temp: true }); if (v) ops.push({ op: "power", i: v.i, n: 2, temp: true });
+        say += ` · ได้ Avatar ${m.avatars} ใบ (ถึง 4)${o ? ` · ${c.E.name(c.s, o)} POWER -2` : ""}${v ? ` · ${c.E.name(c.s, v)} POWER +2` : ""} จนจบเทิร์นเรา`; }
       else say += ` (ได้ Avatar ${m.avatars} ใบ ไม่ถึง 4)`;
       return { explain: say, ops }; } },
   "BT11-022": { virusExile: true, activate: fromDark,
     attack: (c) => { if (c.self && c.self.used === "a" + c.s.turn) return { explain: "ใช้ไปแล้วในเทิร์นนี้", ops: [] }; if (c.self) c.self.used = "a" + c.s.turn;
       const m = virusMill(c, 3); const ops = [...m.ops]; let say = "ทุกคนธรณีสูบ 3 ใบ";
       if (m.avatars >= 4) { const t = c.choose(c.s.P[1 - c.seat].av.filter((x) => !c.E.noAim(c.s, x)).sort(strongFirst(c.E, c.s)), 1, "เลือก Avatar ฝ่ายตรงข้ามให้เสียความสามารถและ POWER ตั้งต้น 0", { optional: true })[0];
-        if (t) { ops.push({ op: "mute", i: t.i, until: "turn", zero: true }); say += ` · ${c.E.name(c.s, t)} เสียความสามารถ POWER ตั้งต้น 0`; } }
+        say += ` · ได้ Avatar ${m.avatars} ใบ (ถึง 4)`; if (t) { ops.push({ op: "mute", i: t.i, until: "turn", zero: true }); say += ` · ${c.E.name(c.s, t)} เสียความสามารถ และ POWER ตั้งต้นเป็น 0 จนจบเทิร์น`; } }
       else say += ` (ได้ Avatar ${m.avatars} ใบ ไม่ถึง 4)`;
       return { explain: say, ops }; } },
   // พรของอิศวร (Only #1)

@@ -1,7 +1,7 @@
 // Ciel is Rimuru's own assistant. Only the owner account sees her name; every other account gets a
 // nameless helper ("ผู้ช่วย") for the same tools, and nothing that speaks to Rimuru personally.
-import { Me } from "./fb.js?v=20261111212615";
-import { lsGet, lsSet } from "./util.js?v=20261111212615";
+import { Me } from "./fb.js?v=20261111214413";
+import { lsGet, lsSet } from "./util.js?v=20261111214413";
 
 export const isOwnerNow = () => (Me.profile ? Me.profile.role === "owner" : lsGet("bot.own", false) === true);
 const SWAP = [[/การ์ดที่ริมุรุเลือกเอง\s*/g, ""], [/ที่ชิเอลจัดให้ริมุรุ/g, "ที่จัดไว้ให้"], [/ที่ริมุรุเลือกไว้/g, "ที่เลือกไว้"], [/ของริมุรุ/g, "ของผู้เล่น"], [/ริมุรุ/g, "ผู้เล่น"], [/ชิเอล/g, "ผู้ช่วย"]];

@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111212615";
-import { fxText } from "../fxtext.js?v=20261111212615";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111212615";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111212615";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111212615";
-import { Arena, animSetting } from "../arena3d.js?v=20261111212615";
-import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261111212615";
-import { themeCounts } from "../boxdecks.js?v=20261111212615";
-import { ladder, ladderReset } from "../ladder.js?v=20261111212615";
-import { notify } from "../notify.js?v=20261111212615";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261111212615";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261111212615";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261111212615";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261111212615";
-import { Music } from "../music.js?v=20261111212615";
-import { Sfx } from "../sfx.js?v=20261111212615";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261111212615";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111212615";
-import { readAura, traits } from "../auras.js?v=20261111212615";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261111212615";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111214413";
+import { fxText } from "../fxtext.js?v=20261111214413";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111214413";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111214413";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111214413";
+import { Arena, animSetting } from "../arena3d.js?v=20261111214413";
+import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261111214413";
+import { themeCounts } from "../boxdecks.js?v=20261111214413";
+import { ladder, ladderReset } from "../ladder.js?v=20261111214413";
+import { notify } from "../notify.js?v=20261111214413";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261111214413";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261111214413";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261111214413";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261111214413";
+import { Music } from "../music.js?v=20261111214413";
+import { Sfx } from "../sfx.js?v=20261111214413";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261111214413";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111214413";
+import { readAura, traits } from "../auras.js?v=20261111214413";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261111214413";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -25,7 +25,7 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261111212615";
+import { allDecks, deckById } from "./decks.js?v=20261111214413";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -146,7 +146,7 @@ Views.play = {
     Arena.setHover((i) => { if (G.hover === i) return; G.hover = i; drawInspector(); });
     Arena.setClick(fieldClick);
     Arena.update(G.s, view(), { reset: true });
-    Music.start(); draw(); drive();
+    Music.start(); draw(); Arena.refit(); drive();
     if (G.mode === "friend") { clearInterval(G.idleTick); const g = G; G.idleTick = setInterval(() => { if (G !== g) return clearInterval(g.idleTick); const idle = oppIdle() > IDLE_MS; if (idle !== !!G.idleShown) { G.idleShown = idle; draw(); } }, 5000); }
   },
 };
@@ -436,7 +436,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261111212615").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261111214413").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", bot: true });
@@ -555,6 +555,14 @@ function tool(icon, label, short, fn, off) {
   const ic = h("span", { class: "ic" }); ic.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICON[icon]}"/></svg>`;
   return h("button", { class: "tool", type: "button", title: label, "aria-label": label, disabled: !!off, onclick: fn }, ic, h("span", null, short));
 }
+// why a card on the table has the POWER it has, when something changes it: "POWER 0 = ตั้งต้น 1 · ขวัญตา … −4 (ไม่ต่ำกว่า 0)"
+function powerNote(s, x, L) {
+  if (!L || (L.z !== "av" && L.z !== "cs")) return null; const { total, parts, halved } = E.powerParts(s, x); if (parts.length < 2 && !halved && !x.zero) return null;
+  const sum = parts.reduce((a, [, n]) => a + n, 0), sg = (n) => (n > 0 ? "+" + n : n < 0 ? "−" + -n : "0");
+  return `POWER ${total} = ${parts.map(([t, n], k) => (k ? `${t} ${sg(n)}` : `${t} ${n}`)).join(" · ")}${halved ? " · หารครึ่งจาก Land Magic" : ""}${sum < 0 && total === 0 && !halved ? " (ไม่ต่ำกว่า 0)" : ""}`;
+}
+// leave the table: a game still running is kept to carry on later, so it only asks first
+function leaveArena() { const s = G && G.s; if (!s) return; if (s.phase === "over" || G.watch || G.replay) exitGame(); else confirmBox("ออกจากสนาม? เกมที่ค้างจะเก็บไว้ให้เล่นต่อ", "ออก", exitGame); }
 function crystals(P, opp, prevKey) {
   const prev = G[prevKey] ?? P.life.filter((x) => x.up).length; const now = P.life.filter((x) => x.up).length; G[prevKey] = now; const crit = E.critical(P);
   return h("div", { class: "crys", role: "img", "aria-label": `LIFE เหลือ ${5 - now} จาก 5` }, [0, 1, 2, 3, 4].map((k) => h("i", { class: "cry" + (opp ? " opp" : "") + (k < now ? " gone" : "") + (k < now && k >= prev ? " now" : "") + (crit ? " crit" : "") })));
@@ -570,14 +578,17 @@ function draw() {
   const pile = (P, z, t) => h("button", { onclick: () => openPile(P, z) }, h("b", null, P[z].length), h("span", null, t));
   const ph = ["draw", "main", "battle", "end"];
   if (compact()) {
+    // phones: leaving is always one tap away (top left), and once the game is over it sits next to "ดวลอีกครั้ง"
+    const leave = h("button", { class: "btn sm exitm", type: "button", title: "ออกจากสนาม", "aria-label": "ออกจากสนาม", onclick: leaveArena }, "←");
+    const bar = s.phase === "over" && !G.replay ? [turnButtons(s, p).filter(Boolean)[0], h("button", { class: "btn sm", onclick: leaveArena }, "ออก")].filter(Boolean) : turnButtons(s, p).filter(Boolean).slice(0, 2);
     G.hud.replaceChildren(
-      h("div", { class: "oppbar glass" }, op.bot && !op.ava ? h("span", { class: "ava sm" }, "✦") : avatarEl(op.ava, op.name, "sm"), h("div", { class: "pname" }, h("b", null, op.name), h("span", null, `มือ ${op.hand.length} · Deck ${op.deck.length}`)), crystals(op, true, "pcOp")),
+      h("div", { class: "oppbar glass" }, leave, op.bot && !op.ava ? h("span", { class: "ava sm" }, "✦") : avatarEl(op.ava, op.name, "sm"), h("div", { class: "pname" }, h("b", null, op.name), h("span", null, `มือ ${op.hand.length} · Deck ${op.deck.length}`)), crystals(op, true, "pcOp")),
       hint ? h("div", { class: "hint" }, G.say && !mine(p ?? -1) ? "✦ " + G.say : hint) : null,
       G.watch ? watchHand(me) : handZone(s, V, p), promptBox(s, p), tutorBox(s, V, p), idleBar(),
       h("div", { class: "mbar glass" },
         h("button", { class: "btn sm" + (farActs(s, p).length ? " hasacts" : ""), "aria-label": farActs(s, p).length ? "เมนูเกม (มีความสามารถที่สั่งใช้ได้)" : "เมนูเกม", onclick: () => gameMenu(s, V) }, "☰"),
         h("div", { class: "mturn" }, h("b", null, `เทิร์น ${s.turn}`), h("span", null, s.phase === "mull" ? "เปลี่ยนมือ" : PHASE_TH[s.phase])),
-        crystals(me, false, "pcMe"), h("div", { class: "grow" }), ...turnButtons(s, p).filter(Boolean).slice(0, 2)));
+        crystals(me, false, "pcMe"), h("div", { class: "grow" }), ...bar));
     afterDraw(s, V, op, myTurn); return;
   }
   G.hud.replaceChildren(
@@ -604,7 +615,7 @@ function draw() {
       G.coach ? h("div", { class: "coachbox" }, G.coach) : null,
       h("div", { class: "feed", "aria-live": "polite", tabindex: "0", "aria-label": "บันทึกเกม" }, s.log.slice(-30).reverse().map((l) => h("div", { class: l.s === V ? "mine" : l.s === 1 - V ? "opp" : "" }, l.m)))),
     G.watch ? watchHand(me) : handZone(s, V, p), promptBox(s, p), tutorBox(s, V, p), idleBar(),
-    h("button", { class: "btn sm arena-exit", onclick: () => (s.phase === "over" || G.watch ? exitGame() : confirmBox("ออกจากสนาม? เกมที่ค้างจะเก็บไว้ให้เล่นต่อ", "ออก", exitGame)) }, "← ออก"));
+    h("button", { class: "btn sm arena-exit", onclick: leaveArena }, "← ออก"));
   afterDraw(s, V, op, myTurn);
 }
 // ---------- learn mode: each part of the game explained the first time it comes up ----------
@@ -760,6 +771,7 @@ function cardView(x) {
   if (sc && sc.handCall && L.z === "hand" && myMain && s.P[p].hand.some((y) => y.i !== x.i && String(E.def(s, y).sy || "").includes("มังกร"))) acts.push(["ทิ้งเพื่ออัญเชิญมังกร (Cost -6)", () => { G.callVia = x.i; draw(); }, "ciel"]);
   acts.push(...abilityActs(s, x, L, acts.some((a) => a[2] === "ciel")));
   if (E.untargetable(s, x)) acts.push(["ถูกโจมตีไม่ได้ตอนนี้", null, "note"]);
+  { const pn = powerNote(s, x, L); if (pn) acts.push([pn, null, "note"]); }
   const stat = [ZONE_TH[L.z], d.t === "M" ? "Magic " + SUB_TH[d.st] : d.t === "T" ? "Token" : "Cost " + (d.c ?? 0), "GEM " + (d.g || 0) + (d.gc ? " (" + d.gc + ")" : ""), d.pw != null || L.z === "av" ? "POWER " + (L.z === "av" || L.z === "cs" ? E.power(s, x) : d.pw || 0) : null, L.z === "av" ? (x.a ? "ตื่น" : "นอน") : null, d.sy ? "Symbol " + d.sy : null].filter(Boolean);
   { const tr = !sc && traits(d); const rules = tr ? [tr.taunt && "ฝ่ายตรงข้ามต้องโจมตีใบนี้เท่านั้น", tr.noControl && "ถูกเปลี่ยนการควบคุมไม่ได้", tr.noAttack && (tr.noAttack(E, s, x) ? "ตอนนี้โจมตีไม่ได้ตามเงื่อนไขบนการ์ด" : "โจมตีได้ (ครบเงื่อนไขบนการ์ด)")].filter(Boolean) : [];
     if (rules.length && (L.z === "av" || L.z === "cs")) acts.push(["กติกาบนการ์ด (คิดให้อัตโนมัติ): " + rules.join(" · "), null, "note"]); }
@@ -829,6 +841,7 @@ function drawInspector() {
     h("div", { class: "txt" }, h("b", null, d.n), h("div", { class: "row", style: "gap:5px" }, stat.map((t) => h("span", { class: "chip" + (/^POWER/.test(t) ? " gold" : "") }, t)), (x.kw || []).map((k) => h("span", { class: "chip good" }, k))),
       acts.some((a) => a[1]) ? h("div", { class: "row acts" }, acts.filter((a) => a[1]).map(([t, fn]) => h("button", { class: "btn ciel sm", onclick: () => { G.sel = null; Arena.select(null); fn(); drawInspector(); } }, t))) : null,
       ...acts.filter((a) => !a[1]).map(([t]) => h("div", { class: "cvnote" }, t)),
+      (() => { const pn = L.z !== "hand" && powerNote(s, x, L); return pn ? h("div", { class: "cvnote" }, pn) : null; })(),
       d.x ? fxText(d.x) : h("div", { class: "muted small" }, "ไม่มีข้อความความสามารถ"),
       pinned ? h("button", { class: "btn sm", onclick: () => { G.sel = null; Arena.select(null); drawInspector(); } }, "ปิด") : null));
 }
