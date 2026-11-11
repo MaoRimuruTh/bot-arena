@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261112035142";
-import { fxText, kwGloss } from "../fxtext.js?v=20261112035142";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261112035142";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261112035142";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261112035142";
-import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261112035142";
-import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261112035142";
-import { themeCounts } from "../boxdecks.js?v=20261112035142";
-import { ladder, ladderReset } from "../ladder.js?v=20261112035142";
-import { notify } from "../notify.js?v=20261112035142";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261112035142";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261112035142";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261112035142";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261112035142";
-import { Music } from "../music.js?v=20261112035142";
-import { Sfx } from "../sfx.js?v=20261112035142";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261112035142";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261112035142";
-import { readAura, traits } from "../auras.js?v=20261112035142";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261112035142";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261112040837";
+import { fxText, kwGloss } from "../fxtext.js?v=20261112040837";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261112040837";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261112040837";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261112040837";
+import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261112040837";
+import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261112040837";
+import { themeCounts } from "../boxdecks.js?v=20261112040837";
+import { ladder, ladderReset } from "../ladder.js?v=20261112040837";
+import { notify } from "../notify.js?v=20261112040837";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261112040837";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261112040837";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261112040837";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261112040837";
+import { Music } from "../music.js?v=20261112040837";
+import { Sfx } from "../sfx.js?v=20261112040837";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261112040837";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261112040837";
+import { readAura, traits } from "../auras.js?v=20261112040837";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261112040837";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -25,7 +25,7 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261112035142";
+import { allDecks, deckById } from "./decks.js?v=20261112040837";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -329,6 +329,7 @@ async function doAct(a, p) {
   if (G.puzzle && mine(p)) G.say = null; // an old hint no longer fits
   if (fromHand) flyFromHand(a.i);
   G.pick = null; G.att = null; G.host = null; G.payFor = null; G.payVia = null; G.callVia = null; G.helperPick = null; G.castFor = null; persist();
+  if (G.coach && (G.coachLocal || G.s.turn !== G.coachTurn)) G.coach = null; // a hint is for the moment it was asked (Ciel's advice: for that turn)
   Arena.update(G.s, view()); draw(); drive();
   return true;
 }
@@ -483,7 +484,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261112035142").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261112040837").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", bot: true });
@@ -1225,10 +1226,27 @@ function promptBox0(s, p) {
   return null;
 }
 async function coach() {
-  if (!Ciel.on()) { G.coach = aiErr({ code: "no_key" }); return draw(); }
+  G.coachTurn = G.s.turn; G.coachLocal = !Ciel.on();
+  if (!Ciel.on()) { G.coach = localHint(); return draw(); }
   G.coach = "ชิเอลกำลังดูกระดาน…"; draw();
   try { G.coach = (await cielCoach(G.s, view())).trim(); } catch (e) { G.coach = aiErr(e); }
   draw();
+}
+// "แนะนำ" without Ciel's key: what the pro bot would do for us from the table as it is now. Like the bot it sees only
+// what a player sees (the other side's hand is guessed from the cards not yet shown), so it is a hint, not a cheat.
+function localHint() {
+  const s = G.s, p = whoActs(s); if (p == null || !mine(p) || s.phase === "over") return "ตอนนี้ไม่ใช่จังหวะของเราค่ะ";
+  const P = s.P[p], nm = (i) => { const x = [...P.hand, ...P.av, ...P.cs].find((y) => y.i === i); return x ? E.name(s, x) : "?"; };
+  const by = "คำแนะนำจากบอทมือโปร: ";
+  try {
+    if (s.phase === "mull") { const back = H.mulligan(s, p); return by + (back.length ? `เปลี่ยน ${back.map(nm).join(", ")}` : "เก็บมือนี้ไว้ (มี Avatar ราคาถูกพอเปิดเกม)"); }
+    if (s.trig.length && !s.rw) return "จัดการเอฟเฟกต์ในกล่องกลางจอก่อนนะคะ";
+    if (s.rw) { const r = H.react(s, p); return by + (r ? `ใช้ ${nm(r.i)} ตอบโต้` : "ไม่ต้องตอบโต้ตอนนี้"); }
+    if (s.phase === "end" && s.need) return by + "ทิ้ง " + H.discard(s, p).map(nm).join(", ");
+    if (s.pend) { const r = H.react(s, p); if (r) return by + `ใช้ React ${nm(r.i)}`; const m = H.pick(s, p); return by + (m ? m.d : "ปล่อยให้โจมตี"); }
+    const look = H.look; H.look = BOT_LEVEL.hard.look; let m = null; try { m = H.mcPick(s, p, BOT_LEVEL.hard.mc); } finally { H.look = look; }
+    return by + (m ? m.d : "จบเทิร์น");
+  } catch (e) { console.warn(e); return "ตอนนี้คิดคำแนะนำไม่ออกค่ะ"; }
 }
 function openPile(P, z) {
   const s = G.s; const list = z === "deck" ? [] : P[z];
