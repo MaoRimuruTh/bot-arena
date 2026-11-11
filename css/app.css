@@ -513,3 +513,8 @@ table.t th{white-space:nowrap}
 .ladder .rk{color:var(--muted,#b9a98f);text-align:right}
 .ladder .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ladder .pts{font-weight:700}
+/* daily quests on the set-up page */
+.quests .qrow{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid var(--line)}
+.quests .qrow .grow{min-width:0}
+.quests .qrow.done{border-color:rgba(216,168,74,.55);background:rgba(216,168,74,.09)}
+.quests .qmark{color:var(--gold);font-size:1.1rem;line-height:1}

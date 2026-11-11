@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111143034";
-import { E } from "./engine.js?v=20261111143034";
-import { h } from "./util.js?v=20261111143034";
-import { Sfx } from "./sfx.js?v=20261111143034";
+import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111150206";
+import { E } from "./engine.js?v=20261111150206";
+import { h } from "./util.js?v=20261111150206";
+import { Sfx } from "./sfx.js?v=20261111150206";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -108,6 +108,9 @@ function mount(container, opts = {}) {
     document.documentElement.style.setProperty("--handDrop", hh < 620 ? "-28px" : hh < 760 ? "-40px" : "-44px");
   };
   addEventListener("resize", R.resize); R.resize();
+  // automatic quality: if the table keeps running under ~28 frames a second, give up the glow first, then resolution
+  R.autoQ = gfxSetting() === "auto" ? { t0: performance.now(), born: performance.now(), sum: 0, n: 0, slow: 0, last: 0 } : null;
+  R.onVis = () => { if (R && R.autoQ) R.autoQ.last = 0; }; document.addEventListener("visibilitychange", R.onVis);
   const ray = new THREE.Raycaster(); const ptr = new THREE.Vector2();
   const pick = (e) => {
     const r = canvas.getBoundingClientRect(); ptr.x = ((e.clientX - r.left) / r.width) * 2 - 1; ptr.y = -((e.clientY - r.top) / r.height) * 2 + 1; ray.setFromCamera(ptr, camera);
@@ -141,6 +144,7 @@ function mount(container, opts = {}) {
     camera.position.set(R.camBase.x + Math.sin(t * 0.15) * 0.35 + R.off.x, R.camBase.y + R.off.y, R.camBase.z + Math.cos(t * 0.12) * 0.2); camera.lookAt(R.look);
     for (const [i, el] of R.labels) { const m = R.meshes.get(i); if (!m) continue; const s = toScreen(m.grp.position.clone().add(new THREE.Vector3(-0.55 * m.scale, 0.1, (m.side === "me" ? 0.85 : -0.85) * m.scale))); el.style.left = s.x + "px"; el.style.top = s.y + "px"; }
     if (R.composer) R.composer.render(); else renderer.render(scene, camera);
+    if (R.autoQ) watchFps(R.autoQ);
     requestAnimationFrame(tick);
   };
   tick();
@@ -149,7 +153,7 @@ function mount(container, opts = {}) {
   gsap.from(R.matMat, { emissiveIntensity: 0, duration: reduce ? 0 : 1.8, ease: "power2.out" }); // the gold leaf catches the light once
 }
 function unmount() {
-  if (!R) return; R.alive = false; removeEventListener("resize", R.resize); gsap.globalTimeline.timeScale(1);
+  if (!R) return; R.alive = false; removeEventListener("resize", R.resize); if (R.onVis) document.removeEventListener("visibilitychange", R.onVis); gsap.globalTimeline.timeScale(1);
   for (const el of R.labels.values()) el.remove();
   R.renderer.dispose(); R.canvas.remove(); R = null;
 }
@@ -159,7 +163,7 @@ function unmount() {
 export const AVATARS = { chang: { name: "ช้างน้อย", file: "chang.glb", h: 1.25 }, naga: { name: "ลูกพญานาค", file: "naga.glb", h: 1.3 }, maew: { name: "แมววิเชียรมาศ", file: "maew.glb", h: 1.2 }, suea: { name: "เสือน้อย", file: "suea.glb", h: 1.25 } };
 // lacquer colours for the mat (the gold line-work stays); the edge colour washes in on the opponent's side
 export const MATS = { black: { name: "รักดำ", lac: "#120b09", edge: "rgba(150,34,24," }, red: { name: "รักแดง", lac: "#3a0d09", edge: "rgba(190,60,30," },
-  navy: { name: "กรมท่า", lac: "#0b1324", edge: "rgba(60,90,170," }, jade: { name: "เขียวหยก", lac: "#0a1c15", edge: "rgba(40,140,100," }, violet: { name: "ม่วงไพลิน", lac: "#190e22", edge: "rgba(130,70,170," }, gold: { name: "ทองคำเปลว", lac: "#21160a", edge: "rgba(214,166,64," } };
+  navy: { name: "กรมท่า", lac: "#0b1324", edge: "rgba(60,90,170," }, jade: { name: "เขียวหยก", lac: "#0a1c15", edge: "rgba(40,140,100," }, violet: { name: "ม่วงไพลิน", lac: "#190e22", edge: "rgba(130,70,170," }, gold: { name: "ทองคำเปลว", lac: "#21160a", edge: "rgba(214,166,64," }, indigo: { name: "ครามจันทร์", lac: "#0f1030", edge: "rgba(110,110,210," } };
 const avCache = new Map();
 const loadAvatar = (key) => {
   const a = AVATARS[key]; if (!a || !THREE.GLTFLoader) return Promise.resolve(null);
@@ -247,6 +251,18 @@ function prajamyam(g, cx, cy, r, ground) {
   g.fill();
   for (let k = 0; k < 4; k++) { const a = (k * Math.PI) / 2 + Math.PI / 4; g.beginPath(); g.arc(cx + Math.cos(a) * r * 0.62, cy + Math.sin(a) * r * 0.62, r * 0.09, 0, 7); g.fill(); }
   if (ground) { const f = g.fillStyle; g.fillStyle = ground; g.beginPath(); g.moveTo(cx, cy - r * 0.2); g.lineTo(cx + r * 0.2, cy); g.lineTo(cx, cy + r * 0.2); g.lineTo(cx - r * 0.2, cy); g.closePath(); g.fill(); g.fillStyle = f; }
+}
+// frame-rate watch for the automatic quality (two slow two-second spells in a row lower it one step; it never goes back up)
+function watchFps(A) {
+  const now = performance.now(); if (A.last) { const ft = now - A.last; if (ft < 5000) { A.sum += ft; A.n++; } } A.last = now; // the gap after a hidden tab does not count (see mount)
+  if (now - A.t0 < 2000 || A.n < 3) return;
+  if (now - A.born > 4000 && !document.hidden) { if (1000 / (A.sum / A.n) < 28) { if (++A.slow >= 2) { A.slow = 0; lowerQuality(); } } else A.slow = 0; }
+  A.t0 = now; A.sum = 0; A.n = 0;
+}
+function lowerQuality() {
+  if (R.composer) { const c = R.composer; R.composer = null; try { for (const p of c.passes) if (p.dispose) p.dispose(); c.renderTarget1.dispose(); c.renderTarget2.dispose(); } catch { /* freed anyway */ } console.info("3D: glow off to keep the table smooth"); return; }
+  const pr = R.renderer.getPixelRatio(); if (pr > 1) { R.renderer.setPixelRatio(Math.max(1, pr - 0.25)); R.resize(); console.info("3D: resolution", Math.max(1, pr - 0.25)); return; }
+  R.autoQ = null; // nothing left to lower
 }
 function matTextures(small, theme = MATS.black) {
   const S = small ? 84 : 128; const CW = Math.round(MW * S), CH = Math.round(MD * S);
@@ -356,7 +372,7 @@ function haloTexture(blur, stroke) {
 }
 // the summoning circle: rings of lotus petals (กลีบบัว) round a ประจำยาม, in the gold-leaf manner of the mat
 // summoning circles, one per player (chosen in settings, opened by playing): drawn white, tinted by the card's colour
-export const SIGILS = { lotus: { name: "บัวประจำยาม" }, sun: { name: "สุริยะดาวเพดาน" }, naga: { name: "เกล็ดนาค" }, yant: { name: "ตารางยันต์" } };
+export const SIGILS = { lotus: { name: "บัวประจำยาม" }, sun: { name: "สุริยะดาวเพดาน" }, naga: { name: "เกล็ดนาค" }, yant: { name: "ตารางยันต์" }, pikul: { name: "ดอกพิกุล" } };
 function sigilTexture(kind = "lotus") {
   const c = document.createElement("canvas"); c.width = c.height = 512; const g = c.getContext("2d"), C = 256;
   g.fillStyle = "#000"; g.fillRect(0, 0, 512, 512); g.strokeStyle = g.fillStyle = "#fff"; g.shadowColor = "#fff"; g.shadowBlur = 10;
@@ -380,6 +396,13 @@ function sigilTexture(kind = "lotus") {
     const h = 146 / Math.SQRT2, s3 = (2 * h) / 3; g.lineWidth = 2;
     for (let k = 1; k < 3; k++) { g.beginPath(); g.moveTo(C - h + k * s3, C - h); g.lineTo(C - h + k * s3, C + h); g.moveTo(C - h, C - h + k * s3); g.lineTo(C + h, C - h + k * s3); g.stroke(); }
     for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) { g.beginPath(); g.arc(C - h + s3 * (i + 0.5), C - h + s3 * (j + 0.5), (i + j) % 2 ? 9 : 15, 0, 7); (i + j) % 2 ? g.fill() : g.stroke(); }
+  } else if (kind === "pikul") { // ดอกพิกุล: a ring of small eight-petalled pikul flowers round one large one
+    ring(146, 4); ring(132, 1.5);
+    const pikul = (cx, cy, r, w) => { g.lineWidth = w; for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2, P = (d, da) => [cx + Math.cos(a + da) * d, cy + Math.sin(a + da) * d];
+      g.beginPath(); g.moveTo(...P(r * 0.28, -0.32)); g.lineTo(...P(r * 0.82, -0.2)); g.lineTo(...P(r, 0)); g.lineTo(...P(r * 0.82, 0.2)); g.lineTo(...P(r * 0.28, 0.32)); g.closePath(); g.stroke(); }
+      g.beginPath(); g.arc(cx, cy, r * 0.2, 0, 7); g.fill(); };
+    for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2; pikul(...at(a, 186), 30, 2.5); g.beginPath(); g.arc(...at(a + Math.PI / 12, 186), 4, 0, 7); g.fill(); }
+    pikul(C, C, 112, 4); ring(52, 2);
   } else { // บัวประจำยาม: sixteen lotus petals round a four-petal flower
     ring(146, 4); ring(132, 1.5);
     for (let k = 0; k < 16; k++) { const a = (k / 16) * Math.PI * 2, P = (d, da) => [C + Math.cos(a + da) * d, C + Math.sin(a + da) * d];
