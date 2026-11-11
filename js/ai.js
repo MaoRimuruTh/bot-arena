@@ -1,10 +1,10 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112031100";
-import { plain } from "./persona.js?v=20261112031100";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261112031100";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112031100";
-import { Data } from "./fb.js?v=20261112031100";
-import { lsGet, clone } from "./util.js?v=20261112031100";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112032249";
+import { plain } from "./persona.js?v=20261112032249";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261112032249";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112032249";
+import { Data } from "./fb.js?v=20261112032249";
+import { lsGet, clone } from "./util.js?v=20261112032249";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -130,6 +130,8 @@ export const H = {
   // turn) is played out on copies to the start of our next turn, both sides playing the quick way and the other side's
   // hand guessed from the cards it has not shown; the option with the best average table is played. Against the normal
   // bot with the same decks this won 65% of 300 games (looking at more options with the one-step lookahead won 51%).
+  // (for its own Main and Battle Phase: playing out its answers to attacks and React moments too made no difference in
+  // 480 games, 51%, so those stay with the quick rules)
   mcPick(s, p, n = 2, wide = 10) {
     const moves = legalMoves(s, p); if (!moves.length) return null;
     const base = H.pick(s, p), key = (a) => JSON.stringify(a), cand = [];
@@ -152,7 +154,7 @@ export const H = {
     const T = t.turn, look = H.look; H.look = 0;
     try {
       E.apply(t, a, p);
-      for (let i = 0; i < 400 && t.phase !== "over" && !(t.turn > T + 1 && t.active === p && t.phase === "main"); i++) {
+      for (let i = 0; i < 400 && t.phase !== "over" && !(t.turn > T && t.active === p && t.phase === "main"); i++) { // to our next Main Phase
         if (t.rw) { const q = 1 - t.rw.by; E.apply(t, H.react(t, q) || { type: "pass" }, q); continue; }
         if (t.trig.length) { const tr = t.trig[0]; E.apply(t, H.trig(t, tr), tr.seat); continue; }
         const q = t.pend ? 1 - t.pend.by : t.active;
