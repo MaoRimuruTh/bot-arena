@@ -98,7 +98,7 @@ function traveller(bonus, drawOnExile) {
     // the bot keeps a traveller in hand until a story form is there to turn into (unless the board is empty)
     botHold: (E, s, x, p) => (s.P[p].hand.some((y) => story(E, s, y) && (E.def(s, y).c || 0) === 6) ? 1.5 : s.P[p].av.length ? -3 : 0),
     activate: {
-      label: "แปลงร่างเป็นเรื่องราว (Cost 6 จากมือ)", battle: true,
+      label: "แปลงร่างเป็นเรื่องราว (Cost 6 จากมือ)", battle: true, need: "ต้องมี Avatar \"เรื่องราว\" Cost 6 อยู่บนมือก่อน",
       can: (E, s, x, L) => L.z === "av" && s.P[L.p].hand.some((y) => story(E, s, y) && (E.def(s, y).c || 0) === 6),
       run: (c) => {
         const opts = uniq(c.E, c.s, c.s.P[c.seat].hand.filter((y) => story(c.E, c.s, y) && (c.E.def(c.s, y).c || 0) === 6)).sort(strongFirst(c.E, c.s));
