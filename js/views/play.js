@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111193051";
-import { fxText } from "../fxtext.js?v=20261111193051";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111193051";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111193051";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111193051";
-import { Arena, animSetting } from "../arena3d.js?v=20261111193051";
-import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261111193051";
-import { themeCounts } from "../boxdecks.js?v=20261111193051";
-import { ladder, ladderReset } from "../ladder.js?v=20261111193051";
-import { notify } from "../notify.js?v=20261111193051";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261111193051";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261111193051";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261111193051";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261111193051";
-import { Music } from "../music.js?v=20261111193051";
-import { Sfx } from "../sfx.js?v=20261111193051";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261111193051";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111193051";
-import { readAura, traits } from "../auras.js?v=20261111193051";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261111193051";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111201516";
+import { fxText } from "../fxtext.js?v=20261111201516";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111201516";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111201516";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111201516";
+import { Arena, animSetting } from "../arena3d.js?v=20261111201516";
+import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261111201516";
+import { themeCounts } from "../boxdecks.js?v=20261111201516";
+import { ladder, ladderReset } from "../ladder.js?v=20261111201516";
+import { notify } from "../notify.js?v=20261111201516";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261111201516";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261111201516";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261111201516";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261111201516";
+import { Music } from "../music.js?v=20261111201516";
+import { Sfx } from "../sfx.js?v=20261111201516";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261111201516";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111201516";
+import { readAura, traits } from "../auras.js?v=20261111201516";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261111201516";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -25,7 +25,7 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261111193051";
+import { allDecks, deckById } from "./decks.js?v=20261111201516";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -436,7 +436,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261111193051").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261111201516").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", bot: true });
@@ -575,7 +575,7 @@ function draw() {
       hint ? h("div", { class: "hint" }, G.say && !mine(p ?? -1) ? "✦ " + G.say : hint) : null,
       G.watch ? watchHand(me) : handZone(s, V, p), promptBox(s, p), tutorBox(s, V, p), idleBar(),
       h("div", { class: "mbar glass" },
-        h("button", { class: "btn sm", "aria-label": "เมนูเกม", onclick: () => gameMenu(s, V) }, "☰"),
+        h("button", { class: "btn sm" + (farActs(s, p).length ? " hasacts" : ""), "aria-label": farActs(s, p).length ? "เมนูเกม (มีความสามารถที่สั่งใช้ได้)" : "เมนูเกม", onclick: () => gameMenu(s, V) }, "☰"),
         h("div", { class: "mturn" }, h("b", null, `เทิร์น ${s.turn}`), h("span", null, s.phase === "mull" ? "เปลี่ยนมือ" : PHASE_TH[s.phase])),
         crystals(me, false, "pcMe"), h("div", { class: "grow" }), ...turnButtons(s, p).filter(Boolean).slice(0, 2)));
     afterDraw(s, V, op, myTurn); return;
@@ -685,7 +685,9 @@ function gameMenu(s, V) {
     h("div", { class: "row" }, s.phase === "over" ? null : h("button", { class: "btn sm", onclick: () => { api.close(); flipWatch(); } }, "สลับฝั่ง"), h("button", { class: "btn sm", onclick: () => { api.close(); soundSheet(); } }, Sfx.on || Music.on ? "🔊 เสียงและเพลง" : "🔇 เสียงและเพลง"),
       h("button", { class: "btn sm danger", onclick: () => { api.close(); exitGame(); } }, "เลิกดู")),
     h("div", { class: "eyebrow" }, "บันทึกเกม"), h("div", { class: "glog", style: "max-height:44vh" }, s.log.slice(-40).reverse().map((l) => h("div", { class: l.s === V ? "mine" : "" }, l.m)))], { title: `ชมเกม · เทิร์น ${s.turn} · ${s.P[s.active].name}` });
+  const far = farActs(s, whoActs(s));
   openSheet((api) => [
+    far.length ? h("div", { class: "stack", style: "gap:6px" }, h("div", { class: "eyebrow" }, "สั่งใช้ได้ตอนนี้"), h("div", { class: "row" }, far.map((f) => h("button", { class: "btn ciel sm", title: f.title || "", onclick: () => { api.close(); doAct(f.a, whoActs(s)); } }, f.d)))) : null,
     h("div", { class: "row" }, ...[[me, "deck", "Deck"], [me, "hell", "นรกเรา"], [me, "dark", "มิติมืดเรา"], [op, "hell", "นรกคู่แข่ง"]].map(([P, z, t]) => h("button", { class: "btn sm", onclick: () => { api.close(); openPile(P, z); } }, `${t} ${P[z].length}`))),
     isOwner() ? h("div", { class: "row" }, h("button", { class: "btn sm ciel", onclick: () => { api.close(); openAsk(); } }, "✉ ถามชิเอล (แนบสถานะเกม)")) : null,
     h("div", { class: "row" }, h("button", { class: "btn sm ciel", disabled: s.phase === "over", onclick: () => { api.close(); coach().then(() => G && G.coach && openSheet(h("div", { class: "coachbox" }, G.coach), { title: "ชิเอลแนะนำ" })); } }, "ชิเอลแนะนำ"),
@@ -723,6 +725,17 @@ function abilityActs(s, x, L, hasOther) {
   if (sc && sc.activate && L.p === p && (myMain || (myBattle && sc.activate.battle)) && x.used !== s.turn && sc.activate.can(E, s, x, L)) out.push([sc.activate.label, () => doAct({ type: "activate", i: x.i }, p), "ciel"]);
   if (!sc && L.p === p && myMain && E.ext.acts) for (const a of E.ext.acts(s, x, L)) out.push(["สั่งใช้: " + a.label, () => doAct({ type: "activate", i: x.i, k: a.k }, p), "ciel"]);
   if (!out.length && !hasOther) { const why = whyNoAct(s, x, L, V, sc, d); if (why) out.push(["สั่งใช้ตอนนี้ไม่ได้: " + why, null, "note"]); }
+  return out;
+}
+// abilities with no card on the table to tap: used from the hand, hell, the dark zone or the deck (and Magic cast from
+// hell). The desktop turn bar shows them; the game menu lists them on every screen (the phone bar has room for two buttons)
+function farActs(s, p) {
+  if (p == null || !mine(p) || s.trig.length || s.pend || s.rw || s.phase === "mull" || s.active !== p || G.replay || G.watch) return [];
+  const main = s.phase === "main"; if (!main && s.phase !== "battle") return [];
+  const P = s.P[p]; const zones = main ? [...P.hand, ...P.hell, ...P.dark, ...uniqDeckActs(s, P)] : [...P.hand, ...P.hell, ...P.dark, ...P.mg];
+  const out = zones.filter((x) => { const sc = scriptOf(s, x); return sc && sc.activate && (main || sc.activate.battle) && x.used !== s.turn && sc.activate.can(E, s, x, E.locate(s, x.i)); })
+    .map((x) => ({ d: `สั่งใช้ ${E.name(s, x)} (${ZONE_TH[E.locate(s, x.i).z]})`, title: scriptOf(s, x).activate.label, a: { type: "activate", i: x.i } }));
+  if (main) out.push(...legalMoves(s, p).filter((m) => m.a.type === "cast" && m.a.from === "hell").map((m) => ({ d: m.d, a: m.a })));
   return out;
 }
 // big, readable card view with the actions that make sense right now
@@ -796,14 +809,9 @@ function turnButtons0(s, p) {
     G.rec && G.mode !== "friend" ? h("button", { class: "btn sm", onclick: () => openSummary(G) }, "สรุปเกม") : null,
     h("button", { class: "btn sm", onclick: () => { stopGame(true); location.hash = "#play"; } }, "กลับหน้าเตรียมเกม"), h("a", { class: "btn sm", href: "#history", onclick: () => stopGame(true) }, "ดูประวัติ")];
   if (p == null || !mine(p) || s.trig.length || s.pend || s.phase === "mull") return [];
-  if (s.phase === "main") { // abilities used from hell / the dark zone have no card on the table to tap, so offer them here
-    const far = [...s.P[p].hand, ...s.P[p].hell, ...s.P[p].dark, ...uniqDeckActs(s, s.P[p])].filter((x) => { const sc = scriptOf(s, x); return sc && sc.activate && x.used !== s.turn && sc.activate.can(E, s, x, E.locate(s, x.i)); }).slice(0, 4);
-    return [h("button", { class: "btn gold sm", onclick: () => doAct({ type: "battle" }, p) }, s.turn === 1 ? "จบเทิร์น" : "ไป Battle Phase"), s.turn === 1 ? null : h("button", { class: "btn sm", onclick: () => doAct({ type: "end" }, p) }, "จบเทิร์นเลย"), compact() ? null : undoBtn(),
-      ...far.map((x) => h("button", { class: "btn ciel sm", title: scriptOf(s, x).activate.label, onclick: () => doAct({ type: "activate", i: x.i }, p) }, `สั่งใช้ ${E.name(s, x)} (${ZONE_TH[E.locate(s, x.i).z]})`)),
-      ...legalMoves(s, p).filter((m) => m.a.type === "cast" && m.a.from === "hell").slice(0, 4).map((m) => h("button", { class: "btn ciel sm", onclick: () => doAct(m.a, p) }, m.d))]; }
-  if (s.phase === "battle") { const far = [...s.P[p].hand, ...s.P[p].hell, ...s.P[p].dark, ...s.P[p].mg].filter((x) => { const sc = scriptOf(s, x); return sc && sc.activate && sc.activate.battle && x.used !== s.turn && sc.activate.can(E, s, x, E.locate(s, x.i)); }).slice(0, 3);
-    return [h("button", { class: "btn gold sm", onclick: () => doAct({ type: "end" }, p) }, "จบเทิร์น"), G.att ? h("button", { class: "btn sm", onclick: () => { G.att = null; draw(); } }, "ยกเลิกการเลือก") : compact() ? null : undoBtn(),
-      ...far.map((x) => h("button", { class: "btn ciel sm", title: scriptOf(s, x).activate.label, onclick: () => doAct({ type: "activate", i: x.i }, p) }, `สั่งใช้ ${E.name(s, x)} (${ZONE_TH[E.locate(s, x.i).z]})`))]; }
+  const farBtns = (n) => farActs(s, p).slice(0, n).map((f) => h("button", { class: "btn ciel sm", title: f.title || "", onclick: () => doAct(f.a, p) }, f.d));
+  if (s.phase === "main") return [h("button", { class: "btn gold sm", onclick: () => doAct({ type: "battle" }, p) }, s.turn === 1 ? "จบเทิร์น" : "ไป Battle Phase"), s.turn === 1 ? null : h("button", { class: "btn sm", onclick: () => doAct({ type: "end" }, p) }, "จบเทิร์นเลย"), compact() ? null : undoBtn(), ...farBtns(6)];
+  if (s.phase === "battle") return [h("button", { class: "btn gold sm", onclick: () => doAct({ type: "end" }, p) }, "จบเทิร์น"), G.att ? h("button", { class: "btn sm", onclick: () => { G.att = null; draw(); } }, "ยกเลิกการเลือก") : compact() ? null : undoBtn(), ...farBtns(4)];
   return [];
 }
 // desktop: big hover preview (image + readable text side by side); pinned to the selected card otherwise
@@ -971,5 +979,5 @@ async function coach() {
 }
 function openPile(P, z) {
   const s = G.s; const list = z === "deck" ? [] : P[z];
-  openSheet(() => z === "deck" ? h("div", { class: "muted" }, `เหลือ ${P.deck.length} ใบ (ดูลำดับไม่ได้)`) : list.length ? h("div", { class: "pick" }, list.map((x) => cardBtn(E.def(s, x).im, { onclick: () => showCard(E.def(s, x).im) }))) : h("div", { class: "empty" }, "ว่าง"), { title: `${ZONE_TH[z]} · ${P.name}`, wide: true });
+  openSheet(() => z === "deck" ? h("div", { class: "muted" }, `เหลือ ${P.deck.length} ใบ (ดูลำดับไม่ได้)`) : list.length ? h("div", { class: "pick" }, list.map((x) => cardBtn(E.def(s, x).im, { onclick: () => (G && G.s === s && !G.replay ? cardView(x) : showCard(E.def(s, x).im)) }))) : h("div", { class: "empty" }, "ว่าง"), { title: `${ZONE_TH[z]} · ${P.name}`, wide: true });
 }

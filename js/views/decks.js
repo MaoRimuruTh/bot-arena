@@ -1,26 +1,28 @@
-import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261111193051";
-import { plain, isOwnerNow } from "../persona.js?v=20261111193051";
-import { fxText } from "../fxtext.js?v=20261111193051";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261111193051";
-import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261111193051";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261111193051";
-import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261111193051";
-import { filterBar, filterCards } from "./library.js?v=20261111193051";
-import { openingOdds, simGame } from "./lab.js?v=20261111193051";
-import { freeBuild } from "../builder.js?v=20261111193051";
-import { deckCode, deckText, parseDeck } from "../deckcode.js?v=20261111193051";
-import { CIEL_DECKS } from "../cieldecks.js?v=20261111193051";
-import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261111193051";
-import { deckLocked, deckLockAch } from "../achieve.js?v=20261111193051";
+import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261111201516";
+import { plain, isOwnerNow } from "../persona.js?v=20261111201516";
+import { fxText } from "../fxtext.js?v=20261111201516";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261111201516";
+import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261111201516";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261111201516";
+import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261111201516";
+import { filterBar, filterCards } from "./library.js?v=20261111201516";
+import { openingOdds, simGame } from "./lab.js?v=20261111201516";
+import { freeBuild } from "../builder.js?v=20261111201516";
+import { deckCode, deckText, parseDeck } from "../deckcode.js?v=20261111201516";
+import { CIEL_DECKS } from "../cieldecks.js?v=20261111201516";
+import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261111201516";
+import { deckLocked, deckLockAch } from "../achieve.js?v=20261111201516";
 
-// Ciel's theme decks: print codes → card ids (resolved once the card data is loaded)
+// Ciel's theme decks: print codes → card ids (resolved once the card data is loaded). They are Ciel's decks for Rimuru,
+// so only the owner's account sees them: other accounts get none (not in the deck list, the duel setup, the lab or the bot's picks)
 let cielCache = null;
 export function cielDecks() {
-  const own = isOwnerNow(); if (cielCache && cielCache.n === CARDS.length && cielCache.own === own) return cielCache.list;
+  const own = isOwnerNow(); if (!own) return [];
+  if (cielCache && cielCache.n === CARDS.length) return cielCache.list;
   const byPrint = (p) => { const c = CARDS.find((x) => x.p === p); return c ? baseId(c.i) : null; };
   const list = CIEL_DECKS.map((z) => { const main = {}; for (const [p, n] of z.main) { const id = byPrint(p); if (id != null) main[id] = (main[id] || 0) + n; }
     return { id: z.id, name: z.name, theme: plain(z.theme), plan: plain(z.plan), style: z.style, main, life: z.life.map(byPrint).filter((x) => x != null), ace: z.ace.map(byPrint).filter((x) => x != null), owner: "ciel", ownerName: "ชิเอล", starter: true, ciel: true, updatedAt: 0 }; });
-  cielCache = { n: CARDS.length, own, list }; return list;
+  cielCache = { n: CARDS.length, list }; return list;
 }
 
 export let Editing = null;
@@ -130,7 +132,7 @@ Views.decks = {
         h("button", { class: "btn", onclick: () => { let fresh = null; openTextImport(() => fresh || (fresh = blank()), (d) => { Editing = d; queueSave(d); const want = d.id ? "#decks/edit/" + d.id : "#decks/new"; if (location.hash !== want) location.hash = want; else redraw(); }); } }, "นำเข้าเด็ค"), h("a", { class: "btn gold", href: "#decks/new", onclick: () => { Editing = blank(); } }, "สร้างเด็คใหม่"))),
       !Data.ready.decks ? busy("กำลังโหลดเด็ค…") : mine.length ? h("div", { class: "stack" }, this.mineBar(mine), h("div", { class: "tiles" }, mine.map(deckTile))) : h("div", { class: "empty" }, "ยังไม่มีเด็คของคุณ เริ่มจากเลือกการ์ดเอซให้ชิเอลจัด หรือคัดลอก Starter Deck ด้านล่างไปแก้ต่อ"),
       friends.length ? h("div", { class: "stack", style: "margin-top:28px" }, h("h2", null, "เด็คของเพื่อน"), h("div", { class: "tiles" }, friends.map(deckTile))) : null,
-      h("div", { class: "stack", style: "margin-top:28px" }, h("h2", null, "✦ เด็คแนะนำจากชิเอล"), h("div", { class: "muted small" }, plain("เด็คธีมที่ชิเอลจัดให้ริมุรุ เปิดดูแผนการเล่น ลงสนามได้เลย หรือคัดลอกไปแก้ต่อ")), h("div", { class: "tiles" }, cielDecks().map(deckTile))),
+      cielDecks().length ? h("div", { class: "stack", style: "margin-top:28px" }, h("h2", null, "✦ เด็คแนะนำจากชิเอล"), h("div", { class: "muted small" }, plain("เด็คธีมที่ชิเอลจัดให้ริมุรุ เปิดดูแผนการเล่น ลงสนามได้เลย หรือคัดลอกไปแก้ต่อ")), h("div", { class: "tiles" }, cielDecks().map(deckTile))) : null,
       h("div", { class: "stack", style: "margin-top:28px" }, h("h2", null, "Starter Deck ทางการ"), h("div", { class: "muted small" }, "จัดตามจำนวนในกล่องจริงจากรายการการ์ดทางการ"), h("div", { class: "tiles" }, officialStarters().map(deckTile))),
       h("div", { class: "stack", style: "margin-top:28px" }, h("h2", null, "คัดสรรเด็ค กล่องพิเศษ"), h("div", { class: "muted small" }, "เด็คกล่องพิเศษทางการ กล่องที่เล่นแรงกว่า Starter Deck มากจะล็อคไว้ เปิดได้ด้วยการชนะตามเงื่อนไขเท่านั้น ไม่มีการซื้อปลดล็อค"), h("div", { class: "tiles" }, boxDecks().map(deckTile)))].filter(Boolean));
     if (mode === "ace" && arg) openAceBuilder([+arg]);
