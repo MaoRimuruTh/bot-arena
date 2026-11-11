@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111084046";
-import { fxText } from "../fxtext.js?v=20261111084046";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111084046";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111084046";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111084046";
-import { Arena } from "../arena3d.js?v=20261111084046";
-import { autoEffect, resolveEffect } from "../effects.js?v=20261111084046";
-import { Music } from "../music.js?v=20261111084046";
-import { Sfx } from "../sfx.js?v=20261111084046";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261111084046";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111084046";
-import { readAura, traits } from "../auras.js?v=20261111084046";
-import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261111084046";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111084555";
+import { fxText } from "../fxtext.js?v=20261111084555";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111084555";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111084555";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111084555";
+import { Arena } from "../arena3d.js?v=20261111084555";
+import { autoEffect, resolveEffect } from "../effects.js?v=20261111084555";
+import { Music } from "../music.js?v=20261111084555";
+import { Sfx } from "../sfx.js?v=20261111084555";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261111084555";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111084555";
+import { readAura, traits } from "../auras.js?v=20261111084555";
+import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261111084555";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
   return { game: [`เทิร์น ${s.turn} · ${PHASE_TH[s.phase] || s.phase} · ตาของ ${s.P[s.active].name}`, `เด็คเรา: ${me.deckName || "-"} · เด็คคู่แข่ง: ${op.deckName || "-"}`,
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / ")].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261111084046";
+import { allDecks, deckById } from "./decks.js?v=20261111084555";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -178,10 +178,20 @@ async function doAct(a, p) {
     } catch (e) { toast(e.message || "ทำไม่ได้", "bad"); return false; }
     finally { if (G) G.lock = false; }
   }
+  const fromHand = a.i != null && /^(summon|cast|build)$/.test(a.type) && G.s.P[view()].hand.some((x) => x.i === a.i);
   try { E.apply(G.s, a, p); } catch (e) { toast(e.message, "bad"); return false; }
+  if (fromHand) flyFromHand(a.i);
   G.pick = null; G.att = null; G.host = null; G.payFor = null; G.payVia = null; G.callVia = null; G.helperPick = null; G.castFor = null; persist();
   Arena.update(G.s, view()); draw(); drive();
   return true;
+}
+// a card played from the hand leaves it visibly, lifting toward the table where the 3D card takes over
+function flyFromHand(i) {
+  const el = document.querySelector(`.hcard[data-i="${i}"]`); if (!el || !window.gsap || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const r = el.getBoundingClientRect(), c = el.cloneNode(true);
+  Object.assign(c.style, { position: "fixed", left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px", margin: "0", transform: "none", zIndex: "60", pointerEvents: "none" });
+  document.body.append(c);
+  window.gsap.to(c, { y: -Math.min(240, r.top * 0.45), scale: 0.72, opacity: 0, duration: 0.4, ease: "power2.in", onComplete: () => c.remove() });
 }
 // attacked with nothing to answer with (no awake โล่มนุษย์, no React that fits): take the attack without asking
 function nothingToAnswer(s, p) { return !!s.pend && s.pend.by !== p && !s.trig.length && !s.rw && legalMoves(s, p).length <= 1 && !E.reactsFor(s, p, { kind: "attack", by: s.pend.by, att: s.pend.att, tk: s.pend.tk, ti: s.pend.ti }).length; }
@@ -464,7 +474,7 @@ function handZone(s, V, p) {
   const sel = G.pick || []; const canPlay = p != null && mine(p) && p === V;
   P.hand.forEach((x, k) => {
     const d = E.def(s, x); const off = k - (n - 1) / 2; const c = d.im != null ? card(d.im) : null;
-    const b = h("button", { class: "hcard" + (sel.includes(x.i) ? " sel" : ""), "aria-label": `${d.n} ${TYPE_TH[d.t]} GEM ${d.g || 0}`, style: row ? "" : `width:${cw}px;left:${w / 2 - cw / 2 + off * gap}px;transform:translateY(${Math.abs(off) * Math.abs(off) * 2.2 + (sel.includes(x.i) ? -26 : 0)}px) rotate(${off * 3.2}deg);z-index:${k}` },
+    const b = h("button", { class: "hcard" + (sel.includes(x.i) ? " sel" : ""), "data-i": x.i, "aria-label": `${d.n} ${TYPE_TH[d.t]} GEM ${d.g || 0}`, style: row ? "" : `width:${cw}px;left:${w / 2 - cw / 2 + off * gap}px;transform:translateY(${Math.abs(off) * Math.abs(off) * 2.2 + (sel.includes(x.i) ? -26 : 0)}px) rotate(${off * 3.2}deg);z-index:${k}` },
       c ? artImg(c) : null, h("span", { class: "gem" }, (d.t === "M" ? SUB_TH[d.st][0] : "C" + (d.c ?? 0)) + " · G" + (d.g || 0)),
       touchy() ? h("span", { class: "zoom", role: "button", "aria-label": "ดูการ์ด " + d.n, onclick: (e) => { e.stopPropagation(); cardView(x); } }, "⤢") : null);
     b.addEventListener("mouseenter", () => { G.hover = null; showHandInspect(x); });
