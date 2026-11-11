@@ -1,10 +1,10 @@
-import { h, busy, lsGet, lsSet } from "../util.js?v=20261111235138";
-import { card, deckEntries, deckToList, validateDeck, TYPE_TH } from "../cards.js?v=20261111235138";
-import { E } from "../engine.js?v=20261111235138";
-import { H } from "../ai.js?v=20261111235138";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261111235138";
-import { allDecks } from "./decks.js?v=20261111235138";
-import { deckLocked } from "../achieve.js?v=20261111235138";
+import { h, busy, lsGet, lsSet } from "../util.js?v=20261111235436";
+import { card, deckEntries, deckToList, validateDeck, TYPE_TH } from "../cards.js?v=20261111235436";
+import { E } from "../engine.js?v=20261111235436";
+import { H } from "../ai.js?v=20261111235436";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261111235436";
+import { allDecks } from "./decks.js?v=20261111235436";
+import { deckLocked } from "../achieve.js?v=20261111235436";
 
 // exact hypergeometric: P(at least one of k copies within m cards from a deck of N)
 function atLeastOne(N, k, m) { if (k <= 0) return 0; if (m >= N) return 1; let p = 1; for (let i = 0; i < m; i++) p *= (N - k - i) / (N - i); return 1 - Math.max(0, p); }
@@ -81,7 +81,7 @@ Views.lab = {
     if (!decks.some((d) => d.id === LabState.a)) LabState.a = decks[0].id;
     if (LabState.b !== "*" && LabState.b !== "~" && !decks.some((d) => d.id === LabState.b)) LabState.b = (decks[1] || decks[0]).id;
     const sel = (key, extra = []) => h("select", { "aria-label": key === "a" ? "เด็คที่ทดสอบ" : "เด็คคู่แข่ง", onchange: (e) => { LabState[key] = e.target.value; lsSet("bot.lab", LabState); draw(); } },
-      [...extra.map(([v, t]) => h("option", { value: v, selected: v === LabState[key] }, t)), ...decks.map((d) => h("option", { value: d.id, selected: d.id === LabState[key] }, d.name + (d.starter ? " (ทางการ)" : "")))]);
+      [...extra.map(([v, t]) => h("option", { value: v, selected: v === LabState[key] }, t)), ...decks.map((d) => h("option", { value: d.id, selected: d.id === LabState[key] }, d.name + (d.ciel ? " (ชิเอลจัด)" : d.starter ? " (ทางการ)" : "")))]);
     const oddsBox = h("div", { class: "panel stack" }); const handBox = h("div", { class: "panel stack" }); const simBox = h("div", { class: "panel stack" });
     const draw = () => {
       const d = decks.find((x) => x.id === LabState.a);

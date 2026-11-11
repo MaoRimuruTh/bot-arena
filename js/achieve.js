@@ -1,11 +1,11 @@
 // Achievements: earned only by playing (nothing here can be bought), each one unlocking something for the table:
 // a 3D figure to stand by your side, a colour of lacquer for the mat, the circle that opens when you summon, or one of the
 // official box decks (คัดสรรเด็ค) that plays stronger than the Starter Decks. Worked out from your own match history.
-import { Data } from "./fb.js?v=20261111235138";
-import { lsGet } from "./util.js?v=20261111235138";
-import { stars } from "./quests.js?v=20261111235138";
-import { AVATARS, MATS, SIGILS } from "./arena3d.js?v=20261111235138";
-import { BOX_LISTS, themeCounts } from "./boxdecks.js?v=20261111235138";
+import { Data } from "./fb.js?v=20261111235436";
+import { lsGet } from "./util.js?v=20261111235436";
+import { stars } from "./quests.js?v=20261111235436";
+import { AVATARS, MATS, SIGILS } from "./arena3d.js?v=20261111235436";
+import { BOX_LISTS, themeCounts } from "./boxdecks.js?v=20261111235436";
 
 const real = (ms) => ms.filter((m) => m.mode !== "goldfish");
 const wins = (ms) => real(ms).filter((m) => m.result === "win").length;
