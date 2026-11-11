@@ -1,9 +1,9 @@
 // Achievements: earned only by playing (nothing here can be bought), each one unlocking something for the table:
 // a 3D figure to stand by your side, a colour of lacquer for the mat, or the circle that opens when you summon. Worked out from your own match history.
-import { Data } from "./fb.js?v=20261111150206";
-import { lsGet } from "./util.js?v=20261111150206";
-import { stars } from "./quests.js?v=20261111150206";
-import { AVATARS, MATS, SIGILS } from "./arena3d.js?v=20261111150206";
+import { Data } from "./fb.js?v=20261111160748";
+import { lsGet } from "./util.js?v=20261111160748";
+import { stars } from "./quests.js?v=20261111160748";
+import { AVATARS, MATS, SIGILS } from "./arena3d.js?v=20261111160748";
 
 const real = (ms) => ms.filter((m) => m.mode !== "goldfish");
 const wins = (ms) => real(ms).filter((m) => m.result === "win").length;
@@ -23,6 +23,7 @@ export const ACH = [
   { id: "puzzle15", name: "ปรมาจารย์ปริศนา", how: "ไขโจทย์ปริศนาสำเร็จ 15 ข้อ", prog: () => [solved(), 15], gives: { sig: "naga" } },
   { id: "streak3", name: "ชนะรวด", how: "ชนะบอทหรือเพื่อนติดกัน 3 เกม", prog: (ms) => [streak(ms), 3], gives: { sig: "yant" } },
   { id: "stars10", name: "ขยันทุกวัน", how: "สะสมดาวจากภารกิจประจำวัน 10 ดวง", prog: (ms) => [stars(ms), 10], gives: { mat: "indigo" } },
+  { id: "stars20", name: "นักสู้ประจำสนาม", how: "สะสมดาวจากภารกิจประจำวัน 20 ดวง", prog: (ms) => [stars(ms), 20], gives: { av: "kai" } },
   { id: "stars30", name: "ตำนานสนามดวล", how: "สะสมดาวจากภารกิจประจำวัน 30 ดวง", prog: (ms) => [stars(ms), 30], gives: { sig: "pikul" } },
   { id: "decks", name: "ครบเจ็ดสาย", how: "ชนะด้วย Starter Deck ต่างกันครบ 7 เด็ค", prog: (ms) => [new Set(real(ms).filter((m) => m.result === "win" && /^starter-/.test(m.deckId || "")).map((m) => m.deckId)).size, 7], gives: { sig: "sun" } },
 ];

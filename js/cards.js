@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261111150206";
-import { h } from "./util.js?v=20261111150206";
-import { Data } from "./fb.js?v=20261111150206";
+import { CARD_SOURCE } from "./config.js?v=20261111160748";
+import { h } from "./util.js?v=20261111160748";
+import { Data } from "./fb.js?v=20261111160748";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -19,7 +19,11 @@ export const setName = (c) => { const s = setCode(c); return SET_TH[s] || SET_TH
 const KW_ALL = ["โล่มนุษย์", "ลูกฮึด", "สามัคคี", "เตะไข่", "แทงหลัง", "จุติ", "คำสั่งเสีย", "พอดี"];
 const KW_REF = /(?:ได้รับ|ความสามารถ|อัญเชิญ|แบบ|และ|หรือ|มี|รับ|ของ|ใช้|เป็น|ด้วย|,)$/;
 const KW_TRIG = new Set(["จุติ", "คำสั่งเสีย"]);
+// is position i inside a {red …} block? Those hold reminder text or an ability granted to something else, never the card's own
+const redClose = (t, a) => { let d = 0; for (let j = a; j < t.length; j++) { if (t[j] === "{") d++; else if (t[j] === "}" && --d === 0) return j; } return t.length; };
+export const inRed = (t, i) => { for (let a = t.lastIndexOf("{red", i); a >= 0; a = a > 0 ? t.lastIndexOf("{red", a - 1) : -1) if (redClose(t, a) > i) return true; return false; };
 function ownKw(t, i, k, depth) {
+  if (inRed(t, i)) return false;
   const p = t.slice(0, i); const tail = (p.match(/[\s"“”'#\-•*·]*$/) || [""])[0]; let core = p.slice(0, p.length - tail.length);
   if (!core) return true;
   if (tail.includes("\n") && !KW_REF.test(core)) return true;

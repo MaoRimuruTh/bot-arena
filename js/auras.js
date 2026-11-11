@@ -1,7 +1,7 @@
 // Free reader for continuous POWER effects ("ต่อเนื่อง ... POWER +N").
 // Conservative like effects.js: anything it can't express exactly is ignored (returns no aura).
 // readAura(def) -> null or { desc, run(E, s, src, L) -> [{ seat, test(x), n }] }
-import { nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261111150206";
+import { nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261111160748";
 const cache = new Map();
 
 const ON_FIELD = { A: "av", T: "av", C: "cs" };
@@ -19,7 +19,7 @@ function filterOf(t) {
 }
 const named = (f) => !!(f.symbol || f.names || f.color || f.cost != null || f.text);
 function fits(E, s, x, f) {
-  const d = E.def(s, x); if (!["A", "T"].includes(d.t)) return false; const on = hasFieldAlias(d) && E.onField(s, x);
+  let d = E.def(s, x); { const so = E.syNow ? E.syNow(s, x) : null; if (so) { d = { ...d, sy: so }; delete d.al; } } if (!["A", "T"].includes(d.t)) return false; const on = hasFieldAlias(d) && E.onField(s, x);
   if (f.symbol && !allSy(d, on) && !syText(d, on).includes(f.symbol)) return false;
   if (f.names && !f.names.some((n) => nameText(d, on).includes(normName(n)))) return false;
   if (f.color && !colorIs(d, f.color, on)) return false;

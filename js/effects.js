@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261111150206";
-import { CARDS, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261111150206";
-import { E, scriptOf } from "./engine.js?v=20261111150206";
+import { readAura } from "./auras.js?v=20261111160748";
+import { CARDS, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, inRed } from "./cards.js?v=20261111160748";
+import { E, scriptOf } from "./engine.js?v=20261111160748";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -23,6 +23,7 @@ const VERBS = [/จั่วการ์ด/, /ธรณีสูบ/, /ทำ�
 function keyAt(t, key) {
   const re = new RegExp(key.source, "g"); let m;
   while ((m = re.exec(t))) {
+    if (inRed(t, m.index)) { if (re.lastIndex === m.index) re.lastIndex++; continue; } // inside {red …}: reminder text, or an ability granted to another card
     const pre = t.slice(t.lastIndexOf("\n", m.index) + 1, m.index); const k = pre.lastIndexOf("สั่งใช้");
     if ((k >= 0 && !pre.slice(k).includes(":")) || /^\s*(?:-\s*\d|\d\s*[).])/.test(pre) || /(\{red|["“]|ได้รับ)\s*(?:["“]\s*)?(?:อัตโนมัติ\s*|เทิร์นละครั้ง\s*)*$/i.test(pre)) { if (re.lastIndex === m.index) re.lastIndex++; continue; }
     return m;
@@ -79,7 +80,7 @@ function filterOf(t) {
 const seatOf = (t, p) => (/ผู้เล่นทุกคน|ทั้งสองฝ่าย|ทุกฝ่าย|ทั้ง\s*2\s*ฝ่าย/.test(t) ? [p, 1 - p] : /ฝ่ายตรงข้าม|อีกฝ่าย/.test(t) ? [1 - p] : [p]);
 const num = (t, re, d = 1) => { const m = t.match(re); return m ? +m[1] : d; };
 const val = (s, x) => E.power(s, x) + (E.def(s, x).c || 0) * 0.5 + (E.def(s, x).o1 ? 6 : 0);
-const fits = (s, x, f) => { let d = E.def(s, x); const so = E.syOver(s, x); if (so) { d = { ...d, sy: so }; delete d.al; } return fitsD(d, f, () => E.power(s, x), hasFieldAlias(d) && E.onField(s, x), () => E.costNow(s, x)); };
+const fits = (s, x, f) => { let d = E.def(s, x); const so = E.syNow ? E.syNow(s, x) : E.syOver(s, x); if (so) { d = { ...d, sy: so }; delete d.al; } return fitsD(d, f, () => E.power(s, x), hasFieldAlias(d) && E.onField(s, x), () => E.costNow(s, x)); };
 function fitsD(d, f, pw = () => d.pw || 0, on = false, cst = () => d.c || 0) {
   const nm = nameText(d, on); const syt = syText(d, on); const anySy = allSy(d, on);
   if (f.symbol && !anySy && !syt.includes(f.symbol)) return false;
@@ -449,8 +450,8 @@ export function activations(text) {
   const t = String(text || ""); if (actCache.has(t)) return actCache.get(t);
   const out = []; const re = /(?:(เทิร์นละครั้ง|เทิรน์ละครั้ง)\s*)?สั่งใช้/g; let m;
   while ((m = re.exec(t))) {
-    if (/(\{red|["“]|ได้รับ)\s*$/i.test(t.slice(Math.max(0, m.index - 14), m.index))) continue; // an ability granted to something else
-    let rest = t.slice(m.index + m[0].length); if (/^\s*(งาน|ความสามารถ|ผล|ได้)/.test(rest)) continue;
+    if (/(\{red|["“]|ได้รับ|มีการ)\s*$/i.test(t.slice(Math.max(0, m.index - 14), m.index)) || inRed(t, m.index)) continue; // an ability granted to something else, or a mention ("เมื่อมีการสั่งใช้ Magic")
+    let rest = t.slice(m.index + m[0].length); if (/^\s*(งาน|ความสามารถ|ผล|ได้|ของ)/.test(rest)) continue;
     rest = cutAbility(rest);
     const wm = rest.match(/^จาก(?:บน|ใน)?\s*(มือ|นรก|มิติมืด)(?:เรา)?(?:\s*หรือ\s*Deck)?\s*/); const where = wm ? { มือ: "hand", นรก: "hell", มิติมืด: "dark" }[wm[1]] : "field"; if (wm) rest = rest.slice(wm[0].length);
     const timed = /^(เมื่อ|ในเทิร์นใครก็ได้|ในช่วง|หลังจาก|ใน\s*(?:Battle|Draw|End|Main)\s*Phase|ถ้าในเทิร์นนี้)/.test(rest);
@@ -614,7 +615,7 @@ function readClause(s, text, p, self, ctx, trig) {
 export function autoEffect(s, trig, ctx = makeCtx(s, trig)) {
   const d = s.cards[trig.c]; if (!d || !d.x) return null;
   const when = trig.when === "cast" && d.st === "D" ? "mod" : trig.when;
-  if (when === "mod" || when === "manual") return null;
+  if (when === "mod") return null;
   const p = trig.seat; const L = E.locate(s, trig.i); const self = L && (L.z === "av" || L.z === "cs") ? L.x : null;
   let text; ctx.when = when; ctx.ref = {}; ctx.me = L ? L.x : null;
   if (trig.manualRest) return null; // the part of an effect the reader could not understand: the player finishes it
@@ -670,6 +671,7 @@ export function resolveEffect(s, t, picks = [], interactive = false) {
     const sc = scriptOf(s, { c: t.c });
     const run = sc && (t.when === "activate" ? t.k == null && sc.activate && sc.activate.run : t.when === "answer" ? sc.answer && sc.answer.run : sc[t.when]);
     if (run) return run(ctx);
+    if (t.when === "milled" && (E.locate(s, t.i) || {}).z !== "hell") return { explain: "การ์ดใบนี้ไม่ได้อยู่ในนรกแล้ว ความสามารถไม่ทำงาน", ops: [] };
     return autoEffect(s, t, ctx);
   } catch (e) { if (e && e.ask) return { ask: e.ask }; throw e; }
 }
@@ -686,9 +688,8 @@ E.ext.acts = (s, x, L) => {
     .map((a) => ({ k: a.k, label: a.text.length > 64 ? a.text.slice(0, 62) + "…" : a.text }));
 };
 // may this (unscripted) React card answer the window `on`?  true / false, or null when its timing cannot be read
-// React cards whose moment the reader cannot check exactly (players only). They used to be offered at every
-// response window; now only where the wording could fit, and never when the card names a moment the game has
-// no window for (the player then uses it by hand, see E.ext.reactFree).
+// React cards whose moment the reader cannot check exactly (players only): offered only where the wording could fit,
+// and never when the card names a moment the game has no window for.
 function looseReact(s, x, p, on) {
   const t = String(E.def(s, x).x || ""); const head = t.split(/[:：]/)[0];
   const T = on.kind === "attack" && on.tk !== "life" ? E.locate(s, on.ti) : null; const A = on.kind === "attack" ? E.locate(s, on.att) : null;
@@ -718,8 +719,6 @@ E.ext.react = (s, x, p, on, asPlayer) => {
   if (asPlayer || !s.P[p].bot) return true; // players resolve it themselves if the effect is unreadable
   const r = quiet(() => autoEffect(s, { i: x.i, c: x.c, when: "cast", seat: p, on }, makeCtx(s, { i: x.i, c: x.c, seat: p }))); return !!(r && !r.fail && r.ops.length);
 };
-// a React whose moment the game cannot check may be used by hand on the player's own turn (React can be used at any timing)
-E.ext.reactFree = (s, x) => !reactTiming(E.def(s, x).x);
 
 // may this (unscripted) Magic be cast now?  false = its printed condition is not met, null = condition unreadable
 E.ext.canCast = (s, x, p) => { const d = E.def(s, x); if (!/ใช้(?:การ์ด(?:ใบ)?นี้)?ได้(?:ต่อ)?(?:เมื่อ|ถ้า)/.test(d.x || "")) return true; return playCond(s, d.x, p); };

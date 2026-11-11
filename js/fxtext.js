@@ -1,6 +1,6 @@
 // Card text made readable: one block per ability, the ability type and keywords as coloured tags,
 // reminder text dimmed, and the data's markup ({symbol X}, {only}, {red …}) drawn instead of printed.
-import { h } from "./util.js?v=20261111150206";
+import { h } from "./util.js?v=20261111160748";
 
 // what each keyword means (from the reminder text printed on the cards / Rule Book 3.2)
 export const KW_HELP = {
@@ -56,7 +56,7 @@ function inline(text, groups) {
     if (m[1] != null) out.push(h("div", { class: "grant" }, h("span", { class: "gl" }, "ความสามารถที่ได้รับ"), ...blocks(groups[+m[1]].replace(/^["“]|["”]$/g, ""), groups)));
     else if (m[2]) out.push(h("span", { class: "sy" }, "◆ " + m[2]));
     else if (m[3]) out.push(h("span", { class: "sy mk" }, MARK[m[3].toLowerCase()] || m[3]));
-    else if (m[4]) out.push(h("span", { class: "rem" }, ...inline(m[4], groups)));
+    else if (m[4]) out.push(h("span", { class: "rem" }, "(", ...inline(m[4].slice(1, -1), groups), ")"));
     else if (m[5]) out.push(h("span", { class: "qn" }, m[5]));
     else if (m[6]) out.push(h("b", { class: "pw" }, m[6]));
     else out.push(h("b", { class: "kw", title: KW_HELP[m[7]] || "" }, m[7]));
