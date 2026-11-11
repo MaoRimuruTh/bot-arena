@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111091418";
-import { E } from "./engine.js?v=20261111091418";
-import { h } from "./util.js?v=20261111091418";
-import { Sfx } from "./sfx.js?v=20261111091418";
+import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111094506";
+import { E } from "./engine.js?v=20261111094506";
+import { h } from "./util.js?v=20261111094506";
+import { Sfx } from "./sfx.js?v=20261111094506";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -52,11 +52,15 @@ function mount(container) {
   R.geo = cardGeometry(); R.capMat = new THREE.MeshBasicMaterial({ visible: false });
   R.edgeMat = new THREE.MeshStandardMaterial({ color: 0x3a2a20, roughness: 0.62, metalness: 0 }); // the paper core, not metal
   R.backMat = new THREE.MeshBasicMaterial({ map: R.backTex, color: 0xcccccc, toneMapped: false });
-  // the teak table the mat lies on, and candles in brass dishes round it (two of them light the table on larger screens)
-  const wood = new THREE.Mesh(new THREE.PlaneGeometry(70, 50), new THREE.MeshStandardMaterial({ map: woodTexture(small), roughness: 0.55, metalness: 0 }));
-  wood.rotation.x = -Math.PI / 2; wood.position.set(0, -0.335, -2); wood.receiveShadow = true; scene.add(wood);
+  // the teak table the mat lies on, and candles in brass dishes round it, each throwing a flickering pool of light on the wood
+  // unlit, with the lamplight baked into vertex colours: it covers much of a phone screen, so it must be cheap to draw
+  const tg = new THREE.PlaneGeometry(70, 50, 28, 20), tp = tg.attributes.position, tc = new Float32Array(tp.count * 3);
+  for (let k = 0; k < tp.count; k++) { const x = tp.getX(k), y = tp.getY(k), d = Math.hypot(x / 1.25, y + 1.5); const v = 0.3 + 1.3 * Math.exp(-((Math.max(0, d - 6)) ** 2) / 80); tc[k * 3] = v; tc[k * 3 + 1] = v * 0.93; tc[k * 3 + 2] = v * 0.86; }
+  tg.setAttribute("color", new THREE.BufferAttribute(tc, 3));
+  const wood = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ map: woodTexture(small), vertexColors: true }));
+  wood.rotation.x = -Math.PI / 2; wood.position.set(0, -0.335, -2); scene.add(wood);
   R.flameTex = flameTexture();
-  R.candles = [[-4.6, -8.7], [4.6, -8.7], [-9.4, -4.8], [9.4, -4.8]].map(([x, z], k) => candle(x, z, !small && k >= 2));
+  R.candles = [[-4.6, -8.7], [4.6, -8.7], [-9.4, -4.8], [9.4, -4.8]].map(([x, z]) => candle(x, z));
 
   if (THREE.EffectComposer && innerWidth >= 760) {
     R.composer = new THREE.EffectComposer(renderer); R.composer.addPass(new THREE.RenderPass(scene, camera));
@@ -91,7 +95,7 @@ function mount(container) {
     const dt = Math.min(0.05, clock.getDelta()), t = clock.elapsedTime;
     if (!reduce) {
       for (const pts of [R.motes]) { const a = pts.geometry.attributes.position.array, sp = pts.userData.sp; for (let i = 0; i < sp.length; i++) { a[i * 3 + 1] += sp[i] * 60 * dt * (pts === R.motes ? 0.35 : 1); a[i * 3] += Math.sin(t + i) * 0.002; if (a[i * 3 + 1] > 9) a[i * 3 + 1] = 0; } pts.geometry.attributes.position.needsUpdate = true; }
-      for (const c of R.candles) { const f = 1 + 0.07 * Math.sin(t * 13 + c.ph) + 0.05 * Math.sin(t * 7.3 + c.ph * 2) + Math.random() * 0.03; c.flame.scale.set(0.16 * (2 - f), 0.36 * f, 1); c.halo.material.opacity = 0.32 * f; if (c.L) c.L.intensity = 0.55 * f; }
+      for (const c of R.candles) { const f = 1 + 0.07 * Math.sin(t * 13 + c.ph) + 0.05 * Math.sin(t * 7.3 + c.ph * 2) + Math.random() * 0.03; c.flame.scale.set(0.16 * (2 - f), 0.36 * f, 1); c.halo.material.opacity = 0.32 * f; c.pool.material.opacity = 0.2 * f; }
       R.lifeT.rotation.y = t * 1.2; R.lifeT.position.y = 1 + Math.sin(t * 2) * 0.12; R.lifeHalo.position.copy(R.lifeT.position);
       for (const m of R.meshes.values()) {
         if (m.pulse) m.glow.material.opacity = 0.45 + Math.sin(t * 6) * 0.3;
@@ -211,7 +215,7 @@ function flameTexture() {
   g.beginPath(); g.moveTo(32, 14); g.bezierCurveTo(46, 52, 46, 82, 32, 100); g.bezierCurveTo(18, 82, 18, 52, 32, 14); gr = g.createLinearGradient(0, 14, 0, 100); gr.addColorStop(0, "rgba(255,170,60,.0)"); gr.addColorStop(0.45, "rgba(255,214,120,.95)"); gr.addColorStop(1, "rgba(255,250,230,1)"); g.fillStyle = gr; g.fill();
   return new THREE.CanvasTexture(c);
 }
-function candle(x, z, light) {
+function candle(x, z) { // no real light: a lamp per candle would make every lit surface on the table slower to draw
   const grp = new THREE.Group(); grp.position.set(x, -0.335, z);
   const dish = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.28, 0.06, 24), new THREE.MeshStandardMaterial({ color: 0xc99a3e, metalness: 0.6, roughness: 0.35 })); dish.position.y = 0.03;
   const wax = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.14, 0.62, 20), new THREE.MeshStandardMaterial({ color: 0xf2e6c8, roughness: 0.6, emissive: 0x3a2008, emissiveIntensity: 0.5 })); wax.position.y = 0.37;
@@ -219,8 +223,7 @@ function candle(x, z, light) {
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: R.FX.dot, color: 0xffa040, transparent: true, opacity: 0.32, blending: THREE.AdditiveBlending, depthWrite: false })); halo.scale.set(1.3, 1.3, 1); halo.position.y = 0.86;
   const pool = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 3.2), new THREE.MeshBasicMaterial({ map: R.FX.dot, color: 0xff9a40, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false })); pool.rotation.x = -Math.PI / 2; pool.position.y = 0.004;
   grp.add(dish, wax, flame, halo, pool);
-  let L = null; if (light) { L = new THREE.PointLight(0xffa24a, 0.55, 7, 2); L.position.y = 1; grp.add(L); }
-  R.scene.add(grp); return { flame, halo, L, ph: Math.random() * 10 };
+  R.scene.add(grp); return { flame, halo, pool, ph: Math.random() * 10 };
 }
 function softShadow() {
   const c = document.createElement("canvas"); c.width = c.height = 256; const g = c.getContext("2d");
