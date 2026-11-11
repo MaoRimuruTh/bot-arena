@@ -1,15 +1,17 @@
-import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261111162323";
-import { plain, isOwnerNow } from "../persona.js?v=20261111162323";
-import { fxText } from "../fxtext.js?v=20261111162323";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, starterDecks, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261111162323";
-import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261111162323";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261111162323";
-import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261111162323";
-import { filterBar, filterCards } from "./library.js?v=20261111162323";
-import { openingOdds, simGame } from "./lab.js?v=20261111162323";
-import { freeBuild } from "../builder.js?v=20261111162323";
-import { deckCode, deckText, parseDeck } from "../deckcode.js?v=20261111162323";
-import { CIEL_DECKS } from "../cieldecks.js?v=20261111162323";
+import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261111180424";
+import { plain, isOwnerNow } from "../persona.js?v=20261111180424";
+import { fxText } from "../fxtext.js?v=20261111180424";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261111180424";
+import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261111180424";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261111180424";
+import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261111180424";
+import { filterBar, filterCards } from "./library.js?v=20261111180424";
+import { openingOdds, simGame } from "./lab.js?v=20261111180424";
+import { freeBuild } from "../builder.js?v=20261111180424";
+import { deckCode, deckText, parseDeck } from "../deckcode.js?v=20261111180424";
+import { CIEL_DECKS } from "../cieldecks.js?v=20261111180424";
+import { officialStarters, boxDecks, topUpNote } from "../boxdecks.js?v=20261111180424";
+import { deckLocked, deckLockAch } from "../achieve.js?v=20261111180424";
 
 // Ciel's theme decks: print codes → card ids (resolved once the card data is loaded)
 let cielCache = null;
@@ -24,7 +26,7 @@ export function cielDecks() {
 export let Editing = null;
 const PickFilter = { q: "", t: "", co: "", c: "", set: "", rare: "", sy: "", variants: false, owned: false };
 const blank = () => ({ id: null, name: "เด็คใหม่", main: {}, life: [], ace: [], plan: "", notes: "", style: "win" });
-export const allDecks = () => [...Data.decks, ...cielDecks(), ...starterDecks()];
+export const allDecks = () => [...Data.decks, ...cielDecks(), ...officialStarters(), ...boxDecks()];
 export const deckById = (id) => (id === "__editing" ? Editing : allDecks().find((d) => d.id === id));
 export function addToDeck(d, id, delta = 1) {
   const c = card(id); if (!c) return;
@@ -73,7 +75,8 @@ async function removeDecks(list) {
   if (Save.t) { const w = Save.pending; clearTimeout(Save.t); Save.t = null; Save.pending = null; if (w && !list.some((x) => x === w || x.id === w.id)) flushSave(w); }
   if (Save.p) await Save.p;
   for (const d of list) { await deleteDeck(d.id); if (Editing && Editing.id === d.id) Editing = null; Save.undo = Save.undo.filter((u) => !sameDeck(u, d)); } }
-async function copyDeck(d) { const n = { ...clone(d), id: null, owner: Me.uid, starter: false, ciel: false, name: d.name + " (สำเนา)" }; delete n.createdAt; return saveDeck(n); }
+const plainCopy = (d, extra) => { const n = { ...clone(d), id: null, owner: Me.uid, starter: false, ciel: false, name: d.name + " (สำเนา)", ...extra }; delete n.createdAt; delete n.box; delete n.guess; return n; };
+async function copyDeck(d) { return saveDeck(plainCopy(d)); }
 
 // rename / copy / delete one of my decks without opening the editor
 export function openDeckMenu(d) {
@@ -102,11 +105,12 @@ const deckColors = (d) => { const st = deckStats(d); return Object.entries(st.co
 function deckTile(d) {
   const ace = deckAce(d); const v = validateDeck(d); const ms = Data.matches.filter((m) => m.deckId === d.id && m.mode !== "goldfish"); const w = ms.filter((m) => m.result === "win").length;
   const cols = deckColors(d); const band = cols.length ? `linear-gradient(180deg,${cols.map(colorOf).join(",")}${cols.length === 1 ? "," + colorOf(cols[0]) : ""})` : "var(--c-none)";
-  const mine = isMine(d); const picking = mine && Manage.on; const on = picking && Manage.sel.has(d.id);
+  const mine = isMine(d); const picking = mine && Manage.on; const on = picking && Manage.sel.has(d.id); const lock = deckLocked(d) && deckLockAch(d);
   const body = (tag, attrs) => h(tag, attrs, ace ? artImg(ace, "", "") : null, h("div", { class: "wash" }), h("div", { class: "band", style: "background:" + band }),
-    h("div", { class: "in" }, h("span", { class: "eyebrow" }, d.ciel ? "✦ ชิเอลแนะนำ" : d.starter ? "ทางการ" : d.owner === Me.uid ? "เด็คของฉัน" : "ของ " + (d.ownerName || "เพื่อน")), h("h3", null, d.name),
-      h("div", { class: "small muted" }, d.theme || (ace ? "เอซ: " + ace.n : "")),
-      h("div", { class: "meta" }, h("span", { class: "chip num" }, deckCount(d) + "/50"), v.ok ? h("span", { class: "chip good" }, "พร้อมเล่น") : h("span", { class: "chip warn" }, "ยังไม่ครบ"), ms.length ? h("span", { class: "chip num" }, `ชนะ ${w}/${ms.length}`) : null)));
+    h("div", { class: "in" }, h("span", { class: "eyebrow" }, d.ciel ? "✦ ชิเอลแนะนำ" : d.box ? "คัดสรรเด็ค" : d.starter ? "ทางการ" : d.owner === Me.uid ? "เด็คของฉัน" : "ของ " + (d.ownerName || "เพื่อน")), h("h3", null, d.name),
+      h("div", { class: "small muted" }, lock ? lock.short || lock.how : d.theme || (ace ? "เอซ: " + ace.n : "")),
+      h("div", { class: "meta" }, lock ? h("span", { class: "chip lockchip" }, "ล็อคอยู่") : h("span", { class: "chip num" }, deckCount(d) + "/50"), lock ? null : v.ok ? h("span", { class: "chip good" }, "พร้อมเล่น") : h("span", { class: "chip warn" }, "ยังไม่ครบ"), ms.length ? h("span", { class: "chip num" }, `ชนะ ${w}/${ms.length}`) : null)));
+  if (lock) return h("div", { class: "tilewrap" }, body("a", { class: "tile locked", href: "#decks/view/" + d.id, "aria-label": `${d.name} ล็อคอยู่ ${lock.how}` }));
   if (picking) return h("div", { class: "tilewrap" }, body("button", { class: "tile" + (on ? " sel" : ""), type: "button", "aria-pressed": on ? "true" : "false", onclick: () => { on ? Manage.sel.delete(d.id) : Manage.sel.add(d.id); redraw(); } }), h("span", { class: "tilecheck" + (on ? " on" : ""), "aria-hidden": "true" }, on ? "✓" : ""));
   return h("div", { class: "tilewrap" }, body("a", { class: "tile", href: "#decks/view/" + d.id }), mine ? h("button", { class: "tilemenu", type: "button", "aria-label": "จัดการเด็ค " + d.name, title: "เปลี่ยนชื่อ ทำสำเนา หรือลบ", onclick: () => openDeckMenu(d) }, "⋯") : null);
 }
@@ -117,7 +121,7 @@ Views.decks = {
     if (mode === "edit" || mode === "new") {
       if (mode === "new") { if (!Editing || Editing.id) Editing = blank(); }
       // always start from the saved deck (it may have been changed on the deck page), unless this very copy still has a save waiting
-      else if (!Editing || Editing.id !== arg || !(Save.t && Save.pending === Editing)) { const d = deckById(arg); if (!d) { location.hash = "#decks"; return; } Editing = d.owner === Me.uid ? clone(d) : { ...clone(d), id: null, owner: Me.uid, name: d.name + " (สำเนา)", starter: false, ciel: false }; }
+      else if (!Editing || Editing.id !== arg || !(Save.t && Save.pending === Editing)) { const d = deckById(arg); if (!d) { location.hash = "#decks"; return; } if (deckLocked(d)) { location.hash = "#decks/view/" + d.id; return; } Editing = d.owner === Me.uid ? clone(d) : plainCopy(d); }
       return this.editor(root);
     }
     const mine = Data.decks.filter((d) => d.owner === Me.uid), friends = Data.decks.filter((d) => d.owner !== Me.uid);
@@ -127,7 +131,8 @@ Views.decks = {
       !Data.ready.decks ? busy("กำลังโหลดเด็ค…") : mine.length ? h("div", { class: "stack" }, this.mineBar(mine), h("div", { class: "tiles" }, mine.map(deckTile))) : h("div", { class: "empty" }, "ยังไม่มีเด็คของคุณ เริ่มจากเลือกการ์ดเอซให้ชิเอลจัด หรือคัดลอก Starter Deck ด้านล่างไปแก้ต่อ"),
       friends.length ? h("div", { class: "stack", style: "margin-top:28px" }, h("h2", null, "เด็คของเพื่อน"), h("div", { class: "tiles" }, friends.map(deckTile))) : null,
       h("div", { class: "stack", style: "margin-top:28px" }, h("h2", null, "✦ เด็คแนะนำจากชิเอล"), h("div", { class: "muted small" }, plain("เด็คธีมที่ชิเอลจัดให้ริมุรุ เปิดดูแผนการเล่น ลงสนามได้เลย หรือคัดลอกไปแก้ต่อ")), h("div", { class: "tiles" }, cielDecks().map(deckTile))),
-      h("div", { class: "stack", style: "margin-top:28px" }, h("h2", null, "Starter Deck ทางการ"), h("div", { class: "muted small" }, "จัดตามจำนวนในกล่องจริงจากข้อมูลทางการ"), h("div", { class: "tiles" }, starterDecks().map(deckTile)))].filter(Boolean));
+      h("div", { class: "stack", style: "margin-top:28px" }, h("h2", null, "Starter Deck ทางการ"), h("div", { class: "muted small" }, "จัดตามจำนวนในกล่องจริงจากรายการการ์ดทางการ"), h("div", { class: "tiles" }, officialStarters().map(deckTile))),
+      h("div", { class: "stack", style: "margin-top:28px" }, h("h2", null, "คัดสรรเด็ค กล่องพิเศษ"), h("div", { class: "muted small" }, "เด็คกล่องพิเศษทางการ กล่องที่เล่นแรงกว่า Starter Deck มากจะล็อคไว้ เปิดได้ด้วยการชนะตามเงื่อนไขเท่านั้น ไม่มีการซื้อปลดล็อค"), h("div", { class: "tiles" }, boxDecks().map(deckTile)))].filter(Boolean));
     if (mode === "ace" && arg) openAceBuilder([+arg]);
   },
   // heading of "my decks": normal = a button to start choosing; choosing = how many are chosen + delete
@@ -143,8 +148,19 @@ Views.decks = {
   refresh(root, parts) { if (parts[0] === "edit" || parts[0] === "new") return this.drawSide && this.drawSide(); this.render(root, parts); },
 
   // ---------- deck lab page ----------
+  // a box deck still locked: its ace and theme, and the win that opens it; the list stays hidden until then
+  locked(root, d) {
+    const ace = deckAce(d), a = deckLockAch(d);
+    root.replaceChildren(h("section", { class: "hero locked" }, ace ? artImg(ace, "", "") : null, h("div", { class: "wash" }),
+      h("div", { class: "in" }, h("div", { class: "row", style: "gap:6px" }, h("span", { class: "chip lockchip" }, "ล็อคอยู่"), h("span", { class: "chip" }, "คัดสรรเด็ค กล่องพิเศษ")),
+        h("h1", null, d.name), h("div", { class: "muted small" }, d.theme),
+        h("div", { class: "lockreq" }, h("span", { class: "eyebrow" }, "เปิดด้วยความสำเร็จ " + a.name), h("b", null, a.how), h("span", { class: "tiny muted" }, "นับการ์ดใน Main Deck ที่พิมพ์ Symbol นั้นไว้ ตอนจบเกม เกมซ้อมมือเดียวไม่นับ")),
+        h("div", { class: "row" }, h("a", { class: "btn gold", href: "#play" }, "ไปดวลเลย"), h("a", { class: "btn", href: "#decks/new" }, "จัดเด็คธีมนี้เอง"), h("a", { class: "btn", href: "#history" }, "ดูความสำเร็จทั้งหมด")))),
+      h("div", { class: "empty" }, "รายการการ์ดของกล่องนี้จะเปิดให้ดู ลงสนาม และคัดลอกไปแก้ได้ เมื่อปลดล็อคแล้ว"));
+  },
   view(root, id) {
     const d = deckById(id); if (!d) { root.replaceChildren(busy("กำลังโหลดเด็ค…")); return; }
+    if (deckLocked(d)) return this.locked(root, d);
     const st = deckStats(d), v = validateDeck(d), ace = deckAce(d), shop = shoppingList(d);
     const need = shop.reduce((a, x) => a + x.need, 0), have = shop.reduce((a, x) => a + Math.min(x.need, x.have), 0);
     const ms = Data.matches.filter((m) => m.deckId === d.id && m.mode !== "goldfish"); const w = ms.filter((m) => m.result === "win").length;
@@ -175,12 +191,13 @@ Views.decks = {
     root.replaceChildren(
       h("section", { class: "hero" }, ace ? artImg(ace, "", "") : null, h("div", { class: "wash" }),
         h("div", { class: "in" }, h("div", { class: "row", style: "gap:6px" }, ...deckColors(d).map((c) => h("span", { class: "chip", style: `background:color-mix(in srgb,${colorOf(c)} 25%,transparent)` }, c)), d.style && STYLE_TH[d.style] ? h("span", { class: "chip" }, STYLE_TH[d.style].split(":")[0]) : null, v.ok ? h("span", { class: "chip good" }, "ถูกกติกา") : h("span", { class: "chip warn" }, "ยังไม่ครบกติกา")),
-          h("h1", null, d.name), h("div", { class: "muted small" }, [ace ? "เอซ: " + ace.n : null, `${deckCount(d)} + LIFE ${(d.life || []).length}`, d.ciel ? "ชิเอลแนะนำ" : d.starter ? "เด็คทางการ" : d.owner === Me.uid ? "เด็คของคุณ" : "ของ " + (d.ownerName || "เพื่อน"), ms.length ? `ชนะ ${w}/${ms.length} เกม` : null].filter(Boolean).join(" · ")),
+          h("h1", null, d.name), h("div", { class: "muted small" }, [ace ? "เอซ: " + ace.n : null, `${deckCount(d)} + LIFE ${(d.life || []).length}`, d.ciel ? "ชิเอลแนะนำ" : d.box ? "คัดสรรเด็ค กล่องพิเศษ" : d.starter ? "เด็คทางการ" : d.owner === Me.uid ? "เด็คของคุณ" : "ของ " + (d.ownerName || "เพื่อน"), ms.length ? `ชนะ ${w}/${ms.length} เกม` : null].filter(Boolean).join(" · ")),
           h("div", { class: "row" }, h("a", { class: "btn gold", href: "#play/deck/" + d.id }, "ลงสนามกับเด็คนี้"), h("button", { class: "btn ciel", onclick: () => openAnalysis(d) }, "ชิเอลวิเคราะห์"),
             h("a", { class: "btn", href: "#decks/edit/" + d.id }, mine ? "เพิ่ม / แก้ไขการ์ด" : "คัดลอกไปแก้"), h("button", { class: "btn", onclick: () => openShopping(d) }, "รายการต้องซื้อ"), h("button", { class: "btn", onclick: () => openSkins(d) }, "✦ เลือกสกินทั้งเด็ค"),
             mine ? h("button", { class: "btn", onclick: () => openDeckMenu(d) }, "⋯ เปลี่ยนชื่อ / สำเนา / ลบ") : null))),
       mine ? h("div", { class: "edstrip" }, h("span", { class: "small grow" }, "แก้เด็คได้จากหน้านี้เลย: ", h("b", null, "−"), " ลด 1 ใบ · ", h("b", null, "+"), " เพิ่ม 1 ใบ · ", h("b", null, "✕"), " เอาออกทั้งหมด"), saveStatus(),
         h("button", { class: "btn sm", disabled: !canUndo(d), onclick: () => { if (undoLast(d)) again(); } }, "↶ เลิกทำ"), h("a", { class: "btn sm gold", href: "#decks/edit/" + d.id }, "+ เพิ่มการ์ดใหม่")) : null,
+      d.guess ? h("div", { class: "panel small muted", style: "margin-bottom:14px" }, topUpNote(d)) : null,
       h("div", { class: "statrow" }, h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "ทั้งเด็ค"), h("b", null, need)), h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "มีแล้ว"), h("b", { style: "color:#8ee3b2" }, have)),
         h("div", { class: "stat buy", style: "cursor:pointer", onclick: () => openShopping(d) }, h("span", { class: "eyebrow" }, "ต้องซื้อเพิ่ม"), h("b", null, need - have + " ใบ")),
         odds ? h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "ได้เอซภายในเทิร์น 3"), h("b", { style: "color:var(--gold-hi)" }, Math.round(odds.t3 * 100) + "%")) : null),
@@ -300,7 +317,7 @@ async function showFreeBuild(out, opts, api) {
   out.replaceChildren(busy("ชิเอลกำลังจัดเด็คแล้วลองให้บอทเล่น…")); await new Promise((r) => setTimeout(r, 30));
   const r = freeBuild(opts); const deck = { ...blank(), ...r.deck };
   // quick test: 40 bot games against the official starter decks
-  const st = starterDecks(); let w = 0, n = 0; for (let k = 0; k < 40; k++) { const g = simGame(deck, st[k % st.length], (Date.now() + k * 7919) | 0); n++; if (g.winner === 0) w++; if (k % 10 === 9) await new Promise((res) => setTimeout(res, 0)); }
+  const st = officialStarters(); let w = 0, n = 0; for (let k = 0; k < 40; k++) { const g = simGame(deck, st[k % st.length], (Date.now() + k * 7919) | 0); n++; if (g.winner === 0) w++; if (k % 10 === 9) await new Promise((res) => setTimeout(res, 0)); }
   const pct = Math.round((w / n) * 100); const v = r.valid;
   const ents = deckEntries(deck).sort((a, b) => (a.c.t === "A" ? 0 : 1) - (b.c.t === "A" ? 0 : 1) || (a.c.c || 0) - (b.c.c || 0));
   out.replaceChildren(h("div", { class: "panel stack" },

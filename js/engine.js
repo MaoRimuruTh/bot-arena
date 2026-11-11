@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261111162323";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261111162323";
-import { SCRIPTS } from "./scripts.js?v=20261111162323";
-import { newId, clone } from "./util.js?v=20261111162323";
+import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261111180424";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261111180424";
+import { SCRIPTS } from "./scripts.js?v=20261111180424";
+import { newId, clone } from "./util.js?v=20261111180424";
 export const ZONES = ["deck", "hand", "av", "mg", "cs", "hell", "dark", "life"];
 export const ZONE_TH = { deck: "Deck", hand: "มือ", av: "Avatar Zone", mg: "Magic Zone", cs: "Construct Zone", hell: "นรก", dark: "มิติมืด", life: "LIFE", land: "Land Magic" };
 export const PHASE_TH = { mull: "เปลี่ยนมือ", draw: "Draw", main: "Main", battle: "Battle", end: "End", over: "จบเกม" };
@@ -878,7 +878,7 @@ export const E = {
         const kill = []; for (const x of cands) { const c = E.def(s, x).c || 0; if (c <= budget) { kill.push(x); budget -= c; } }
         E.log(s, by, `ธรณีสูบเจอ ${o.name} ${k} ใบ · ทำลายได้ Cost รวมไม่เกิน ${(o.base | 0) + k}`); for (const x of kill) E.destroy(s, x.i, "ความสามารถของซีเกิร์ด"); return;
       }
-      case "flag": { const L = E.locate(s, o.i); if (L && ["canAtk", "drac"].includes(o.k)) { if (o.off) delete L.x[o.k]; else L.x[o.k] = o.v != null ? o.v : true; } return; }
+      case "flag": { const L = E.locate(s, o.i); if (L && ["canAtk", "drac", "sb", "kula"].includes(o.k)) { if (o.off) delete L.x[o.k]; else L.x[o.k] = o.v != null ? o.v : true; } return; }
       case "randomPick": { const P = s.P[seat]; const xs = (o.ids || []).map((i) => P.deck.find((x) => x.i === i)).filter(Boolean); if (!xs.length) return; const x = xs[Math.floor(E.rnd(s) * xs.length)]; P.deck.splice(P.deck.indexOf(x), 1); P.hand.push(x); E.log(s, seat, `สุ่มเลือกได้ ${E.name(s, x)} → ขึ้นมือ`); E.handed(s, x); if (o.shuffle) E.shuffle(s, P.deck); return; }
       case "xsy": { const L = E.locate(s, o.i); if (!L) return; L.x.xsy = { t: s.turn, list: (o.list || []).map(String).slice(0, 8) }; E.log(s, by, `${E.name(s, L.x)} ได้รับ Symbol ${L.x.xsy.list.join(", ")} จนจบเทิร์น`); return; }
       case "xsyOnly": { const L = E.locate(s, o.i); if (!L) return; if (E.immuneNow(s, L.x)) { E.log(s, by, `${E.name(s, L.x)} ไม่รับผลความสามารถนี้`); return; } L.x.sye = { k: String(o.k || ""), until: o.until | 0 }; E.log(s, by, `${E.name(s, L.x)} เปลี่ยน Symbol เป็น {${L.x.sye.k}}`); return; }

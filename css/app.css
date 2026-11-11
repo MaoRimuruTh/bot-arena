@@ -362,6 +362,16 @@ table.t th{white-space:nowrap}
 .tilemenu{position:absolute;right:10px;top:10px;z-index:2;width:40px;height:40px;border-radius:11px;border:1px solid var(--line-2);background:rgba(14,8,7,.78);color:var(--fg);font:700 1.25rem/1 var(--f-display);cursor:pointer;display:grid;place-items:center}
 .tilemenu:hover,.tilemenu:focus-visible{border-color:var(--gold);color:var(--gold-hi)}
 .tile.sel{border-color:var(--bad);box-shadow:0 0 0 2px rgba(255,107,111,.45)}
+/* a box deck still locked: the ace sits in shadow behind a lacquer seal until the win that opens it */
+.tile.locked img{filter:grayscale(.85) brightness(.45);opacity:.6}
+.tile.locked:hover img{transform:rotate(6deg)}
+.tile.locked h3{color:var(--muted)}
+.tile.locked .in{max-width:82%}
+.hero.locked img{filter:grayscale(.7) brightness(.55)}
+.chip.lockchip{background:rgba(198,59,46,.18);color:#ffb3a8;border:1px solid rgba(198,59,46,.45)}
+.chip.lockchip::before{content:"";width:9px;height:10px;background:currentColor;border-radius:2px 2px 1px 1px;-webkit-mask:radial-gradient(circle at 50% 30%,transparent 2.2px,#000 2.6px);mask:radial-gradient(circle at 50% 30%,transparent 2.2px,#000 2.6px)}
+.lockreq{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-left:3px solid var(--crimson);background:rgba(198,59,46,.08);border-radius:0 12px 12px 0;max-width:560px}
+.lockreq b{font-size:1rem;color:var(--fg)}
 .tilecheck{position:absolute;right:12px;top:12px;z-index:2;width:30px;height:30px;border-radius:9px;border:2px solid var(--line-2);background:rgba(14,8,7,.8);display:grid;place-items:center;font-weight:800;pointer-events:none}
 .tilecheck.on{background:var(--bad);border-color:var(--bad);color:#fff}
 .managebar{padding:10px 12px;border:1px solid rgba(255,107,111,.45);border-radius:12px;background:rgba(255,107,111,.07)}

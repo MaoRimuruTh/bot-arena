@@ -1,9 +1,10 @@
-import { h, busy, lsGet, lsSet } from "../util.js?v=20261111162323";
-import { card, deckEntries, deckToList, validateDeck, TYPE_TH } from "../cards.js?v=20261111162323";
-import { E } from "../engine.js?v=20261111162323";
-import { H } from "../ai.js?v=20261111162323";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261111162323";
-import { allDecks } from "./decks.js?v=20261111162323";
+import { h, busy, lsGet, lsSet } from "../util.js?v=20261111180424";
+import { card, deckEntries, deckToList, validateDeck, TYPE_TH } from "../cards.js?v=20261111180424";
+import { E } from "../engine.js?v=20261111180424";
+import { H } from "../ai.js?v=20261111180424";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261111180424";
+import { allDecks } from "./decks.js?v=20261111180424";
+import { deckLocked } from "../achieve.js?v=20261111180424";
 
 // exact hypergeometric: P(at least one of k copies within m cards from a deck of N)
 function atLeastOne(N, k, m) { if (k <= 0) return 0; if (m >= N) return 1; let p = 1; for (let i = 0; i < m; i++) p *= (N - k - i) / (N - i); return 1 - Math.max(0, p); }
@@ -75,7 +76,7 @@ function showSim(out, A, opps, res) {
 }
 Views.lab = {
   render(root) {
-    const decks = allDecks().filter((d) => validateDeck(d).ok);
+    const decks = allDecks().filter((d) => validateDeck(d).ok && !deckLocked(d));
     if (!decks.length) { root.replaceChildren(h("div", { class: "pagehead" }, h("h1", null, "ห้องทดลอง")), h("div", { class: "empty" }, "ต้องมีเด็คที่ถูกกติกาอย่างน้อย 1 เด็ค")); return; }
     if (!decks.some((d) => d.id === LabState.a)) LabState.a = decks[0].id;
     if (LabState.b !== "*" && LabState.b !== "~" && !decks.some((d) => d.id === LabState.b)) LabState.b = (decks[1] || decks[0]).id;

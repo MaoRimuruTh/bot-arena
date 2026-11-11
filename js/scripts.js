@@ -325,11 +325,25 @@ const otaku = (extra = {}) => ({ botHold: (E, s, x, p) => (s.P[p].av.some((h) =>
       const h = c.choose(bestIdol(c, c.self.i), 1, "เลือกไอดอลที่จะสวมใส่โอตะใบนี้")[0];
       return h ? { explain: `${c.E.name(c.s, c.self)} ไปสวมใส่ให้ ${c.E.name(c.s, h)}`, ops: [{ op: "attach", i: c.self.i, on: h.i }] } : { explain: "ไม่มีไอดอล", ops: [] }; } } });
 const idolPay = (d) => String(d.n || "").includes("ไอดอล") || String(d.n || "").includes("โปรดิวเซอร์");
+// โอตะคูลา: the โอตะ two-way move once a turn, worn +1 (+2 on มีมมิ — "บีมมิ" on the card), and
+// "เนรเทศ การ์ดใบนี้ และทิ้งการ์ดบนมือ 1 ใบ : a มีมมิ Avatar from the deck to the hand"
+const kulaFind = (E, s, x, L) => ["av", "mg"].includes(L.z) && s.phase === "main" && s.P[L.p].hand.length > 0 && s.P[L.p].deck.some((y) => isAv(E, s, y) && E.named(s, y, "มีมมิ"));
+const kula = () => { const base = otaku({ payOnly: idolPay }); const wear = base.activate;
+  return { ...base, worn: (E, s, m, host) => (E.named(s, host, "มีมมิ") ? 2 : idol(E, s, host) ? 1 : 0),
+    activate: { label: "โอตะคูลา: สวมใส่ / ลงจากการสวมใส่ / เนรเทศหามีมมิ", multi: true,
+      can: (E, s, x, L) => (x.kula !== s.turn && wear.can(E, s, x, L)) || kulaFind(E, s, x, L),
+      run: (c) => { const { E, s, seat: p, self: x } = c; const L = E.locate(s, x.i); const a = x.kula !== s.turn && wear.can(E, s, x, L), b = kulaFind(E, s, x, L);
+        const k = a && b ? c.mode(["สวมใส่ให้ไอดอล / ลงจากการสวมใส่ (เทิร์นละครั้ง)", "เนรเทศการ์ดใบนี้ และทิ้ง 1 ใบ: นำมีมมิจาก Deck ขึ้นมือ"], "โอตะคูลา: เลือกความสามารถ", 0) : a ? 0 : 1;
+        if (k === 0) { const r = wear.run(c); return { ...r, ops: [{ op: "flag", i: x.i, k: "kula", v: s.turn }, ...r.ops] }; }
+        const P = s.P[p]; const d = c.choose([...P.hand].sort((u, v) => gemVal(E, s, u) - gemVal(E, s, v)), 1, "ทิ้งการ์ดบนมือ 1 ใบ", { exact: true })[0];
+        const t = c.choose(uniq(E, s, P.deck.filter((y) => isAv(E, s, y) && E.named(s, y, "มีมมิ"))).sort(strongFirst(E, s)), 1, "เลือกมีมมิจาก Deck ขึ้นมือ")[0];
+        return { explain: `เนรเทศ ${E.name(s, x)}${d ? ` · ทิ้ง ${E.name(s, d)}` : ""}${t ? ` · นำ ${E.name(s, t)} ขึ้นมือ` : ""}`,
+          ops: [{ op: "exile", i: x.i }, ...(d ? [{ op: "discard", seat: p, iids: [d.i] }] : []), t ? { op: "search", seat: p, take: t.i, to: "hand" } : { op: "shuffle", seat: p }] }; } } }; };
 Object.assign(SCRIPTS, {
   "KD03-007": otaku({ shield: true }), // โอตะ รุ่นก่อตั้ง: dies instead of its idol
   "KD03-008": otaku({ death: (c) => ({ explain: "จั่ว 1 ใบ", ops: [{ op: "draw", seat: c.seat, n: 1 }] }) }), // โอตะปุส
   "BT08-021": otaku({ otaCount: 2 }), // โอตะท๊อปโดเนท
-  "KD03-002": otaku({ payOnly: idolPay }), // โอตะคูลา
+  "KD03-002": kula(), // โอตะคูลา
   // โอตะตัวกะปอม: pays only for idols; when paid for an idol it may jump onto one
   "KD03-009": { payOnly: (d) => String(d.n || "").includes("ไอดอล"), paidFor: (d) => String(d.n || "").includes("ไอดอล"),
     paid: (c) => { const h = c.choose(bestIdol(c), 1, "โอตะตัวกะปอม: สวมใส่ให้ไอดอล (ไม่ใส่ก็ได้)", { optional: true })[0];
@@ -368,13 +382,29 @@ Object.assign(SCRIPTS, {
       const cnt = o.reduce((a, m) => a + (nm(c.E, c.s, m, "ท๊อปโดเนท") ? 2 : 1), 0); if (cnt < 2) return { explain: "โอตะไม่พอ 2 ใบ ความสามารถไม่ทำงาน", ops: [] };
       const t = c.choose(c.s.P[1 - c.seat].av.filter((y) => !y.tok && !c.E.noAim(c.s, y)).sort(strongFirst(c.E, c.s)), 1, "เลือก Avatar ฝ่ายตรงข้ามมาเป็นโอตะของเนียจัง")[0];
       return { explain: `ทำลายโอตะ ${o.length} ใบ${t ? ` · ${c.E.name(c.s, t)} กลายเป็นโอตะสวมใส่ให้เนียจัง` : ""}`, ops: [...o.map((x) => ({ op: "destroy", i: x.i, why: "ค่าความสามารถของเนียจัง" })), ...(t ? [{ op: "attach", i: t.i, on: c.self.i }] : [])] }; } } },
-  // มีมมิจัง ไอดอล No.1: จุติ — an idol from the deck plus an โอตะ from the deck onto it; End Phase: back into the deck, draw 1
+  // มีมมิจัง ไอดอล No.1 ("บีมมิ" on the card is a misprint of มีมมิ, see normName in cards.js)
+  // from the hand: banish a มีมมิ on our Avatar Zone → this card comes down with its จุติ, and the โอตะ that มีมมิ wore move onto it
+  // จุติ — an idol from the deck plus an โอตะ from the deck onto it
+  // End Phase: back into the deck, shuffle, draw 1; a banished มีมมิ comes back and takes over the โอตะ this card wore
   "KD03-001": {
+    activate: { label: "เนรเทศมีมมิบน Avatar Zone: อัญเชิญ จุติ การ์ดใบนี้จากมือ",
+      can: (E, s, x, L) => L.z === "hand" && s.phase === "main" && s.P[L.p].av.some((y) => isAv(E, s, y) && E.named(s, y, "มีมมิ")),
+      run: (c) => { const { E, s, seat: p, self: x } = c; const P = s.P[p];
+        const pool = P.av.filter((y) => isAv(E, s, y) && E.named(s, y, "มีมมิ")).sort((a, b) => otaOn(E, s, b).length - otaOn(E, s, a).length || E.power(s, a) - E.power(s, b));
+        const m = c.choose(pool, 1, "เลือกมีมมิบน Avatar Zone ที่จะเนรเทศ", { exact: true })[0]; if (!m) return { explain: "ไม่มีมีมมิบน Avatar Zone", ops: [] };
+        const fans = otaOn(E, s, m); const carry = fans.map((f) => ({ op: "attach", i: f.i, on: x.i }));
+        const room1 = E.avatars(P) < 4 && P.av.length < 6 && E.fits6(s, p, x); // with room, come down first so the โอตะ go straight across
+        const ops = room1 ? [{ op: "put", i: x.i, jt: true }, ...carry, { op: "exile", i: m.i }] : [{ op: "exile", i: m.i }, { op: "put", i: x.i, jt: true }, ...carry];
+        return { explain: `เนรเทศ ${E.name(s, m)} · อัญเชิญ ${E.name(s, x)} แบบจุติ${fans.length ? ` · โอตะ ${fans.length} ใบย้ายมาสวมใส่ให้` : ""}`, ops }; } },
     summon: (c) => { const P = c.s.P[c.seat]; if (!room(c)) return { explain: "Avatar Zone เต็ม", ops: [] };
       const i = c.choose(uniq(c.E, c.s, P.deck.filter((x) => idol(c.E, c.s, x))).sort(strongFirst(c.E, c.s)), 1, "เลือกไอดอลจาก Deck ที่จะอัญเชิญ")[0];
       const o = i ? c.choose(uniq(c.E, c.s, P.deck.filter((x) => x.i !== i.i && ota(c.E, c.s, x))), 1, "เลือกโอตะจาก Deck มาสวมใส่ให้ไอดอลที่อัญเชิญ")[0] : null;
       return { explain: i ? `อัญเชิญ ${c.E.name(c.s, i)}${o ? ` พร้อม ${c.E.name(c.s, o)}` : ""} จาก Deck` : "ไม่มีไอดอลใน Deck", ops: [...(i ? [{ op: "put", i: i.i }] : []), ...(i && o ? [{ op: "attach", i: o.i, on: i.i }] : []), { op: "shuffle", seat: c.seat }] }; },
-    endPhase: (E, s, x, L) => (L.z === "av" && s.active === L.p ? [{ op: "move", i: x.i, to: "deckBottom" }, { op: "shuffle", seat: L.p }, { op: "draw", seat: L.p, n: 1 }] : []) },
+    endPhase: (E, s, x, L) => { if (L.z !== "av" || s.active !== L.p) return []; const P = s.P[L.p];
+      const home = [{ op: "move", i: x.i, to: "deckBottom" }, { op: "shuffle", seat: L.p }, { op: "draw", seat: L.p, n: 1 }];
+      const back = P.dark.filter((y) => isAv(E, s, y) && E.named(s, y, "มีมมิ")).sort((a, b) => (E.def(s, b).pw || 0) - (E.def(s, a).pw || 0))[0]; if (!back) return home;
+      const carry = otaOn(E, s, x).map((f) => ({ op: "attach", i: f.i, on: back.i }));
+      return E.avatars(P) < 4 && P.av.length < 6 ? [{ op: "put", i: back.i }, ...carry, ...home] : [home[0], { op: "put", i: back.i }, ...carry, ...home.slice(1)]; } },
   // ของขวัญจากโอตะ: worn by an idol → draw 1
   "KD03-019": { cast: (c) => { const H = c.t.on != null ? c.E.locate(c.s, c.t.on) : null; return H && idol(c.E, c.s, H.x) ? { explain: "สวมใส่ให้ไอดอล จั่ว 1 ใบ", ops: [{ op: "draw", seat: c.seat, n: 1 }] } : { explain: "ไม่ได้สวมใส่ให้ไอดอล", ops: [] }; } },
   // ตู้โชว์ไอดอล
@@ -467,8 +497,15 @@ Object.assign(SCRIPTS, {
   "BT08-041": { endPhase: (E, s, x, L) => (L.z === "av" && s.P[L.p].av.filter((y) => nm(E, s, y, "วานร")).length >= 3 ? [{ op: "draw", seat: L.p, n: 2 }] : []) },
   // ม้าเฉียว: back to hand at our End Phase unless another green ขุนพล {ต่างชาติ} is with it
   "BT10-049": { endPhase: (E, s, x, L) => (L.z === "av" && mineEnd(s, L) && !s.P[L.p].av.some((y) => y.i !== x.i && nm(E, s, y, "ขุนพล") && E.def(s, y).co === "เขียว" && sy(E, s, y, "ต่างชาติ")) ? [{ op: "move", i: x.i, to: "hand" }] : []) },
-  // ฟูมะ: exiled at our End Phase, comes back at the start of our next Main Phase
-  "BT11-010": { endPhase: (E, s, x, L) => (L.z === "av" && mineEnd(s, L) ? [{ op: "exile", i: x.i }, { op: "later", seat: L.p, ops: [{ op: "put", i: x.i }], why: "ฟูมะกลับจากมิติมืด" }] : []) },
+  // ฟูมะ: from the hand, a นินจา on our Avatar Zone goes back to the hand and this card comes down (once a turn by this way).
+  // Brought down by its own ability it gets POWER +3 and hides in the dark zone at our End Phase, coming back at the start
+  // of our next Main Phase (by its own ability again). Summoned the usual way it does none of that.
+  "BT11-010": { activate: { label: "นำนินจาบน Avatar Zone กลับขึ้นมือ: อัญเชิญฟูมะจากมือ",
+      can: (E, s, x, L) => L.z === "hand" && s.phase === "main" && once(s, L.p, "ฟูมะ:สลับ") && s.P[L.p].av.some((y) => isAv(E, s, y) && E.named(s, y, "นินจา") && E.def(s, y).n !== E.def(s, x).n),
+      run: (c) => { const { E, s, seat: p, self: x } = c; const pool = s.P[p].av.filter((y) => isAv(E, s, y) && E.named(s, y, "นินจา") && E.def(s, y).n !== E.def(s, x).n).sort((a, b) => worth(E, s, a) - worth(E, s, b));
+        const n = c.choose(pool, 1, "เลือกนินจาบน Avatar Zone ที่จะนำกลับขึ้นมือ", { exact: true })[0]; if (!n) return { explain: "ไม่มีนินจาบน Avatar Zone", ops: [] };
+        return { explain: `${E.name(s, n)} กลับขึ้นมือ · อัญเชิญ ${E.name(s, x)} POWER +3`, ops: [{ op: "nameOnce", seat: p, name: "ฟูมะ:สลับ" }, { op: "move", i: n.i, to: "hand" }, { op: "put", i: x.i }, { op: "flag", i: x.i, k: "sb", v: x.c }, { op: "power", i: x.i, n: 3, temp: false }] }; } },
+    endPhase: (E, s, x, L) => (L.z === "av" && mineEnd(s, L) && x.sb === x.c ? [{ op: "exile", i: x.i }, { op: "later", seat: L.p, ops: [{ op: "put", i: x.i }, { op: "flag", i: x.i, k: "sb", v: x.c }, { op: "power", i: x.i, n: 3, temp: false }], why: "ฟูมะกลับจากมิติมืด" }] : []) },
   // อินาริ: draw 1, +1 per 15 cards in our hell
   "CC02-016": { endPhase: (E, s, x, L) => (L.z === "av" && mineEnd(s, L) ? [{ op: "draw", seat: L.p, n: 1 + Math.floor(s.P[L.p].hell.length / 15) }] : []) },
   // พาลี: destroy every enemy Avatar with the lowest Cost

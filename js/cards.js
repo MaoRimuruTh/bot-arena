@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261111162323";
-import { h } from "./util.js?v=20261111162323";
-import { Data } from "./fb.js?v=20261111162323";
+import { CARD_SOURCE } from "./config.js?v=20261111180424";
+import { h } from "./util.js?v=20261111180424";
+import { Data } from "./fb.js?v=20261111180424";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -68,7 +68,8 @@ export const syText = (d, on) => { const a = d && d.al; return [d && d.sy, ...((
 export const allSy = (d, on) => !!(d && d.al && (d.al.allSy || (on && d.al.allSyF)));
 export const colorIs = (d, c, on) => !!d && (d.co === c || !!(d.al && (d.al.allCo || (on && d.al.allCoF) || (d.al.aco || []).includes(c) || (on && (d.al.acoF || []).includes(c)))));
 export const hasFieldAlias = (d) => !!(d && d.al && (d.al.anF || d.al.asyF || d.al.acoF || d.al.allSyF || d.al.allCoF));
-export const normName = sp1;
+// "บีมมิ" on มีมมิจัง ไอดอล No.1 and โอตะคูลา is a misprint of มีมมิ, the idol No.1 grows out of (no card is called บีมมิ)
+export const normName = (t) => sp1(t).replace(/บีมมิ/g, "มีมมิ");
 
 function transform(raw) {
   // same card = same name and type, and either the same print code or the same text once spacing,
@@ -77,6 +78,12 @@ function transform(raw) {
   const groups = new Map(); const byPrint = new Map(); const out = [];
   raw.forEach((c, i) => { const k = c.name + "|" + c.type + "|" + norm(c.mainEffect); const kp = c.name + "|" + c.type + "|" + c.print;
     const g = groups.has(k) ? groups.get(k) : byPrint.has(kp) ? byPrint.get(kp) : i; if (!groups.has(k)) groups.set(k, g); if (!byPrint.has(kp)) byPrint.set(kp, g); raw[i]._g = g; });
+  // a reprint whose text is missing from the data (KD03-010 วูตาตู) belongs with the printing that has the same name, type,
+  // Cost, GEM and POWER and does carry the text
+  { const stat = (c) => [c.name, c.type, c.cost, c.gem, c.power].join("|"); const full = new Map();
+    raw.forEach((c) => { if (norm(c.mainEffect) && !full.has(stat(c))) full.set(stat(c), c._g); });
+    const move = new Map(); raw.forEach((c, i) => { if (!norm(c.mainEffect) && c._g === i && full.has(stat(c))) move.set(i, full.get(stat(c))); });
+    raw.forEach((c) => { if (move.has(c._g)) c._g = move.get(c._g); }); }
   raw.forEach((c, i) => {
     const t = TYPE[c.type] || "A"; const e = { i, n: c.name, t, p: c.print, r: c.rare, x: (c.mainEffect || "").trim() };
     const b = c._g; if (b !== i) e.b = b;
@@ -89,6 +96,8 @@ function transform(raw) {
     { const al = aliasOf(e.x); if (al) e.al = al; }
     out.push(e);
   });
+  // such a reprint shows and plays with the text (and colour) of the printing it belongs with
+  for (const e of out) { const b = e.b != null ? out[e.b] : null; if (!e.x && b && b.x) { e.x = b.x; if (!e.co && b.co) e.co = b.co; if (b.al) e.al = b.al; } }
   return out;
 }
 export async function loadCards() {
