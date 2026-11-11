@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261112002142";
-import { E } from "./engine.js?v=20261112002142";
-import { h } from "./util.js?v=20261112002142";
-import { Sfx } from "./sfx.js?v=20261112002142";
+import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261112002434";
+import { E } from "./engine.js?v=20261112002434";
+import { h } from "./util.js?v=20261112002434";
+import { Sfx } from "./sfx.js?v=20261112002434";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -15,6 +15,8 @@ export const Arena = {
   screenOf: (i) => { const m = R && R.meshes.get(i); if (!m) return null; const P = m.grp.position, c = toScreen(P), sc = m.scale || 1;
     const a = toScreen(P.clone().add(new THREE.Vector3(-CARD.w * sc / 2, 0, -CARD.h * sc / 2))), b = toScreen(P.clone().add(new THREE.Vector3(CARD.w * sc / 2, 0, CARD.h * sc / 2)));
     return { x: c.x, y: c.y, w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y), top: Math.min(a.y, b.y) }; },
+  // the floating LIFE target (attacking LIFE): whether the pointer is on it, and where it is on screen
+  lifeAim: () => (R && R.lifeT.visible && R.hovered === "life" ? (() => { const c = toScreen(R.lifeT.position); return { x: c.x, y: c.y, w: 70, h: 70 }; })() : null),
   // replays can run fast: every animation and pause in the arena speeds up together
   setSpeed: (k) => { const v = k * animSetting(); if (R) R.speed = v; gsap.globalTimeline.timeScale(v); },
   cheer: (p) => R && avatarDo(p, "hop"), // an emote makes the sender's figure hop
@@ -60,7 +62,7 @@ function mount(container, opts = {}) {
   // the centre band lights up when the Battle Phase starts
   const div = new THREE.Mesh(new THREE.PlaneGeometry(MW - 3.4, 0.62), new THREE.MeshBasicMaterial({ map: R.FX.light_02, color: 0xffc35a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })); div.rotation.x = -Math.PI / 2; div.position.set(1.2, 0.02, MZ); scene.add(div); R.div = div;
   R.motes = points(Q === "low" ? 12 : small ? 34 : 80, 0xffd27a, 0.1, FX.star_06, 9);
-  R.lifeT = new THREE.Mesh(new THREE.OctahedronGeometry(0.55), new THREE.MeshStandardMaterial({ color: 0xff7a80, emissive: 0xff2a3a, emissiveIntensity: 1.6, roughness: 0.15 })); R.lifeT.position.set(0, 1, -4.7); R.lifeT.visible = false; scene.add(R.lifeT);
+  R.lifeT = new THREE.Mesh(new THREE.OctahedronGeometry(0.55), new THREE.MeshStandardMaterial({ color: 0xff7a80, emissive: 0xff2a3a, emissiveIntensity: 1.6, roughness: 0.15 })); R.lifeT.position.set(0, 1, MZ - 1.15); R.lifeT.visible = false; /* just above the centre band: never under the opponent's bar at the top of the screen */ scene.add(R.lifeT);
   R.lifeHalo = sprite(FX.light_02, 0xff4a52, 3.2, R.lifeT.position, 0.5); R.lifeHalo.visible = false;
   FX.dot = dotTexture(); R.beamTex = beamTexture(); R.backTex = backTexture(); R.rimTex = haloTexture(18, 5); R.shadowTex = haloTexture(24, 0); R.sigilTexs = {}; R.sig = ["lotus", "lotus"];
   R.geo = cardGeometry(); R.capMat = new THREE.MeshBasicMaterial({ visible: false });
