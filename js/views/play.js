@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111225947";
-import { fxText } from "../fxtext.js?v=20261111225947";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111225947";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111225947";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111225947";
-import { Arena, animSetting } from "../arena3d.js?v=20261111225947";
-import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261111225947";
-import { themeCounts } from "../boxdecks.js?v=20261111225947";
-import { ladder, ladderReset } from "../ladder.js?v=20261111225947";
-import { notify } from "../notify.js?v=20261111225947";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261111225947";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261111225947";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261111225947";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261111225947";
-import { Music } from "../music.js?v=20261111225947";
-import { Sfx } from "../sfx.js?v=20261111225947";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261111225947";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111225947";
-import { readAura, traits } from "../auras.js?v=20261111225947";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261111225947";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111233739";
+import { fxText } from "../fxtext.js?v=20261111233739";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111233739";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111233739";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111233739";
+import { Arena, animSetting } from "../arena3d.js?v=20261111233739";
+import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261111233739";
+import { themeCounts } from "../boxdecks.js?v=20261111233739";
+import { ladder, ladderReset } from "../ladder.js?v=20261111233739";
+import { notify } from "../notify.js?v=20261111233739";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261111233739";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261111233739";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261111233739";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261111233739";
+import { Music } from "../music.js?v=20261111233739";
+import { Sfx } from "../sfx.js?v=20261111233739";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261111233739";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111233739";
+import { readAura, traits } from "../auras.js?v=20261111233739";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261111233739";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -25,7 +25,7 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261111225947";
+import { allDecks, deckById } from "./decks.js?v=20261111233739";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -443,7 +443,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261111225947").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261111233739").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", bot: true });
@@ -931,6 +931,15 @@ function handClick(x) {
   showHandInspect(x);
 }
 function promptBox(s, p) {
+  try { return promptBox0(s, p); } catch (e) {
+    console.warn(e); const t = s.trig[0]; if (!t || !mine(p)) return null; const d = s.cards[t.c] || {};
+    const auto = () => { G.ask = null; G.askSel = []; let r = null; try { r = resolveEffect(s, t); } catch (err) { console.warn(err); } doAct(r && r.ops ? { type: "trig", id: t.id, explain: r.explain, ops: r.ops } : { type: "trig", id: t.id, skip: true }, p); };
+    return h("div", { class: "prompt glass" }, h("b", { style: "font-family:var(--f-display)" }, `${d.n || "เอฟเฟกต์"}: แสดงตัวเลือกไม่ได้`),
+      h("div", { class: "small muted" }, "ระบบเลือกให้แบบอัตโนมัติได้ หรือข้ามเอฟเฟกต์นี้ แจ้งปัญหาได้จากเมนู ☰"),
+      h("div", { class: "row" }, h("button", { class: "btn gold", onclick: auto }, "ให้ระบบเลือกให้"), h("button", { class: "btn", onclick: () => { G.ask = null; doAct({ type: "trig", id: t.id, skip: true }, p); } }, "ข้ามเอฟเฟกต์")));
+  }
+}
+function promptBox0(s, p) {
   if (p == null || !mine(p)) return null; const P = s.P[p];
   const box = (title, ...kids) => h("div", { class: "prompt glass" }, h("b", { style: "font-family:var(--f-display)" }, title), ...kids);
   if (G.payFor && !(s.phase === "main" && s.active === p && !s.pend && !s.trig.length)) { G.payFor = null; G.pick = null; }
@@ -1005,9 +1014,9 @@ function promptBox(s, p) {
   if (s.trig.length && G.ask && G.tk === s.trig[0].id) {
     const t = s.trig[0]; const d = s.cards[t.c] || {}; const a = G.ask; const sel = G.askSel || [];
     if (a.modes) return box(`${d.n}: ${a.prompt}`, h("div", { class: "opts" }, a.modes.map((t, k) => h("button", { class: "btn sm", onclick: () => { G.tpicks[a.idx] = [k]; G.ask = null; humanTrig(G.s, p); } }, t))));
-    const need = Math.min(a.n, a.options.length); const show = a.reveal || a.options;
+    const need = Math.min(a.n, a.options.length); const show = Array.isArray(a.reveal) ? a.reveal : a.options;
     const okN = a.optional ? sel.length <= need : sel.length === need;
-    return box(`${d.n}: ${a.prompt}`, h("div", { class: "tiny muted" }, a.reveal ? "การ์ดที่เปิดดู (ใบที่เลือกไม่ได้จะจางไว้)" : `เลือก ${need} ใบ${a.optional ? " หรือไม่เลือกก็ได้" : ""}`),
+    return box(`${d.n}: ${a.prompt}`, h("div", { class: "tiny muted" }, Array.isArray(a.reveal) ? "การ์ดที่เปิดดู (ใบที่เลือกไม่ได้จะจางไว้)" : `เลือก ${need} ใบ${a.optional ? " หรือไม่เลือกก็ได้" : ""}`),
       h("div", { class: "pick" }, show.map((i) => { const L = E.locate(s, i); if (!L) return null; const dd = E.def(s, L.x); const can = a.options.includes(i);
         return cardBtn(dd.im, { cls: (sel.includes(i) ? "sel" : "") + (can ? "" : " dim"), badge: L.z === "av" || L.z === "cs" ? "P" + E.power(s, L.x) : ZONE_TH[L.z], note: !can && a.why ? a.why[i] : null, onclick: () => { if (!can) return cardView(L.x); G.askSel = sel.includes(i) ? sel.filter((y) => y !== i) : need === 1 ? [i] : sel.length < need ? [...sel, i] : sel; draw(); } }); })),
       h("div", { class: "row" }, h("button", { class: "btn gold", disabled: !okN, onclick: () => { G.tpicks[a.idx] = G.askSel || []; G.ask = null; G.askSel = []; humanTrig(G.s, p); } }, "ยืนยัน"),

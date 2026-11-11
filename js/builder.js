@@ -1,15 +1,43 @@
 // Ciel's free deck builder (no API key): builds a legal 50 + 5 LIFE deck around a set of core
 // cards (favourites or aces) by picking supporting cards that share their symbols, names and
 // colours, keeping a playable Cost curve and enough GEM.
-import { CARDS, card, baseId, isBase, limitOf, validateDeck } from "./cards.js?v=20261111225947";
-import { SCRIPTS } from "./scripts.js?v=20261111225947";
-import { readable } from "./effects.js?v=20261111225947";
+import { CARDS, card, baseId, isBase, limitOf, validateDeck } from "./cards.js?v=20261111233739";
+import { SCRIPTS } from "./scripts.js?v=20261111233739";
+import { readable } from "./effects.js?v=20261111233739";
 
 let scripted = null;
 const isScripted = (c) => { if (!scripted || scripted.n !== CARDS.length) { const s = new Set(); for (const p of Object.keys(SCRIPTS)) { const x = CARDS.find((y) => y.p === p); if (x) s.add(baseId(x.i)); } scripted = { n: CARDS.length, s }; } return scripted.s.has(baseId(c.i)); };
 const words = (n) => String(n || "").split(/\s*[-–]\s*|\s+/).filter((w) => w.length >= 3);
 // generic, reliable support Magic the bot can use (by print code)
 const STAPLES = ["BT01-038", "BT04-044", "BT01-040", "BT02-049", "SD01-017"];
+
+// LIFE cards (การ์ดบ้าน) for a finished main deck, scored from bot-vs-bot tests (780 games per card, four decks): a plain
+// "draw 1" is as strong as anything, "สอดแนม 5 นำ Avatar" (มีมมิจัง) as strong or a little stronger, a free summon from the
+// hand a little weaker (it spends a hand card that would have paid GEM), and the theme ones only count with their theme
+export function lifeScore(c, main) {
+  const x = String(c.x || ""); let k;
+  const count = (f) => Object.entries(main).reduce((a, [i, n]) => { const d = card(+i); return a + (d && f(d) ? n : 0); }, 0);
+  if (!(isScripted(c) || readable(c, "life"))) return -9;
+  if (/สอดแนม\s*5\s*ใบ\s*นำ\s*Avatar/.test(x)) return count((d) => d.t === "A") >= 14 ? 5.3 : 3;
+  if (/จั่วการ์ด\s*1\s*ใบ/.test(x)) return /ถูกหงายจากการโจมตี/.test(x) ? 4.2 : 5;
+  if ((k = x.match(/อัญเชิญ\s*Avatar\s*1\s*ใบ\s*จากนรก\s*ที่มี\s*Cost\s*ไม่เกิน\s*(\d+)/))) return count((d) => d.t === "A" && (d.c || 0) <= +k[1]) >= 8 ? 4.8 : 2;
+  if (/นำ\s*Avatar\s*1\s*ใบ\s*จาก\s*นรก[^]*?GEM\s*3/.test(x)) return count((d) => d.t === "A" && (d.g || 0) >= 3) >= 6 ? 4.8 : 2;
+  if (/Normal Magic[^]*?นรก[^]*?ขึ้นมือ/.test(x)) return count((d) => d.t === "M" && d.st === "N") >= 8 ? 4.8 : 2;
+  if (/Avatar\s*ทุกใบ[^]*?POWER\s*\+\s*1/.test(x)) return 4.7;
+  if ((k = x.match(/อัญเชิญ\s*Avatar\s*(?:สี\s*(\S+?)\s*)?ที่\s*Cost\s*(\d+)\s*หรือต่ำกว่า[^]*?จากมือ/))) { const n = count((d) => d.t === "A" && (d.c || 0) <= +k[2] && (!k[1] || d.co === k[1])); return n >= 9 ? 4.5 : 2; }
+  if (/\{\s*mod\s*\}/i.test(x)) return count((d) => d.t === "M" && d.st === "D") >= 5 ? 4.5 : 0;
+  if (/Construct/.test(x)) return count((d) => d.t === "C") >= 6 ? 4.6 : 0;
+  if (/วานร/.test(x)) return count((d) => d.t === "A" && /วานร/.test(d.n)) >= 10 ? 4.6 : 0;
+  return 1;
+}
+export function pickLife(main, first = []) {
+  const life = [], names = new Set();
+  const take = (c) => { if (c && c.t === "L" && life.length < 5 && !names.has(c.n)) { names.add(c.n); life.push(c.i); } };
+  for (const c of first) take(c);
+  const pool = CARDS.filter((c) => isBase(c) && c.t === "L" && c.fl !== "le").map((c) => ({ c, s: lifeScore(c, main) })).sort((a, b) => b.s - a.s);
+  for (const e of pool) take(e.c);
+  return life;
+}
 
 export function freeBuild({ core = [], colors = [], style = "win", name = "" } = {}) {
   const cores = [...new Set(core.map((i) => baseId(+i)))].map(card).filter(Boolean);
@@ -76,9 +104,7 @@ export function freeBuild({ core = [], colors = [], style = "win", name = "" } =
   for (const e of scored) { if (total >= 50) break; if (e.c.t !== "M" || e.c.st === "L" && Object.keys(main).some((i) => card(+i).st === "L")) continue; if (e.s < 0.5) continue; add(e.c, e.s >= 4 ? 3 : 2); }
   for (const e of scored) { if (total >= 50) break; if (e.c.o1) continue; add(e.c, 2); }
   // LIFE: favourites first, then readable LIFE cards that suit the colours / symbols
-  const lifeFav = cores.filter((c) => c.t === "L");
-  const lifePool = CARDS.filter((c) => isBase(c) && c.t === "L" && c.fl !== "le").map((c) => ({ c, s: (readable(c, "life") ? 3 : 0) + (/จั่ว/.test(c.x || "") ? 1 : 0) + ([...syms].some((y) => String(c.x || "").includes(y)) ? 2 : 0) + ((c.co && cols.includes(c.co)) ? 1 : 0) })).sort((a, b) => b.s - a.s);
-  const life = []; const ln = new Set(); for (const c of [...lifeFav, ...lifePool.map((e) => e.c)]) { if (life.length >= 5) break; if (ln.has(c.n)) continue; ln.add(c.n); life.push(c.i); }
+  const life = pickLife(main, cores.filter((c) => c.t === "L"));
   const ace = [...keep].filter((c) => c.t === "A").sort((a, b) => (b.o1 ? 1 : 0) - (a.o1 ? 1 : 0) || (b.c || 0) - (a.c || 0)).slice(0, 2).map((c) => c.i);
   const lead = card(ace[0] || o1.i);
   const deck = { name: name || `เด็ค${lead ? " " + lead.n : "การ์ดที่ชอบ"}`, main, life, ace: ace.length ? ace : [o1.i], style,

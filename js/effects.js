@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261111225947";
-import { CARDS, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, inRed } from "./cards.js?v=20261111225947";
-import { E, scriptOf } from "./engine.js?v=20261111225947";
+import { readAura } from "./auras.js?v=20261111233739";
+import { CARDS, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, inRed } from "./cards.js?v=20261111233739";
+import { E, scriptOf } from "./engine.js?v=20261111233739";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -296,7 +296,9 @@ function sentence(s, t, p, self, ctx) {
   }
   if (verbs === 0 && /อัญเชิญ/.test(t) && /จาก(?:บน)?มือ(?:เรา)?/.test(t) && !/Deck|นรก/.test(t) && !OPP.test(t)) { // free summon from hand
     const f = filterOf(t.replace(/จาก(?:บน)?มือ(?:เรา)?/, " ")); if (f.bad || pickN(t) > 1) return false; if (E.avatars(P) >= 4) { say.push("Avatar Zone เต็ม"); return { ops, say }; }
-    const cands = P.hand.filter((x) => E.def(s, x).t === "A" && typed(x, f) && !(me && x.i === me.i)).sort((a, b) => val(s, b) - val(s, a));
+    // the best one to put down for free: the most Cost saved and POWER gained, but not one whose จุติ would be lost (no Cost paid)
+    const freeV = (x) => { const d = E.def(s, x); return (d.c || 0) * 1.5 + E.power(s, x) * 0.6 - (/จุติ/.test(d.x || "") && !/อัญเชิญ\s*(?:พอดี\s*)?จุติ/.test(t) ? 3.5 : 0); };
+    const cands = P.hand.filter((x) => E.def(s, x).t === "A" && typed(x, f) && !(me && x.i === me.i)).sort((a, b) => freeV(b) - freeV(a));
     const got = ctx.choose(cands, 1, "เลือก Avatar บนมือที่จะอัญเชิญ", { optional: true })[0];
     if (got) { ops.push({ op: "put", i: got.i, jt: /อัญเชิญ\s*(?:พอดี\s*)?จุติ/.test(t) }); say.push(`อัญเชิญ ${E.name(s, got)} จากมือ`); } else say.push("ไม่อัญเชิญจากมือ"); return { ops, say };
   }
@@ -658,7 +660,8 @@ export function makeCtx(s, t, picks = [], interactive = false) {
       const idx = k++; if (!cands.length) return [];
       if (picks[idx] !== undefined) return picks[idx].map((i) => cands.find((x) => x.i === i)).filter(Boolean);
       if (!interactive || (!o.optional && !o.reveal && cands.length <= n)) return cands.slice(0, n);
-      throw { ask: { idx, prompt, options: cands.map((x) => x.i), n, optional: !!o.optional, exact: !!o.exact, reveal: o.reveal || null, why: o.why || null } };
+      // reveal: the cards shown (a list of ids); "reveal: true" only means "always ask, even with one choice"
+      throw { ask: { idx, prompt, options: cands.map((x) => x.i), n, optional: !!o.optional, exact: !!o.exact, reveal: Array.isArray(o.reveal) ? o.reveal : null, why: o.why || null } };
     },
     // pick one of several written options (เลือกปฏิบัติ); bots take `best`
     mode(labels, prompt, best = 0) { const idx = k++; if (picks[idx] !== undefined) return picks[idx][0]; if (!interactive) return best; throw { ask: { idx, prompt, modes: labels, options: [], n: 1 } }; },
