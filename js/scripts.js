@@ -492,7 +492,8 @@ Object.assign(SCRIPTS, {
 const mineEnd = (s, L) => s.active === L.p;
 Object.assign(SCRIPTS, {
   // โลกิ: every End Phase it moves to the other side
-  "BT03-023": { endPhase: (E, s, x, L) => (L.z === "av" && E.avatars(s.P[1 - L.p]) < 4 ? [{ op: "control", i: x.i, seat: 1 - L.p }] : []) },
+  // โลกิ: moves to the other side's Avatar Zone at every End Phase; once its control has changed it can no longer attack
+  "BT03-023": { endPhase: (E, s, x, L) => (L.z === "av" && E.avatars(s.P[1 - L.p]) < 4 ? [{ op: "control", i: x.i, seat: 1 - L.p }] : []), noAttack: (E, s, x) => (x.ctlx || 0) > 0 },
   // ศาสตราจารย์วานร: 3+ วานร on our field → draw 2
   "BT08-041": { endPhase: (E, s, x, L) => (L.z === "av" && s.P[L.p].av.filter((y) => nm(E, s, y, "วานร")).length >= 3 ? [{ op: "draw", seat: L.p, n: 2 }] : []) },
   // ม้าเฉียว: back to hand at our End Phase unless another green ขุนพล {ต่างชาติ} is with it
