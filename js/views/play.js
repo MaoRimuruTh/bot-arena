@@ -1,27 +1,28 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111131228";
-import { fxText } from "../fxtext.js?v=20261111131228";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111131228";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111131228";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111131228";
-import { Arena, animSetting } from "../arena3d.js?v=20261111131228";
-import { myFigure, myMat, newlyEarned, rewardName, earned, ACH } from "../achieve.js?v=20261111131228";
-import { ladder, ladderReset } from "../ladder.js?v=20261111131228";
-import { notify } from "../notify.js?v=20261111131228";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261111131228";
-import { autoEffect, resolveEffect } from "../effects.js?v=20261111131228";
-import { Music } from "../music.js?v=20261111131228";
-import { Sfx } from "../sfx.js?v=20261111131228";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261111131228";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111131228";
-import { readAura, traits } from "../auras.js?v=20261111131228";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261111131228";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111131929";
+import { fxText } from "../fxtext.js?v=20261111131929";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111131929";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111131929";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111131929";
+import { Arena, animSetting } from "../arena3d.js?v=20261111131929";
+import { myFigure, myMat, newlyEarned, rewardName, earned, ACH } from "../achieve.js?v=20261111131929";
+import { ladder, ladderReset } from "../ladder.js?v=20261111131929";
+import { notify } from "../notify.js?v=20261111131929";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261111131929";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261111131929";
+import { autoEffect, resolveEffect } from "../effects.js?v=20261111131929";
+import { Music } from "../music.js?v=20261111131929";
+import { Sfx } from "../sfx.js?v=20261111131929";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261111131929";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111131929";
+import { readAura, traits } from "../auras.js?v=20261111131929";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261111131929";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
   return { game: [`เทิร์น ${s.turn} · ${PHASE_TH[s.phase] || s.phase} · ตาของ ${s.P[s.active].name}`, `เด็คเรา: ${me.deckName || "-"} · เด็คคู่แข่ง: ${op.deckName || "-"}`,
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / ")].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261111131228";
+import { allDecks, deckById } from "./decks.js?v=20261111131929";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -53,6 +54,7 @@ Views.play = {
   leave() { if (this._unsubLobby) this._unsubLobby(); stopGame(false); },
 
   setup(root, saved) {
+    if (this._unsubLobby) this._unsubLobby(); // a re-render must not leave the last lobby's listeners running
     const decks = allDecks().filter((d) => validateDeck(d).ok);
     const mineDecks = decks.filter((d) => d.owner === Me.uid || d.starter);
     if (!mineDecks.some((d) => d.id === Setup.deck)) Setup.deck = (mineDecks[0] || {}).id || "";
@@ -96,8 +98,9 @@ Views.play = {
           const list = rooms.filter((r) => Date.now() - (r.updatedAt || 0) < 6 * 3600e3).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
           if (seenRooms) for (const r of list) if (!seenRooms.has(r.id) && r.host !== Me.uid) notify("มีห้องรอดวล", `${r.hostName || "เพื่อน"} สร้างห้องด้วยเด็ค ${(r.hostDeck && r.hostDeck.name) || ""}`, "bot-room");
           seenRooms = new Set(list.map((r) => r.id));
-          lobby.replaceChildren(...(list.length ? list.map((r) => h("div", { class: "mrow", style: "cursor:default" }, avatarEl(r.hostAva, r.hostName), h("div", { class: "grow" }, h("b", null, r.hostName || "เพื่อน"), h("div", { class: "tiny muted" }, "เด็ค " + (r.hostDeck && r.hostDeck.name || ""))),
-            r.host === Me.uid ? h("button", { class: "btn sm danger", onclick: () => F.deleteDoc(gameRef(r.id)).catch(() => {}) }, "ยกเลิกห้อง") : h("button", { class: "btn sm gold", disabled: !d, onclick: () => joinRoom(r) }, "เข้าร่วม"))) : [h("div", { class: "muted small" }, "ยังไม่มีห้องที่รออยู่")]));
+          lobby.replaceChildren(...(list.length ? list.map((r) => h("div", { class: "mrow", style: "cursor:default" }, avatarEl(r.hostAva, r.hostName), h("div", { class: "grow" }, h("b", null, r.hostName || "เพื่อน"), h("div", { class: "tiny muted" }, (r.tour ? `แมตช์ทัวร์กับ ${r.vsName || "เพื่อน"} · ` : r.vs ? `ท้าดวล ${r.vsName || "เพื่อน"} · ` : "") + "เด็ค " + (r.hostDeck && r.hostDeck.name || ""))),
+            r.host === Me.uid ? h("button", { class: "btn sm danger", onclick: () => F.deleteDoc(gameRef(r.id)).catch(() => {}) }, "ยกเลิกห้อง")
+              : r.vs && r.vs !== Me.uid ? h("span", { class: "tiny muted" }, "รอ " + (r.vsName || "เพื่อน")) : h("button", { class: "btn sm gold", disabled: !d, onclick: () => joinRoom(r) }, "เข้าร่วม"))) : [h("div", { class: "muted small" }, "ยังไม่มีห้องที่รออยู่")]));
         });
         // games in progress: watch a friend's (hands stay hidden), or get back into your own from this device
         const live = h("div", { class: "stack", style: "gap:8px" }); const u1 = lobbyUnsub;
@@ -114,10 +117,12 @@ Views.play = {
           live.replaceChildren(...(rows.length ? rows : [h("div", { class: "muted small" }, "ตอนนี้ยังไม่มีใครเล่นอยู่")]));
         });
         lobbyUnsub = () => { u1(); u2(); };
-        const rankLine = h("div", { class: "tiny muted" });
+        const rankLine = h("div", { class: "tiny muted" }), tourBox = h("div"), tour = tourNow();
+        if (tour) ladder().then((L) => tourBox.replaceChildren(tourPanel(tour, L, (opp) => (d ? createRoom({ tour: tour.id, vs: opp.uid, vsName: opp.name }) : toast("เลือกเด็คก่อน"))))).catch(() => {});
+        else if (isOwner()) tourBox.replaceChildren(h("button", { class: "btn sm", onclick: newTour }, "จัดทัวร์นาเมนต์ในกลุ่มเพื่อน"));
         ladder().then((L) => { const k = L.table.findIndex((p) => p.uid === Me.uid); if (k >= 0) rankLine.textContent = `อันดับในกลุ่มเพื่อน: ที่ ${k + 1} จาก ${L.table.length} · ${L.table[k].r} แต้ม (ดูทั้งหมดในหน้าประวัติ)`; }).catch(() => {});
         body.append(h("div", { class: "tiny muted" }, "สร้างห้องแล้วให้เพื่อนที่ได้รับอนุมัติกดเข้าร่วมจากหน้านี้ เกมซิงก์ผ่านฐานข้อมูลแบบเรียลไทม์"),
-          h("button", { class: "btn gold lg", disabled: !d, onclick: createRoom }, "สร้างห้อง"), rankLine, h("div", { class: "eyebrow" }, "ห้องที่รออยู่"), lobby,
+          h("button", { class: "btn gold lg", disabled: !d, onclick: () => createRoom() }, "สร้างห้อง"), rankLine, tourBox, h("div", { class: "eyebrow" }, "ห้องที่รออยู่"), lobby,
           h("div", { class: "eyebrow" }, "กำลังเล่นอยู่"), live, h("div", { class: "tiny muted" }, "กดดูเกมของเพื่อนได้ ผู้ชมเห็นสนามและบันทึกเกมเหมือนผู้เล่น แต่มองไม่เห็นการ์ดบนมือของทั้งสองฝั่ง"));
       }
       right.replaceChildren(h("div", { class: "modes" }, modeBtn("bot", "ดวลกับบอท", "ซ้อมมือกับชิเอล"), modeBtn("friend", "ดวลกับเพื่อน", "ออนไลน์ผ่านห้อง"), modeBtn("solo", "เล่นสองฝั่ง", "ทดลองคอมโบเอง"), modeBtn("goldfish", "ซ้อมมือเดียว", "วัดว่าเด็คชนะเร็วแค่ไหน"), modeBtn("puzzle", "โจทย์ปริศนา", "หาทางชนะในเทิร์นเดียว"), modeBtn("learn", "สอนเล่น", "เรียนกติกาทีละขั้น")), h("div", { class: "panel" }, body));
@@ -179,23 +184,32 @@ function stopGame(clear) {
   clearInterval(G.idleTick); Arena.unmount(); Music.stop(); document.body.classList.remove("arena-on"); document.querySelectorAll(".banner,.dmg,.emo").forEach((e) => e.remove()); G = null;
 }
 // ---------- friends ----------
-async function createRoom() {
+async function createRoom(extra = {}) { // extra: a tournament match ({ tour, vs, vsName }) only that friend may join
   const me = deckById(Setup.deck); if (!me) return;
   const id = newGameId();
-  await F.setDoc(gameRef(id), { status: "waiting", host: Me.uid, hostName: myName(), hostAva: myAvatar(), hostAv3: myFigure(), hostDeck: pack(me), seats: [Me.uid], createdAt: Date.now(), updatedAt: Date.now() });
+  await F.setDoc(gameRef(id), { status: "waiting", host: Me.uid, hostName: myName(), hostAva: myAvatar(), hostAv3: myFigure(), hostDeck: pack(me), seats: [Me.uid], createdAt: Date.now(), updatedAt: Date.now(), ...extra });
   toast("สร้างห้องแล้ว รอเพื่อนเข้าร่วม"); openOnline(id, 0);
 }
 async function joinRoom(r) {
   const me = deckById(Setup.deck); if (!me) return;
   try {
     await F.runTransaction(db, async (tx) => {
-      const snap = await tx.get(gameRef(r.id)); const g = snap.data(); if (!g || g.status !== "waiting") throw new Error("ห้องนี้เริ่มไปแล้ว");
+      const snap = await tx.get(gameRef(r.id)); const g = snap.data(); if (!g || g.status !== "waiting") throw new Error("ห้องนี้เริ่มไปแล้ว"); if (g.vs && g.vs !== Me.uid) throw new Error("ห้องนี้เป็นแมตช์ทัวร์ของเพื่อนคนอื่น");
       const s = E.newGame({ players: [{ uid: g.host, name: g.hostName, ava: g.hostAva || "", av3: g.hostAv3 || "" }, { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure() }], decks: [g.hostDeck, pack(me)], seed: (Math.random() * 2 ** 31) | 0, first: Math.random() < 0.5 ? 0 : 1, mode: "friend", id: r.id });
       tx.update(gameRef(r.id), { status: "playing", guest: Me.uid, guestName: myName(), seats: [g.host, Me.uid], state: JSON.stringify(s), updatedAt: Date.now() });
     });
     openOnline(r.id, 1);
   } catch (e) { toast(e.message || "เข้าร่วมไม่ได้", "bad"); }
 }
+// rematch with the same friend: open a room only they may join, and leave a note on the finished game for them
+async function friendRematch() {
+  const g = G, s = g.s, V = g.V, opp = s.P[1 - V]; const deck = deckById(s.P[V].deckId) || deckById(Setup.deck); if (!deck) return toast("เลือกเด็คก่อน");
+  const id = newGameId();
+  try { await F.setDoc(gameRef(id), { status: "waiting", host: Me.uid, hostName: myName(), hostAva: myAvatar(), hostAv3: myFigure(), hostDeck: pack(deck), seats: [Me.uid], createdAt: Date.now(), updatedAt: Date.now(), vs: opp.uid, vsName: opp.name });
+    await F.updateDoc(gameRef(g.id), { rematch: { id, by: V } }); } catch { return toast("เปิดห้องไม่ได้", "bad"); }
+  stopGame(true); openOnline(id, 0); toast(`เปิดห้องแล้ว รอ ${opp.name} รับคำท้า`);
+}
+function acceptRematch() { const id = G && G.offer; if (!id) return; stopGame(true); joinRoom({ id }); }
 function openOnline(id, V, watch) {
   G = { s: null, V, mode: "friend", id, saved: !!watch, waiting: true, watch: !!watch };
   go();
@@ -205,6 +219,7 @@ function openOnline(id, V, watch) {
     G.updatedAt = g.updatedAt || G.updatedAt;
     G.emoSeen = G.emoSeen || {};
     for (const p of [0, 1]) { const e = g["emo" + p]; if (e && e.at > (G.emoSeen[p] || 0)) { G.emoSeen[p] = e.at; if ((G.watch || p !== G.V) && Date.now() - e.at < 15000 && G.s) showEmote(p, e.k); } }
+    if (g.rematch && g.rematch.by !== G.V && !G.watch && G.offer !== g.rematch.id) { G.offer = g.rematch.id; notify("เพื่อนขอดวลอีกครั้ง", `${G.s ? G.s.P[g.rematch.by].name : "เพื่อน"} เปิดห้องรอแล้ว`, "bot-game"); toast("เพื่อนขอดวลอีกครั้ง"); draw(); }
     if (!g.state) { G.sawWaiting = true; return; } if (g.trimmed || g.state === G.lastState) return; G.lastState = g.state;
     const s = JSON.parse(g.state); const first = !G.s, was = G.s; G.s = s; persist();
     if (!G.watch) heads(was, s);
@@ -388,7 +403,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261111131228").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261111131929").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", bot: true });
@@ -718,7 +733,8 @@ function turnButtons(s, p) {
 function turnButtons0(s, p) {
   if (G.replay) return [h("button", { class: "btn sm", onclick: exitGame }, "กลับหน้าประวัติ")];
   if (G.watch) return [s.phase === "over" ? null : h("button", { class: "btn sm", onclick: flipWatch }, "สลับฝั่ง"), h("button", { class: s.phase === "over" ? "btn gold sm" : "btn sm", onclick: exitGame }, s.phase === "over" ? "กลับหน้าเตรียมเกม" : "เลิกดู")];
-  if (s.phase === "over") return [G.mode !== "friend" ? h("button", { class: "btn gold sm", onclick: rematch }, G.fish ? "ซ้อมอีกรอบ" : "ดวลอีกครั้ง") : null,
+  if (s.phase === "over") return [G.mode !== "friend" ? h("button", { class: "btn gold sm", onclick: rematch }, G.fish ? "ซ้อมอีกรอบ" : "ดวลอีกครั้ง")
+      : G.offer ? h("button", { class: "btn gold sm", onclick: acceptRematch }, "รับคำท้า ดวลอีกครั้ง") : h("button", { class: "btn gold sm", onclick: friendRematch }, "ขอดวลอีกครั้ง"),
     G.rec && G.mode !== "friend" ? h("button", { class: "btn sm", onclick: () => openSummary(G) }, "สรุปเกม") : null,
     h("button", { class: "btn sm", onclick: () => { stopGame(true); location.hash = "#play"; } }, "กลับหน้าเตรียมเกม"), h("a", { class: "btn sm", href: "#history", onclick: () => stopGame(true) }, "ดูประวัติ")];
   if (p == null || !mine(p) || s.trig.length || s.pend || s.phase === "mull") return [];

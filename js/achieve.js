@@ -1,8 +1,8 @@
 // Achievements: earned only by playing (nothing here can be bought), each one unlocking something for the table:
 // a 3D figure to stand by your side, or a colour of lacquer for the mat. Worked out from your own match history.
-import { Data } from "./fb.js?v=20261111131228";
-import { lsGet } from "./util.js?v=20261111131228";
-import { AVATARS, MATS } from "./arena3d.js?v=20261111131228";
+import { Data } from "./fb.js?v=20261111131929";
+import { lsGet } from "./util.js?v=20261111131929";
+import { AVATARS, MATS } from "./arena3d.js?v=20261111131929";
 
 const real = (ms) => ms.filter((m) => m.mode !== "goldfish");
 const wins = (ms) => real(ms).filter((m) => m.result === "win").length;

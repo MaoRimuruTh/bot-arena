@@ -1,9 +1,9 @@
-import { h, openSheet, fmtDate, busy } from "../util.js?v=20261111131228";
-import { Data, Me } from "../fb.js?v=20261111131228";
-import { Views, avatarEl } from "../ui.js?v=20261111131228";
-import { ladder, ladderNow, ladderFresh } from "../ladder.js?v=20261111131228";
-import { hasReplay, openReplay } from "./play.js?v=20261111131228";
-import { ACH, progress, rewardName } from "../achieve.js?v=20261111131228";
+import { h, openSheet, fmtDate, busy } from "../util.js?v=20261111131929";
+import { Data, Me } from "../fb.js?v=20261111131929";
+import { Views, avatarEl } from "../ui.js?v=20261111131929";
+import { ladder, ladderNow, ladderFresh } from "../ladder.js?v=20261111131929";
+import { hasReplay, openReplay } from "./play.js?v=20261111131929";
+import { ACH, progress, rewardName } from "../achieve.js?v=20261111131929";
 
 const MODE_TH = { bot: "บอท", friend: "เพื่อน", solo: "สองฝั่ง", goldfish: "ซ้อมมือเดียว" };
 Views.history = {
@@ -52,7 +52,7 @@ function ladderPanel() {
   if (!L || !L.table.length) return null;
   const mine = L.table.filter((p) => p.uid !== Me.uid).map((p) => ({ p, v: L.vs(Me.uid, p.uid) })).filter((x) => x.v);
   return h("div", { class: "panel stack" }, h("div", { class: "row", style: "justify-content:space-between" }, h("div", { class: "eyebrow" }, "อันดับในกลุ่มเพื่อน"), h("span", { class: "chip" }, `${L.games} เกม`)),
-    h("ol", { class: "ladder" }, L.table.slice(0, 12).map((p, k) => h("li", { class: p.uid === Me.uid ? "me" : "" }, h("span", { class: "num rk" }, k + 1), avatarEl(L.avatars[p.uid], p.name, "sm"),
+    h("ol", { class: "ladder" }, L.table.slice(0, 12).map((p, k) => h("li", { class: p.uid === Me.uid ? "you" : "" }, h("span", { class: "num rk" }, k + 1), avatarEl(L.avatars[p.uid], p.name, "sm"),
       h("b", { class: "nm" }, p.name + (p.uid === Me.uid ? " (คุณ)" : "")), h("span", { class: "num pts", title: "แต้มอันดับ" }, p.r), h("span", { class: "tiny muted num" }, `ชนะ ${p.w} แพ้ ${p.l}${p.d ? ` เสมอ ${p.d}` : ""}`)))),
     mine.length ? h("div", { class: "stack", style: "gap:4px" }, h("div", { class: "tiny muted" }, "คุณกับเพื่อนแต่ละคน"), mine.map(({ p, v }) => h("div", { class: "row small", style: "justify-content:space-between" }, h("span", null, p.name), h("span", { class: "num" }, `ชนะ ${v.w} · แพ้ ${v.l}${v.d ? ` · เสมอ ${v.d}` : ""}`)))) : null,
     h("div", { class: "tiny muted" }, "คิดจากเกมดวลกับเพื่อนที่จบแล้วของทุกคน เริ่มที่ 1000 แต้ม ชนะคนที่แต้มสูงกว่าจะได้แต้มมากกว่า"));
