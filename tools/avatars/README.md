@@ -3,6 +3,9 @@
 Original figures that stand by each player's side of the centre band and react to the game.
 They are chosen in Settings and stored per browser (`bot.av3`); the list is `AVATARS` in `js/arena3d.js`.
 
+The figures so far: ช้างน้อย (chang.py, a baby elephant), ลูกพญานาค (naga.py, a baby naga), แมววิเชียรมาศ (maew.py, a Siamese cat) and
+เสือน้อย (suea.py, a tiger cub in a Muay Thai mongkhon and armband). Each script has a matching `<name>.anim.mjs` with its clips.
+
 How a figure is made:
 1. A Blender script (bpy 5.3) builds the figure from rounded parts hung on named pivots, like a Blockbench model, facing -Y in Blender (+Z in the game):
    `OUT=. python chang.py` writes `chang_raw.glb`.

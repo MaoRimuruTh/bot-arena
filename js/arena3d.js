@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111132244";
-import { E } from "./engine.js?v=20261111132244";
-import { h } from "./util.js?v=20261111132244";
-import { Sfx } from "./sfx.js?v=20261111132244";
+import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111133209";
+import { E } from "./engine.js?v=20261111133209";
+import { h } from "./util.js?v=20261111133209";
+import { Sfx } from "./sfx.js?v=20261111133209";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -57,7 +57,7 @@ function mount(container, opts = {}) {
   R.motes = points(Q === "low" ? 12 : small ? 34 : 80, 0xffd27a, 0.1, FX.star_06, 9);
   R.lifeT = new THREE.Mesh(new THREE.OctahedronGeometry(0.55), new THREE.MeshStandardMaterial({ color: 0xff7a80, emissive: 0xff2a3a, emissiveIntensity: 1.6, roughness: 0.15 })); R.lifeT.position.set(0, 1, -4.7); R.lifeT.visible = false; scene.add(R.lifeT);
   R.lifeHalo = sprite(FX.light_02, 0xff4a52, 3.2, R.lifeT.position, 0.5); R.lifeHalo.visible = false;
-  FX.dot = dotTexture(); R.beamTex = beamTexture(); R.backTex = backTexture(); R.rimTex = haloTexture(18, 5); R.shadowTex = haloTexture(24, 0); R.sigilTex = sigilTexture();
+  FX.dot = dotTexture(); R.beamTex = beamTexture(); R.backTex = backTexture(); R.rimTex = haloTexture(18, 5); R.shadowTex = haloTexture(24, 0); R.sigilTexs = {}; R.sig = ["lotus", "lotus"];
   R.geo = cardGeometry(); R.capMat = new THREE.MeshBasicMaterial({ visible: false });
   R.edgeMat = new THREE.MeshStandardMaterial({ color: 0x3a2a20, roughness: 0.62, metalness: 0 }); // the paper core, not metal
   R.backMat = new THREE.MeshBasicMaterial({ map: R.backTex, color: 0xcccccc, toneMapped: false });
@@ -156,7 +156,7 @@ function unmount() {
 
 // ---------- 3D avatars: a small figure for each player who has chosen one, at the left end of the centre band ----------
 // Original designs made in Blender (tools/avatars). A model with idle / hit / win / lose clips plays them; one without gets the same moves from code.
-export const AVATARS = { chang: { name: "ช้างน้อย", file: "chang.glb", h: 1.25 }, naga: { name: "ลูกพญานาค", file: "naga.glb", h: 1.3 }, maew: { name: "แมววิเชียรมาศ", file: "maew.glb", h: 1.2 } };
+export const AVATARS = { chang: { name: "ช้างน้อย", file: "chang.glb", h: 1.25 }, naga: { name: "ลูกพญานาค", file: "naga.glb", h: 1.3 }, maew: { name: "แมววิเชียรมาศ", file: "maew.glb", h: 1.2 }, suea: { name: "เสือน้อย", file: "suea.glb", h: 1.25 } };
 // lacquer colours for the mat (the gold line-work stays); the edge colour washes in on the opponent's side
 export const MATS = { black: { name: "รักดำ", lac: "#120b09", edge: "rgba(150,34,24," }, red: { name: "รักแดง", lac: "#3a0d09", edge: "rgba(190,60,30," },
   navy: { name: "กรมท่า", lac: "#0b1324", edge: "rgba(60,90,170," }, jade: { name: "เขียวหยก", lac: "#0a1c15", edge: "rgba(40,140,100," }, violet: { name: "ม่วงไพลิน", lac: "#190e22", edge: "rgba(130,70,170," }, gold: { name: "ทองคำเปลว", lac: "#21160a", edge: "rgba(214,166,64," } };
@@ -355,20 +355,42 @@ function haloTexture(blur, stroke) {
   return new THREE.CanvasTexture(c);
 }
 // the summoning circle: rings of lotus petals (กลีบบัว) round a ประจำยาม, in the gold-leaf manner of the mat
-function sigilTexture() {
+// summoning circles, one per player (chosen in settings, opened by playing): drawn white, tinted by the card's colour
+export const SIGILS = { lotus: { name: "บัวประจำยาม" }, sun: { name: "สุริยะดาวเพดาน" }, naga: { name: "เกล็ดนาค" }, yant: { name: "ตารางยันต์" } };
+function sigilTexture(kind = "lotus") {
   const c = document.createElement("canvas"); c.width = c.height = 512; const g = c.getContext("2d"), C = 256;
   g.fillStyle = "#000"; g.fillRect(0, 0, 512, 512); g.strokeStyle = g.fillStyle = "#fff"; g.shadowColor = "#fff"; g.shadowBlur = 10;
   const ring = (r, w) => { g.lineWidth = w; g.beginPath(); g.arc(C, C, r, 0, Math.PI * 2); g.stroke(); };
-  ring(238, 7); ring(222, 2); ring(146, 4); ring(132, 1.5);
-  for (let k = 0; k < 16; k++) { // petals
-    const a = (k / 16) * Math.PI * 2, P = (d, da) => [C + Math.cos(a + da) * d, C + Math.sin(a + da) * d];
-    g.lineWidth = 3; g.beginPath(); g.moveTo(...P(152, -0.16)); g.quadraticCurveTo(...P(196, -0.13), ...P(214, 0)); g.quadraticCurveTo(...P(196, 0.13), ...P(152, 0.16)); g.stroke();
-    g.beginPath(); g.arc(...P(230, Math.PI / 16), 4, 0, 7); g.fill();
+  const at = (a, d) => [C + Math.cos(a) * d, C + Math.sin(a) * d];
+  ring(238, 7); ring(222, 2);
+  if (kind === "sun") { // สุริยะ: long and short rays round an eight-point ceiling star (ดาวเพดาน)
+    ring(140, 4);
+    for (let k = 0; k < 32; k++) { const a = (k / 32) * Math.PI * 2, L = k % 2 ? 182 : 214, w = k % 2 ? 0.05 : 0.07; g.beginPath(); g.moveTo(...at(a - w, 150)); g.lineTo(...at(a, L)); g.lineTo(...at(a + w, 150)); g.closePath(); g.fill(); }
+    g.lineWidth = 4; for (const r0 of [0, Math.PI / 4]) { g.beginPath(); for (let k = 0; k < 4; k++) { const p = at(r0 + (k * Math.PI) / 2, 118); k ? g.lineTo(...p) : g.moveTo(...p); } g.closePath(); g.stroke(); }
+    ring(46, 3); g.beginPath(); g.arc(C, C, 18, 0, 7); g.fill();
+  } else if (kind === "naga") { // เกล็ดนาค: a band of overlapping scales, a coil of dots, a small flower at the heart
+    ring(146, 4);
+    for (const [r, n, off] of [[214, 36, 0], [190, 36, 0.5], [166, 36, 0]]) for (let k = 0; k < n; k++) { const a = ((k + off) / n) * Math.PI * 2; g.lineWidth = 2.5; g.beginPath(); g.arc(...at(a, r), 13, a + Math.PI * 0.5, a + Math.PI * 1.5, false); g.stroke(); }
+    for (let k = 0; k < 24; k++) { const a = (k / 24) * Math.PI * 2 + k * 0.02; g.beginPath(); g.arc(...at(a, 120 - k * 2.4), 4 - k * 0.08, 0, 7); g.fill(); }
+    prajamyam(g, C, C, 52, "#000");
+  } else if (kind === "yant") { // ตารางยันต์: two squares make an eight-point frame round a three-by-three grid, ticks like a compass
+    ring(150, 3);
+    for (let k = 0; k < 48; k++) { const a = (k / 48) * Math.PI * 2; g.lineWidth = k % 4 ? 1.5 : 3.5; g.beginPath(); g.moveTo(...at(a, 158)); g.lineTo(...at(a, k % 4 ? 172 : 196)); g.stroke(); }
+    g.lineWidth = 4; for (const r0 of [Math.PI / 4, 0]) { g.beginPath(); for (let k = 0; k < 4; k++) { const p = at(r0 + (k * Math.PI) / 2, 146); k ? g.lineTo(...p) : g.moveTo(...p); } g.closePath(); g.stroke(); }
+    const h = 146 / Math.SQRT2, s3 = (2 * h) / 3; g.lineWidth = 2;
+    for (let k = 1; k < 3; k++) { g.beginPath(); g.moveTo(C - h + k * s3, C - h); g.lineTo(C - h + k * s3, C + h); g.moveTo(C - h, C - h + k * s3); g.lineTo(C + h, C - h + k * s3); g.stroke(); }
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) { g.beginPath(); g.arc(C - h + s3 * (i + 0.5), C - h + s3 * (j + 0.5), (i + j) % 2 ? 9 : 15, 0, 7); (i + j) % 2 ? g.fill() : g.stroke(); }
+  } else { // บัวประจำยาม: sixteen lotus petals round a four-petal flower
+    ring(146, 4); ring(132, 1.5);
+    for (let k = 0; k < 16; k++) { const a = (k / 16) * Math.PI * 2, P = (d, da) => [C + Math.cos(a + da) * d, C + Math.sin(a + da) * d];
+      g.lineWidth = 3; g.beginPath(); g.moveTo(...P(152, -0.16)); g.quadraticCurveTo(...P(196, -0.13), ...P(214, 0)); g.quadraticCurveTo(...P(196, 0.13), ...P(152, 0.16)); g.stroke();
+      g.beginPath(); g.arc(...P(230, Math.PI / 16), 4, 0, 7); g.fill(); }
+    for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; g.lineWidth = 2; g.beginPath(); g.moveTo(C + Math.cos(a) * 60, C + Math.sin(a) * 60); g.lineTo(C + Math.cos(a) * 128, C + Math.sin(a) * 128); g.stroke(); }
+    prajamyam(g, C, C, 92, "#000");
   }
-  for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; g.lineWidth = 2; g.beginPath(); g.moveTo(C + Math.cos(a) * 60, C + Math.sin(a) * 60); g.lineTo(C + Math.cos(a) * 128, C + Math.sin(a) * 128); g.stroke(); }
-  prajamyam(g, C, C, 92, "#000");
   return new THREE.CanvasTexture(c);
 }
+const sigilTex = (kind) => (R.sigilTexs[kind] = R.sigilTexs[kind] || sigilTexture(SIGILS[kind] ? kind : "lotus"));
 // a card face: the official art drawn unlit, plus a light that sweeps across the laminate, holo foil on rare prints,
 // a white hit flash, and the burn that eats the card from its edges when it is destroyed
 const FACE_HOOK = function (sh) {
@@ -570,7 +592,7 @@ function summonIn(m, L, co, cHex) {
   const mine = L.side === "me", P = L.pos, s = L.scale, g = m.grp, hy = mine ? 3 : 2.1, hz = P.z + (mine ? 1.5 : 1.9); // the hover point stays in view from either seat
   g.position.set(P.x * 0.45, 1.4, mine ? 6.6 : -7.8); g.rotation.set(Math.PI / 2 - 0.3, 0, Math.PI); g.scale.setScalar(s * 0.8);
   m.busy = true; m.shOp = 0; m.glow.material.opacity = 0;
-  const ring = sigil(P, cHex, s); Sfx.play("rise"); trail(m, cHex, 0.95);
+  const ring = sigil(P, cHex, s, R.sig[L.p]); Sfx.play("rise"); trail(m, cHex, 0.95);
   gsap.timeline({ onComplete: () => done(m) })
     .to(g.position, { x: P.x, y: hy, z: hz, duration: 0.5, ease: "power2.out" }, 0)
     .to(g.rotation, { x: Math.PI / 2 - 0.12, z: 0, duration: 0.55, ease: "power2.inOut" }, 0.02)
@@ -601,8 +623,8 @@ function landFx(P, s, co, cHex) {
   burst(new THREE.Vector3(P.x, 0.3, P.z), { n: 10, map: R.FX.star_06, color: 0xffe2a8, size: 0.45, spread: 2 * s, up: 0.9, dur: 0.6 }); burst(new THREE.Vector3(P.x, 0.2, P.z), { n: 18, color: cHex, size: 0.2, spread: 2.4 * s, up: 0.7, dur: 0.7 });
   shake(0.2, 0.5); flash("rgba(255,236,200,.2)", 0.2);
 }
-function sigil(P, color, s) {
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: R.sigilTex, color, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+function sigil(P, color, s, kind) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: sigilTex(kind), color, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
   m.rotation.x = -Math.PI / 2; m.position.set(P.x, 0.05, P.z); m.scale.setScalar(0.5 * s); R.scene.add(m);
   gsap.to(m.material, { opacity: 0.95, duration: 0.35 }); gsap.to(m.scale, { x: 2.9 * s, y: 2.9 * s, z: 2.9 * s, duration: 0.6, ease: "back.out(1.6)" }); gsap.to(m.rotation, { z: 2.2, duration: 1.6, ease: "none" });
   return m;
@@ -750,7 +772,7 @@ function update(s, V, opts = {}) {
   R.queue = R.queue.then(async () => {
     if (!R || (R.token || 0) !== token) return;
     if (opts.reset || R.view !== V) { R.lastEv = s.evc || 0; R.view = V; }
-    syncAvatars(s, V); if (opts.reset) for (const p of [0, 1]) avatarDo(p, s.phase === "over" ? (s.winner === p ? "win" : "lose") : "rest");
+    R.sig = [0, 1].map((p) => (s.P[p] && SIGILS[s.P[p].sig] ? s.P[p].sig : "lotus")); syncAvatars(s, V); if (opts.reset) for (const p of [0, 1]) avatarDo(p, s.phase === "over" ? (s.winner === p ? "win" : "lose") : "rest");
     const evs = (s.ev || []).filter((e) => e.id > R.lastEv); R.lastEv = s.evc || R.lastEv;
     const drops = new Set(evs.filter((e) => e.k === "summon").map((e) => e.i)), burned = new Set(evs.filter((e) => e.k === "destroy").map((e) => e.i));
     for (const e of evs) if (e.k !== "summon") { try { await animateEvent(e, null, s, V); } catch (err) { console.warn(err); } }

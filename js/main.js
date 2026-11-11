@@ -1,18 +1,18 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261111132244";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261111132244";
-import { AVATARS, MATS, gfxSetting, animSetting } from "./arena3d.js?v=20261111132244";
-import { myFigure, myMat, unlocked, needFor } from "./achieve.js?v=20261111132244";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261111132244";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261111132244";
-import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261111132244";
-import { Views, avatarEl } from "./ui.js?v=20261111132244";
-import { Ciel } from "./ai.js?v=20261111132244";
-import "./views/library.js?v=20261111132244";
-import "./views/decks.js?v=20261111132244";
-import "./views/lab.js?v=20261111132244";
-import "./views/history.js?v=20261111132244";
-import { openReport } from "./views/ask.js?v=20261111132244";
-import "./views/play.js?v=20261111132244";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261111133209";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261111133209";
+import { AVATARS, MATS, SIGILS, gfxSetting, animSetting } from "./arena3d.js?v=20261111133209";
+import { myFigure, myMat, mySigil, unlocked, needFor } from "./achieve.js?v=20261111133209";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261111133209";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261111133209";
+import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261111133209";
+import { Views, avatarEl } from "./ui.js?v=20261111133209";
+import { Ciel } from "./ai.js?v=20261111133209";
+import "./views/library.js?v=20261111133209";
+import "./views/decks.js?v=20261111133209";
+import "./views/lab.js?v=20261111133209";
+import "./views/history.js?v=20261111133209";
+import { openReport } from "./views/ask.js?v=20261111133209";
+import "./views/play.js?v=20261111133209";
 
 const root = $("#view");
 let current = null, cardsReady = false;
@@ -72,11 +72,13 @@ function avatarSection() {
   const seg = (label, key, cur, opts, kind, done) => h("div", { class: "seg wrap", role: "group", "aria-label": label }, opts.map(([k, t]) => { const open = !k || unlocked(kind, k);
     return h("button", { "aria-pressed": cur === k ? "true" : "false", disabled: !open, title: open ? t : "ล็อคอยู่ · " + needFor(kind, k), onclick: (e) => {
       try { if (k) localStorage.setItem(key, k); else localStorage.removeItem(key); } catch {} for (const b of e.currentTarget.parentElement.children) b.setAttribute("aria-pressed", b === e.currentTarget ? "true" : "false"); toast(done(t)); } }, open ? t : "🔒 " + t); }));
-  const locked = [...Object.keys(AVATARS).filter((k) => !unlocked("av", k)).map((k) => [AVATARS[k].name, needFor("av", k)]), ...Object.keys(MATS).filter((k) => !unlocked("mat", k)).map((k) => ["ผ้าปู" + MATS[k].name, needFor("mat", k)])];
-  return [h("div", { class: "eyebrow", style: "margin-top:12px" }, "อวตาร 3 มิติและผ้าปูโต๊ะ"),
-    h("div", { class: "small muted" }, "อวตารยืนข้างแถบกลางสนามฝั่งคุณ เด้งตอนเริ่มเทิร์น สะดุ้งตอนเสีย LIFE ดีใจหรือคอตกตอนจบเกม เปลี่ยนแล้วใช้ตั้งแต่เกมถัดไป"),
+  const locked = [...Object.keys(AVATARS).filter((k) => !unlocked("av", k)).map((k) => [AVATARS[k].name, needFor("av", k)]), ...Object.keys(MATS).filter((k) => !unlocked("mat", k)).map((k) => ["ผ้าปู" + MATS[k].name, needFor("mat", k)]),
+    ...Object.keys(SIGILS).filter((k) => !unlocked("sig", k)).map((k) => ["วงอัญเชิญ" + SIGILS[k].name, needFor("sig", k)])];
+  return [h("div", { class: "eyebrow", style: "margin-top:12px" }, "อวตาร 3 มิติ ผ้าปูโต๊ะ และวงอัญเชิญ"),
+    h("div", { class: "small muted" }, "อวตารยืนข้างแถบกลางสนามฝั่งคุณ เด้งตอนเริ่มเทิร์น สะดุ้งตอนเสีย LIFE ดีใจหรือคอตกตอนจบเกม วงอัญเชิญคือวงที่เปิดใต้การ์ดตอนเราอัญเชิญ เปลี่ยนแล้วใช้ตั้งแต่เกมถัดไป"),
     seg("อวตาร 3 มิติ", "bot.av3", myFigure(), [["", "ไม่มี"], ...Object.entries(AVATARS).map(([k, a]) => [k, a.name])], "av", (t) => `เลือก${t}แล้ว ใช้ตั้งแต่เกมถัดไป`),
     seg("ผ้าปูโต๊ะ", "bot.mat", myMat(), Object.entries(MATS).map(([k, m]) => [k, m.name]), "mat", (t) => `ผ้าปู${t} ใช้ตั้งแต่เปิดสนามครั้งถัดไป`),
+    seg("วงอัญเชิญ", "bot.sig", mySigil(), Object.entries(SIGILS).map(([k, m]) => [k, m.name]), "sig", (t) => `วงอัญเชิญลาย${t} ใช้ตั้งแต่เกมถัดไป`),
     locked.length ? h("div", { class: "tiny muted" }, "ปลดล็อคได้จากการเล่นเท่านั้น: " + locked.map(([n, w]) => `${n} (${w})`).join(" · ")) : null];
 }
 // how much the 3D table draws, and how fast its animations run (both per browser; used the next time the table opens)
