@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111083344";
-import { E } from "./engine.js?v=20261111083344";
-import { h } from "./util.js?v=20261111083344";
-import { Sfx } from "./sfx.js?v=20261111083344";
+import { card, resolveArt, colorHex, corsUrl } from "./cards.js?v=20261111084046";
+import { E } from "./engine.js?v=20261111084046";
+import { h } from "./util.js?v=20261111084046";
+import { Sfx } from "./sfx.js?v=20261111084046";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -20,7 +20,7 @@ function mount(container) {
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, innerWidth < 760 ? 1.5 : 1.75));
   renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.92;
   renderer.shadowMap.enabled = innerWidth >= 760; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  const scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0x070a14, 0.026);
+  const scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0x0b0605, 0.026);
   const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 200);
   const loader = new THREE.TextureLoader(); loader.setCrossOrigin("anonymous");
   const tex = (u, srgb = true) => { const t = loader.load(u); if (srgb) t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; return t; };
@@ -52,6 +52,11 @@ function mount(container) {
   R.geo = cardGeometry(); R.capMat = new THREE.MeshBasicMaterial({ visible: false });
   R.edgeMat = new THREE.MeshStandardMaterial({ color: 0x3a2a20, roughness: 0.62, metalness: 0 }); // the paper core, not metal
   R.backMat = new THREE.MeshBasicMaterial({ map: R.backTex, color: 0xcccccc, toneMapped: false });
+  // the teak table the mat lies on, and candles in brass dishes round it (two of them light the table on larger screens)
+  const wood = new THREE.Mesh(new THREE.PlaneGeometry(70, 50), new THREE.MeshStandardMaterial({ map: woodTexture(small), roughness: 0.55, metalness: 0 }));
+  wood.rotation.x = -Math.PI / 2; wood.position.set(0, -0.335, -2); wood.receiveShadow = true; scene.add(wood);
+  R.flameTex = flameTexture();
+  R.candles = [[-4.6, -8.7], [4.6, -8.7], [-9.4, -4.8], [9.4, -4.8]].map(([x, z], k) => candle(x, z, !small && k >= 2));
 
   if (THREE.EffectComposer && innerWidth >= 760) {
     R.composer = new THREE.EffectComposer(renderer); R.composer.addPass(new THREE.RenderPass(scene, camera));
@@ -86,6 +91,7 @@ function mount(container) {
     const dt = Math.min(0.05, clock.getDelta()), t = clock.elapsedTime;
     if (!reduce) {
       for (const pts of [R.motes]) { const a = pts.geometry.attributes.position.array, sp = pts.userData.sp; for (let i = 0; i < sp.length; i++) { a[i * 3 + 1] += sp[i] * 60 * dt * (pts === R.motes ? 0.35 : 1); a[i * 3] += Math.sin(t + i) * 0.002; if (a[i * 3 + 1] > 9) a[i * 3 + 1] = 0; } pts.geometry.attributes.position.needsUpdate = true; }
+      for (const c of R.candles) { const f = 1 + 0.07 * Math.sin(t * 13 + c.ph) + 0.05 * Math.sin(t * 7.3 + c.ph * 2) + Math.random() * 0.03; c.flame.scale.set(0.16 * (2 - f), 0.36 * f, 1); c.halo.material.opacity = 0.32 * f; if (c.L) c.L.intensity = 0.55 * f; }
       R.lifeT.rotation.y = t * 1.2; R.lifeT.position.y = 1 + Math.sin(t * 2) * 0.12; R.lifeHalo.position.copy(R.lifeT.position);
       for (const m of R.meshes.values()) {
         if (m.pulse) m.glow.material.opacity = 0.45 + Math.sin(t * 6) * 0.3;
@@ -185,6 +191,36 @@ function matTextures(small) {
   // the labels need the display font: redraw once it has loaded
   if (document.fonts && document.fonts.status !== "loaded") document.fonts.ready.then(() => { if (!R) return; draw(); tb.needsUpdate = true; tg.needsUpdate = true; });
   return { base: tb, glow: tg };
+}
+// dark teak planks: grain running along each plank, a seam between them, each plank a slightly different tone
+function woodTexture(small) {
+  const S = small ? 512 : 1024, c = document.createElement("canvas"); c.width = c.height = S; const g = c.getContext("2d"), img = g.createImageData(S, S), d = img.data;
+  const N = 4, pw = S / N, ph = [...Array(N)].map(() => Math.random() * 50), tone = [...Array(N)].map(() => 0.85 + Math.random() * 0.3);
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const p = Math.floor(x / pw), lx = x - p * pw, w = lx + 7 * Math.sin(y * 0.011 + ph[p]) + 3 * Math.sin(y * 0.037 + ph[p] * 2);
+    const v = Math.max(0, Math.min(1, 0.5 + 0.18 * Math.sin(w * 0.33 + ph[p]) + 0.08 * Math.sin(w * 1.7 + ph[p] * 5) + (Math.random() - 0.5) * 0.12));
+    const k = tone[p] * (lx < 2 ? 0.35 : 1), i = (y * S + x) * 4;
+    d[i] = (28 + 26 * v) * k; d[i + 1] = (15 + 13 * v) * k; d[i + 2] = (9 + 7 * v) * k; d[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(5, 4); t.anisotropy = 8; return t;
+}
+function flameTexture() {
+  const c = document.createElement("canvas"); c.width = 64; c.height = 128; const g = c.getContext("2d");
+  let gr = g.createRadialGradient(32, 84, 2, 32, 76, 46); gr.addColorStop(0, "rgba(255,190,90,.9)"); gr.addColorStop(1, "rgba(255,90,20,0)"); g.fillStyle = gr; g.fillRect(0, 0, 64, 128);
+  g.beginPath(); g.moveTo(32, 14); g.bezierCurveTo(46, 52, 46, 82, 32, 100); g.bezierCurveTo(18, 82, 18, 52, 32, 14); gr = g.createLinearGradient(0, 14, 0, 100); gr.addColorStop(0, "rgba(255,170,60,.0)"); gr.addColorStop(0.45, "rgba(255,214,120,.95)"); gr.addColorStop(1, "rgba(255,250,230,1)"); g.fillStyle = gr; g.fill();
+  return new THREE.CanvasTexture(c);
+}
+function candle(x, z, light) {
+  const grp = new THREE.Group(); grp.position.set(x, -0.335, z);
+  const dish = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.28, 0.06, 24), new THREE.MeshStandardMaterial({ color: 0xc99a3e, metalness: 0.6, roughness: 0.35 })); dish.position.y = 0.03;
+  const wax = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.14, 0.62, 20), new THREE.MeshStandardMaterial({ color: 0xf2e6c8, roughness: 0.6, emissive: 0x3a2008, emissiveIntensity: 0.5 })); wax.position.y = 0.37;
+  const flame = new THREE.Sprite(new THREE.SpriteMaterial({ map: R.flameTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); flame.scale.set(0.16, 0.36, 1); flame.position.y = 0.86;
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: R.FX.dot, color: 0xffa040, transparent: true, opacity: 0.32, blending: THREE.AdditiveBlending, depthWrite: false })); halo.scale.set(1.3, 1.3, 1); halo.position.y = 0.86;
+  const pool = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 3.2), new THREE.MeshBasicMaterial({ map: R.FX.dot, color: 0xff9a40, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false })); pool.rotation.x = -Math.PI / 2; pool.position.y = 0.004;
+  grp.add(dish, wax, flame, halo, pool);
+  let L = null; if (light) { L = new THREE.PointLight(0xffa24a, 0.55, 7, 2); L.position.y = 1; grp.add(L); }
+  R.scene.add(grp); return { flame, halo, L, ph: Math.random() * 10 };
 }
 function softShadow() {
   const c = document.createElement("canvas"); c.width = c.height = 256; const g = c.getContext("2d");
