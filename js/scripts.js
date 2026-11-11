@@ -237,11 +237,12 @@ function scoutExtras(c, top, taken, free) {
   return { ops, say };
 }
 // scout n, choose up to k matching cards and send them to `to` ("put" / "putJ" / "hand"), rest shuffled back
-function dinoScout(c, n0, test, k, to, prompt) {
+function dinoScout(c, n0, test, k, to, prompt, whyNot) {
   const n = scoutN(c, n0); const top = c.s.P[c.seat].deck.slice(0, n);
   const cands = top.filter((x) => test(x)).sort(strongFirst(c.E, c.s));
   const lim = to === "hand" ? k : Math.min(k, room(c));
-  const got = lim > 0 && cands.length ? c.choose(cands, lim, prompt, { optional: true, reveal: top.map((x) => x.i) }) : [];
+  const why = whyNot ? Object.fromEntries(top.filter((x) => !cands.includes(x)).map((x) => [x.i, whyNot(x)])) : null; // shown on the cards that cannot be picked
+  const got = lim > 0 && cands.length ? c.choose(cands, lim, prompt, { optional: true, reveal: top.map((x) => x.i), why }) : [];
   const ops = got.map((x) => (to === "hand" ? { op: "search", seat: c.seat, take: x.i, to: "hand" } : { op: "put", i: x.i, jt: to === "putJ" }));
   const ex = scoutExtras(c, top, got.map((x) => x.i), (to === "hand" ? room(c) : lim - got.length));
   ops.push(...ex.ops, { op: "shuffle", seat: c.seat });
@@ -273,7 +274,8 @@ Object.assign(SCRIPTS, {
   // สัตยาซอรัส: every กะปอม on our Avatar Zone +1
   "BT03-013": { aura: (E, s, src, L) => (L.z === "av" ? [{ seat: L.p, test: (x) => kapom(E, s, x), n: 1 }] : []) },
   // สุธีธรนีซอรัส: last words — scout 3, summon another ไดโนกาฬสินธุ์ Cost ≤3
-  "BT06-011": { death: (c) => dinoScout(c, 3, (x) => isAv(c.E, c.s, x) && nm(c.E, c.s, x, "ไดโนกาฬสินธุ์") && !nm(c.E, c.s, x, "สุธีธรนีซอรัส") && (c.E.def(c.s, x).c || 0) <= 3, 1, "put", "สอดแนม: เลือกไดโนกาฬสินธุ์ Cost 3 หรือต่ำกว่าที่จะอัญเชิญ") },
+  "BT06-011": { death: (c) => dinoScout(c, 3, (x) => isAv(c.E, c.s, x) && nm(c.E, c.s, x, "ไดโนกาฬสินธุ์") && !nm(c.E, c.s, x, "สุธีธรนีซอรัส") && (c.E.def(c.s, x).c || 0) <= 3, 1, "put", "สอดแนม: เลือก Avatar ชื่อ ไดโนกาฬสินธุ์ ที่ Cost 3 หรือต่ำกว่ามาอัญเชิญ",
+    (x) => (!isAv(c.E, c.s, x) ? "ไม่ใช่ Avatar" : !nm(c.E, c.s, x, "ไดโนกาฬสินธุ์") ? "ชื่อไม่ใช่ไดโนกาฬสินธุ์" : nm(c.E, c.s, x, "สุธีธรนีซอรัส") ? "ชื่อเดียวกับใบนี้" : "Cost เกิน 3")) },
   // สยามแรปเตอร์: +2 in our turn (self-summon when scouted is handled by scoutExtras)
   "BT12-025": { aura: (E, s, src, L) => (L.z === "av" && s.active === L.p ? [{ seat: L.p, test: (x) => x.i === src.i, n: 2 }] : []) },
   // ดอกเตอร์เต้: exile a กะปอม from hell → summon a กะปอม Cost ≤5 from hell (it gains "last words: exile"); discard 1 more to make it จุติ

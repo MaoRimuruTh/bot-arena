@@ -1,12 +1,13 @@
-import { h, openSheet, holo, toast, fmtDate } from "./util.js?v=20261111043245";
-import { fxText } from "./fxtext.js?v=20261111043245";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt, priceOf, setCode } from "./cards.js?v=20261111043245";
-import { Data, saveOwned, saveSkins, saveFavs, savePrices } from "./fb.js?v=20261111043245";
-import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261111043245";
+import { h, openSheet, holo, toast, fmtDate } from "./util.js?v=20261111074841";
+import { fxText } from "./fxtext.js?v=20261111074841";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt, priceOf, setCode } from "./cards.js?v=20261111074841";
+import { Data, saveOwned, saveSkins, saveFavs, savePrices } from "./fb.js?v=20261111074841";
+import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261111074841";
 
 export function cardBtn(id, opts = {}) {
-  const c = card(id); const b = h("button", { class: "ccard" + (opts.cls ? " " + opts.cls : ""), type: "button", "aria-label": c ? c.n : "การ์ด", title: c ? c.n : "", onclick: opts.onclick });
+  const c = card(id); const b = h("button", { class: "ccard" + (opts.cls ? " " + opts.cls : "") + (opts.note ? " noted" : ""), type: "button", "aria-label": c ? c.n + (opts.note ? " · " + opts.note : "") : "การ์ด", title: c ? c.n : "", onclick: opts.onclick });
   if (c) b.append(artImg(c));
+  if (opts.note) b.append(h("span", { class: "why" }, opts.note)); // why this card cannot be chosen
   if (opts.badge) b.append(h("span", { class: "badge" }, opts.badge));
   if (opts.own) b.append(h("span", { class: "own" }, opts.own));
   if (c && opts.heart !== false && isFav(c)) b.append(h("span", { class: "fav", "aria-label": "การ์ดที่ชอบ" }, "♥"));

@@ -1,5 +1,5 @@
 // Sound effects synthesized with Web Audio — no audio files to download or license.
-import { lsGet, lsSet } from "./util.js?v=20261111043245";
+import { lsGet, lsSet } from "./util.js?v=20261111074841";
 
 let ctx = null, master = null, noiseBuf = null;
 const state = { on: lsGet("bot.sound", true), vol: lsGet("bot.volume", 0.6) };
@@ -25,16 +25,26 @@ function noise(t0, dur, { vol = 0.3, from = 2000, to = 300, q = 0.8, type = "low
   g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
   s.connect(f); f.connect(g); g.connect(master); s.start(t0); s.stop(t0 + dur + 0.02);
 }
+// seven equal steps to the octave, as in Thai classical tuning; the background music uses the same scale
+const T = (k) => 293.66 * Math.pow(2, k / 7);
 // a small palette per card colour so summons sound different
 const COLOR_NOTES = { "แดง": [220, 330, 440], "ฟ้า": [392, 523, 784], "เขียว": [294, 370, 440], "ม่วง": [233, 277, 349] };
 const SOUNDS = {
   click(t) { tone(880, t, 0.06, { type: "triangle", vol: 0.08 }); },
+  // a summon is two sounds: the card rising and turning over, then the slam when it lands
+  rise(t) { noise(t, 0.6, { vol: 0.13, from: 350, to: 4200, type: "bandpass", q: 1.3 }); [0, 2, 4, 7].forEach((k, j) => tone(T(k + 7), t + 0.1 + j * 0.08, 0.4, { type: "sine", vol: 0.045 })); },
   summon(t, o = {}) {
-    noise(t, 0.35, { vol: 0.18, from: 300, to: 3000, type: "bandpass", q: 1.2 }); // whoosh down from the sky
-    tone(70, t + 0.32, 0.4, { vol: 0.45, slide: 0.5 }); noise(t + 0.32, 0.25, { vol: 0.3, from: 900, to: 80 }); // impact
+    tone(70, t, 0.45, { vol: 0.5, slide: 0.5 }); noise(t, 0.28, { vol: 0.32, from: 900, to: 80 }); noise(t, 0.08, { vol: 0.2, from: 4000, to: 1500, type: "bandpass" }); // impact
     const n = COLOR_NOTES[o.color] || [330, 440, 660];
-    n.forEach((f, k) => tone(f, t + 0.36 + k * 0.06, 0.5, { type: o.color === "ม่วง" ? "sawtooth" : "triangle", vol: 0.09 }));
+    n.forEach((f, k) => tone(f, t + 0.04 + k * 0.06, 0.55, { type: o.color === "ม่วง" ? "sawtooth" : "triangle", vol: 0.09 }));
   },
+  burn(t) { // catches fire and crackles
+    noise(t, 1.2, { vol: 0.14, from: 1600, to: 420, type: "bandpass", q: 0.6 }); tone(95, t, 0.5, { vol: 0.16, slide: 0.6 });
+    for (let k = 0; k < 16; k++) noise(t + 0.1 + Math.random() * 1.0, 0.025, { vol: 0.08 + Math.random() * 0.12, from: 2500 + Math.random() * 3500, to: 1200, type: "bandpass", q: 2.5 });
+  },
+  spent(t) { [0, 4, 7, 11].forEach((k, j) => tone(T(k + 7), t + j * 0.07, 0.9, { type: "sine", vol: 0.05 })); noise(t, 0.9, { vol: 0.05, from: 5000, to: 9000, type: "highpass" }); },
+  void(t) { noise(t, 0.8, { vol: 0.2, from: 3200, to: 110, type: "lowpass" }); tone(150, t, 0.8, { type: "sawtooth", vol: 0.05, slide: 0.3 }); tone(T(-14), t + 0.5, 0.6, { vol: 0.25 }); },
+  fly(t) { noise(t, 0.4, { vol: 0.1, from: 500, to: 2800, type: "bandpass", q: 1.1 }); },
   cast(t, o = {}) { const n = COLOR_NOTES[o.color] || [523, 659, 784]; [0, 1, 2, 1, 2].forEach((k, j) => tone(n[k] * 2, t + j * 0.05, 0.3, { type: "sine", vol: 0.09 })); noise(t, 0.4, { vol: 0.06, from: 6000, to: 9000, type: "highpass" }); },
   land(t) { tone(110, t, 1.2, { type: "sine", vol: 0.3, attack: 0.15 }); tone(165, t + 0.05, 1.1, { type: "sine", vol: 0.15, attack: 0.2 }); },
   declare(t) { noise(t, 0.18, { vol: 0.12, from: 1200, to: 4000, type: "bandpass" }); tone(196, t, 0.2, { type: "square", vol: 0.05 }); },
