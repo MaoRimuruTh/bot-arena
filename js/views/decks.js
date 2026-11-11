@@ -1,17 +1,17 @@
-import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261111235558";
-import { plain, isOwnerNow } from "../persona.js?v=20261111235558";
-import { fxText } from "../fxtext.js?v=20261111235558";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261111235558";
-import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261111235558";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261111235558";
-import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261111235558";
-import { filterBar, filterCards } from "./library.js?v=20261111235558";
-import { openingOdds, simGame } from "./lab.js?v=20261111235558";
-import { freeBuild } from "../builder.js?v=20261111235558";
-import { deckCode, deckText, parseDeck, printCard } from "../deckcode.js?v=20261111235558";
-import { CIEL_DECKS } from "../cieldecks.js?v=20261111235558";
-import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261111235558";
-import { deckLocked, deckLockAch } from "../achieve.js?v=20261111235558";
+import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261112000250";
+import { plain, isOwnerNow } from "../persona.js?v=20261112000250";
+import { fxText } from "../fxtext.js?v=20261112000250";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261112000250";
+import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261112000250";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261112000250";
+import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261112000250";
+import { filterBar, filterCards } from "./library.js?v=20261112000250";
+import { openingOdds, simGame } from "./lab.js?v=20261112000250";
+import { freeBuild } from "../builder.js?v=20261112000250";
+import { deckCode, deckText, parseDeck, printCard } from "../deckcode.js?v=20261112000250";
+import { CIEL_DECKS } from "../cieldecks.js?v=20261112000250";
+import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261112000250";
+import { deckLocked, deckLockAch } from "../achieve.js?v=20261112000250";
 
 // Ciel's theme decks: print codes → card ids (resolved once the card data is loaded). They are Ciel's decks for Rimuru,
 // so only the owner's account sees them: other accounts get none (not in the deck list, the duel setup, the lab or the bot's picks)
@@ -209,7 +209,7 @@ Views.decks = {
         odds ? h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "ได้เอซภายในเทิร์น 3"), h("b", { style: "color:var(--gold-hi)" }, Math.round(odds.t3 * 100) + "%")) : null),
       h("div", { class: "lab" },
         h("div", { class: "rows" }, ...Object.entries(groups).flatMap(([k, list]) => [h("div", { class: "eyebrow h" }, `${k} · ${list.reduce((a, e) => a + e.n, 0)}`), ...list.map(pill)]),
-          h("div", { class: "eyebrow h" }, `LIFE · ${(d.life || []).length}`), ...(d.life || []).map((i) => pill({ c: card(i), n: 1, id: +i }))),
+          h("div", { class: "eyebrow h" }, `LIFE (การ์ดบ้าน) · ${(d.life || []).length}`), ...(d.life || []).map((i) => pill({ c: card(i), n: 1, id: +i }))),
         h("aside", { class: "stack" }, h("div", { class: "panel" }, preview),
           d.plan ? h("div", { class: "panel stack", style: "gap:6px" }, h("div", { class: "eyebrow" }, "แผนการเล่นจากชิเอล"), h("div", { class: "small", style: "white-space:pre-wrap;line-height:1.6" }, d.plan)) : null,
           h("div", { class: "panel stack", style: "gap:8px" }, h("div", { class: "eyebrow" }, "เส้น Cost แยกสี"),
@@ -269,7 +269,7 @@ Views.decks = {
             e.c.t === "A" ? h("button", { class: "mini", title: "ตั้งเป็นเอซ", "aria-label": "ตั้ง " + e.c.n + " เป็นเอซ", "aria-pressed": isAce(e.id) ? "true" : "false", onclick: () => { remember(d); d.ace = isAce(e.id) ? d.ace.filter((x) => +x !== e.id) : [...(d.ace || []), e.id].slice(-2); queueSave(d); this.drawSide(); } }, isAce(e.id) ? "★" : "☆") : null,
             h("button", { class: "mini", "aria-label": `ลด ${e.c.n} 1 ใบ`, title: "ลด 1 ใบ", onclick: () => change(e.id, -1) }, "−"), h("button", { class: "mini", "aria-label": `เพิ่ม ${e.c.n} 1 ใบ`, title: "เพิ่ม 1 ใบ", onclick: () => change(e.id, 1) }, "+"),
             h("button", { class: "mini del", "aria-label": `เอา ${e.c.n} ออกจากเด็คทั้งหมด`, title: "เอาออกทั้งหมด", onclick: () => change(e.id, "all") }, "✕"))) : h("div", { class: "empty" }, "ยังไม่มีการ์ดในเด็ค แตะการ์ดในรายการเพื่อเพิ่ม"),
-          h("div", { class: "eyebrow", style: "margin-top:8px" }, `LIFE ${d.life.length}/5 · แตะเพื่อเอาออก`), h("div", { class: "pick" }, d.life.map((id) => cardBtn(id, { badge: "✕ เอาออก", onclick: () => change(id, "all") })),
+          h("div", { class: "eyebrow", style: "margin-top:8px" }, `LIFE (การ์ดบ้าน) ${d.life.length}/5 · แตะเพื่อเอาออก`), h("div", { class: "pick" }, d.life.map((id) => cardBtn(id, { badge: "✕ เอาออก", onclick: () => change(id, "all") })),
             d.life.length < 5 ? h("button", { class: "btn sm", onclick: () => { PickFilter.t = "L"; const s = document.getElementById("pk-t"); if (s) s.value = "L"; limit = 90; drawPick(); wrap.dataset.tab = "pick"; drawBar(); } }, "เลือก LIFE") : null)));
       if (caret) { const n = document.getElementById("deck-name"); if (n) { n.focus(); try { n.setSelectionRange(caret[0], caret[1]); } catch { /* not a text field any more */ } } }
     };
