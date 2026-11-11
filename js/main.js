@@ -1,18 +1,33 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261111081724";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261111081724";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261111081724";
-import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261111081724";
-import { Views, avatarEl } from "./ui.js?v=20261111081724";
-import { Ciel } from "./ai.js?v=20261111081724";
-import "./views/library.js?v=20261111081724";
-import "./views/decks.js?v=20261111081724";
-import "./views/lab.js?v=20261111081724";
-import "./views/history.js?v=20261111081724";
-import "./views/ask.js?v=20261111081724";
-import "./views/play.js?v=20261111081724";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261111082758";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261111082758";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261111082758";
+import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261111082758";
+import { Views, avatarEl } from "./ui.js?v=20261111082758";
+import { Ciel } from "./ai.js?v=20261111082758";
+import "./views/library.js?v=20261111082758";
+import "./views/decks.js?v=20261111082758";
+import "./views/lab.js?v=20261111082758";
+import "./views/history.js?v=20261111082758";
+import "./views/ask.js?v=20261111082758";
+import "./views/play.js?v=20261111082758";
 
 const root = $("#view");
 let current = null, cardsReady = false;
+// installable as an app: the service worker serves the app's own files, and the browser's install prompt waits in Settings
+let installEv = null;
+addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEv = e; });
+addEventListener("appinstalled", () => { installEv = null; toast("ติดตั้งแอปแล้ว เปิดจากหน้าจอโฮมได้เลย"); });
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+const standalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+function appSection(api) {
+  if (standalone()) return [];
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  if (!installEv && !ios) return [];
+  return [h("div", { class: "eyebrow", style: "margin-top:12px" }, "แอปบนหน้าจอโฮม"),
+    h("div", { class: "small muted" }, "เปิดเต็มจอไม่มีแถบเบราว์เซอร์ สนามจะกว้างขึ้น และหน้าเว็บโหลดเร็วขึ้น"),
+    installEv ? h("div", { class: "row" }, h("button", { class: "btn gold", onclick: async () => { const ev = installEv; installEv = null; api.close(); ev.prompt(); try { await ev.userChoice; } catch {} } }, "ติดตั้งเป็นแอป"))
+      : h("div", { class: "small" }, "บน iPhone/iPad: แตะปุ่มแชร์ของ Safari แล้วเลือก \"เพิ่มไปยังหน้าจอโฮม\"")];
+}
 
 // ---------- background: still flecks of gold leaf on the lacquer (drawn once per size, no animation) ----------
 (function bgfx() {
@@ -53,7 +68,7 @@ function settings() {
   openSheet((api) => {
     const key = h("input", { type: "password", value: Ciel.key(), placeholder: "sk-ant-…", autocomplete: "off", "aria-label": "Claude API key" });
     const model = h("select", { "aria-label": "โมเดลหลัก" }, ["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-5-5"].map((m) => h("option", { value: m, selected: m === Ciel.model() }, m)));
-    const out = [...profileSection(api), h("div", { class: "eyebrow", style: "margin-top:12px" }, "ชิเอล (Claude API)"),
+    const out = [...profileSection(api), ...appSection(api), h("div", { class: "eyebrow", style: "margin-top:12px" }, "ชิเอล (Claude API)"),
       h("div", { class: "small muted" }, "ใส่ API key ของคุณเองเพื่อให้ชิเอลคิดเป็นบอท อ่านเอฟเฟกต์การ์ด และจัดเด็ค key เก็บเฉพาะในเบราว์เซอร์นี้ ไม่ส่งขึ้นฐานข้อมูล ค่าใช้จ่ายคิดกับบัญชี API ของคุณ ถ้าไม่ใส่ ยังเล่นกับบอทพื้นฐานได้"),
       key, h("div", { class: "row" }, h("span", { class: "small muted" }, "โมเดลจัดเด็ค/อ่านการ์ด"), model),
       h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => { const v = key.value.trim(); if (v) lsSet("bot.apiKey", v); else lsDel("bot.apiKey"); lsSet("bot.model", model.value); toast(v ? "บันทึก key ของชิเอลแล้ว" : "ลบ key แล้ว"); meArea(); api.close(); } }, "บันทึก"), Ciel.on() ? h("button", { class: "btn danger sm", onclick: () => { lsDel("bot.apiKey"); meArea(); api.close(); toast("ลบ key แล้ว"); } }, "ลบ key") : null)];
