@@ -270,6 +270,7 @@ body.arena-on main{padding:0;max-width:none}
 @media (prefers-reduced-motion:reduce){*,*::after,*::before{animation:none!important;transition:none!important}}
 
 .hcard img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block;pointer-events:none}
+.crys.tap{cursor:pointer;pointer-events:auto;border-radius:8px} .crys.tap:focus-visible{outline:2px solid var(--gold-hi);outline-offset:3px}
 /* drawn just now: in from the right (where the Deck sits), on top of the card's own fan position */
 .hcard.fresh{animation:drawIn .5s cubic-bezier(.2,.8,.25,1) backwards}
 @keyframes drawIn{from{translate:160px 70px;rotate:14deg;opacity:0}to{translate:0 0;rotate:0deg;opacity:1}}
