@@ -1,8 +1,9 @@
-import { h, openSheet, fmtDate, busy } from "../util.js?v=20261111123125";
-import { Data } from "../fb.js?v=20261111123125";
-import { Views } from "../ui.js?v=20261111123125";
-import { hasReplay, openReplay } from "./play.js?v=20261111123125";
-import { ACH, progress, rewardName } from "../achieve.js?v=20261111123125";
+import { h, openSheet, fmtDate, busy } from "../util.js?v=20261111131228";
+import { Data, Me } from "../fb.js?v=20261111131228";
+import { Views, avatarEl } from "../ui.js?v=20261111131228";
+import { ladder, ladderNow, ladderFresh } from "../ladder.js?v=20261111131228";
+import { hasReplay, openReplay } from "./play.js?v=20261111131228";
+import { ACH, progress, rewardName } from "../achieve.js?v=20261111131228";
 
 const MODE_TH = { bot: "บอท", friend: "เพื่อน", solo: "สองฝั่ง", goldfish: "ซ้อมมือเดียว" };
 Views.history = {
@@ -10,7 +11,7 @@ Views.history = {
     const all = Data.matches, ms = all.filter((m) => m.mode !== "goldfish"), fish = all.filter((m) => m.mode === "goldfish"); // practice against the dummy is kept out of the win rates
     const head = h("div", { class: "pagehead" }, h("div", null, h("h1", null, "ประวัติการดวล"), h("div", { class: "muted small" }, "ทุกเกมที่จบจะบันทึกอัตโนมัติ ชิเอลใช้ข้อมูลนี้วิเคราะห์เด็ค")));
     if (!Data.ready.matches) return root.replaceChildren(head, busy());
-    if (!all.length) return root.replaceChildren(head, h("div", { class: "empty" }, "ยังไม่มีเกมที่จบ ลงสนามสักเกมก่อนนะ"));
+    if (!all.length) return root.replaceChildren(head, h("div", { class: "stack" }, h("div", { class: "empty" }, "ยังไม่มีเกมที่จบ ลงสนามสักเกมก่อนนะ"), ladderPanel()));
     const w = ms.filter((m) => m.result === "win").length;
     const byDeck = {};
     for (const m of ms) { const k = m.deckName || "ไม่ทราบ"; byDeck[k] = byDeck[k] || { n: 0, w: 0, t: 0 }; byDeck[k].n++; byDeck[k].t += m.turns || 0; if (m.result === "win") byDeck[k].w++; }
@@ -23,7 +24,7 @@ Views.history = {
           h("span", { class: "chip " + (m.mode === "goldfish" ? "gold" : m.result === "win" ? "good" : m.result === "loss" ? "bad" : "") }, m.mode === "goldfish" ? (m.result === "win" ? "ซ้อม T" + m.turns : "ซ้อม") : m.result === "win" ? "ชนะ" : m.result === "loss" ? "แพ้" : "เสมอ"),
           h("div", { class: "grow", style: "min-width:0" }, h("b", null, m.mode === "goldfish" ? `${m.deckName} · ซ้อมมือเดียว` : `${m.deckName} vs ${m.oppDeck || m.opp}`), h("div", { class: "tiny muted" }, `${m.opp} · ${MODE_TH[m.mode] || ""} · ${m.turns} เทิร์น${m.undo ? ` · ย้อนตา ${m.undo} ครั้ง` : ""} · ${m.reason || ""}`)),
           h("span", { class: "tiny muted" }, fmtDate(m.at))))),
-        h("div", { class: "stack" }, achPanel(all), fishPanel(fish), h("div", { class: "panel stack" }, h("div", { class: "eyebrow" }, "อัตราชนะแยกเด็ค"), h("div", { class: "bars" }, Object.entries(byDeck).sort((a, b) => b[1].n - a[1].n).map(([k, v]) => h("div", { class: "bar" }, h("span", null, `${k} (${v.n})`), h("div", { class: "trk" }, h("i", { style: `width:${(v.w / v.n) * 100}%` })), h("span", { class: "num small" }, Math.round((v.w / v.n) * 100) + "%"))))))));
+        h("div", { class: "stack" }, ladderPanel(), achPanel(all), fishPanel(fish), h("div", { class: "panel stack" }, h("div", { class: "eyebrow" }, "อัตราชนะแยกเด็ค"), h("div", { class: "bars" }, Object.entries(byDeck).sort((a, b) => b[1].n - a[1].n).map(([k, v]) => h("div", { class: "bar" }, h("span", null, `${k} (${v.n})`), h("div", { class: "trk" }, h("i", { style: `width:${(v.w / v.n) * 100}%` })), h("span", { class: "num small" }, Math.round((v.w / v.n) * 100) + "%"))))))));
   },
   refresh(root) { this.render(root); },
 };
@@ -43,4 +44,16 @@ function achPanel(all) {
       h("div", { style: "min-width:0" }, h("b", null, a.name), h("div", { class: "tiny muted" }, a.how + (a.gives ? " · ได้" + rewardName(a.gives) : "")),
         p.need > 1 && !p.done ? h("div", { class: "trk", style: "margin-top:4px" }, h("i", { style: `width:${(p.have / p.need) * 100}%` })) : null),
       h("span", { class: "tiny num" }, p.done ? "สำเร็จ" : p.need > 1 ? `${p.have}/${p.need}` : "")))));
+}
+// friends' ladder: everyone's finished friend games, rated; plus how you have done against each friend
+function ladderPanel() {
+  const L = ladderNow(); const again = () => ladder().then(() => { if (/^#history/.test(location.hash)) Views.history.refresh(document.getElementById("view")); }).catch(() => {});
+  if (!ladderFresh()) again(); // shows what it has meanwhile
+  if (!L || !L.table.length) return null;
+  const mine = L.table.filter((p) => p.uid !== Me.uid).map((p) => ({ p, v: L.vs(Me.uid, p.uid) })).filter((x) => x.v);
+  return h("div", { class: "panel stack" }, h("div", { class: "row", style: "justify-content:space-between" }, h("div", { class: "eyebrow" }, "อันดับในกลุ่มเพื่อน"), h("span", { class: "chip" }, `${L.games} เกม`)),
+    h("ol", { class: "ladder" }, L.table.slice(0, 12).map((p, k) => h("li", { class: p.uid === Me.uid ? "me" : "" }, h("span", { class: "num rk" }, k + 1), avatarEl(L.avatars[p.uid], p.name, "sm"),
+      h("b", { class: "nm" }, p.name + (p.uid === Me.uid ? " (คุณ)" : "")), h("span", { class: "num pts", title: "แต้มอันดับ" }, p.r), h("span", { class: "tiny muted num" }, `ชนะ ${p.w} แพ้ ${p.l}${p.d ? ` เสมอ ${p.d}` : ""}`)))),
+    mine.length ? h("div", { class: "stack", style: "gap:4px" }, h("div", { class: "tiny muted" }, "คุณกับเพื่อนแต่ละคน"), mine.map(({ p, v }) => h("div", { class: "row small", style: "justify-content:space-between" }, h("span", null, p.name), h("span", { class: "num" }, `ชนะ ${v.w} · แพ้ ${v.l}${v.d ? ` · เสมอ ${v.d}` : ""}`)))) : null,
+    h("div", { class: "tiny muted" }, "คิดจากเกมดวลกับเพื่อนที่จบแล้วของทุกคน เริ่มที่ 1000 แต้ม ชนะคนที่แต้มสูงกว่าจะได้แต้มมากกว่า"));
 }

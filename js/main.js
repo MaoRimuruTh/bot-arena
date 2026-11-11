@@ -1,17 +1,18 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261111123125";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261111123125";
-import { AVATARS, MATS, gfxSetting, animSetting } from "./arena3d.js?v=20261111123125";
-import { myFigure, myMat, unlocked, needFor } from "./achieve.js?v=20261111123125";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261111123125";
-import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261111123125";
-import { Views, avatarEl } from "./ui.js?v=20261111123125";
-import { Ciel } from "./ai.js?v=20261111123125";
-import "./views/library.js?v=20261111123125";
-import "./views/decks.js?v=20261111123125";
-import "./views/lab.js?v=20261111123125";
-import "./views/history.js?v=20261111123125";
-import "./views/ask.js?v=20261111123125";
-import "./views/play.js?v=20261111123125";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261111131228";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261111131228";
+import { AVATARS, MATS, gfxSetting, animSetting } from "./arena3d.js?v=20261111131228";
+import { myFigure, myMat, unlocked, needFor } from "./achieve.js?v=20261111131228";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261111131228";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261111131228";
+import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261111131228";
+import { Views, avatarEl } from "./ui.js?v=20261111131228";
+import { Ciel } from "./ai.js?v=20261111131228";
+import "./views/library.js?v=20261111131228";
+import "./views/decks.js?v=20261111131228";
+import "./views/lab.js?v=20261111131228";
+import "./views/history.js?v=20261111131228";
+import { openReport } from "./views/ask.js?v=20261111131228";
+import "./views/play.js?v=20261111131228";
 
 const root = $("#view");
 let current = null, cardsReady = false;
@@ -87,11 +88,20 @@ function gfxSection() {
     seg("คุณภาพภาพ", gfxSetting(), [["auto", "อัตโนมัติ"], ["high", "สวยสุด"], ["low", "ประหยัดเครื่อง"]], "bot.gfx", (t) => `ภาพ: ${t} มีผลตอนเปิดสนามครั้งถัดไป`),
     seg("ความเร็วแอนิเมชัน", animSetting(), [[1, "ปกติ"], [1.6, "เร็ว"], [2.5, "เร็วมาก"]], "bot.anim", (t) => `แอนิเมชัน: ${t} มีผลตอนเปิดสนามครั้งถัดไป`)];
 }
+// notices while the app is in the background (your turn, a friend joining, a new room)
+function notifySection() {
+  const note = h("div", { class: "small muted" });
+  const say = () => { note.textContent = !notifySupported() ? "เบราว์เซอร์นี้แจ้งเตือนไม่ได้ (บน iPhone/iPad ต้องติดตั้งเป็นแอปบนหน้าจอโฮมก่อน)" : notifyBlocked() ? "เบราว์เซอร์บล็อกการแจ้งเตือนของเว็บนี้อยู่ เปิดได้ที่การตั้งค่าเว็บไซต์ของเบราว์เซอร์" : notifyOn() ? "เปิดอยู่: แจ้งเมื่อถึงตาเรา เพื่อนเข้าห้อง มีห้องใหม่ และเกมจบ ขณะแอปเปิดค้างไว้เบื้องหลัง" : "ปิดอยู่: แท็บจะขึ้นจุด ● อย่างเดียวเมื่อถึงตาเรา"; };
+  const seg = h("div", { class: "seg", role: "group", "aria-label": "การแจ้งเตือน" });
+  const paint = () => { seg.replaceChildren(...[[false, "ปิด"], [true, "เปิด"]].map(([v, t]) => h("button", { "aria-pressed": notifyOn() === v ? "true" : "false", disabled: v && (!notifySupported() || notifyBlocked()), onclick: async () => { const ok = await setNotify(v); if (v && !ok) toast("ยังไม่ได้รับอนุญาตให้แจ้งเตือน", "bad"); paint(); say(); } }, t))); };
+  paint(); say();
+  return [h("div", { class: "eyebrow", style: "margin-top:12px" }, "การแจ้งเตือน"), note, seg];
+}
 function settings() {
   openSheet((api) => {
     const key = h("input", { type: "password", value: Ciel.key(), placeholder: "sk-ant-…", autocomplete: "off", "aria-label": "Claude API key" });
     const model = h("select", { "aria-label": "โมเดลหลัก" }, ["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-5-5"].map((m) => h("option", { value: m, selected: m === Ciel.model() }, m)));
-    const out = [...profileSection(api), ...avatarSection(), ...gfxSection(), ...appSection(api), h("div", { class: "eyebrow", style: "margin-top:12px" }, "ชิเอล (Claude API)"),
+    const out = [...profileSection(api), ...avatarSection(), ...gfxSection(), ...notifySection(), ...appSection(api), h("div", { class: "eyebrow", style: "margin-top:12px" }, "เจอปัญหา?"), h("div", { class: "row" }, h("button", { class: "btn", onclick: () => { api.close(); openReport(); } }, "แจ้งปัญหา")), h("div", { class: "eyebrow", style: "margin-top:12px" }, "ชิเอล (Claude API)"),
       h("div", { class: "small muted" }, "ใส่ API key ของคุณเองเพื่อให้ชิเอลคิดเป็นบอท อ่านเอฟเฟกต์การ์ด และจัดเด็ค key เก็บเฉพาะในเบราว์เซอร์นี้ ไม่ส่งขึ้นฐานข้อมูล ค่าใช้จ่ายคิดกับบัญชี API ของคุณ ถ้าไม่ใส่ ยังเล่นกับบอทพื้นฐานได้"),
       key, h("div", { class: "row" }, h("span", { class: "small muted" }, "โมเดลจัดเด็ค/อ่านการ์ด"), model),
       h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => { const v = key.value.trim(); if (v) lsSet("bot.apiKey", v); else lsDel("bot.apiKey"); lsSet("bot.model", model.value); toast(v ? "บันทึก key ของชิเอลแล้ว" : "ลบ key แล้ว"); meArea(); api.close(); } }, "บันทึก"), Ciel.on() ? h("button", { class: "btn danger sm", onclick: () => { lsDel("bot.apiKey"); meArea(); api.close(); toast("ลบ key แล้ว"); } }, "ลบ key") : null)];

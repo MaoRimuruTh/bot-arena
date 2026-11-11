@@ -19,3 +19,8 @@ self.addEventListener("fetch", (e) => {
     return r;
   }));
 });
+// a notice was tapped: bring the open app forward (or open it on the play page)
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((cs) => { const c = cs.find((x) => "focus" in x); return c ? c.focus() : self.clients.openWindow("./#play"); }));
+});

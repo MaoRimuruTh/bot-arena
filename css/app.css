@@ -498,3 +498,18 @@ table.t th{white-space:nowrap}
 .achpop{position:fixed;left:50%;top:calc(84px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:60;display:grid;gap:2px;justify-items:center;padding:12px 22px;border-radius:16px;border:1px solid rgba(232,186,92,.6);text-align:center;max-width:calc(100vw - 32px)}
 .achpop b{font:700 1.15rem var(--f-display);color:var(--gold)}
 .seg.wrap{flex-wrap:wrap}
+/* watching a friend's game: the viewed player's hand as backs; two faces side by side in the lobby */
+.watchhand{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(22px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:999px;max-width:calc(100vw - 32px)}
+.watchhand .backs{flex-wrap:nowrap;overflow:hidden}
+.watchhand>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}
+.watchhand .backs i{width:20px;height:29px}
+@media (max-width:760px){.watchhand{bottom:calc(70px + env(safe-area-inset-bottom,0px));padding:6px 12px;gap:8px}.watchhand .backs i{width:14px;height:20px}}
+.vsava{display:flex;flex:none}
+.vsava>*+*{margin-left:-10px}
+/* friends' ladder on the history page */
+.ladder{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.ladder li{display:grid;grid-template-columns:22px auto minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:6px 8px;border-radius:10px}
+.ladder li.me{background:rgba(201,154,46,.12);outline:1px solid rgba(201,154,46,.35)}
+.ladder .rk{color:var(--muted,#b9a98f);text-align:right}
+.ladder .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ladder .pts{font-weight:700}

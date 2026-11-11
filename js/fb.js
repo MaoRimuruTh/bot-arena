@@ -1,4 +1,4 @@
-import { firebaseConfig, FB_VERSION } from "./config.js?v=20261111123125";
+import { firebaseConfig, FB_VERSION } from "./config.js?v=20261111131228";
 const base = `https://www.gstatic.com/firebasejs/${FB_VERSION}/`;
 const { initializeApp } = await import(base + "firebase-app.js");
 const A = await import(base + "firebase-auth.js");
@@ -94,3 +94,7 @@ export const setMeta = (patch) => F.setDoc(F.doc(db, "meta", "config"), patch, {
 export const gameRef = (id) => F.doc(db, "games", id);
 export const newGameId = () => F.doc(F.collection(db, "games")).id;
 export const watchLobby = (cb) => F.onSnapshot(F.query(F.collection(db, "games"), F.where("status", "==", "waiting")), (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() }))), () => cb([]));
+// finished games (any approved member may read them): the friends' ladder is worked out from these, read once when needed
+export const finishedGames = () => F.getDocs(F.query(F.collection(db, "games"), F.where("status", "==", "over"))).then((s) => s.docs.map((d) => ({ id: d.id, ...d.data() })), () => []);
+// games being played right now, so friends can watch (hands stay hidden) or a player can get back into their own game
+export const watchPlaying = (cb) => F.onSnapshot(F.query(F.collection(db, "games"), F.where("status", "==", "playing")), (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() }))), () => cb([]));

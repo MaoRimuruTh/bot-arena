@@ -1,8 +1,8 @@
 // "ถามชิเอล": questions written inside the app, read later by Ciel in Rimuru's chat (owner account only).
 // Each question can carry a short snapshot of where it was asked (page, deck, or the game in progress).
-import { h, openSheet, toast, fmtDate, busy } from "../util.js?v=20261111123125";
-import { Me, addQuestion, watchInbox, answerQuestion, deleteQuestion } from "../fb.js?v=20261111123125";
-import { Views } from "../ui.js?v=20261111123125";
+import { h, openSheet, toast, fmtDate, busy } from "../util.js?v=20261111131228";
+import { Me, addQuestion, watchInbox, answerQuestion, deleteQuestion } from "../fb.js?v=20261111131228";
+import { Views } from "../ui.js?v=20261111131228";
 
 const ctxProviders = [];
 // views register a function that describes what is on screen right now (e.g. the game state)
@@ -14,6 +14,21 @@ function snapshot() {
 }
 export const isOwner = () => !!(Me.profile && Me.profile.role === "owner");
 
+// "แจ้งปัญหา": a short report of what went wrong plus where it happened. The owner's goes to the inbox; anyone else
+// copies it to send in chat (only the owner's inbox can be written to from the app)
+export function openReport() {
+  const ctx = snapshot(), ver = new URL(import.meta.url).searchParams.get("v") || "";
+  openSheet((api) => {
+    const ta = h("textarea", { rows: 4, maxlength: "1500", placeholder: "เกิดอะไรขึ้น เช่น กดอัญเชิญแล้วการ์ดไม่ลงสนาม หรือเอฟเฟกต์ของการ์ดใบไหนทำงานผิด" });
+    const pre = h("pre", { class: "glog", style: "white-space:pre-wrap;user-select:all;max-height:30vh", hidden: true });
+    const text = () => [`แจ้งปัญหา BoT Arena (รุ่น ${ver})`, ta.value.trim(), ctx.game ? "--- สถานะเกม ---\n" + ctx.game : "หน้า: " + ctx.page, "เบราว์เซอร์: " + navigator.userAgent.slice(0, 140)].filter(Boolean).join("\n");
+    const go = isOwner()
+      ? h("button", { class: "btn gold", onclick: async (e) => { if (!ta.value.trim()) return toast("เล่าสั้นๆ ก่อนว่าเกิดอะไรขึ้น"); e.currentTarget.disabled = true; try { await addQuestion({ text: "[แจ้งปัญหา] " + ta.value.trim(), ctx: { ...ctx, ver } }); api.close(); toast("เก็บไว้ในกล่องคำถามแล้ว"); } catch { e.currentTarget.disabled = false; toast("บันทึกไม่ได้ ลองอีกครั้ง", "bad"); } } }, "เก็บไว้ในกล่องคำถาม")
+      : h("button", { class: "btn gold", onclick: async () => { if (!ta.value.trim()) return toast("เล่าสั้นๆ ก่อนว่าเกิดอะไรขึ้น"); try { await navigator.clipboard.writeText(text()); toast("คัดลอกแล้ว ส่งให้เจ้าของสนามทางแชทได้เลย"); } catch { pre.textContent = text(); pre.hidden = false; toast("คัดลอกให้อัตโนมัติไม่ได้ เลือกข้อความด้านล่างแล้วคัดลอกเอง", "bad"); } } }, "คัดลอกรายงาน");
+    return [h("div", { class: "stack" }, ta, h("div", { class: "tiny muted" }, ctx.game ? "จะแนบสถานะเกมตอนนี้ (มือเรา สนาม และบันทึกล่าสุด) ไปด้วย" : "จะแนบหน้าที่เปิดอยู่ไปด้วย"),
+      h("div", { class: "row" }, go), pre)];
+  }, { title: "แจ้งปัญหา", sub: isOwner() ? "เก็บไว้ให้ชิเอลดูในกล่องคำถาม" : "คัดลอกไปส่งให้เจ้าของสนาม" });
+}
 export function openAsk(preset = "") {
   if (!isOwner()) return toast("ถามชิเอลใช้ได้เฉพาะบัญชีเจ้าของสนาม");
   const ctx = snapshot();

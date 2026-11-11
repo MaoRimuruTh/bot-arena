@@ -1,24 +1,27 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111123125";
-import { fxText } from "../fxtext.js?v=20261111123125";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111123125";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111123125";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111123125";
-import { Arena, animSetting } from "../arena3d.js?v=20261111123125";
-import { myFigure, myMat, newlyEarned, rewardName } from "../achieve.js?v=20261111123125";
-import { autoEffect, resolveEffect } from "../effects.js?v=20261111123125";
-import { Music } from "../music.js?v=20261111123125";
-import { Sfx } from "../sfx.js?v=20261111123125";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, saveMatch, myName, myAvatar } from "../fb.js?v=20261111123125";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111123125";
-import { readAura, traits } from "../auras.js?v=20261111123125";
-import { openAsk, addAskContext, isOwner } from "./ask.js?v=20261111123125";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261111131228";
+import { fxText } from "../fxtext.js?v=20261111131228";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261111131228";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261111131228";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261111131228";
+import { Arena, animSetting } from "../arena3d.js?v=20261111131228";
+import { myFigure, myMat, newlyEarned, rewardName, earned, ACH } from "../achieve.js?v=20261111131228";
+import { ladder, ladderReset } from "../ladder.js?v=20261111131228";
+import { notify } from "../notify.js?v=20261111131228";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261111131228";
+import { autoEffect, resolveEffect } from "../effects.js?v=20261111131228";
+import { Music } from "../music.js?v=20261111131228";
+import { Sfx } from "../sfx.js?v=20261111131228";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261111131228";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261111131228";
+import { readAura, traits } from "../auras.js?v=20261111131228";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261111131228";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
   return { game: [`เทิร์น ${s.turn} · ${PHASE_TH[s.phase] || s.phase} · ตาของ ${s.P[s.active].name}`, `เด็คเรา: ${me.deckName || "-"} · เด็คคู่แข่ง: ${op.deckName || "-"}`,
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / ")].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261111123125";
+import { allDecks, deckById } from "./decks.js?v=20261111131228";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -37,7 +40,7 @@ const isBot = (s, p) => !!s.P[p].bot;
 // phones/tablets: tap opens a big card view with actions instead of acting right away
 const compact = () => matchMedia("(max-width: 760px)").matches;
 const touchy = () => compact() || matchMedia("(pointer: coarse)").matches;
-const mine = (p) => G && !G.replay && (G.mode === "solo" || p === G.V);
+const mine = (p) => G && !G.replay && !G.watch && (G.mode === "solo" || p === G.V);
 
 Views.play = {
   render(root, parts) {
@@ -47,7 +50,7 @@ Views.play = {
     this.setup(root, saved);
   },
   refresh(root, parts) { if (!G) this.render(root, parts); },
-  leave() { stopGame(false); },
+  leave() { if (this._unsubLobby) this._unsubLobby(); stopGame(false); },
 
   setup(root, saved) {
     const decks = allDecks().filter((d) => validateDeck(d).ok);
@@ -75,20 +78,49 @@ Views.play = {
         body.append(h("div", { class: "small" }, "คู่แข่งเป็นหุ่นซ้อมที่ไม่ลงการ์ดและไม่ตอบโต้เลย ใช้ดูว่าเด็คนี้ออกตัวได้แค่ไหนและชนะได้เร็วสุดเทิร์นไหน"),
           h("div", { class: "tiny muted" }, "เราเล่นก่อนทุกเกม ผลจะเก็บแยกในประวัติ ไม่นับรวมอัตราชนะ และย้อนตาได้"),
           h("button", { class: "btn gold lg", disabled: !d, onclick: () => startLocal("goldfish") }, "เริ่มซ้อม"));
+      } else if (Setup.mode === "puzzle") {
+        const list = h("div", { class: "stack", style: "gap:8px" }, busy("กำลังโหลดโจทย์…"));
+        body.append(h("div", { class: "small" }, "ตำแหน่งจากเกมจริงระหว่างบอท ถึงตาเราแล้ว คู่แข่งไม่มีการ์ดบนมือ หาทางชนะให้ได้ก่อนจบเทิร์นนี้ ทุกโจทย์มีทางชนะแน่นอนไม่ว่าคู่แข่งจะป้องกันแบบไหน"),
+          h("div", { class: "tiny muted" }, "ย้อนตาได้ไม่จำกัด และกดคำใบ้ให้ชิเอลคิดก้าวต่อไปจากตำแหน่งตอนนั้นได้"), list);
+        loadPuzzles().then((PZ) => { const done = lsGet(PZ_DONE, {});
+          list.replaceChildren(...PZ.map((pz, k) => h("div", { class: "mrow", style: "cursor:default" }, h("span", { class: "chip " + (done[pz.id] ? "good" : "") }, done[pz.id] ? "✓" : String(k + 1)),
+            h("div", { class: "grow" }, h("b", null, `โจทย์ที่ ${k + 1}` + (pz.hard ? " · ยาก" : "")), h("div", { class: "tiny muted" }, `ทางชนะสั้นสุด ${pz.len} ขั้น · ${pz.down ? `คู่แข่งเหลือ LIFE คว่ำ ${pz.down} ใบ` : "คู่แข่งอยู่ในสถานะสาหัส"} · ${pz.state.P[pz.p].deckName}`)),
+            h("button", { class: "btn sm " + (done[pz.id] ? "" : "gold"), onclick: () => startPuzzle(pz, k) }, done[pz.id] ? "เล่นอีก" : "เริ่ม")))); })
+          .catch(() => list.replaceChildren(h("div", { class: "muted small" }, "โหลดโจทย์ไม่ได้")));
       } else if (Setup.mode === "solo") {
         body.append(h("div", { class: "row" }, h("span", { class: "small muted" }, "เด็คฝั่งที่ 2"), deckSel("opp", decks, h("option", { value: "random", selected: Setup.opp === "random" }, "สุ่มจาก Starter Deck"))),
           h("div", { class: "tiny muted" }, "ควบคุมทั้งสองฝั่งเอง เหมาะกับลองคอมโบหรือเล่นกับเพื่อนบนเครื่องเดียวกัน"), h("button", { class: "btn gold lg", disabled: !d, onclick: () => startLocal("solo") }, "เริ่มเกม"));
       } else {
-        const lobby = h("div", { class: "stack", style: "gap:8px" }, busy("กำลังหาห้อง…"));
+        const lobby = h("div", { class: "stack", style: "gap:8px" }, busy("กำลังหาห้อง…")); let seenRooms = null;
         lobbyUnsub = watchLobby((rooms) => {
           const list = rooms.filter((r) => Date.now() - (r.updatedAt || 0) < 6 * 3600e3).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+          if (seenRooms) for (const r of list) if (!seenRooms.has(r.id) && r.host !== Me.uid) notify("มีห้องรอดวล", `${r.hostName || "เพื่อน"} สร้างห้องด้วยเด็ค ${(r.hostDeck && r.hostDeck.name) || ""}`, "bot-room");
+          seenRooms = new Set(list.map((r) => r.id));
           lobby.replaceChildren(...(list.length ? list.map((r) => h("div", { class: "mrow", style: "cursor:default" }, avatarEl(r.hostAva, r.hostName), h("div", { class: "grow" }, h("b", null, r.hostName || "เพื่อน"), h("div", { class: "tiny muted" }, "เด็ค " + (r.hostDeck && r.hostDeck.name || ""))),
             r.host === Me.uid ? h("button", { class: "btn sm danger", onclick: () => F.deleteDoc(gameRef(r.id)).catch(() => {}) }, "ยกเลิกห้อง") : h("button", { class: "btn sm gold", disabled: !d, onclick: () => joinRoom(r) }, "เข้าร่วม"))) : [h("div", { class: "muted small" }, "ยังไม่มีห้องที่รออยู่")]));
         });
+        // games in progress: watch a friend's (hands stay hidden), or get back into your own from this device
+        const live = h("div", { class: "stack", style: "gap:8px" }); const u1 = lobbyUnsub;
+        const u2 = watchPlaying((games) => {
+          const list = games.filter((g) => Date.now() - (g.updatedAt || 0) < 3 * 3600e3).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+          const left = (Q) => 5 - Q.life.filter((x) => x.up).length;
+          const rows = list.map((g) => {
+            let st = null; try { st = JSON.parse(g.state); } catch { /* not started */ } if (!st) return null;
+            const [A, B] = st.P; const seat = (g.seats || []).indexOf(Me.uid);
+            return h("div", { class: "mrow", style: "cursor:default" }, h("div", { class: "vsava" }, avatarEl(A.ava, A.name, "sm"), avatarEl(B.ava, B.name, "sm")),
+              h("div", { class: "grow" }, h("b", null, `${A.name} กับ ${B.name}`), h("div", { class: "tiny muted" }, `${st.turn ? "เทิร์น " + st.turn : "เพิ่งเริ่ม"} · LIFE เหลือ ${left(A)} ต่อ ${left(B)} · ${A.deckName} กับ ${B.deckName}`)),
+              seat >= 0 ? h("button", { class: "btn sm gold", onclick: () => openOnline(g.id, seat) }, "กลับเข้าเกม") : h("button", { class: "btn sm", onclick: () => openOnline(g.id, 0, true) }, "ดู"));
+          }).filter(Boolean);
+          live.replaceChildren(...(rows.length ? rows : [h("div", { class: "muted small" }, "ตอนนี้ยังไม่มีใครเล่นอยู่")]));
+        });
+        lobbyUnsub = () => { u1(); u2(); };
+        const rankLine = h("div", { class: "tiny muted" });
+        ladder().then((L) => { const k = L.table.findIndex((p) => p.uid === Me.uid); if (k >= 0) rankLine.textContent = `อันดับในกลุ่มเพื่อน: ที่ ${k + 1} จาก ${L.table.length} · ${L.table[k].r} แต้ม (ดูทั้งหมดในหน้าประวัติ)`; }).catch(() => {});
         body.append(h("div", { class: "tiny muted" }, "สร้างห้องแล้วให้เพื่อนที่ได้รับอนุมัติกดเข้าร่วมจากหน้านี้ เกมซิงก์ผ่านฐานข้อมูลแบบเรียลไทม์"),
-          h("button", { class: "btn gold lg", disabled: !d, onclick: createRoom }, "สร้างห้อง"), h("div", { class: "eyebrow" }, "ห้องที่รออยู่"), lobby);
+          h("button", { class: "btn gold lg", disabled: !d, onclick: createRoom }, "สร้างห้อง"), rankLine, h("div", { class: "eyebrow" }, "ห้องที่รออยู่"), lobby,
+          h("div", { class: "eyebrow" }, "กำลังเล่นอยู่"), live, h("div", { class: "tiny muted" }, "กดดูเกมของเพื่อนได้ ผู้ชมเห็นสนามและบันทึกเกมเหมือนผู้เล่น แต่มองไม่เห็นการ์ดบนมือของทั้งสองฝั่ง"));
       }
-      right.replaceChildren(h("div", { class: "modes" }, modeBtn("bot", "ดวลกับบอท", "ซ้อมมือกับชิเอล"), modeBtn("friend", "ดวลกับเพื่อน", "ออนไลน์ผ่านห้อง"), modeBtn("solo", "เล่นสองฝั่ง", "ทดลองคอมโบเอง"), modeBtn("goldfish", "ซ้อมมือเดียว", "วัดว่าเด็คชนะเร็วแค่ไหน"), modeBtn("learn", "สอนเล่น", "เรียนกติกาทีละขั้น")), h("div", { class: "panel" }, body));
+      right.replaceChildren(h("div", { class: "modes" }, modeBtn("bot", "ดวลกับบอท", "ซ้อมมือกับชิเอล"), modeBtn("friend", "ดวลกับเพื่อน", "ออนไลน์ผ่านห้อง"), modeBtn("solo", "เล่นสองฝั่ง", "ทดลองคอมโบเอง"), modeBtn("goldfish", "ซ้อมมือเดียว", "วัดว่าเด็คชนะเร็วแค่ไหน"), modeBtn("puzzle", "โจทย์ปริศนา", "หาทางชนะในเทิร์นเดียว"), modeBtn("learn", "สอนเล่น", "เรียนกติกาทีละขั้น")), h("div", { class: "panel" }, body));
     };
     root.replaceChildren(h("div", { class: "pagehead" }, h("div", null, h("h1", null, "สนามดวล"), h("div", { class: "muted small" }, "เล่นตาม Rule Book 3.2 · เอฟเฟกต์การ์ดให้ชิเอลอ่าน หรือจัดการเองด้วยเครื่องมือ")),
       saved && saved.s && saved.s.phase !== "over" ? h("button", { class: "btn ciel", onclick: () => resume(saved) }, `เล่นต่อ: ${saved.s.P[saved.V || 0].deckName} · เทิร์น ${saved.s.turn}`) : null),
@@ -102,7 +134,7 @@ Views.play = {
     document.body.classList.add("arena-on");
     const stage = h("div", { id: "arena" }); const hud = h("div", { class: "hud" }); G.hud = hud;
     root.replaceChildren(stage, h("div", { class: "vign" }), hud);
-    try { Arena.mount(stage, { mat: myMat() }); } catch (e) { console.warn("3D off", e); }
+    try { Arena.mount(stage, { mat: myMat(), watch: !!G.watch }); } catch (e) { console.warn("3D off", e); }
     Arena.setHover((i) => { if (G.hover === i) return; G.hover = i; drawInspector(); });
     Arena.setClick(fieldClick);
     Arena.update(G.s, view(), { reset: true });
@@ -133,16 +165,17 @@ function startLearn() {
 function go() { if (location.hash === "#play/game") Views.play.render(document.getElementById("view"), ["game"]); else location.hash = "#play/game"; }
 function waitingGate(root) {
   const id = G.id;
-  root.replaceChildren(h("div", { class: "gate" }, h("div", { class: "stack", style: "align-items:center" }, busy(G.V === 0 ? "รอเพื่อนเข้าร่วมห้อง…" : "กำลังเชื่อมต่อ…"), h("button", { class: "btn", onclick: () => { if (G && G.V === 0) F.deleteDoc(gameRef(id)).catch(() => {}); stopGame(true); location.hash = "#play"; } }, "ยกเลิก"))));
+  root.replaceChildren(h("div", { class: "gate" }, h("div", { class: "stack", style: "align-items:center" }, busy(G.V === 0 && !G.watch ? "รอเพื่อนเข้าร่วมห้อง…" : "กำลังเชื่อมต่อ…"), h("button", { class: "btn", onclick: () => { if (G && G.V === 0 && !G.watch) F.deleteDoc(gameRef(id)).catch(() => {}); stopGame(true); location.hash = "#play"; } }, "ยกเลิก"))));
 }
 function resume(saved) {
   G = { ...saved, saved: false };
   if (G.mode === "friend") return openOnline(G.id, G.V);
   go();
 }
-function persist() { if (!G || G.replay) return; if (G.mode === "friend") lsSet(SAVE, { mode: "friend", id: G.id, V: G.V, s: G.s }); else lsSet(SAVE, { s: G.s, V: G.V, mode: G.mode, brain: G.brain, id: G.id, learn: G.learn || null, rec: G.rec || null }); }
+function persist() { if (!G || G.replay || G.watch) return; if (G.mode === "friend") lsSet(SAVE, { mode: "friend", id: G.id, V: G.V, s: G.s }); else lsSet(SAVE, { s: G.s, V: G.V, mode: G.mode, brain: G.brain, id: G.id, learn: G.learn || null, rec: G.rec || null, puzzle: G.puzzle || null }); }
 function stopGame(clear) {
-  if (!G) return; if (G.unsub) G.unsub(); if (clear) lsDel(SAVE); else persist();
+  if (!G) return; if (G.unsub) G.unsub(); if (clear) { if (!G.watch) lsDel(SAVE); } else persist(); // a watcher never touches their own saved game
+  if (G.mode === "friend" && !G.watch && G.s && G.s.phase === "over") trimGame(G.id, G.s);
   clearInterval(G.idleTick); Arena.unmount(); Music.stop(); document.body.classList.remove("arena-on"); document.querySelectorAll(".banner,.dmg,.emo").forEach((e) => e.remove()); G = null;
 }
 // ---------- friends ----------
@@ -163,21 +196,33 @@ async function joinRoom(r) {
     openOnline(r.id, 1);
   } catch (e) { toast(e.message || "เข้าร่วมไม่ได้", "bad"); }
 }
-function openOnline(id, V) {
-  G = { s: null, V, mode: "friend", id, saved: false, waiting: true };
+function openOnline(id, V, watch) {
+  G = { s: null, V, mode: "friend", id, saved: !!watch, waiting: true, watch: !!watch };
   go();
   G.unsub = F.onSnapshot(gameRef(id), (snap) => {
     if (!G) return; const g = snap.data();
     if (!g) { toast("ห้องถูกปิดแล้ว"); stopGame(true); location.hash = "#play"; return; }
     G.updatedAt = g.updatedAt || G.updatedAt;
     G.emoSeen = G.emoSeen || {};
-    for (const p of [0, 1]) { const e = g["emo" + p]; if (e && e.at > (G.emoSeen[p] || 0)) { G.emoSeen[p] = e.at; if (p !== G.V && Date.now() - e.at < 15000 && G.s) showEmote(p, e.k); } }
-    if (!g.state || g.state === G.lastState) return; G.lastState = g.state;
-    const s = JSON.parse(g.state); const first = !G.s; G.s = s; persist();
+    for (const p of [0, 1]) { const e = g["emo" + p]; if (e && e.at > (G.emoSeen[p] || 0)) { G.emoSeen[p] = e.at; if ((G.watch || p !== G.V) && Date.now() - e.at < 15000 && G.s) showEmote(p, e.k); } }
+    if (!g.state) { G.sawWaiting = true; return; } if (g.trimmed || g.state === G.lastState) return; G.lastState = g.state;
+    const s = JSON.parse(g.state); const first = !G.s, was = G.s; G.s = s; persist();
+    if (!G.watch) heads(was, s);
     if (first) Views.play.mountGame(document.getElementById("view")); else { Arena.update(s, view()); draw(); drive(); }
   }, (e) => { console.warn(e); toast("เชื่อมต่อห้องไม่ได้", "bad"); });
 }
 
+// a notice when something needs you while the app is in the background (see notify.js)
+function heads(was, s) {
+  const V = G.V, op = s.P[1 - V].name;
+  if (!was) { if (G.sawWaiting) notify("เพื่อนเข้าห้องแล้ว", `${op} เข้าร่วมแล้ว เริ่มเกมได้เลย`, "bot-game"); return; }
+  if (s.phase === "over") { if (was.phase !== "over") notify(s.winner === V ? "คุณชนะ!" : s.winner == null ? "เกมเสมอ" : "เกมจบแล้ว", s.reason || "", "bot-game"); return; }
+  const p = whoActs(s); if (p !== V || whoActs(was) === V || (s.pend && nothingToAnswer(s, V))) return;
+  notify("ถึงตาคุณแล้ว", s.phase === "mull" ? "เลือกเปลี่ยนการ์ดบนมือ" : s.pend ? `${op} โจมตี เลือกการตอบโต้` : s.active === V ? `เทิร์น ${s.turn} ของคุณ` : "มีเอฟเฟกต์ให้เลือก", "bot-game");
+}
+// ---------- watching a friend's game: the same table, read only, both hands face down ----------
+function flipWatch() { if (!G || !G.watch || !G.s) return; G.V = 1 - G.V; G.pcMe = G.pcOp = undefined; G.sel = G.hover = null; Arena.update(G.s, G.V, { reset: true, flush: true }); draw(); }
+const watchHand = (P) => h("div", { class: "watchhand glass", "aria-label": `มือของ ${P.name} ${P.hand.length} ใบ` }, h("span", { class: "small" }, `มือของ ${P.name}`), h("div", { class: "backs" }, P.hand.slice(0, 12).map(() => h("i"))), h("b", null, P.hand.length));
 // ---------- emotes: short friendly lines, shown by the player who sent them (and the little 3D figure hops) ----------
 const EMOTES = [["hi", "สวัสดี 👋"], ["glhf", "ขอให้สนุกนะ"], ["wow", "ว้าว!"], ["gg", "เก่งมาก!"], ["oops", "อุ๊ย!"], ["think", "ขอคิดแป๊บ 🤔"], ["ty", "ขอบคุณนะ"], ["ggwp", "GG เกมดี!"]];
 const EMO_TH = Object.fromEntries(EMOTES);
@@ -203,13 +248,21 @@ function emotePicker() {
     G.mode !== "bot" ? h("label", { class: "row small muted" }, h("input", { type: "checkbox", checked: lsGet("bot.muteEmo", false), onchange: (e) => lsSet("bot.muteEmo", e.target.checked) }), "ไม่แสดงอีโมตของคู่แข่ง") : null],
     { title: "ส่งอีโมต", sub: G.mode === "friend" ? "เพื่อนจะเห็นข้อความนี้ทันที" : "บอทอาจตอบกลับ" });
 }
+// leaving a finished friend game shrinks it to who played and who won (the summary below stays), so the friends'
+// ladder never has to download whole games; whoever is still looking at the final table keeps their copy
+function trimGame(id, s) {
+  const tiny = JSON.stringify({ phase: "over", winner: s.winner, reason: s.reason, turn: s.turn, P: s.P.map((P) => ({ uid: P.uid, name: P.name, ava: P.ava, deckName: P.deckName })) });
+  F.updateDoc(gameRef(id), { state: tiny, trimmed: true }).catch(() => {});
+}
+// a finished friend game carries a small summary, so the friends' ladder can be worked out without unpacking every game
+const overSummary = (s) => (s.phase !== "over" ? {} : { result: { w: s.winner == null ? "" : s.P[s.winner].uid || "", seats: [s.P[0].uid || "", s.P[1].uid || ""], names: [s.P[0].name, s.P[1].name], turns: s.turn, at: Date.now() } });
 // online: when the other side has made no move for a while on their own decision, the waiting player may claim the game
 const IDLE_MS = 4 * 60e3;
-const oppIdle = () => { if (!G || G.mode !== "friend" || !G.s || G.s.phase === "over") return 0; const p = whoActs(G.s); if (p == null || p === G.V) return 0; return Math.max(0, Date.now() - (G.updatedAt || Date.now())); };
+const oppIdle = () => { if (!G || G.mode !== "friend" || G.watch || !G.s || G.s.phase === "over") return 0; const p = whoActs(G.s); if (p == null || p === G.V) return 0; return Math.max(0, Date.now() - (G.updatedAt || Date.now())); };
 async function claimIdle() {
   const V = G.V;
   try { await F.runTransaction(db, async (tx) => { const snap = await tx.get(gameRef(G.id)); const g = snap.data(); if (Date.now() - (g.updatedAt || 0) < IDLE_MS) throw new Error("คู่แข่งเพิ่งเล่น"); const s = JSON.parse(g.state); if (s.phase === "over") return;
-    E.lose(s, 1 - V, `${s.P[1 - V].name} ไม่ได้เล่นนานเกิน 4 นาที`); tx.update(gameRef(G.id), { state: JSON.stringify(s), status: "over", updatedAt: Date.now() }); }); }
+    E.lose(s, 1 - V, `${s.P[1 - V].name} ไม่ได้เล่นนานเกิน 4 นาที`); tx.update(gameRef(G.id), { state: JSON.stringify(s), status: "over", ...overSummary(s), updatedAt: Date.now() }); }); }
   catch (e) { toast(e.message || "ทำไม่ได้", "bad"); }
 }
 
@@ -220,7 +273,7 @@ async function doAct(a, p) {
   if (G.mode === "friend") {
     G.lock = true;
     try {
-      await F.runTransaction(db, async (tx) => { const snap = await tx.get(gameRef(G.id)); const s = JSON.parse(snap.data().state); E.apply(s, a, p); tx.update(gameRef(G.id), { state: JSON.stringify(s), status: s.phase === "over" ? "over" : "playing", updatedAt: Date.now() }); });
+      await F.runTransaction(db, async (tx) => { const snap = await tx.get(gameRef(G.id)); const s = JSON.parse(snap.data().state); E.apply(s, a, p); tx.update(gameRef(G.id), { state: JSON.stringify(s), status: s.phase === "over" ? "over" : "playing", ...overSummary(s), updatedAt: Date.now() }); });
       G.pick = null; G.att = null; G.host = null; G.payFor = null; G.payVia = null; G.callVia = null; G.castFor = null; return true;
     } catch (e) { toast(e.message || "ทำไม่ได้", "bad"); return false; }
     finally { if (G) G.lock = false; }
@@ -229,6 +282,7 @@ async function doAct(a, p) {
   const copy = G.rec ? JSON.parse(JSON.stringify(a)) : null;
   try { E.apply(G.s, a, p); } catch (e) { toast(e.message, "bad"); return false; }
   if (G.rec) G.rec.acts.push([p, copy]);
+  if (G.puzzle && mine(p)) G.say = null; // an old hint no longer fits
   if (fromHand) flyFromHand(a.i);
   G.pick = null; G.att = null; G.host = null; G.payFor = null; G.payVia = null; G.callVia = null; G.helperPick = null; G.castFor = null; persist();
   Arena.update(G.s, view()); draw(); drive();
@@ -253,11 +307,13 @@ function autoRespond(s, p) {
 // the easy one just does something at random. In 24-game tests hard beat normal 15-9 and normal beat easy 19-5.
 const BOT_LEVEL = { easy: { name: "บอทมือใหม่", look: 0, rnd: 0.35, about: "บอทมือใหม่ เล่นถูกกติกาแต่ตัดสินใจไม่ค่อยดี บางทีก็มั่ว และไม่ใช้ React" },
   basic: { name: "บอท", look: 4, rnd: 0, about: "บอทระดับปกติ คิดล่วงหน้าหนึ่งจังหวะ ข้ามเอฟเฟกต์ข้อความของตัวเอง" },
-  hard: { name: "บอทมือโปร", look: 8, rnd: 0, about: "บอทมือโปร ลองเล่นตาที่น่าสนใจล่วงหน้ามากขึ้นก่อนเลือก คิดนานขึ้นนิดหน่อย" } };
+  hard: { name: "บอทมือโปร", look: 8, rnd: 0, about: "บอทมือโปร ลองเล่นตาที่น่าสนใจล่วงหน้ามากขึ้นก่อนเลือก และเมื่อเรา LIFE เหลือน้อยจะค้นหาทางปิดเกมให้จบในเทิร์นเดียว" } };
 // bot / auto driver
 async function drive() {
   if (!G || G.driving || !G.s || G.replay) return; const s = G.s;
   if (s.phase === "over") return finish();
+  if (G.watch) return; // watching: nothing here acts for either side
+  if (G.puzzle && s.active !== G.V) { if (!G.pzFail) { G.pzFail = true; draw(); } return; } // a puzzle is lost once the turn passes
   const p = whoActs(s); if (p == null) return;
   if (!isBot(s, p)) { if (s.trig.length && mine(p)) humanTrig(s, p); else autoRespond(s, p); return; }
   G.driving = true;
@@ -277,8 +333,8 @@ async function drive() {
       const rx = s.pend && G.brain !== "easy" ? H.react(s, p) : null;
       if (rx) m = { a: rx, say: "ใช้ React ตอบโต้!" };
       else if (lv && lv.rnd && !s.pend && Math.random() < lv.rnd) { const ms = legalMoves(s, p).filter((x) => x.a.type !== "concede"); if (ms.length) m = ms[Math.floor(Math.random() * ms.length)]; }
-      else if (G.brain === "ciel") { G.thinking = "ชิเอลกำลังคิด…"; draw(); m = await cielPick(s, p); }
-      else m = H.pick(s, p);
+      else if (G.brain === "ciel") { G.thinking = "ชิเอลกำลังคิด…"; draw(); m = lethalMove(s, p) || (await cielPick(s, p)); }
+      else m = (G.brain === "hard" && lethalMove(s, p)) || H.pick(s, p);
       if (m && m.say) G.say = m.say;
       a = m ? m.a : s.pend ? { type: "respond" } : { type: "end" };
     }
@@ -286,6 +342,16 @@ async function drive() {
     G.driving = false;
     if (!(await doAct(a, p))) { try { E.apply(G.s, { type: "end" }, p); if (G.rec) G.rec.acts.push([p, { type: "end" }]); } catch { E.lose(G.s, p, "บอทติดสถานะ"); if (G.rec) G.rec.acts.push([p, { type: "__lose", reason: "บอทติดสถานะ" }]); } Arena.update(G.s, view()); draw(); }
   } finally { if (G) G.driving = false; H.look = BOT_LEVEL.basic.look; }
+}
+// the pro bot (and Ciel) look for a win this very turn once the other side is low on LIFE, the same search the puzzles
+// use, on a copy without the other side's hand (no peeking at React cards) and with its own Deck shuffled
+function lethalMove(s, p) {
+  if (s.pend || s.trig.length || s.rw || s.active !== p || !["main", "battle"].includes(s.phase) || s.P[1 - p].life.filter((x) => !x.up).length > 2) return null;
+  const k = s.turn + ":" + p; if (G.noLethal === k) return null; // already searched this turn and found nothing
+  const t = JSON.parse(JSON.stringify({ ...s, cards: null, log: [], ev: [] })); t.cards = s.cards; t.P[1 - p].hand = []; E.shuffle(t, t.P[p].deck);
+  let r = null; try { r = solveTurn(t, p, 6, 6000); } catch { /* too big to finish */ }
+  if (r && r.line && r.line.length) return { a: r.line[0].a, say: "เห็นทางชนะในเทิร์นนี้แล้ว!" };
+  G.noLethal = k; return null;
 }
 // player's own effects: run by themselves; stop only to ask for a choice or when unreadable
 function humanTrig(s, p) {
@@ -299,6 +365,9 @@ function humanTrig(s, p) {
 }
 function finish() {
   if (!G || G.saved) { draw(); return; } G.saved = true; const s = G.s;
+  if (G.puzzle) { // puzzles stay out of the history; solving enough of them opens the gold-leaf mat
+    if (s.winner === G.V) { const before = earned(); const d = lsGet(PZ_DONE, {}); d[G.puzzle.id] = d[G.puzzle.id] || Date.now(); lsSet(PZ_DONE, d); const now = earned(); const fresh = ACH.filter((a) => now.has(a.id) && !before.has(a.id)); if (fresh.length) setTimeout(() => celebrate(fresh), 1800); }
+    lsDel(SAVE); draw(); return; }
   const seats = G.mode === "solo" ? [] : [G.V];
   for (const V of seats) {
     const P = s.P[V], O = s.P[1 - V]; const rp = keepReplay(s.id + "-" + V);
@@ -306,7 +375,7 @@ function finish() {
     const fresh = newlyEarned(rec); if (fresh.length) setTimeout(() => celebrate(fresh), 1800); // what this game unlocked
     saveMatch(s.id + "-" + V, { rp: rp ? 1 : 0, undo: G.undos || 0, brain: rec.brain, lifeLost: rec.lifeLost, uid: Me.uid, mode: G.fish ? "goldfish" : G.mode, deckId: P.deckId, deckName: P.deckName, opp: O.name, oppDeck: O.deckName, result: s.winner === V ? "win" : s.winner == null ? "draw" : "loss", turns: s.turn, reason: s.reason, first: s.first === V, at: Date.now(), log: s.log.slice(-14).map((l) => l.m) }).catch((e) => console.warn(e));
   }
-  lsDel(SAVE); draw();
+  lsDel(SAVE); draw(); if (G.mode === "friend") ladderReset();
   if (G.rec && G.mode !== "friend") { const g = G; setTimeout(() => { if (G === g) openSummary(g); }, 2600); } // after the banner and the falling gold or ash
 }
 
@@ -316,6 +385,30 @@ function celebrate(list) {
     document.body.append(el); Sfx.play("win"); if (window.gsap) window.gsap.fromTo(el, { y: -30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: "back.out(2)" });
     setTimeout(() => (window.gsap ? window.gsap.to(el, { opacity: 0, duration: 0.5, onComplete: () => el.remove() }) : el.remove()), 4200); }, k * 4600);
 }
+// ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
+const PZ_DONE = "bot.pz";
+let puzzleList = null;
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261111131228").then((m) => m.PUZZLES));
+function startPuzzle(pz, k) {
+  let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
+  const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", bot: true });
+  G = { s, V, mode: "bot", brain: "basic", puzzle: { id: pz.id, k, len: pz.len }, id: s.id, saved: false, rec: { start: JSON.stringify(s), acts: [] } };
+  persist(); go(); toast(`โจทย์ที่ ${k + 1}: ชนะให้ได้ก่อนจบเทิร์นนี้`);
+}
+function puzzleRestart() { const pz = G && G.puzzle; if (!pz) return; loadPuzzles().then((PZ) => { const z = PZ.find((x) => x.id === pz.id); if (!z) return; stopGame(true); startPuzzle(z, pz.k); }); }
+function puzzleNext() { const pz = G && G.puzzle; loadPuzzles().then((PZ) => { const k = pz ? pz.k + 1 : 0; stopGame(true); if (PZ[k]) startPuzzle(PZ[k], k); else { toast("ครบทุกโจทย์แล้ว เก่งมาก!"); location.hash = "#play"; } }); }
+// a hint: Ciel searches from the table as it is now, so it still helps after a different start
+function puzzleHint() {
+  const s = G.s, V = G.V, g = G; if (whoActs(s) !== V || s.phase === "over" || G.pzFail || G.thinking) return;
+  G.thinking = "ชิเอลกำลังหาทางชนะ…"; draw();
+  setTimeout(() => { // let the "thinking" line show before the search holds the page for a moment
+    if (G !== g) return; G.thinking = null; let r = null;
+    try { r = solveTurn(s, V, 7, 40000); } catch { draw(); return toast("ตำแหน่งนี้ซับซ้อนเกินกว่าจะคิดทัน ลองย้อนตาแล้วกดใหม่", "bad"); }
+    if (!r.line || !r.line.length) { draw(); return toast("จากตรงนี้ชนะในเทิร์นนี้ไม่ได้แล้ว ลองย้อนตา (↶)", "bad"); }
+    G.hints = (G.hints || 0) + 1; G.say = "คำใบ้: " + r.line[0].d; toast(G.say); draw();
+  }, 60);
+}
+const recStart = (rec) => (rec.start ? JSON.parse(rec.start) : E.newGame(rec.init));
 // ---------- replays: a local game keeps its set-up and every action, so the history page can play it back ----------
 const RP = "bot.rp.", RPIDX = "bot.rp.idx", RP_KEEP = 30;
 function keepReplay(mid) {
@@ -326,7 +419,7 @@ export const hasReplay = (mid) => lsGet(RP + mid, null) != null;
 export function openReplay(mid) {
   const r = lsGet(RP + mid, null); if (!r) return toast("รีเพลย์ของเกมนี้ไม่ได้เก็บไว้ในเครื่องนี้");
   if (G) stopGame(!!(G.s && G.s.phase === "over")); // a finished game leaves nothing to resume
-  G = { s: E.newGame(r.rec.init), V: r.V, mode: "replay", replay: { rec: r.rec, k: 0, play: false }, saved: true }; G.id = G.s.id;
+  G = { s: recStart(r.rec), V: r.V, mode: "replay", replay: { rec: r.rec, k: 0, play: false }, saved: true }; G.id = G.s.id;
   go();
 }
 const replayApply = (s, [p, a]) => (a.type === "__lose" ? E.lose(s, p, a.reason) : E.apply(s, JSON.parse(JSON.stringify(a)), p));
@@ -338,7 +431,7 @@ function replayStep() {
 // jumping (back, to a turn, along the bar) rebuilds the game from its start; the table is laid out without animation
 function replaySeek(k, toTurn) {
   const R = G.replay; R.play = false; const n = R.rec.acts.length; k = Math.max(0, Math.min(n, k));
-  const s = E.newGame(R.rec.init); let j = 0;
+  const s = recStart(R.rec); let j = 0;
   for (; j < (toTurn ? n : k); j++) { if (toTurn && s.turn >= toTurn) break; try { replayApply(s, R.rec.acts[j]); } catch { break; } }
   G.s = s; R.k = j; Arena.update(s, view(), { reset: true, flush: true }); draw();
 }
@@ -358,7 +451,7 @@ function replayBar() {
 }
 // ---------- the summary after a game: what each side did, worked out by replaying the record ----------
 function gameStats(rec) {
-  const s = E.newGame(rec.init); const st = [0, 1].map(() => ({ summon: 0, cast: 0, attack: 0, lifeHit: 0, broke: 0, played: {} })); let seen = s.evc || 0;
+  const s = recStart(rec); const st = [0, 1].map(() => ({ summon: 0, cast: 0, attack: 0, lifeHit: 0, broke: 0, played: {} })); let seen = s.evc || 0;
   for (const a of rec.acts) {
     try { replayApply(s, a); } catch { break; }
     for (const e of s.ev || []) if (e.id > seen) {
@@ -406,7 +499,7 @@ function attack(att, tk, ti) {
 }
 
 // ---------- HUD ----------
-const ICON = { coach: "M12 3v4M12 17v4M3 12h4M17 12h4M12 8.5l1.2 2.3 2.3 1.2-2.3 1.2L12 15.5l-1.2-2.3L8.5 12l2.3-1.2z", tools: "M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4", hell: "M12 4l8 4-8 4-8-4zM4 12l8 4 8-4M4 16l8 4 8-4",
+const ICON = { flip: "M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7", coach: "M12 3v4M12 17v4M3 12h4M17 12h4M12 8.5l1.2 2.3 2.3 1.2-2.3 1.2L12 15.5l-1.2-2.3L8.5 12l2.3-1.2z", tools: "M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4", hell: "M12 4l8 4-8 4-8-4zM4 12l8 4 8-4M4 16l8 4 8-4",
   ask: "M4 6h16v12H4zM4 7l8 6 8-6", emote: "M4 5h16v10H10l-4 4v-4H4zM9 10h.01M12 10h.01M15 10h.01", sound: "M5 10v4h3l4 3V7L8 10zM16 9a4 4 0 010 6M18.5 6.5a7.5 7.5 0 010 11", mute: "M5 10v4h3l4 3V7L8 10zM16 10l4 4M20 10l-4 4" };
 const idleBar = () => (G && G.idleShown && oppIdle() > IDLE_MS ? h("div", { class: "idlebar glass", role: "status" }, h("span", null, `${G.s.P[1 - G.V].name} ไม่ได้เล่นมา ${Math.floor(oppIdle() / 60e3)} นาที`),
   h("button", { class: "btn sm gold", onclick: () => confirmBox("ขอชนะเกมนี้เพราะคู่แข่งไม่อยู่?", "ขอชนะ", claimIdle) }, "ขอชนะเกมนี้")) : null);
@@ -421,15 +514,18 @@ function crystals(P, opp, prevKey) {
 function draw() {
   if (!G || !G.hud || !G.s) return; if (G.hoverHand != null && !G.s.P[view()].hand.some((x) => x.i === G.hoverHand)) G.hoverHand = null; const s = G.s; const V = view(); const me = s.P[V], op = s.P[1 - V]; const p = whoActs(s);
   const myTurn = p != null && mine(p);
-  const hint = G.replay ? `รีเพลย์ · เทิร์น ${s.turn} · ${s.phase === "over" ? "จบเกม" : "ตาของ " + s.P[s.active].name}` : s.phase === "over" ? (s.winner === V ? "ชนะ! " : s.winner == null ? "เสมอ · " : "แพ้ · ") + s.reason
+  const hint0 = G.replay ? `รีเพลย์ · เทิร์น ${s.turn} · ${s.phase === "over" ? "จบเกม" : "ตาของ " + s.P[s.active].name}`
+    : G.puzzle && (G.pzFail || s.phase === "over") ? (s.phase === "over" && s.winner === V ? `ไขโจทย์ที่ ${G.puzzle.k + 1} สำเร็จ!` : "หมดเทิร์นแล้วยังไม่ชนะ · ย้อนตาหรือเริ่มโจทย์ใหม่")
+    : G.watch ? (s.phase === "over" ? (s.winner == null ? "เสมอ · " : s.P[s.winner].name + " ชนะ · ") + s.reason : "กำลังชม" + (p == null ? "" : ` · รอ ${s.P[p].name}…`)) : s.phase === "over" ? (s.winner === V ? "ชนะ! " : s.winner == null ? "เสมอ · " : "แพ้ · ") + s.reason
     : G.thinking || (p == null ? "" : !mine(p) ? `รอ ${s.P[p].name}…` : s.phase === "mull" ? "เลือกการ์ดที่จะเปลี่ยน หรือเก็บมือเดิม" : s.trig.length ? "มีเอฟเฟกต์ต้องจัดการ" : s.pend ? "ถูกโจมตี เลือกการตอบโต้" : s.phase === "main" ? "Main Phase · แตะการ์ดบนมือเพื่อเล่น" : s.phase === "battle" ? (G.att ? "เลือกเป้าหมายบนสนาม" : "Battle · เลือก Avatar ที่ตื่นเพื่อโจมตี") : s.phase === "end" && s.need ? `ทิ้งการ์ด ${s.need} ใบ` : "");
+  const hint = G.puzzle && !G.pzFail && s.phase !== "over" && hint0 ? `โจทย์ที่ ${G.puzzle.k + 1} · ` + hint0 : hint0;
   const pile = (P, z, t) => h("button", { onclick: () => openPile(P, z) }, h("b", null, P[z].length), h("span", null, t));
   const ph = ["draw", "main", "battle", "end"];
   if (compact()) {
     G.hud.replaceChildren(
       h("div", { class: "oppbar glass" }, op.bot && !op.ava ? h("span", { class: "ava sm" }, "✦") : avatarEl(op.ava, op.name, "sm"), h("div", { class: "pname" }, h("b", null, op.name), h("span", null, `มือ ${op.hand.length} · Deck ${op.deck.length}`)), crystals(op, true, "pcOp")),
       hint ? h("div", { class: "hint" }, G.say && !mine(p ?? -1) ? "✦ " + G.say : hint) : null,
-      handZone(s, V, p), promptBox(s, p), tutorBox(s, V, p), idleBar(),
+      G.watch ? watchHand(me) : handZone(s, V, p), promptBox(s, p), tutorBox(s, V, p), idleBar(),
       h("div", { class: "mbar glass" },
         h("button", { class: "btn sm", "aria-label": "เมนูเกม", onclick: () => gameMenu(s, V) }, "☰"),
         h("div", { class: "mturn" }, h("b", null, `เทิร์น ${s.turn}`), h("span", null, s.phase === "mull" ? "เปลี่ยนมือ" : PHASE_TH[s.phase])),
@@ -445,21 +541,22 @@ function draw() {
       // turn hub: whose turn it is (gold = ours, crimson = theirs), the phase track, and the one button that moves the turn on
       h("section", { class: "hub " + (s.phase === "over" ? "done" : s.active === V ? "mine" : "theirs"), "aria-label": "สถานะเทิร์น" },
         h("div", { class: "hubtop" }, h("div", { class: "tn" }, h("span", null, "เทิร์น"), h("b", null, s.turn)),
-          h("div", { class: "who" }, s.phase === "over" ? "จบเกม" : s.phase === "mull" ? "เปลี่ยนมือ" : s.active === V ? "ตาของคุณ" : "ตาของ " + s.P[s.active].name)),
+          h("div", { class: "who" }, s.phase === "over" ? "จบเกม" : s.phase === "mull" ? "เปลี่ยนมือ" : s.active === V && !G.watch ? "ตาของคุณ" : "ตาของ " + s.P[s.active].name)),
         h("ol", { class: "ptrack", "aria-label": "เฟสของเทิร์น" }, ph.map((k, i) => h("li", { class: s.phase === k ? "on" : ph.indexOf(s.phase) > i ? "past" : "", "aria-current": s.phase === k ? "step" : null }, PHASE_TH[k]))),
         (() => { const acts = turnButtons(s, p).filter(Boolean); if (acts.length) return h("div", { class: "hubacts" }, acts);
           const wait = p == null ? "" : !mine(p) ? `รอ ${s.P[p].name}` : s.phase === "mull" ? "เลือกการ์ดที่จะเปลี่ยน" : s.trig.length ? "จัดการเอฟเฟกต์ในกล่องกลางจอ" : s.pend ? "เลือกการตอบโต้ในกล่องกลางจอ" : "";
           return wait ? h("div", { class: "hubwait" }, !mine(p) ? h("span", { class: "dots", "aria-hidden": "true" }, h("i"), h("i"), h("i")) : null, wait) : null; })(),
+        G.puzzle && !G.pzFail && s.phase !== "over" ? h("span", { class: "chip gold" }, "เป้าหมาย: ชนะก่อนจบเทิร์นนี้ · คู่แข่งไม่มีการ์ดบนมือ") : null,
         E.critical(me) ? h("span", { class: "chip bad" }, "สาหัส! ถูกตี LIFE อีกครั้งจะแพ้") : null,
-        E.deckOpen(s) ? h("span", { class: "chip", title: "การ์ดบนสุดของ Deck ถูกหงายหน้าอยู่ (ความสามารถต่อเนื่อง)" }, `บนสุดของ Deck · ${[E.deckOpen(s, V) ? `เรา: ${me.deck[0] ? E.name(s, me.deck[0]) : "-"}` : null, E.deckOpen(s, 1 - V) ? `${op.name}: ${op.deck[0] ? E.name(s, op.deck[0]) : "-"}` : null].filter(Boolean).join(" · ")}`) : null,
-        h("div", { class: "meplate" }, avatarEl(me.ava, me.name, "me sm"), h("b", null, me.name), crystals(me, false, "pcMe"), G.replay ? null : h("button", { class: "btn sm emobtn", title: "ส่งอีโมต", "aria-label": "ส่งอีโมต", onclick: emotePicker }, "💬")),
+        E.deckOpen(s) ? h("span", { class: "chip", title: "การ์ดบนสุดของ Deck ถูกหงายหน้าอยู่ (ความสามารถต่อเนื่อง)" }, `บนสุดของ Deck · ${[E.deckOpen(s, V) ? `${G.watch ? me.name : "เรา"}: ${me.deck[0] ? E.name(s, me.deck[0]) : "-"}` : null, E.deckOpen(s, 1 - V) ? `${op.name}: ${op.deck[0] ? E.name(s, op.deck[0]) : "-"}` : null].filter(Boolean).join(" · ")}`) : null,
+        h("div", { class: "meplate" }, avatarEl(me.ava, me.name, "me sm"), h("b", null, me.name), crystals(me, false, "pcMe"), G.replay || G.watch ? null : h("button", { class: "btn sm emobtn", title: "ส่งอีโมต", "aria-label": "ส่งอีโมต", onclick: emotePicker }, "💬")),
         h("div", { class: "pilebar" }, pile(me, "deck", "Deck"), pile(me, "hell", "นรก"), pile(me, "dark", "มิติมืด"))),
-      h("div", { class: "rail hidem" }, tool("coach", "ชิเอลแนะนำ", "แนะนำ", coach, s.phase === "over"), tool("tools", "เครื่องมือจัดการสนามเอง", "เครื่องมือ", tools, s.phase === "over"), tool("hell", "ดูนรกของคู่แข่ง", "นรกคู่แข่ง", () => openPile(op, "hell")),
-        isOwner() ? tool("ask", "ถามชิเอลเกี่ยวกับตานี้", "ถามชิเอล", () => openAsk()) : null, tool(Sfx.on || Music.on ? "sound" : "mute", "เสียงเอฟเฟกต์และเพลง", "เสียง", soundSheet)),
+      h("div", { class: "rail hidem" }, G.watch ? tool("flip", "สลับไปดูจากอีกฝั่ง", "สลับฝั่ง", flipWatch) : tool("coach", "ชิเอลแนะนำ", "แนะนำ", coach, s.phase === "over"), G.watch ? null : tool("tools", "เครื่องมือจัดการสนามเอง", "เครื่องมือ", tools, s.phase === "over"), tool("hell", G.watch ? "ดูนรกของ " + op.name : "ดูนรกของคู่แข่ง", G.watch ? "นรกอีกฝั่ง" : "นรกคู่แข่ง", () => openPile(op, "hell")),
+        isOwner() && !G.watch ? tool("ask", "ถามชิเอลเกี่ยวกับตานี้", "ถามชิเอล", () => openAsk()) : null, tool(Sfx.on || Music.on ? "sound" : "mute", "เสียงเอฟเฟกต์และเพลง", "เสียง", soundSheet)),
       G.coach ? h("div", { class: "coachbox" }, G.coach) : null,
       h("div", { class: "feed", "aria-live": "polite", tabindex: "0", "aria-label": "บันทึกเกม" }, s.log.slice(-30).reverse().map((l) => h("div", { class: l.s === V ? "mine" : l.s === 1 - V ? "opp" : "" }, l.m)))),
-    handZone(s, V, p), promptBox(s, p), tutorBox(s, V, p), idleBar(),
-    h("button", { class: "btn sm arena-exit", onclick: () => (s.phase === "over" ? exitGame() : confirmBox("ออกจากสนาม? เกมที่ค้างจะเก็บไว้ให้เล่นต่อ", "ออก", exitGame)) }, "← ออก"));
+    G.watch ? watchHand(me) : handZone(s, V, p), promptBox(s, p), tutorBox(s, V, p), idleBar(),
+    h("button", { class: "btn sm arena-exit", onclick: () => (s.phase === "over" || G.watch ? exitGame() : confirmBox("ออกจากสนาม? เกมที่ค้างจะเก็บไว้ให้เล่นต่อ", "ออก", exitGame)) }, "← ออก"));
   afterDraw(s, V, op, myTurn);
 }
 // ---------- learn mode: each part of the game explained the first time it comes up ----------
@@ -535,12 +632,19 @@ function afterDraw(s, V, op, myTurn) {
 }
 function gameMenu(s, V) {
   const me = s.P[V], op = s.P[1 - V];
+  if (G.watch) return openSheet((api) => [
+    h("div", { class: "row" }, ...[[me, "hell"], [me, "dark"], [op, "hell"], [op, "dark"]].map(([P, z]) => h("button", { class: "btn sm", onclick: () => { api.close(); openPile(P, z); } }, `${ZONE_TH[z]} ${P.name} ${P[z].length}`))),
+    h("div", { class: "row" }, s.phase === "over" ? null : h("button", { class: "btn sm", onclick: () => { api.close(); flipWatch(); } }, "สลับฝั่ง"), h("button", { class: "btn sm", onclick: () => { api.close(); soundSheet(); } }, Sfx.on || Music.on ? "🔊 เสียงและเพลง" : "🔇 เสียงและเพลง"),
+      h("button", { class: "btn sm danger", onclick: () => { api.close(); exitGame(); } }, "เลิกดู")),
+    h("div", { class: "eyebrow" }, "บันทึกเกม"), h("div", { class: "glog", style: "max-height:44vh" }, s.log.slice(-40).reverse().map((l) => h("div", { class: l.s === V ? "mine" : "" }, l.m)))], { title: `ชมเกม · เทิร์น ${s.turn} · ${s.P[s.active].name}` });
   openSheet((api) => [
     h("div", { class: "row" }, ...[[me, "deck", "Deck"], [me, "hell", "นรกเรา"], [me, "dark", "มิติมืดเรา"], [op, "hell", "นรกคู่แข่ง"]].map(([P, z, t]) => h("button", { class: "btn sm", onclick: () => { api.close(); openPile(P, z); } }, `${t} ${P[z].length}`))),
     isOwner() ? h("div", { class: "row" }, h("button", { class: "btn sm ciel", onclick: () => { api.close(); openAsk(); } }, "✉ ถามชิเอล (แนบสถานะเกม)")) : null,
     h("div", { class: "row" }, h("button", { class: "btn sm ciel", disabled: s.phase === "over", onclick: () => { api.close(); coach().then(() => G && G.coach && openSheet(h("div", { class: "coachbox" }, G.coach), { title: "ชิเอลแนะนำ" })); } }, "ชิเอลแนะนำ"), h("button", { class: "btn sm", disabled: s.phase === "over", onclick: () => { api.close(); tools(); } }, "เครื่องมือ"),
       h("button", { class: "btn sm", onclick: () => { api.close(); soundSheet(); } }, Sfx.on || Music.on ? "🔊 เสียงและเพลง" : "🔇 เสียงและเพลง"),
+      h("button", { class: "btn sm", onclick: () => { api.close(); openReport(); } }, "แจ้งปัญหา"),
       undoPoint() >= 0 ? h("button", { class: "btn sm", onclick: () => { api.close(); undoLast(); } }, "↶ ย้อนตา") : null,
+      G.puzzle && !G.pzFail && s.phase !== "over" ? h("button", { class: "btn sm ciel", onclick: () => { api.close(); puzzleHint(); } }, "คำใบ้") : null,
       G.replay ? null : h("button", { class: "btn sm", onclick: () => { api.close(); emotePicker(); } }, "💬 อีโมต"),
       h("button", { class: "btn sm danger", onclick: () => { api.close(); s.phase === "over" ? exitGame() : confirmBox("ออกจากสนาม? เกมที่ค้างจะเก็บไว้ให้เล่นต่อ", "ออก", exitGame); } }, "ออกจากสนาม")),
     G.coach ? h("div", { class: "coachbox" }, G.coach) : null,
@@ -591,17 +695,29 @@ function undoPoint() {
 }
 function undoLast() {
   const k = undoPoint(); if (k < 0 || G.driving) return toast(G && G.driving ? "รอฝั่งตรงข้ามเล่นจบก่อนนะ" : "ยังไม่มีตาที่ย้อนได้");
-  const s = E.newGame(G.rec.init); for (let j = 0; j < k; j++) { try { replayApply(s, G.rec.acts[j]); } catch (e) { return toast("ย้อนไม่ได้: " + e.message, "bad"); } }
-  G.rec.acts.length = k; G.s = s; G.undos = (G.undos || 0) + 1; G.say = null;
+  const s = recStart(G.rec); for (let j = 0; j < k; j++) { try { replayApply(s, G.rec.acts[j]); } catch (e) { return toast("ย้อนไม่ได้: " + e.message, "bad"); } }
+  G.rec.acts.length = k; G.s = s; G.undos = (G.undos || 0) + 1; G.say = null; G.pzFail = false;
   G.pick = null; G.att = null; G.host = null; G.payFor = null; G.payVia = null; G.callVia = null; G.helperPick = null; G.castFor = null; G.tk = null; G.ask = null;
   persist(); Arena.update(s, view(), { reset: true, flush: true }); draw(); drive(); toast("ย้อนตาแล้ว");
 }
 const undoBtn = () => (undoPoint() >= 0 ? h("button", { class: "btn sm", title: "ย้อนตาล่าสุด (Ctrl+Z)", onclick: undoLast }, "↶ ย้อนตา") : null);
+// turning a phone or resizing the window lays the HUD out again (the phone and desktop layouts differ)
+let resizeT = 0; addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => { if (G && G.hud && G.s) draw(); }, 200); });
 addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "z" && G && !G.replay && !/INPUT|TEXTAREA|SELECT/.test((e.target || {}).tagName || "")) { e.preventDefault(); undoLast(); } });
 function rematch() { const learn = G && G.learn, mode = G && G.mode, fish = G && G.fish; stopGame(true); if (learn) startLearn(); else startLocal(fish ? "goldfish" : mode === "solo" ? "solo" : "bot"); }
 function exitGame() { if (G && G.replay) { stopGame(false); location.hash = "#history"; return; } const over = G && G.s && G.s.phase === "over"; stopGame(over); location.hash = "#play"; }
 function turnButtons(s, p) {
+  if (G.puzzle && !G.replay) { // puzzles: what to do after winning or running out of turn, and a hint while playing
+    const choose = h("button", { class: "btn sm", onclick: () => { stopGame(true); location.hash = "#play"; } }, "เลือกโจทย์อื่น");
+    if (s.phase === "over" && s.winner === G.V) return [h("button", { class: "btn gold sm", onclick: puzzleNext }, "โจทย์ถัดไป"), choose];
+    if (s.phase === "over" || G.pzFail) return [undoBtn(), h("button", { class: "btn gold sm", onclick: puzzleRestart }, "เริ่มโจทย์ใหม่"), choose];
+    const b = turnButtons0(s, p); return p === G.V && mine(p) && !s.trig.length && !s.pend && s.phase !== "mull" ? [...b, h("button", { class: "btn ciel sm", onclick: puzzleHint }, "คำใบ้")] : b;
+  }
+  return turnButtons0(s, p);
+}
+function turnButtons0(s, p) {
   if (G.replay) return [h("button", { class: "btn sm", onclick: exitGame }, "กลับหน้าประวัติ")];
+  if (G.watch) return [s.phase === "over" ? null : h("button", { class: "btn sm", onclick: flipWatch }, "สลับฝั่ง"), h("button", { class: s.phase === "over" ? "btn gold sm" : "btn sm", onclick: exitGame }, s.phase === "over" ? "กลับหน้าเตรียมเกม" : "เลิกดู")];
   if (s.phase === "over") return [G.mode !== "friend" ? h("button", { class: "btn gold sm", onclick: rematch }, G.fish ? "ซ้อมอีกรอบ" : "ดวลอีกครั้ง") : null,
     G.rec && G.mode !== "friend" ? h("button", { class: "btn sm", onclick: () => openSummary(G) }, "สรุปเกม") : null,
     h("button", { class: "btn sm", onclick: () => { stopGame(true); location.hash = "#play"; } }, "กลับหน้าเตรียมเกม"), h("a", { class: "btn sm", href: "#history", onclick: () => stopGame(true) }, "ดูประวัติ")];

@@ -1,7 +1,8 @@
 // Achievements: earned only by playing (nothing here can be bought), each one unlocking something for the table:
 // a 3D figure to stand by your side, or a colour of lacquer for the mat. Worked out from your own match history.
-import { Data } from "./fb.js?v=20261111123125";
-import { AVATARS, MATS } from "./arena3d.js?v=20261111123125";
+import { Data } from "./fb.js?v=20261111131228";
+import { lsGet } from "./util.js?v=20261111131228";
+import { AVATARS, MATS } from "./arena3d.js?v=20261111131228";
 
 const real = (ms) => ms.filter((m) => m.mode !== "goldfish");
 const wins = (ms) => real(ms).filter((m) => m.result === "win").length;
@@ -13,6 +14,7 @@ export const ACH = [
   { id: "pro", name: "ปราบมือโปร", how: "ชนะบอทมือโปร 1 เกม", test: (ms) => ms.some((m) => m.brain === "hard" && m.result === "win"), gives: { mat: "jade" } },
   { id: "clean", name: "ไร้รอยขีดข่วน", how: "ชนะโดยที่ LIFE ของเราไม่ถูกหงายเลยสักใบ", test: (ms) => real(ms).some((m) => m.result === "win" && m.lifeLost === 0), gives: { mat: "violet" } },
   { id: "friend3", name: "เพื่อนร่วมสนาม", how: "ดวลกับเพื่อนครบ 3 เกม", prog: (ms) => [ms.filter((m) => m.mode === "friend").length, 3], gives: { av: "maew" } },
+  { id: "puzzle5", name: "นักไขปริศนา", how: "ไขโจทย์ปริศนาสำเร็จ 5 ข้อ", prog: () => [Object.keys(lsGet("bot.pz", {})).length, 5], gives: { mat: "gold" } },
   { id: "decks", name: "ครบเจ็ดสาย", how: "ชนะด้วย Starter Deck ต่างกันครบ 7 เด็ค", prog: (ms) => [new Set(real(ms).filter((m) => m.result === "win" && /^starter-/.test(m.deckId || "")).map((m) => m.deckId)).size, 7] },
 ];
 export const progress = (a, ms = Data.matches) => { if (a.prog) { const [have, need] = a.prog(ms); return { have: Math.min(have, need), need, done: have >= need }; } const done = !!a.test(ms); return { have: done ? 1 : 0, need: 1, done }; };
