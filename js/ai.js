@@ -1,10 +1,10 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261111080830";
-import { plain } from "./persona.js?v=20261111080830";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261111080830";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261111080830";
-import { Data } from "./fb.js?v=20261111080830";
-import { lsGet, clone } from "./util.js?v=20261111080830";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261111081724";
+import { plain } from "./persona.js?v=20261111081724";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261111081724";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261111081724";
+import { Data } from "./fb.js?v=20261111081724";
+import { lsGet, clone } from "./util.js?v=20261111081724";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -95,6 +95,8 @@ export function stateText(s, view, opts = {}) {
 }
 
 // ===== heuristic bot =====
+// worth of a worn card that gives no flat POWER bonus: an ability, a conditional bonus or a trigger for the wearer
+const gearV = (t) => (/ได้รับความสามารถ|ได้รับ\s*(?:POWER|การ์ด)|ที่สวมใส่การ์ดใบนี้/.test(String(t || "")) ? 2 : 0);
 export const H = {
   look: 4, // how many of the best-looking main-phase options get played out on a copy before choosing (0 = off)
   lookAtk: false, // play attacks out too (off: it made the bots too timid in testing)
@@ -157,7 +159,7 @@ export const H = {
         if (a.type === "summon") { const fx = d.x && /จุติ/.test(d.x) ? H.opsScore(s, p, H.preview(s, { i: x.i, c: x.c, when: "summon", seat: p, exact: true })) : 0; sc = (d.pw || 0) + 2 + Math.max(0, fx) - payLoss * 0.45 + (P.av.length < 2 ? 3 : 0) + bias; }
         else if (a.type === "build") sc = 3 - payLoss * 0.3;
         else if (a.type === "cast" && d.st === "L") sc = E.lands(s).some((l) => l.o === p) || (E.lands(s).length && !E.landSc(s, "splitLand")) ? -1 : 2.5;
-        else if (a.type === "cast" && d.st === "D") { const host = P.av.find((y) => y.i === a.on); const sm = scriptOf(s, x); const b = sm && sm.modV ? sm.modV(E, s, x, host) : modBonus(d.x); sc = b > 0 && host ? b + (host.a ? 1.5 : 0) + E.power(s, host) * 0.1 : -1; }
+        else if (a.type === "cast" && d.st === "D") { const host = P.av.find((y) => y.i === a.on); const sm = scriptOf(s, x); const b = sm && sm.modV ? sm.modV(E, s, x, host) : modBonus(d.x) || gearV(d.x); sc = b > 0 && host ? b + (host.a ? 1.5 : 0) + E.power(s, host) * 0.1 : -1; }
         else if (a.type === "cast" && d.st === "N") sc = H.opsScore(s, p, H.preview(s, { i: x.i, c: x.c, when: "cast", seat: p }));
         if (a.via != null) sc += 4; // ซาร์อึก: a dragon for almost nothing
         cand.push({ m, sc, bias });

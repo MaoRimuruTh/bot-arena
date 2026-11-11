@@ -269,6 +269,10 @@ body.arena-on main{padding:0;max-width:none}
 .bar{display:grid;grid-template-columns:minmax(0,1fr) 120px 46px;gap:10px;align-items:center;font-size:.85rem}
 .bar i{display:block;height:8px;border-radius:99px;background:linear-gradient(90deg,var(--gold),var(--gold-hi))}
 .bar .trk{background:rgba(255,255,255,.06);border-radius:99px;overflow:hidden}
+.cstats{display:flex;flex-direction:column;gap:4px}
+.cstat{display:grid;grid-template-columns:minmax(0,1fr) 56px 128px;gap:10px;align-items:baseline;font-size:.85rem;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.cstat a{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .cstat.head{border-bottom-color:rgba(255,255,255,.1)}
+.cstat .up{color:#8ee3b2} .cstat .down{color:#ffb0b2}
 .mrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid var(--line-2);cursor:pointer;color:inherit;font:inherit;text-align:left;width:100%}
 .mrow:hover{border-color:var(--line)}
 .ava.sm{width:26px;height:26px;font-size:.7rem;box-shadow:none}

@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261111080830";
-import { CARDS, nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261111080830";
-import { E, scriptOf } from "./engine.js?v=20261111080830";
+import { readAura } from "./auras.js?v=20261111081724";
+import { CARDS, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261111081724";
+import { E, scriptOf } from "./engine.js?v=20261111081724";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -102,6 +102,32 @@ function fitsD(d, f, pw = () => d.pw || 0, on = false, cst = () => d.c || 0) {
   return true;
 }
 
+// the first condition of a filter that a card misses, in words for the player (shown on cards that cannot be picked)
+function whyD(d, f, pw = () => d.pw || 0, on = false, cst = () => d.c || 0) {
+  const nm = nameText(d, on); const syt = syText(d, on); const anySy = allSy(d, on);
+  if (f.type && d.t !== f.type && !(f.type === "A" && d.t === "T")) return "ไม่ใช่ " + (TYPE_TH[f.type] || f.type);
+  if (f.symbol && !anySy && !syt.includes(f.symbol)) return "ไม่ใช่ {" + f.symbol + "}";
+  if (f.symbols && !anySy && !f.symbols.some((y) => syt.includes(y))) return "สัญลักษณ์ไม่ตรง";
+  if (f.name && !nm.includes(normName(f.name))) return "ชื่อไม่ใช่" + f.name;
+  if (f.names && !f.names.some((n) => nm.includes(normName(n)))) return "ชื่อไม่ตรง";
+  if (f.notName && nm.includes(normName(f.notName))) return "ห้ามชื่อ" + f.notName;
+  if (f.notOnly && d.o1) return "เป็น Only #1";
+  if (f.st && d.st !== f.st) return "ชนิด Magic ไม่ตรง";
+  if (f.maxCost != null && cst() > f.maxCost) return "Cost เกิน " + f.maxCost;
+  if (f.minCost != null && cst() < f.minCost) return "Cost ต่ำกว่า " + f.minCost;
+  if (f.minGem != null && (d.g || 0) < f.minGem) return "GEM ไม่ถึง " + f.minGem;
+  if (f.cost != null && cst() !== f.cost) return "Cost ไม่ใช่ " + f.cost;
+  if (f.gem != null && (d.g || 0) !== f.gem) return "GEM ไม่ใช่ " + f.gem;
+  if (f.power != null && pw() !== f.power) return "POWER ไม่ใช่ " + f.power;
+  if (f.maxPower != null && pw() > f.maxPower) return "POWER เกิน " + f.maxPower;
+  if (f.color && !colorIs(d, f.color, on)) return "ไม่ใช่สี" + f.color;
+  if (f.text && !String(d.x || "").includes(f.text)) return "ข้อความไม่ตรง";
+  return null;
+}
+const whyX = (s, x, f) => { let d = E.def(s, x); const so = E.syOver(s, x); if (so) { d = { ...d, sy: so }; delete d.al; } return whyD(d, f, () => E.power(s, x), hasFieldAlias(d) && E.onField(s, x), () => E.costNow(s, x)); };
+// reasons for every revealed card that is not a candidate
+const whyMap = (ids, cands, fn) => { const ok = new Set(cands.map((x) => x.i)), out = {}; for (const i of ids) if (!ok.has(i)) out[i] = fn(i) || "ไม่ตรงเงื่อนไข"; return out; };
+
 // ---------- สอดแนม: show the top cards, take what the text names, put the rest where it says ----------
 const SC_REST = /การ์ด(?:ใบ)?(?:อื่น\s*ๆ?\s*)?ที่เหลือ(?:ทั้งหมด)?|(?:ใบ|ส่วน)?ที่เหลือ(?:ทั้งหมด)?|การ์ดใบอื่น(?:\s*ๆ)?/;
 const SC_TAIL = /\s(?=ถ้า|หาก|หลังจากนั้น(?!\s*(?:สับ|(?:นำ)?(?:การ์ด)?(?:ใบ)?ที่เหลือ|เรียง))|จากนั้น(?!\s*(?:สับ|(?:นำ)?(?:การ์ด)?(?:ใบ)?ที่เหลือ|เรียง))|โดย(?:นับ|ถือ)|#|Avatar\s*(?:ใบ)?ที่(?:ถูก)?(?:อัญเชิญ|เลือก)|การ์ด(?:ใบ)?ที่(?:เลือก|นำ|อัญเชิญ)|และ\s*(?:จั่ว|ทำลาย|ธรณีสูบ|ทำความเสียหาย))/;
@@ -185,7 +211,10 @@ function readScout(s, body, p, self, ctx, trig) {
   if (to === "av") { const P = s.P[p]; const free = Math.max(0, Math.min(4 - E.avatars(P), 6 - P.av.length)); cands = cands.filter((x) => E.def(s, x).t === "A"); want = Math.min(want, free); }
   if (to === "cs") { cands = cands.filter((x) => E.def(s, x).t === "C" && !s.P[p].cs.some((y) => E.name(s, y) === E.def(s, x).n)); want = Math.min(want, 3 - s.P[p].cs.length); }
   want = Math.min(want, cands.length);
-  const got = want > 0 ? ctx.choose(cands, want, `สอดแนม ${n} ใบ: เลือกการ์ดที่จะ${TO_TH[to]}${want > 1 ? ` (${optional ? "สูงสุด " : ""}${want} ใบ)` : ""}`, { optional, reveal: ids }) : [];
+  const why = whyMap(ids, cands, (i) => { const x = top.find((y) => y.i === i); if (!x) return null; const d = E.def(s, x);
+    if (to === "av" && d.t !== "A") return "ไม่ใช่ Avatar"; if (to === "cs" && d.t !== "C") return "ไม่ใช่ Construct";
+    if (F.list[0].other && self && x.i === self.i) return "ใบเดียวกับที่ใช้"; return F.list.length === 1 ? whyD(d, { ...F.list[0], strict: true }) : null; });
+  const got = want > 0 ? ctx.choose(cands, want, `สอดแนม ${n} ใบ: เลือกการ์ดที่จะ${TO_TH[to]}${want > 1 ? ` (${optional ? "สูงสุด " : ""}${want} ใบ)` : ""}`, { optional, reveal: ids, why }) : [];
   for (const x of got) ops.push(moveOp(x, to));
   ops.push({ op: "scoutRest", seat, ids, rest: where });
   say.push(got.length ? `สอดแนม ${n} ใบ · ${TO_TH[to]} ${got.map((x) => E.name(s, x)).join(", ")}` : `สอดแนม ${n} ใบ ไม่ได้การ์ดที่ตรงเงื่อนไข`);
@@ -323,7 +352,8 @@ function sentence(s, t, p, self, ctx) {
     const to = /อัญเชิญ|ลงบน\s*Avatar Zone/.test(t) ? "av" : "hand";
     if (ctx.deferred) { ops.push({ op: "scout", seat: p, n, ...f, to }); say.push(`สอดแนม ${n} ใบ หาการ์ดที่ตรงเงื่อนไข`); }
     else { const top = P.deck.slice(0, n); const cands = top.filter((x) => typed(x, f));
-      const got = ctx.choose(cands, 1, `สอดแนม ${n} ใบ: เลือกการ์ดที่จะ${to === "av" ? "อัญเชิญ" : "นำขึ้นมือ"}`, { optional: /สามารถ/.test(t), reveal: top.map((x) => x.i) })[0];
+      const why = whyMap(top.map((x) => x.i), cands, (i) => { const x = top.find((y) => y.i === i); return f.other && self && x.i === self.i ? "ใบเดียวกับที่ใช้" : whyX(s, x, f); });
+      const got = ctx.choose(cands, 1, `สอดแนม ${n} ใบ: เลือกการ์ดที่จะ${to === "av" ? "อัญเชิญ" : "นำขึ้นมือ"}`, { optional: /สามารถ/.test(t), reveal: top.map((x) => x.i), why })[0];
       ops.push({ op: "scout", seat: p, n, to, ...(got ? { take: got.i } : { none: true }) }); say.push(got ? `สอดแนม ${n} ใบ ได้ ${E.name(s, got)}` : `สอดแนม ${n} ใบ ไม่ได้การ์ดที่ตรงเงื่อนไข`); }
   } else if (/สอดแนม/.test(t)) { if (/นำ|เลือก|อัญเชิญ|ขึ้นมือ/.test(t) || !/เรียง|ตามใจ/.test(t)) return false; say.push("สอดแนม (ดูการ์ดบนสุดของ Deck แล้วเรียงตามเดิม)"); }
   else if (/จั่วการ์ด/.test(t)) {
