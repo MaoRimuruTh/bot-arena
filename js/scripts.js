@@ -640,7 +640,8 @@ Object.assign(SCRIPTS, {
     return { explain: got && h ? `สอดแนม 5 ใบ · ${E.name(s, got)} มาสวมให้ ${E.name(s, h)}` : hosts.length ? "สอดแนม 5 ใบ ไม่พบ จ่ามะนาว / จ่าแดงเดือด" : "สอดแนม 5 ใบ แต่ไม่มี รถถัง บนสนามเรา", ops: [{ op: "scoutShow", seat: p, ids }, ...(got && h ? [{ op: "attach", i: got.i, on: h.i }] : []), { op: "scoutRest", seat: p, ids, rest: "bottom" }] }; } },
   // จ่ามะนาว: with a รถถัง on our field, one of our face-up LIFE cards is turned face-down; destroyed instead of the รถถัง wearing it
   "SD04-002": { activate: rideTank, shield: true, summon: (c) => { const { E, s, seat: p } = c; const P = s.P[p];
-    return tanks(E, s, p).length && P.life.some((x) => x.up) && !E.critical(P) ? { explain: "มี รถถัง บนสนามเรา: คว่ำ LIFE เรา 1 ใบ", ops: [{ op: "lifeFlip", seat: p, up: false }] } : { explain: tanks(E, s, p).length ? "ไม่มี LIFE ที่หงายให้คว่ำ" : "ไม่มี รถถัง บนสนามเรา ความสามารถไม่ทำงาน", ops: [] }; } },
+    if (tanks(E, s, p).length && !once(s, p, "จ่ามะนาว")) return { explain: "จ่ามะนาวคว่ำ LIFE ไปแล้วในเทิร์นนี้ (เทิร์นละครั้ง)", ops: [] };
+    return tanks(E, s, p).length && P.life.some((x) => x.up) && !E.critical(P) ? { explain: "มี รถถัง บนสนามเรา: สุ่มคว่ำ LIFE เรา 1 ใบ", ops: [{ op: "lifeFlip", seat: p, up: false, rnd: true }, { op: "nameOnce", seat: p, name: "จ่ามะนาว" }] } : { explain: tanks(E, s, p).length ? "ไม่มี LIFE ที่หงายให้คว่ำ" : "ไม่มี รถถัง บนสนามเรา ความสามารถไม่ทำงาน", ops: [] }; } },
   // จ่าแดงเดือด: the รถถัง wearing it gets POWER +1; when that รถถัง wins a fight, this card may be destroyed to wake it
   "SD04-003": { activate: rideTank, worn: (E, s, m, host) => (E.named(s, host, "รถถัง") ? 1 : 0),
     hostWin: (c) => { const { E, s } = c; const H = E.locate(s, c.self.on); if (!H || H.z !== "av") return { explain: "Avatar ที่สวมใส่ไม่อยู่แล้ว", ops: [] };
@@ -1166,7 +1167,7 @@ Object.assign(SCRIPTS, {
     const ours = [...s.P[p].hell].sort((a, b) => worth(E, s, b) - worth(E, s, a)).slice(0, 5); // the opponent takes our best ones
     return { explain: `นรกฝ่ายตรงข้าม ${theirs.length} ใบ และนรกเรา ${ours.length} ใบ กลับเข้า Deck เจ้าของ แล้วสับ`, ops: [...[...theirs, ...ours].map((y) => ({ op: "move", i: y.i, to: "deckBottom" })), { op: "shuffle", seat: p }, { op: "shuffle", seat: 1 - p }] }; } },
   // พยาบาล เอ๋: survives being attacked: turn one of our face-up LIFE cards face down
-  "BT02-027": { survived: (c) => (c.s.P[c.seat].life.some((y) => y.up) && !c.E.critical(c.s.P[c.seat]) ? { explain: "ไม่ถูกทำลายจากการถูกโจมตี: คว่ำ LIFE เรา 1 ใบ", ops: [{ op: "lifeFlip", seat: c.seat, up: false }] } : { explain: "ไม่มี LIFE ที่คว่ำได้", ops: [] }) },
+  "BT02-027": { survived: (c) => (c.s.P[c.seat].life.some((y) => y.up) && !c.E.critical(c.s.P[c.seat]) ? { explain: "ไม่ถูกทำลายจากการถูกโจมตี: สุ่มคว่ำ LIFE เรา 1 ใบ", ops: [{ op: "lifeFlip", seat: c.seat, up: false, rnd: true }] } : { explain: "ไม่มี LIFE ที่คว่ำได้", ops: [] }) },
   // สตีฟ Tank Ranger: rides a รถถัง (POWER +2); in the Battle Phase that รถถัง must attack if it can
   "BT02-028": { activate: rideTank, worn: (E, s, m, host) => (E.named(s, host, "รถถัง") ? 2 : 0), hostMust: true },
   // ช่วยโลกใบนี้ไว้: flip all our LIFE: this turn the {เปรต} Avatars we summon ignore card abilities and get เตะไข่ that cannot be stopped by โล่มนุษย์
@@ -2175,7 +2176,7 @@ Object.assign(SCRIPTS, {
     if (m === 0) { const t = c.choose(foes, 1, "เลือก Avatar ฝ่ายตรงข้าม", { exact: true })[0]; return { explain: t ? `ทำลาย ${E.name(s, t)}` : "ไม่มีเป้าหมาย", ops: [...ops, ...(t ? [{ op: "destroy", i: t.i, why: "เต่า" }] : [])] }; }
     return { explain: nut ? "เนยถั่ว สวมใส่การ์ดใบนี้" : "ไม่มีเนยถั่วใน Deck", ops: [...ops, ...(nut ? [{ op: "attach", i: nut.i, on: x.i }, { op: "shuffle", seat: p }] : [])] }; } },
   // Overdose (3+ face-up LIFE of ours): พูรินอล blocks the opponent's จุติ/คำสั่งเสีย · ชาโค่ล their ธรณีสูบ · เซตาม่อน their โล่มนุษย์/ลูกฮึด · our other cards cannot use abilities
-  "BT08-031": { odBlock: ["summon", "death"], kill: (c) => { const L = deadOf(c); return L && textHas(c.E, c.s, L.x, "จุติ", "คำสั่งเสีย") && c.s.P[c.seat].life.some((y) => y.up) ? { explain: "คว่ำ LIFE ฝ่ายเรา 1 ใบ", ops: [{ op: "lifeFlip", up: false, force: true }] } : { explain: "", ops: [] }; } },
+  "BT08-031": { odBlock: ["summon", "death"], kill: (c) => { const L = deadOf(c); return L && textHas(c.E, c.s, L.x, "จุติ", "คำสั่งเสีย") && c.s.P[c.seat].life.some((y) => y.up) ? { explain: "สุ่มคว่ำ LIFE ฝ่ายเรา 1 ใบ", ops: [{ op: "lifeFlip", up: false, force: true, rnd: true }] } : { explain: "", ops: [] }; } },
   "BT08-032": { odBlock: ["mill"], kill: (c) => { const { E, s, seat: p } = c; const L = deadOf(c); return L && textHas(E, s, L.x, "ธรณีสูบ", "สอดแนม") ? { explain: "Avatar Overdose ทุกใบ POWER +1", ops: s.P[p].av.filter((y) => E.named(s, y, "Overdose")).map((y) => ({ op: "power", i: y.i, n: 1, temp: false })) } : { explain: "", ops: [] }; } },
   "BT08-033": { odBlock: ["shield"], kill: (c) => { const L = deadOf(c); return L && textHas(c.E, c.s, L.x, "โล่มนุษย์", "ลูกฮึด") ? { explain: "หงาย LIFE ฝ่ายตรงข้าม 1 ใบ", ops: [{ op: "lifeFlip", seat: 1 - c.seat }] } : { explain: "", ops: [] }; } },
   // เล่าปี่: our จ๊กก๊ก +1 · with another green ขุนพล: cannot be attacked or chosen by the opponent's Magic

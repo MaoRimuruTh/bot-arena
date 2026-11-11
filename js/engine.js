@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261111220607";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261111220607";
-import { SCRIPTS } from "./scripts.js?v=20261111220607";
-import { newId, clone } from "./util.js?v=20261111220607";
+import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261111225947";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261111225947";
+import { SCRIPTS } from "./scripts.js?v=20261111225947";
+import { newId, clone } from "./util.js?v=20261111225947";
 export const ZONES = ["deck", "hand", "av", "mg", "cs", "hell", "dark", "life"];
 export const ZONE_TH = { deck: "Deck", hand: "มือ", av: "Avatar Zone", mg: "Magic Zone", cs: "Construct Zone", hell: "นรก", dark: "มิติมืด", life: "LIFE", land: "Land Magic" };
 export const PHASE_TH = { mull: "เปลี่ยนมือ", draw: "Draw", main: "Main", battle: "Battle", end: "End", over: "จบเกม" };
@@ -821,8 +821,11 @@ export const E = {
       }
       case "lifeFlip": {
         const P = s.P[seat];
-        if (o.up === false) { if (E.landSc(s, "noLifeDown")) { E.log(s, by, "LIFE คว่ำไม่ได้ (Land Magic บนสนาม)"); return; } if (E.critical(P) && !o.force) throw new RuleError("สถานะสาหัสคว่ำ LIFE ด้วยความสามารถไม่ได้"); const x = [...P.life].reverse().find((y) => y.up); if (x) { x.up = false; E.log(s, seat, `คว่ำ LIFE ${E.name(s, x)}`); } }
-        else { const x = P.life.find((y) => !y.up); if (x) { x.up = true; E.log(s, seat, `หงาย LIFE ${E.name(s, x)} (จากความสามารถ ไม่ทำงาน)`); if (E.critical(P)) E.log(s, seat, `${P.name} เข้าสู่สถานะสาหัส`); E.lifeFlipped(s, seat); } }
+        if (o.up === false) { if (E.landSc(s, "noLifeDown")) { E.log(s, by, "LIFE คว่ำไม่ได้ (Land Magic บนสนาม)"); return; } if (E.critical(P) && !o.force) throw new RuleError("สถานะสาหัสคว่ำ LIFE ด้วยความสามารถไม่ได้");
+          // "สุ่มคว่ำ": any of the face-up LIFE cards, by chance; otherwise the last one turned up
+          const ups = P.life.filter((y) => y.up); const x = o.rnd && ups.length > 1 ? ups[Math.floor(E.rnd(s) * ups.length)] : ups[ups.length - 1];
+          if (x) { x.up = false; E.log(s, seat, `${o.rnd ? "สุ่มคว่ำ" : "คว่ำ"} LIFE ${E.name(s, x)}`); E.ev(s, { k: "heal", p: seat, i: x.i }); } }
+        else { const x = P.life.find((y) => !y.up); if (x) { x.up = true; E.log(s, seat, `หงาย LIFE ${E.name(s, x)} (จากความสามารถ ไม่ทำงาน)`); E.ev(s, { k: "life", p: seat, i: x.i, by }); if (E.critical(P)) E.log(s, seat, `${P.name} เข้าสู่สถานะสาหัส`); E.lifeFlipped(s, seat); } }
         return;
       }
       case "lifeDamage": { E.damageLife(s, seat, 1 - seat); return; }
@@ -874,7 +877,7 @@ export const E = {
       case "handToDeck": { const P = s.P[seat]; const n0 = P.hand.length; P.deck.push(...P.hand.splice(0)); E.shuffle(s, P.deck); E.log(s, seat, `${P.name} นำการ์ดบนมือ ${n0} ใบกลับเข้า Deck แล้วสับ`); return; }
       case "rps": { // เป่ายิงฉุบ: the loser flips their top LIFE card, or loses the game if already in critical state
         const Hd = ["ค้อน", "กรรไกร", "กระดาษ"]; let a = 0, b = 0, k = 0; do { a = Math.floor(E.rnd(s) * 3); b = Math.floor(E.rnd(s) * 3); k++; } while (a === b && k < 9); if (a === b) b = (a + 1) % 3;
-        const lo = (a + 1) % 3 === b ? 1 : 0; E.log(s, by, `เป่ายิงฉุบ: ${s.P[0].name} ${Hd[a]} · ${s.P[1].name} ${Hd[b]} → ${s.P[lo].name} แพ้`);
+        const lo = (a + 1) % 3 === b ? 1 : 0; E.log(s, by, `เป่ายิงฉุบ: ${s.P[0].name} ${Hd[a]} · ${s.P[1].name} ${Hd[b]} → ${s.P[lo].name} แพ้`); E.ev(s, { k: "rps", h: [a, b], lo });
         if (E.critical(s.P[lo])) { E.lose(s, lo, `${s.P[lo].name} แพ้เป่ายิงฉุบขณะอยู่ในสถานะสาหัส`); return; } E.op(s, { op: "lifeFlip", seat: lo }, by); return; }
       case "peek": { const P = s.P[seat]; const xs = o.ids ? o.ids.map((i) => (E.locate(s, i) || {}).x).filter(Boolean) : P[o.z || "hand"]; E.log(s, by, `${o.label || "ดูการ์ด"} (${xs.length} ใบ): ${xs.map((x) => E.name(s, x)).join(", ") || "ไม่มีการ์ด"}`); return; }
       case "pilfer": { // เบียดเบียนผู้อื่น: each player takes a random card from the other's hand and shows it; the follow-ups are triggers of the source card
@@ -920,7 +923,7 @@ export const E = {
       case "used": { const L = E.locate(s, o.i); if (L) L.x.used = s.turn; return; }
       case "roll": { // dice (sides 6) or a coin (sides 2: 1 = heads): the matching ops run
         const sides = o.sides === 2 ? 2 : 6; const r = 1 + Math.floor(E.rnd(s) * sides); const label = sides === 2 ? (r === 1 ? "หัว" : "ก้อย") : String(r);
-        E.log(s, by, `${o.why ? o.why + ": " : ""}${sides === 2 ? "ทอยเหรียญได้" : "ทอยลูกเต๋าได้ "}${label}`);
+        E.log(s, by, `${o.why ? o.why + ": " : ""}${sides === 2 ? "ทอยเหรียญได้" : "ทอยลูกเต๋าได้ "}${label}`); E.ev(s, { k: "roll", p: by, sides, r, why: String(o.why || "") });
         const branch = (o.cases && (o.cases[r] || o.cases[r % 2 ? "odd" : "even"])) || (r % 2 ? o.odd : o.even) || []; if (branch.length) E.ops(s, branch, by); return; }
       case "scout": { // look at the top n, take the chosen (or first matching) card, the rest go to the bottom
         const P = s.P[seat]; const top = P.deck.splice(0, Math.min(n, P.deck.length)); const k = o.take != null ? top.findIndex((x) => x.i === o.take) : o.none ? -1 : top.findIndex((x) => matchCard(E.def(s, x), o));
@@ -970,7 +973,7 @@ export const E = {
       case "stateSet": { // turn-scoped player flags: K-BO, เนโกะเมะ, 1 - 2 - 2
         if (o.k === "hosp") { (s.hosp = s.hosp || [null, null])[seat] = { t: s.turn, names: [String(o.name || "")] }; } else if (o.k === "noReact") { s.noR = { t: s.turn, p: o.self ? seat : 1 - seat }; } else if (o.k === "landLock") { (s.landLock = s.landLock || [0, 0])[1 - seat] = s.turn + 1; } else if (o.k === "kbo") s.kbo = { t: s.turn, p: seat }; else if (o.k === "neko") { (s.neko = s.neko || [null, null])[seat] = { st: o.st, until: s.turn + 1 }; } else if (o.k === "oneTwoTwo") { (s.noSearch = s.noSearch || [0, 0])[seat] = s.turn + 2; (s.skipDraw = s.skipDraw || [0, 0])[seat] = s.turn + 2; }
         E.log(s, by, String(o.why || "")); return; }
-      case "bloody": { const P = s.P[seat]; const a = 1 + Math.floor(E.rnd(s) * 6), b = 1 + Math.floor(E.rnd(s) * 6); E.log(s, by, `ทอยลูกเต๋าได้ ${a} และ ${b}`); if (a % 2 || b % 2) return;
+      case "bloody": { const P = s.P[seat]; const a = 1 + Math.floor(E.rnd(s) * 6), b = 1 + Math.floor(E.rnd(s) * 6); E.log(s, by, `ทอยลูกเต๋าได้ ${a} และ ${b}`); E.ev(s, { k: "roll", p: by, sides: 6, r: a, r2: b, why: "บลัดดี้แมรี่" }); if (a % 2 || b % 2) return;
         const x = P.hell.find((y) => E.named(s, y, "วิญญาณร้าย")); if (!x) return; E.moveTo(s, x.i, "dark"); s.bm = s.bm || [0, 0]; s.bm[seat]++; E.log(s, by, `เนรเทศ ${E.name(s, x)} (${s.bm[seat]}/3)`); if (s.bm[seat] >= 3) E.lose(s, 1 - seat, "วิญญาณร้ายครบ 3 ใบในมิติมืด (บลัดดี้แมรี่)"); return; }
       case "bpOn": { const L = E.locate(s, o.i); if (L) L.x.bp = s.turn; return; }
       case "flagSet": { const L = E.locate(s, o.i); if (L && /^(tlb|st0|sorry|kraken|frz|lh2|kf|own|feed|ofa|mustAtk|mgo|sumt|picky|hs2|tani|twice|twiceUsed|nact|kdm|fa)$/.test(o.k)) L.x[o.k] = o.v == null ? s.turn : o.v; return; }
@@ -980,7 +983,7 @@ export const E = {
       case "putNamed": { const P = s.P[seat]; const z = o.from === "hell" ? P.hell : P.deck; const x = z.find((y) => E.def(s, y).t === "A" && E.named(s, y, String(o.name || ""))); if (!x || E.avatars(P) >= 4) { E.log(s, seat, `ไม่มี ${o.name} ให้อัญเชิญ`); return; } E.op(s, { op: "put", i: x.i, jt: !!o.jt }, by); if (o.shuffle && o.from !== "hell") E.shuffle(s, P.deck); return; }
       case "clearOv": { const L = E.locate(s, o.i); if (L) delete L.x.ov; return; }
       case "copySummon": { const L = E.locate(s, o.i), F = E.locate(s, o.from); if (!L || !F) return; s.trig.push({ id: tid(s), seat, i: L.x.i, c: F.x.c, when: "summon" }); E.log(s, by, `${E.name(s, L.x)} ได้รับความสามารถจุติของ ${E.name(s, F.x)}`); return; } // มฤตยูเทวี
-      case "lifeFlipCard": { const P = s.P[seat]; const x = P.life.find((y) => y.i === o.i); if (!x || x.up) return; x.up = true; E.log(s, seat, `หงาย LIFE ${E.name(s, x)} (จากความสามารถ ไม่ทำงาน)`); E.lifeFlipped(s, seat); if (E.critical(P)) E.log(s, seat, `${P.name} เข้าสู่สถานะสาหัส`); return; }
+      case "lifeFlipCard": { const P = s.P[seat]; const x = P.life.find((y) => y.i === o.i); if (!x || x.up) return; x.up = true; E.log(s, seat, `หงาย LIFE ${E.name(s, x)} (จากความสามารถ ไม่ทำงาน)`); E.ev(s, { k: "life", p: seat, i: x.i, by }); E.lifeFlipped(s, seat); if (E.critical(P)) E.log(s, seat, `${P.name} เข้าสู่สถานะสาหัส`); return; }
       case "topPeek": { const P = s.P[seat]; const x = P.deck[0]; if (!x) return; const t = E.def(s, x).t; E.log(s, by, `สอดแนม Deck ${P.name}: ${E.name(s, x)}`); if (t === o.type) { E.moveTo(s, x.i, "hell"); E.log(s, by, `${E.name(s, x)} ลงนรก`); } else { P.deck.push(P.deck.shift()); E.log(s, by, "นำไว้ใต้ Deck"); } return; }
       case "rimm": { const L = E.locate(s, o.i); if (L) { L.x.rimm = s.turn; E.log(s, by, `${E.name(s, L.x)} ไม่รับผล React Magic ของฝ่ายตรงข้ามจนจบเทิร์น`); } return; }
       case "duel": { // two Avatars fight without going to sleep, no React (โคกอีสานนูน)

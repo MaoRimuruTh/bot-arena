@@ -1,5 +1,5 @@
 // Sound effects synthesized with Web Audio — no audio files to download or license.
-import { lsGet, lsSet } from "./util.js?v=20261111220607";
+import { lsGet, lsSet } from "./util.js?v=20261111225947";
 
 let ctx = null, master = null, out = null, noiseBuf = null; // master is the effects bus; out carries effects and music to the speakers
 const state = { on: lsGet("bot.sound", true), vol: lsGet("bot.volume", 0.6) };
@@ -60,6 +60,15 @@ const SOUNDS = {
   // someone is one LIFE from losing: a deep gong and a heartbeat
   crit(t) { tone(T(-14), t, 2.6, { vol: 0.32, attack: 0.01 }); tone(T(-14) * 2.01, t, 1.2, { vol: 0.07 }); tone(T(-14) * 2.94, t, 0.6, { vol: 0.04 }); tone(55, t + 0.55, 0.25, { vol: 0.42, slide: 0.7 }); tone(52, t + 0.77, 0.3, { vol: 0.3, slide: 0.7 }); },
   draw(t) { noise(t, 0.12, { vol: 0.1, from: 2500, to: 6000, type: "bandpass", q: 2 }); },
+  // a die rattling to a stop on the lacquer: knocks closer and closer together, each a little softer
+  dice(t) { [0, 0.11, 0.2, 0.27, 0.32, 0.36].forEach((d, k) => { noise(t + d, 0.045, { vol: 0.26 - k * 0.03, from: 3400 - k * 180, to: 900, type: "bandpass", q: 3.2 }); tone(150 - k * 6, t + d, 0.07, { vol: 0.1 - k * 0.012, slide: 0.7 }); }); },
+  // a coin: the ring of the flick, then the clink when it lands
+  coin(t) { [2350, 3530, 5240].forEach((f, k) => tone(f, t, 0.95 - k * 0.22, { type: "sine", vol: 0.055 / (k + 1) })); },
+  clink(t) { [2780, 4010, 6150].forEach((f, k) => tone(f, t, 0.4 - k * 0.08, { type: "triangle", vol: 0.05 / (k + 1) })); noise(t, 0.05, { vol: 0.12, from: 6500, to: 3200, type: "highpass" }); },
+  // a LIFE card turned back face-down: a rising chime
+  heal(t) { [0, 2, 4, 7, 9].forEach((k, j) => tone(T(k + 7), t + j * 0.065, 0.75, { type: "sine", vol: 0.075 })); noise(t, 0.8, { vol: 0.035, from: 7000, to: 11000, type: "highpass" }); },
+  // เป่า ยิง ฉุบ: three beats, the last one higher
+  rps(t) { [0, 0.28, 0.56].forEach((d, k) => { tone(k === 2 ? T(7) : T(0), t + d, 0.16, { type: "triangle", vol: 0.12 }); noise(t + d, 0.05, { vol: 0.1, from: 1500, to: 600 }); }); },
 };
 export const Sfx = {
   get on() { return state.on; },

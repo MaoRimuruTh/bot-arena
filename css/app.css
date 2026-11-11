@@ -238,6 +238,15 @@ body.arena-on main{padding:0;max-width:none}
 .banner b{display:block;font:700 clamp(1.7rem,5vw,2.6rem) var(--f-display);letter-spacing:.25em;color:var(--gold-hi);text-shadow:0 0 24px rgba(216,168,74,.8)}
 .banner span{font-size:.95rem;color:#e3d6c0;letter-spacing:.08em}
 .flash{position:fixed;inset:0;pointer-events:none;opacity:0;z-index:25}
+/* a die, coin or heal result when the 3D table is off */
+.flatfx{position:fixed;left:0;right:0;margin-inline:auto;width:max-content;max-width:86vw;top:38%;z-index:27;padding:10px 18px;font:700 1.05rem var(--f-display);color:var(--gold-hi);text-align:center;pointer-events:none}
+/* เป่ายิงฉุบ over the table: the opponent's hand above, ours below */
+.rpsduel{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:27;display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 26px;border-radius:18px;background:rgba(16,9,7,.82);border:1px solid rgba(216,168,74,.45);box-shadow:0 20px 50px rgba(0,0,0,.5);pointer-events:none;min-width:min(300px,86vw)}
+.rpsrow{display:flex;align-items:center;gap:14px;transition:opacity .3s,filter .3s}
+.rpsrow.lost{opacity:.4;filter:grayscale(.8)}
+.rpsh{font-size:3.2rem;line-height:1;display:inline-block}
+.rpsn{font:600 .95rem var(--f-display);color:var(--fg)}
+.rpsbeat{font:700 1.5rem var(--f-display);color:var(--gold-hi);letter-spacing:.06em}
 .dmg{position:fixed;font:700 2.1rem var(--f-display);color:#fff;text-shadow:0 0 14px #ff4d55,0 2px 0 #7a141a;pointer-events:none;z-index:28;transform:translate(-50%,-50%);white-space:nowrap}
 .pwl{position:fixed;transform:translate(-50%,-50%);min-width:26px;padding:1px 7px;border-radius:8px;font:700 .8rem var(--f-display);text-align:center;pointer-events:none;background:rgba(14,8,7,.84);border:1px solid rgba(216,168,74,.6);color:var(--gold-hi);z-index:4}
 .pwl.opp{border-color:rgba(198,59,46,.7);color:#ffb0b3} .pwl.up{background:#1a5c37;color:#c9ffe0} .pwl.down{background:#6b1a1f;color:#ffd0d2} .pwl.sleep{opacity:.55}
@@ -258,6 +267,10 @@ body.arena-on main{padding:0;max-width:none}
 .hcard.dim{opacity:.4}
 .hcard .gem{position:absolute;right:6px;bottom:6px;min-width:22px;padding:0 6px;border-radius:7px;font:700 .72rem var(--f-display);background:rgba(14,8,7,.85);color:var(--gold-hi);border:1px solid rgba(216,168,74,.5)}
 .prompt .pick{grid-template-columns:repeat(auto-fill,minmax(70px,1fr));max-height:240px;overflow:auto}
+/* a choice box never squeezes its cards: the card grid keeps its height (it scrolls inside), the box scrolls if it must */
+.prompt>.pick,.prompt>.opts,.prompt>.row{flex-shrink:0}
+.pick .ccard{aspect-ratio:388/528;min-height:0}
+.pick .ccard>img{width:100%;height:100%;object-fit:cover;display:block}
 .prompt .opts{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto}
 .prompt .opts .btn{justify-content:flex-start;white-space:normal;height:auto;min-height:36px;padding:6px 12px;text-align:left}
 .setup{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px}
@@ -306,7 +319,11 @@ body.arena-on main{padding:0;max-width:none}
   .mbar .mturn{display:flex;flex-direction:column;line-height:1.15} .mbar .mturn b{font:700 .9rem var(--f-display)} .mbar .mturn span{font-size:.7rem;color:var(--gold)}
   .mbar .cry{width:11px;height:16px} .mbar .crys{gap:3px} .mbar .btn.sm{padding:0 10px;flex:none;white-space:nowrap}
   .mbar .mstat{display:flex;align-items:center;gap:8px;min-width:0} .mbar .mturn b{white-space:nowrap}
-  body.arena-on .prompt{bottom:calc(200px + env(safe-area-inset-bottom,0px));max-height:38vh;overflow:auto;padding:12px}
+  body.arena-on .prompt{bottom:calc(200px + env(safe-area-inset-bottom,0px));max-height:min(60vh,calc(100vh - 290px));overflow:auto;overscroll-behavior:contain;padding:12px}
+  /* one scroll area per box (no box-in-a-box scrolling) and the confirm buttons always in sight at its foot */
+  body.arena-on .prompt .pick,body.arena-on .prompt .opts{max-height:none;overflow:visible}
+  body.arena-on .prompt>.row:last-child{position:sticky;bottom:-12px;z-index:2;margin:0 -12px -12px;padding:10px 12px;background:var(--panel-solid,#1d110d);border-top:1px solid var(--line)}
+  body.arena-on .prompt .pick .ccard .badge{font-size:.6rem;padding:0 5px;top:3px;right:3px}
 }
 /* deck pages: the card preview column stays on screen while scrolling */
 @media (min-width:1051px){.lab>aside{position:sticky;top:76px;max-height:calc(100vh - 90px);overflow:auto}}
@@ -327,6 +344,11 @@ body.arena-on main{padding:0;max-width:none}
 .inspector .txt{display:flex;flex-direction:column;gap:8px;min-width:0;max-height:min(54vh,400px);overflow-y:auto;overflow-x:hidden}
 .inspector .txt b{font:700 1.05rem var(--f-display);line-height:1.3}
 .inspector .fx{font-size:.92rem;line-height:1.6}
+.inspector.dense .fx{font-size:.84rem;line-height:1.5;padding:9px 11px}
+.inspector.denser .fx{font-size:.78rem;line-height:1.45}
+.inspector.denser .txt b{font-size:.95rem}
+.inspector .morehint{display:none}
+.inspector.more .morehint{display:block;grid-column:2;margin-top:-6px;font-size:.72rem;color:var(--gold-hi);text-align:center;opacity:.9}
 @media (max-width:1100px){.inspector.show{display:grid}}
 @media (max-width:760px),(pointer:coarse){.inspector,.inspector.show{display:none}}
 @media (max-width:980px){.inspector{grid-template-columns:auto minmax(180px,250px)}}
@@ -346,7 +368,19 @@ body.arena-on main{padding:0;max-width:none}
   body.arena-on .matchp{top:calc(10px + env(safe-area-inset-top,0px));max-height:calc(100vh - 24px)}
   body.arena-on .inspector{max-height:calc(100vh - 40px)}
 }
+/* phones held sideways in a game: a note to turn upright (tablets and computers never see it) */
+.rotatehint{display:none}
+@media (orientation:landscape) and (max-height:500px) and (pointer:coarse){
+  body.arena-on .rotatehint:not([hidden]){display:flex;position:fixed;inset:0;z-index:65;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px max(20px,env(safe-area-inset-right,0px)) 20px max(20px,env(safe-area-inset-left,0px));background:rgba(12,7,6,.9);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);text-align:center}
+  .rotatehint b{font:700 1.15rem var(--f-display);color:var(--gold-hi)}
+  .rotph{width:34px;height:58px;border:3px solid var(--gold);border-radius:8px;position:relative;animation:rotph 2.4s ease-in-out infinite}
+  .rotph::after{content:"";position:absolute;left:50%;bottom:4px;width:10px;height:3px;border-radius:2px;background:var(--gold);transform:translateX(-50%)}
+  @keyframes rotph{0%,20%{transform:rotate(-90deg)}55%,100%{transform:rotate(0)}}
+}
 .upd{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:60;display:flex;align-items:center;gap:10px;padding:10px 14px;font-size:.86rem}
+/* in a game the bottom of the screen is the hand and the turn buttons: the notice waits in the top corner instead */
+body.arena-on .upd{top:calc(70px + env(safe-area-inset-top,0px));bottom:auto;left:max(16px,env(safe-area-inset-left,0px));transform:none;padding:6px 10px;gap:8px;font-size:.8rem}
+@media (max-width:760px){body.arena-on .upd{top:calc(100px + env(safe-area-inset-top,0px));left:max(10px,env(safe-area-inset-left,0px));max-width:calc(100vw - 20px)}}
 /* when a prompt is open (pay / choose / confirm) keep it on top and move the card preview out of its way */
 .prompt{z-index:10}
 body:has(.prompt) .inspector{top:calc(80px + env(safe-area-inset-top,0px));transform:none;max-width:min(560px,40vw)}

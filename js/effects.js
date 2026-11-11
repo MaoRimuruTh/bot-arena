@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261111220607";
-import { CARDS, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, inRed } from "./cards.js?v=20261111220607";
-import { E, scriptOf } from "./engine.js?v=20261111220607";
+import { readAura } from "./auras.js?v=20261111225947";
+import { CARDS, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, inRed } from "./cards.js?v=20261111225947";
+import { E, scriptOf } from "./engine.js?v=20261111225947";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -429,7 +429,7 @@ function sentence(s, t, p, self, ctx) {
     if (OPP.test(t) || /ทั้งหมด|ทุกใบ|ผู้เล่นทุกคน/.test(t) || named(f0)) return false; const n = pickN(t);
     const pick = ctx.choose([...P.hand].sort((a, b) => cardVal(s, a) - cardVal(s, b)), n, `ทิ้งการ์ดบนมือ ${n} ใบ`, { exact: true }); ops.push({ op: "discard", seat: p, iids: pick.map((x) => x.i) }); say.push(`ทิ้งการ์ดบนมือ ${pick.length} ใบ`);
   } else if (/หงาย\s*LIFE/i.test(t)) { const seat = OPP.test(t) ? 1 - p : p; if (/ทุกใบ|ทั้งหมด/.test(t)) return false; const n = Math.max(1, Math.min(5, (t.match(/LIFE[^\d]{0,20}?(\d)\s*ใบ/i) || [0, 1])[1] | 0)); for (let k = 0; k < n; k++) ops.push({ op: "lifeFlip", seat, up: true }); say.push(`หงาย LIFE ${seat === p ? "เรา" : "ฝ่ายตรงข้าม"} ${n} ใบ`); }
-  else if (/คว่ำ\s*LIFE/i.test(t) && !OPP.test(t)) { if (E.critical(P) && !/แม้อยู่ในสถานะสาหัส/.test(t)) say.push("สถานะสาหัส คว่ำ LIFE ไม่ได้"); else { ops.push({ op: "lifeFlip", seat: p, up: false, ...(/แม้อยู่ในสถานะสาหัส/.test(t) ? { force: true } : {}) }); say.push("คว่ำ LIFE เรา 1 ใบ"); } }
+  else if (/คว่ำ\s*LIFE/i.test(t) && !OPP.test(t)) { if (E.critical(P) && !/แม้อยู่ในสถานะสาหัส/.test(t)) say.push("สถานะสาหัส คว่ำ LIFE ไม่ได้"); else { const rnd = /สุ่ม\s*คว่ำ/.test(t); ops.push({ op: "lifeFlip", seat: p, up: false, ...(rnd ? { rnd: true } : {}), ...(/แม้อยู่ในสถานะสาหัส/.test(t) ? { force: true } : {}) }); say.push(`${rnd ? "สุ่มคว่ำ" : "คว่ำ"} LIFE เรา 1 ใบ`); } }
   else if ((/สับ\s*Deck|เรียง|ไว้ที่เดิม/.test(t) || (/ที่เหลือ/.test(t) && /ใต้\s*Deck|กลับเข้า\s*(?:กอง|Deck)/.test(t))) && !/เลือก|Avatar|นำ\s*["“{]|บนมือ/.test(t) || /^นำ(?:ไป)?(?:ไว้)?ใต้\s*Deck$/.test(t.trim()) || t.replace(/[\s.,]/g, "").length < 6) {
     // housekeeping words already covered by the ops above
   } else return false;

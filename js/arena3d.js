@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261111220607";
-import { E } from "./engine.js?v=20261111220607";
-import { h } from "./util.js?v=20261111220607";
-import { Sfx } from "./sfx.js?v=20261111220607";
+import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261111225947";
+import { E } from "./engine.js?v=20261111225947";
+import { h } from "./util.js?v=20261111225947";
+import { Sfx } from "./sfx.js?v=20261111225947";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -110,7 +110,7 @@ function mount(container, opts = {}) {
     const portrait = w / hh < 0.9; const k = portrait ? 1 : Math.min(1.45, Math.max(1, 820 / hh, 1250 / w));
     const Z = portrait ? ZONES.tall : ZONES.wide; if (Z !== R.zones) { R.zones = Z; swapMat(); if (R.last) update(R.last.s, R.last.V); } // turned the phone: the other table
     camera.fov = portrait ? 50 : 38; camera.updateProjectionMatrix();
-    const cam = portrait ? fitTall(camera, w, hh) : { pos: new THREE.Vector3(0, 11.2 * k, 9.6 * k), look: new THREE.Vector3(0, 0, 0.4) };
+    const cam = portrait ? fitTall(camera, w, hh) : wideCam(camera, w, hh, k);
     gsap.killTweensOf(R.camBase); gsap.killTweensOf(R.look);
     if (smooth && !reduce) { gsap.to(R.camBase, { x: cam.pos.x, y: cam.pos.y, z: cam.pos.z, duration: 0.5, ease: "power2.out" }); gsap.to(R.look, { x: cam.look.x, y: cam.look.y, z: cam.look.z, duration: 0.5, ease: "power2.out" }); }
     else { R.camBase.copy(cam.pos); R.look.copy(cam.look); }
@@ -163,7 +163,7 @@ function mount(container, opts = {}) {
   gsap.from(R.matMat, { emissiveIntensity: 0, duration: reduce ? 0 : 1.8, ease: "power2.out" }); // the gold leaf catches the light once
 }
 function unmount() {
-  document.querySelectorAll(".fxcuts").forEach((x) => x.remove());
+  document.querySelectorAll(".fxcuts,.rpsduel").forEach((x) => x.remove());
   if (!R) return; R.alive = false; removeEventListener("resize", R.onResize); if (R.onVis) document.removeEventListener("visibilitychange", R.onVis); gsap.globalTimeline.timeScale(1);
   for (const el of R.labels.values()) el.remove();
   R.renderer.dispose(); R.canvas.remove(); R = null;
@@ -250,8 +250,9 @@ const MW = 15.4, MD = 11.6, MZ = -0.2;
 // band, the Construct and Magic Zones close in, and five or six Avatars stand closer together, so every card fits
 // on the screen and can be tapped
 const ZONES = {
-  wide: { avGap: (n) => 2.05, cs: [-5.8, -1.8], mg: [-1.2, 5.8], csX: (k) => -5.1 + k * 1.3, csS: 0.68, mgX: (k) => 5.1 - k * 1.15, mgS: 0.6,
-    land: { x0: -6.98, x1: -5.12, dz: 1.72, x: -6.05, s: 0.72, s2: 0.6, dz2: 0.8, lx: -6.05, lz: MZ + 1.95, align: "center" }, band: [-4.6, 6.85] },
+  wide: { avGap: (n) => (n > 4 ? Math.min(2.05, 9.2 / (n - 1)) : 2.05) /* five or six Avatars close up a little */, cs: [-5.8, -1.8], mg: [-1.2, 5.8], csX: (k) => -5.1 + k * 1.3, csS: 0.68, mgX: (k) => 5.1 - k * 1.15, mgS: 0.6,
+    land: { x0: -6.98, x1: -5.12, dz: 1.72, x: -6.05, s: 0.72, s2: 0.6, dz2: 0.8, lx: -6.05, lz: MZ + 1.95, align: "center" }, band: [-4.6, 6.85],
+    fit: [[-6.8, -5.2], [5.7, -5.2], [-6.8, 4.9], [5.7, 4.9]] }, // the outer cards of a full table
   tall: { avGap: (n) => (n > 4 ? Math.min(2.05, 8.1 / (n - 1)) : 2.05), cs: [-4.35, -1.15], mg: [-0.75, 4.35], csX: (k) => -3.75 + k * 1.0, csS: 0.6, mgX: (k) => 3.8 - k * 0.92, mgS: 0.55,
     land: { x0: -4.45, x1: -2.85, dz: 1.08, x: -3.65, s: 0.62, s2: 0.5, dz2: 0.55, lx: -2.65, lz: MZ - 0.62, align: "left" }, band: [-2.45, 4.35],
     // the part of the table that must be on screen: the zones' outer edges (six Avatars included)
@@ -591,6 +592,20 @@ function tallBand(w, hh) {
   const r = sr && sr.width > 40 && sr.left > w * 0.45 ? sr.left - 4 : w;
   return { t, b: Math.max(t + 160, handTop), l: 0, r };
 }
+// the camera for a wide screen: the usual height and tilt, then the table (its outer cards) is centred in the part of the
+// screen left of the game panel, moving back a little first if it would not fit there
+function wideCam(camera, w, hh, k) {
+  const nd = new THREE.Vector3(0, 11.2, 9.2).normalize(), base = Math.hypot(11.2 * k, 9.6 * k - 0.4);
+  const side = document.querySelector(".hud .matchp"), sr = side && side.getBoundingClientRect();
+  const L = 14, Rt = (sr && sr.width > 40 && sr.left > w * 0.55 ? sr.left : w) - 14;
+  const pts = ZONES.wide.fit.map(([x, z]) => new THREE.Vector3(x, 0, z)), q = new THREE.Vector3();
+  const span = (d, cx) => { const tg = new THREE.Vector3(cx, 0, 0.4); camera.position.copy(tg).addScaledVector(nd, d); camera.lookAt(tg); camera.updateMatrixWorld(true);
+    let a = Infinity, b = -Infinity; for (const p of pts) { q.copy(p).project(camera); const x = (q.x * 0.5 + 0.5) * w; a = Math.min(a, x); b = Math.max(b, x); } return [a, b]; };
+  let d = base; for (let i = 0; i < 10; i++) { const [a, b] = span(d, 0); if (b - a <= Rt - L || d > base * 1.35) break; d *= 1.035; }
+  let cx = 0; const perPx = (2 * d * Math.tan((camera.fov * Math.PI) / 360)) / hh;
+  for (let i = 0; i < 3; i++) { const [a, b] = span(d, cx); cx += ((a + b) / 2 - (L + Rt) / 2) * perPx; }
+  const look = new THREE.Vector3(cx, 0, 0.4); return { pos: look.clone().addScaledVector(nd, d), look };
+}
 // the camera for an upright screen: the same downward tilt, moved back just far enough that the whole tall table (its
 // fit points) fits across the screen and between the bars, then centred in that band
 function fitTall(camera, w, hh) {
@@ -809,6 +824,71 @@ function dropCard(m) {
   if (!R) return; R.dying.delete(m); R.scene.remove(m.grp); R.scene.remove(m.shadow);
   if (m.face.material.userData.own) m.face.material.map.dispose(); m.face.material.dispose(); m.glow.material.dispose(); m.shadow.material.dispose();
 }
+// ---------- dice and coins: thrown onto the table from the roller's side, landing on what the engine rolled ----------
+// Thai dice (as in ไฮโล) paint the one and the four red; the coin says หัว and ก้อย on its faces so the result reads at a glance
+const PIPS = { 1: [[0.5, 0.5]], 2: [[0.28, 0.28], [0.72, 0.72]], 3: [[0.25, 0.25], [0.5, 0.5], [0.75, 0.75]], 4: [[0.28, 0.28], [0.72, 0.28], [0.28, 0.72], [0.72, 0.72]], 5: [[0.25, 0.25], [0.75, 0.25], [0.5, 0.5], [0.25, 0.75], [0.75, 0.75]], 6: [[0.28, 0.22], [0.72, 0.22], [0.28, 0.5], [0.72, 0.5], [0.28, 0.78], [0.72, 0.78]] };
+function canvasTex(S, draw) { const c = document.createElement("canvas"); c.width = c.height = S; draw(c.getContext("2d"), S); const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; return t; }
+const dieFace = (n) => canvasTex(128, (g, S) => {
+  const gr = g.createRadialGradient(S * 0.38, S * 0.32, S * 0.1, S / 2, S / 2, S * 0.78); gr.addColorStop(0, "#fdf6e6"); gr.addColorStop(1, "#dccaa6"); g.fillStyle = gr; g.fillRect(0, 0, S, S);
+  g.strokeStyle = "rgba(120,90,50,.35)"; g.lineWidth = 5; g.strokeRect(2.5, 2.5, S - 5, S - 5); // the worn edge
+  for (const [x, y] of PIPS[n]) { g.beginPath(); g.arc(x * S, y * S, n === 1 ? S * 0.15 : S * 0.085, 0, Math.PI * 2); g.fillStyle = n === 1 || n === 4 ? "#b3212b" : "#1d1411"; g.fill(); g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 1.5; g.stroke(); }
+});
+const coinFace = (txt) => canvasTex(256, (g, S) => {
+  const C = S / 2, gr = g.createRadialGradient(C * 0.8, C * 0.7, S * 0.05, C, C, C); gr.addColorStop(0, "#ffe6a3"); gr.addColorStop(0.6, "#d9a744"); gr.addColorStop(1, "#8f6420"); g.fillStyle = gr; g.fillRect(0, 0, S, S);
+  g.strokeStyle = "#7a5418"; g.lineWidth = 6; g.beginPath(); g.arc(C, C, C * 0.86, 0, Math.PI * 2); g.stroke();
+  g.fillStyle = "#7a5418"; for (let k = 0; k < 36; k++) { const a = (k / 36) * Math.PI * 2; g.beginPath(); g.arc(C + Math.cos(a) * C * 0.76, C + Math.sin(a) * C * 0.76, 3.2, 0, Math.PI * 2); g.fill(); } // a ring of beads
+  g.font = `700 ${Math.round(S * 0.3)}px "Mitr","Noto Sans Thai",sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillStyle = "rgba(255,240,200,.55)"; g.fillText(txt, C + 2, C + 4); g.fillStyle = "#5e3f10"; g.fillText(txt, C, C + 2);
+});
+// which way up each face sits: the die's faces in BoxGeometry order (+X, -X, +Y, -Y, +Z, -Z) carry 2, 5, 1, 6, 3, 4
+const DIE_UP = { 1: [0, 0, 0], 6: [Math.PI, 0, 0], 2: [0, 0, Math.PI / 2], 5: [0, 0, -Math.PI / 2], 3: [-Math.PI / 2, 0, 0], 4: [Math.PI / 2, 0, 0] };
+function rollProp(coin) {
+  if (coin && !R.coinMats) { R.coinGeo = new THREE.CylinderGeometry(0.46, 0.46, 0.08, 48); R.coinMats = [new THREE.MeshStandardMaterial({ color: 0xc8962e, metalness: 0.55, roughness: 0.32 }), new THREE.MeshStandardMaterial({ map: coinFace("หัว"), metalness: 0.4, roughness: 0.36 }), new THREE.MeshStandardMaterial({ map: coinFace("ก้อย"), metalness: 0.4, roughness: 0.36 })]; if (R.env) for (const m of R.coinMats) { m.envMap = R.env; m.envMapIntensity = 1.3; } }
+  if (!coin && !R.dieMats) { R.dieGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6); R.dieMats = [2, 5, 1, 6, 3, 4].map((n) => new THREE.MeshStandardMaterial({ map: dieFace(n), roughness: 0.3, metalness: 0 })); }
+  const m = new THREE.Mesh(coin ? R.coinGeo : R.dieGeo, coin ? R.coinMats : R.dieMats); m.castShadow = true; R.scene.add(m);
+  const sh = new THREE.Mesh(R.dieShGeo || (R.dieShGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2)), new THREE.MeshBasicMaterial({ color: 0, alphaMap: R.FX.dot, transparent: true, opacity: 0, depthWrite: false })); sh.renderOrder = -1; R.scene.add(sh); // a soft round shadow
+  return { m, sh, rest: coin ? 0.04 : 0.3 };
+}
+// one throw: up from the roller's side, a fall, two bounces, spinning down to the face the engine chose
+function throwProp(coin, r, from, to) {
+  const { m, sh, rest } = rollProp(coin), up = coin ? (r === 1 ? [0, 0, 0] : [Math.PI, 0, 0]) : DIE_UP[r] || DIE_UP[1];
+  const fin = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * Math.PI * 2).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(...up)));
+  const axis = coin ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize(), spin = (coin ? 9 : 5 + Math.random() * 2) * Math.PI, tmp = new THREE.Quaternion();
+  const st = { a: 1 }; const face = () => { m.quaternion.copy(fin).multiply(tmp.setFromAxisAngle(axis, st.a * spin)); const hgt = Math.max(0, m.position.y - rest); sh.position.set(m.position.x - hgt * 0.25, 0.013, m.position.z - hgt * 0.4); sh.scale.setScalar((coin ? 1.6 : 1.5) * (1 + hgt * 0.18)); sh.material.opacity = 0.7 * Math.max(0.12, 1 - hgt * 0.35); };
+  m.position.copy(from); face();
+  if (reduce) { m.position.copy(to).setY(rest); st.a = 0; face(); return Promise.resolve({ m, sh }); }
+  const top = coin ? 3.4 : 2.4;
+  return new Promise((res) => gsap.timeline({ onUpdate: face, onComplete: () => res({ m, sh }) })
+    .to(m.position, { x: to.x, z: to.z, duration: 1.05, ease: "power2.out" }, 0)
+    .to(m.position, { y: top, duration: 0.34, ease: "power2.out" }, 0).to(m.position, { y: rest, duration: 0.38, ease: "power2.in" }, 0.34)
+    .add(() => Sfx.play(coin ? "clink" : "dice"), 0.72)
+    .to(m.position, { y: rest + (coin ? 0.28 : 0.45), duration: 0.14, ease: "power2.out" }, 0.72).to(m.position, { y: rest, duration: 0.14, ease: "power2.in" }, 0.86)
+    .to(m.position, { y: rest + 0.1, duration: 0.07, ease: "power2.out" }, 1.0).to(m.position, { y: rest, duration: 0.07, ease: "power2.in" }, 1.07)
+    .to(st, { a: 0, duration: 1.12, ease: "power3.out" }, 0));
+}
+async function rollFx(ev, mine) {
+  const coin = ev.sides === 2, rs = ev.r2 != null ? [ev.r, ev.r2] : [ev.r];
+  if (coin) Sfx.play("coin");
+  const z = MZ + (mine ? 0.75 : -0.75), sideZ = mine ? 4.4 : -4.8;
+  const got = await Promise.all(rs.map((r, k) => throwProp(coin, r, new THREE.Vector3((mine ? -0.8 : 0.8) + k * 0.5, 0.6, sideZ), new THREE.Vector3(0.9 + k * 0.95 - (rs.length - 1) * 0.45, 0, z + k * 0.25))));
+  const at = new THREE.Vector3(0.9, 0.9, z); shockwave(at.clone().setY(0), 0xffd27a, 2.6); burst(at.clone().setY(0.5), { n: 12, map: R.FX.star_06, color: 0xffe6a3, size: 0.35, spread: 1.1, up: 1.2, dur: 0.7 });
+  popText(at, coin ? `ออก${ev.r === 1 ? "หัว" : "ก้อย"}` : rs.join(" · "), "#ffd27a");
+  await sleepMs(1300);
+  for (const { m, sh } of got) gsap.to(m.scale, { x: 0.01, y: 0.01, z: 0.01, duration: 0.3, ease: "back.in(2)", onComplete: () => { if (!R) return; R.scene.remove(m); R.scene.remove(sh); sh.material.dispose(); } });
+}
+// เป่ายิงฉุบ: both hands come down together, the loser's side dims
+const RPS_HAND = ["✊", "✌️", "✋"], RPS_NAME = ["ค้อน", "กรรไกร", "กระดาษ"];
+async function rpsFx(s, ev, V) {
+  const me = V, op = 1 - V, el = h("div", { class: "rpsduel", "aria-live": "polite" });
+  const row = (p) => h("div", { class: "rpsrow" + (p === op ? " top" : "") }, h("span", { class: "rpsh" }, "✊"), h("span", { class: "rpsn" }, s.P[p] ? s.P[p].name : ""));
+  const rows = [row(op), h("b", { class: "rpsbeat" }, "เป่า"), row(me)]; el.append(...rows); document.body.append(el); Sfx.play("rps");
+  const hands = [rows[0], rows[2]].map((r) => r.querySelector(".rpsh")), beat = rows[1];
+  if (!reduce) gsap.fromTo(hands, { y: 0 }, { y: -14, duration: 0.14, yoyo: true, repeat: 5, ease: "power1.inOut" });
+  for (const [k, t] of [[0, "เป่า"], [1, "ยิง"], [2, "ฉุบ!"]]) { beat.textContent = t; if (k < 2) await sleepMs(280); }
+  hands[0].textContent = RPS_HAND[ev.h[op]]; hands[1].textContent = RPS_HAND[ev.h[me]];
+  rows[0].querySelector(".rpsn").textContent = `${s.P[op] ? s.P[op].name : ""} · ${RPS_NAME[ev.h[op]]}`; rows[2].querySelector(".rpsn").textContent = `${s.P[me] ? s.P[me].name : ""} · ${RPS_NAME[ev.h[me]]}`;
+  (ev.lo === op ? rows[0] : rows[2]).classList.add("lost"); beat.textContent = ev.lo === me ? "แพ้" : "ชนะ";
+  await sleepMs(1400); gsap.to(el, { opacity: 0, duration: 0.3, onComplete: () => el.remove() });
+}
 async function animateEvent(ev, prev, s, V) {
   const pos = (i) => { const m = R.meshes.get(i); return m ? m.grp.position.clone() : null; };
   const mineSide = (p) => p === V;
@@ -840,6 +920,12 @@ async function animateEvent(ev, prev, s, V) {
     pillar(mpos, mco ? colorHex(mco) : ev.st === "L" ? 0x8fb0ff : 0xc9a2ff); burst(new THREE.Vector3(0, 0.6, -0.2), { n: 16, map: R.FX.star_06, color: 0xbfd0ff, spread: 3 });
     if (ev.st === "L") decal(R.FX.magic_02, new THREE.Vector3(0, 0, -0.2), mco ? colorHex(mco) : 0x8fb0ff, 9, 1.8, 1.2); else if (mco) colorFx(mpos, mco, 0.8);
     if (d) popText(new THREE.Vector3(0, 1.4, -0.2), d.n, "#8fb0ff");
+  } else if (ev.k === "heal") { // a LIFE card turned back face-down: green light rising where that side's LIFE sits
+    const mine = mineSide(ev.p), at = new THREE.Vector3(0, 1, mine ? 5.2 : -4.7); Sfx.play("heal");
+    popText(at.clone().setY(1.2), "LIFE +1", "#5ef0a0"); pillar(at.clone().setY(0), 0x6dffb0, 0.75); ripple(at.clone().setY(0), 0x7dffb8, 3.4);
+    burst(at, { n: 18, map: R.FX.star_06, color: 0xa8ffd0, size: 0.34, spread: 1.3, up: 2.8, dur: 1.2 }); await sleepMs(450);
+  } else if (ev.k === "roll") { await rollFx(ev, mineSide(ev.p));
+  } else if (ev.k === "rps") { await rpsFx(s, ev, V);
   } else if (ev.k === "fx") { // a card's effect resolves: its picture, its name and what it did, for a moment over the table
     fxCut(s, ev, mineSide(ev.p)); await sleepMs(350);
   } else if (ev.k === "turn") {
@@ -857,8 +943,23 @@ async function animateEvent(ev, prev, s, V) {
   }
 }
 const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms / ((R && R.speed) || 1)));
+// without WebGL there is no table to throw a die on: the result still shows, as a note in the middle of the screen
+let flatLast = 0, flatView = null;
+function flatEvents(s, V, opts) {
+  if (opts.reset || flatView !== V) { flatLast = s.evc || 0; flatView = V; return; }
+  for (const e of (s.ev || []).filter((x) => x.id > flatLast)) {
+    if (e.k === "roll") flatNote(`${e.sides === 2 ? "ทอยเหรียญ" : "ทอยลูกเต๋า"}${e.why ? " (" + e.why + ")" : ""}: ${e.sides === 2 ? (e.r === 1 ? "ออกหัว" : "ออกก้อย") : "ได้ " + (e.r2 != null ? `${e.r} และ ${e.r2}` : e.r)}`);
+    else if (e.k === "heal") flatNote(`${e.p === V ? "LIFE เรา" : "LIFE " + ((s.P[e.p] || {}).name || "ฝ่ายตรงข้าม")} +1`);
+    else if (e.k === "rps") rpsFx(s, e, V).catch(() => {});
+  }
+  flatLast = s.evc || flatLast;
+}
+function flatNote(t) {
+  const d = h("div", { class: "flatfx glass", role: "status" }, t); document.body.append(d);
+  gsap.fromTo(d, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.25 }); gsap.to(d, { opacity: 0, duration: 0.4, delay: 2.4, onComplete: () => d.remove() });
+}
 function update(s, V, opts = {}) {
-  if (!R) return Promise.resolve(); R.last = { s, V };
+  if (!R) { try { flatEvents(s, V, opts); } catch (e) { console.warn(e); } return Promise.resolve(); } R.last = { s, V };
   // flush: a jump (a replay seek) drops the animations still waiting in the queue, and the banner they raised
   if (opts.flush) { R.token = (R.token || 0) + 1; const band = document.querySelector(".banner .band"); if (band) { gsap.killTweensOf(band); gsap.set(band, { opacity: 0 }); } }
   const token = R.token || 0;
