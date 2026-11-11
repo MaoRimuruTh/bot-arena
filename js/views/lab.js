@@ -1,10 +1,10 @@
-import { h, busy, lsGet, lsSet } from "../util.js?v=20261112032249";
-import { card, deckEntries, deckToList, validateDeck, TYPE_TH } from "../cards.js?v=20261112032249";
-import { E } from "../engine.js?v=20261112032249";
-import { H } from "../ai.js?v=20261112032249";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261112032249";
-import { allDecks } from "./decks.js?v=20261112032249";
-import { deckLocked } from "../achieve.js?v=20261112032249";
+import { h, busy, lsGet, lsSet } from "../util.js?v=20261112032514";
+import { card, deckEntries, deckToList, validateDeck, TYPE_TH } from "../cards.js?v=20261112032514";
+import { E } from "../engine.js?v=20261112032514";
+import { H } from "../ai.js?v=20261112032514";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261112032514";
+import { allDecks } from "./decks.js?v=20261112032514";
+import { deckLocked } from "../achieve.js?v=20261112032514";
 
 // exact hypergeometric: P(at least one of k copies within m cards from a deck of N)
 function atLeastOne(N, k, m) { if (k <= 0) return 0; if (m >= N) return 1; let p = 1; for (let i = 0; i < m; i++) p *= (N - k - i) / (N - i); return 1 - Math.max(0, p); }
@@ -18,7 +18,9 @@ export function openingOdds(d, ids) {
 // a bot-vs-bot game (deck A is seat 0) with every card effect working; also notes which of A's cards got played
 // dummy: side B is a training dummy (หุ่นซ้อม) that keeps its hand, never plays a card and never answers, and A always starts,
 // so the games show how fast deck A can win on its own
-export function simGame(dA, dB, seed, dummy) {
+// pro: both sides choose like บอทมือโปร in their Main and Battle Phase, with one play-out per option instead of two (won
+// 57% of 200 games against the normal bot; a game takes about 340 ms instead of 37 ms on a computer)
+export function simGame(dA, dB, seed, dummy, pro) {
   const decks = [{ ...deckToList(dA), name: dA.name, id: dA.id }, { ...deckToList(dB), name: dB.name, id: dB.id }];
   const s = E.newGame({ players: [{ name: "A", bot: true }, { name: "B", bot: true }], decks, seed, first: dummy ? 0 : seed & 1, mode: "sim" });
   const played = new Set(); let seen = s.evc || 0;
@@ -35,7 +37,7 @@ export function simGame(dA, dB, seed, dummy) {
       if (s.pend) { const p = 1 - s.pend.by; if (dummy && p === 1) { act({ type: "respond" }, p); continue; } const r = H.react(s, p); if (r) { act(r, p); continue; } const m = H.pick(s, p); act(m ? m.a : { type: "respond" }, p); continue; }
       const p = s.active;
       if (s.phase === "end" && s.need) { act({ type: "discard", iids: H.discard(s, p) }, p); continue; }
-      const m = dummy && p === 1 ? null : H.pick(s, p); act(m ? m.a : { type: "end" }, p);
+      const m = dummy && p === 1 ? null : pro && ["main", "battle"].includes(s.phase) ? H.mcPick(s, p, 1) : H.pick(s, p); act(m ? m.a : { type: "end" }, p);
     } catch (e) { const p = s.active; try { act({ type: "end" }, p); } catch { E.lose(s, p, "ติดสถานะ"); } }
     if (s.turn > 80) { s.phase = "over"; s.winner = null; s.reason = "ยาวเกิน 80 เทิร์น"; }
   }
@@ -51,7 +53,7 @@ function cardStats(A, res) {
   }).sort((a, b) => (b.d ?? -9) - (a.d ?? -9) || b.play - a.play);
 }
 
-const LabState = lsGet("bot.lab", { a: "", b: "", n: 100 });
+const LabState = lsGet("bot.lab", { a: "", b: "", n: 100, pro: false });
 // the results: overall record, how the games ended and how long they ran, each opponent, and which cards went with winning
 function showSim(out, A, opps, res) {
   const n = res.length, w = res.filter((r) => r.winner === 0).length, l = res.filter((r) => r.winner === 1).length, dr = n - w - l;
@@ -99,15 +101,16 @@ Views.lab = {
       roll();
     };
     const official = decks.filter((d) => d.starter || d.ciel); // the official Starter Decks and Ciel's sample decks
-    simBox.append(h("div", { class: "eyebrow" }, "จำลองบอทชนบอท"), h("div", { class: "small muted" }, "บอทเล่นตามกติกา Rule Book 3.2 และเอฟเฟกต์การ์ดทุกใบทำงานอัตโนมัติ ผลที่ได้ใช้ดูแนวโน้มของเด็ค บอทยังเล่นไม่เก่งเท่าคน"),
+    simBox.append(h("div", { class: "eyebrow" }, "จำลองบอทชนบอท"), h("div", { class: "small muted" }, "บอทเล่นตามกติกา Rule Book 3.2 และเอฟเฟกต์การ์ดทุกใบทำงานอัตโนมัติ ผลที่ได้ใช้ดูแนวโน้มของเด็ค บอทยังเล่นไม่เก่งเท่าคน · บอทมือโปรลองเล่นแต่ละทางเลือกต่อก่อนตัดสินใจ เล่นเก่งกว่าแต่ใช้เวลานานกว่าราว 9 เท่า"),
       h("div", { class: "row" }, h("span", { class: "small" }, "ชน"), sel("b", [...(official.length > 1 ? [["*", `ทุกเด็คตัวอย่าง (${official.length} เด็ค)`]] : []), ["~", "หุ่นซ้อม (ไม่เล่นอะไรเลย)"]]),
         h("select", { "aria-label": "จำนวนเกม", onchange: (e) => { LabState.n = +e.target.value; lsSet("bot.lab", LabState); } }, [50, 100, 300].map((n) => h("option", { value: n, selected: n === LabState.n }, n + " เกม"))),
+        h("select", { "aria-label": "บอทที่เล่นทั้งสองฝั่ง", onchange: (e) => { LabState.pro = e.target.value === "pro"; lsSet("bot.lab", LabState); } }, [["basic", "บอทปกติ (เร็ว)"], ["pro", "บอทมือโปร (ช้ากว่า เล่นเก่งกว่า)"]].map(([v, t]) => h("option", { value: v, selected: (v === "pro") === !!LabState.pro }, t))),
         h("button", { class: "btn gold", onclick: async (e) => {
           const btn = e.currentTarget; btn.disabled = true; const out = simBox.querySelector(".simout");
           const dummy = LabState.b === "~", A = decks.find((x) => x.id === LabState.a), opps = dummy ? [{ ...A, name: "หุ่นซ้อม" }] : LabState.b === "*" ? official : [decks.find((x) => x.id === LabState.b)];
           const per = Math.max(10, Math.round(LabState.n / opps.length)), total = per * opps.length, res = [];
           for (const B of opps) for (let j = 0; j < per; j++) {
-            const r = simGame(A, B, (Date.now() + res.length * 7919) | 0, dummy); r.opp = B.name; res.push(r);
+            const r = simGame(A, B, (Date.now() + res.length * 7919) | 0, dummy, !!LabState.pro); r.opp = B.name; res.push(r);
             if (res.length % 4 === 0) { out.replaceChildren(busy(`จำลองแล้ว ${res.length}/${total}`)); await new Promise((ok) => setTimeout(ok, 0)); }
           }
           showSim(out, A, opps, res); btn.disabled = false;
