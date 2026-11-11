@@ -372,6 +372,8 @@ table.t th{white-space:nowrap}
 .chip.lockchip::before{content:"";width:9px;height:10px;background:currentColor;border-radius:2px 2px 1px 1px;-webkit-mask:radial-gradient(circle at 50% 30%,transparent 2.2px,#000 2.6px);mask:radial-gradient(circle at 50% 30%,transparent 2.2px,#000 2.6px)}
 .lockreq{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-left:3px solid var(--crimson);background:rgba(198,59,46,.08);border-radius:0 12px 12px 0;max-width:560px}
 .lockreq b{font-size:1rem;color:var(--fg)}
+.goalline{color:var(--gold-hi);font-weight:600}
+.goalline::before{content:"✦ "}
 .tilecheck{position:absolute;right:12px;top:12px;z-index:2;width:30px;height:30px;border-radius:9px;border:2px solid var(--line-2);background:rgba(14,8,7,.8);display:grid;place-items:center;font-weight:800;pointer-events:none}
 .tilecheck.on{background:var(--bad);border-color:var(--bad);color:#fff}
 .managebar{padding:10px 12px;border:1px solid rgba(255,107,111,.45);border-radius:12px;background:rgba(255,107,111,.07)}

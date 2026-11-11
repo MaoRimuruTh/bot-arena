@@ -1,17 +1,17 @@
-import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261111185146";
-import { plain, isOwnerNow } from "../persona.js?v=20261111185146";
-import { fxText } from "../fxtext.js?v=20261111185146";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261111185146";
-import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261111185146";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261111185146";
-import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261111185146";
-import { filterBar, filterCards } from "./library.js?v=20261111185146";
-import { openingOdds, simGame } from "./lab.js?v=20261111185146";
-import { freeBuild } from "../builder.js?v=20261111185146";
-import { deckCode, deckText, parseDeck } from "../deckcode.js?v=20261111185146";
-import { CIEL_DECKS } from "../cieldecks.js?v=20261111185146";
-import { officialStarters, boxDecks, topUpNote } from "../boxdecks.js?v=20261111185146";
-import { deckLocked, deckLockAch } from "../achieve.js?v=20261111185146";
+import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261111185324";
+import { plain, isOwnerNow } from "../persona.js?v=20261111185324";
+import { fxText } from "../fxtext.js?v=20261111185324";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261111185324";
+import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261111185324";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261111185324";
+import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261111185324";
+import { filterBar, filterCards } from "./library.js?v=20261111185324";
+import { openingOdds, simGame } from "./lab.js?v=20261111185324";
+import { freeBuild } from "../builder.js?v=20261111185324";
+import { deckCode, deckText, parseDeck } from "../deckcode.js?v=20261111185324";
+import { CIEL_DECKS } from "../cieldecks.js?v=20261111185324";
+import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261111185324";
+import { deckLocked, deckLockAch } from "../achieve.js?v=20261111185324";
 
 // Ciel's theme decks: print codes → card ids (resolved once the card data is loaded)
 let cielCache = null;
@@ -151,11 +151,15 @@ Views.decks = {
   // a box deck still locked: its ace and theme, and the win that opens it; the list stays hidden until then
   locked(root, d) {
     const ace = deckAce(d), a = deckLockAch(d);
+    // decks that already meet the Symbol count: yours first, then the official ones (never another box)
+    const fit = allDecks().filter((x) => !x.box && (x.owner === Me.uid || x.starter) && validateDeck(x).ok && (themeCounts(x)[a.theme] || 0) >= a.need).slice(0, 6);
     root.replaceChildren(h("section", { class: "hero locked" }, ace ? artImg(ace, "", "") : null, h("div", { class: "wash" }),
       h("div", { class: "in" }, h("div", { class: "row", style: "gap:6px" }, h("span", { class: "chip lockchip" }, "ล็อคอยู่"), h("span", { class: "chip" }, "คัดสรรเด็ค กล่องพิเศษ")),
         h("h1", null, d.name), h("div", { class: "muted small" }, d.theme),
         h("div", { class: "lockreq" }, h("span", { class: "eyebrow" }, "เปิดด้วยความสำเร็จ " + a.name), h("b", null, a.how), h("span", { class: "tiny muted" }, "นับการ์ดใน Main Deck ที่พิมพ์ Symbol นั้นไว้ ตอนจบเกม เกมซ้อมมือเดียวไม่นับ")),
         h("div", { class: "row" }, h("a", { class: "btn gold", href: "#play" }, "ไปดวลเลย"), h("a", { class: "btn", href: "#decks/new" }, "จัดเด็คธีมนี้เอง"), h("a", { class: "btn", href: "#history" }, "ดูความสำเร็จทั้งหมด")))),
+      fit.length ? h("div", { class: "stack", style: "gap:10px;margin-bottom:18px" }, h("h2", null, "เด็คที่ใช้ปลดล็อคได้"), h("div", { class: "muted small" }, `มีการ์ด Symbol ${a.theme} ตั้งแต่ ${a.need} ใบ ชนะด้วยเด็คไหนก็ได้`),
+        h("div", { class: "row" }, fit.map((x) => h("a", { class: "btn", href: "#play/deck/" + x.id }, `${x.name} · ${themeCounts(x)[a.theme]} ใบ`)))) : null,
       h("div", { class: "empty" }, "รายการการ์ดของกล่องนี้จะเปิดให้ดู ลงสนาม และคัดลอกไปแก้ได้ เมื่อปลดล็อคแล้ว"));
   },
   view(root, id) {
