@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261112102002";
-import { CARDS, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261112102002";
-import { E, scriptOf } from "./engine.js?v=20261112102002";
+import { readAura } from "./auras.js?v=20261112102630";
+import { CARDS, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261112102630";
+import { E, scriptOf } from "./engine.js?v=20261112102630";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -172,7 +172,8 @@ function readScout(s, body, p, self, ctx, trig) {
   let t = body.replace(/\{red\s*(?:\([^{}]*\))?\s*\}/g, " ").replace(/^(สอดแนม)\s*\([^)]*\)/, "$1").replace(/\s+/g, " ").trim();
   let m = t.match(/^สอดแนม\s*(?:Deck\s*(?:ของ)?(ฝ่ายตรงข้าม|อีกฝ่าย)\s*)?(\d+)\s*ใบ(?:\s*(?:ของ|จาก)\s*Deck\s*(?:ของ)?(อีกฝ่าย|ฝ่ายตรงข้าม|ฝ่ายเรา|เรา))?\s*[:：]?\s*/); if (!m) return null;
   const seat = m[1] || (m[3] && OPP.test(m[3])) ? 1 - p : p; const n = +m[2] + (seat === p && E.scoutBonus ? E.scoutBonus(s, p, s.cards[trig.c]) : 0); t = t.slice(m[0].length);
-  const D = s.P[seat]; const top = D.deck.slice(0, n); const ids = top.map((x) => x.i); const ops = [], say = [];
+  const D = s.P[seat]; if (D.deck.length < +m[2] && !trig.dry && trig.i !== -1) return { ops: [], say: [], fail: `Deck มีไม่ถึง ${m[2]} ใบ ความสามารถสอดแนมไม่ทำงาน` }; // FAQ กุ่ย หน้าตาดี
+  const top = D.deck.slice(0, n); const ids = top.map((x) => x.i); const ops = [], say = [];
   const meDef = ctx.me ? E.def(s, ctx.me) : trig.i === -1 ? { co: "-" } : null;
   const whereOf = (txt) => { const w = scoutWhere(txt); return w === "choice" ? (ctx.mode(["วางไว้บนสุดของ Deck", "นำไปไว้ล่างสุดของ Deck"], `สอดแนม ${n} ใบ: การ์ดที่เหลือ`, 0) === 0 ? "top" : "bottom") : w; };
   const tail = (rest) => { // what the text says after the scout itself: read later if possible, otherwise left for the player
@@ -268,6 +269,7 @@ function sentence(s, t, p, self, ctx) {
     if ((m = t.match(/^(?:สามารถ\s*)?(?:นำ|สั่งใช้|ใช้)\s*Land\s*Magic\s*(?:["“]([^"”]+)["”]\s*)?(?:1\s*ใบ\s*)?จาก(?:ใน)?\s*Deck\s*(?:(?:ฝ่าย|ของ)?เรา)?\s*(?:1\s*ใบ\s*)?(?:มา(?:เล่น|วาง|ใช้)?(?:ไว้)?\s*(?:บน|ใน|ที่)\s*(?:Land\s*Magic\s*Zone|สนาม)(?:\s*(?:ฝ่าย)?เรา)?)?\s*$/i))) {
       const seen = new Set(); const cands = P.deck.filter((x) => { const d = E.def(s, x); return d.t === "M" && d.st === "L" && (!m[1] || String(d.n).includes(m[1])); }).filter((x) => { const k = E.def(s, x).n; if (seen.has(k)) return false; seen.add(k); return true; });
       if (s.mu[p].L) return { ops: [], say: [], fail: "เทิร์นนี้ใช้ Land Magic ไปแล้ว (การนำ Land Magic มาเล่นนับเป็นการใช้สิทธิ์นั้น)" }; // FAQ แมลงปอแจ็ค
+      { const why = E.landPlayBlocked(s, p); if (why) return { ops: [], say: [], fail: why }; } // FAQ กัฟแดน
       const got = ctx.choose(cands, 1, "เลือก Land Magic จาก Deck มาเล่นบนสนาม", { optional: /สามารถ/.test(t) })[0];
       if (got) { ops.push({ op: "toLand", i: got.i }, { op: "mu", seat: p, k: "L" }, { op: "shuffle", seat: p }); say.push(`นำ ${E.name(s, got)} จาก Deck มาเล่นบน Land Magic Zone`); } else { ops.push({ op: "shuffle", seat: p }); say.push("ไม่มี Land Magic ใน Deck"); }
       return { ops, say };
@@ -585,7 +587,7 @@ function readClause(s, text, p, self, ctx, trig) {
   const k = text.indexOf(":"); let head = k >= 0 ? text.slice(0, k).trim() : "", body = k >= 0 ? text.slice(k + 1).trim() : text.trim();
   const ops = [], say = [];
   const modes = /เลือกปฏิบัติ|เลือก\s*1\s*อย่าง/.test(head) || /^(?:เลือกปฏิบัติ\s*:?\s*)?1\s*[).]\s/.test(body); head = head.replace(/เลือกปฏิบัติ|เลือก\s*1\s*อย่าง/g, "").trim(); body = body.replace(/^เลือกปฏิบัติ\s*:?\s*/, "");
-  if (head && !trig.part && /^สอดแนม/.test(head) && !/^สอดแนม\s*(?:\([^)]*\)\s*)?\d+\s*ใบ$/.test(head)) { const r = readScout(s, head, p, self, ctx, trig); if (r && !r.ops.some((o) => o.op === "resume")) { ops.push(...r.ops); say.push(...r.say); head = ""; } }
+  if (head && !trig.part && /^สอดแนม/.test(head) && !/^สอดแนม\s*(?:\([^)]*\)\s*)?\d+\s*ใบ$/.test(head)) { const r = readScout(s, head, p, self, ctx, trig); if (r && r.fail) return { fail: r.fail }; if (r && !r.ops.some((o) => o.op === "resume")) { ops.push(...r.ops); say.push(...r.say); head = ""; } }
   if (head && !trig.part) { const h = readHead(s, head, p, self, ctx, trig, body); if (!h) return why("head: " + head);
     if (h.fail) { if (!trig.dry) { const d = readClause(s, body.replace(/^/, modes ? "เลือกปฏิบัติ : " : ""), p, self, makeCtx(s, trig), { ...trig, dry: true }); if (!d) return null; } return h; }
     ops.push(...h.ops); say.push(...h.say); if (h.merge) body = h.merge + " " + (/นรก/.test(h.merge) ? body.replace(/^(อัญเชิญ|นำ)\s*(?:Avatar|การ์ด)?\s*(?:ใบ|ตัว)?(?:นั้น|ที่เลือก)/, "$1") : body); }
@@ -603,7 +605,7 @@ function readClause(s, text, p, self, ctx, trig) {
   const LATER = /^ใน(?:ช่วง)?\s*(?:เริ่ม(?:ต้น)?\s*)?(main|battle)\s*phase\s*ถัดไป\s*/i; const lm = body.match(LATER);
   const later = !!lm && !trig.now; const laterAt = lm && /battle/i.test(lm[1]) ? "battle" : null; body = body.replace(LATER, "");
   body = body.replace(/\{red\s*\}/g, " ").replace(/\s{2,}/g, " ").trim();
-  if (/^สอดแนม/.test(body) && !later && !(trig.part > 0)) { const r = readScout(s, body, p, self, ctx, trig); if (r) return { ops: [...ops, ...r.ops], say: [...say, ...r.say] }; }
+  if (/^สอดแนม/.test(body) && !later && !(trig.part > 0)) { const r = readScout(s, body, p, self, ctx, trig); if (r && r.fail) return { fail: r.fail }; if (r) return { ops: [...ops, ...r.ops], say: [...say, ...r.say] }; }
   if (BAIL.test(body.replace(new RegExp(TEXTBOX.source, "gi"), " "))) return why("bail: " + body.replace(new RegExp(TEXTBOX.source, "gi"), " ").match(BAIL)[0]); if (/ได้รับ/.test(body) && !KWGRANT.test(body)) return why("bail: ได้รับ");
   const parts = body.split(/\s*(?:จากนั้น|หลังจากนั้น|แล้ว(?=\s*(?:จั่ว|สับ|นำ))|\s\/\s|และ(?=\s*(?:จั่ว|ทำลาย|ธรณีสูบ|สับ|ยกเลิก|ทำความเสียหาย|เปลี่ยน|นำ(?!\s*(?:ขึ้นมือ|กลับขึ้นมือ|มา|ไป|ลง))|อัญเชิญ(?!\s*ลง)|เนรเทศ|เลือก))|\s(?=เลือก\s*Avatar)|(?<=(?:ธรณีสูบ|จั่วการ์ด)[^.:]{0,90}?\d\s*ใบ)\s+(?=POWER\s*[+\-−–]\s*\d))\s*/).map((x) => x.trim()).filter(Boolean);
   if (!parts.length) return null;

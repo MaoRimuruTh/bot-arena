@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112102002";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261112102002";
-import { SCRIPTS } from "./scripts.js?v=20261112102002";
-import { newId, clone } from "./util.js?v=20261112102002";
+import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112102630";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261112102630";
+import { SCRIPTS } from "./scripts.js?v=20261112102630";
+import { newId, clone } from "./util.js?v=20261112102630";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -167,6 +167,9 @@ export const E = {
   modOk(s, m, host) { const hs = host.mute ? null : hk(s, host); if (hs && hs.noMod) return false; if (hs && hs.uniqWear && [...s.P[0].mg, ...s.P[1].mg].some((z) => z.on === host.i && z.i !== m.i && E.def(s, z).n === E.def(s, m).n)) return false; if (hs && hs.wearOnly && !hs.wearOnly(E, s, m)) return false; if (hs && hs.anyMod) return true; const sc = hk(s, m); return !(sc && sc.modOnly && !sc.modOnly(E, s, host)); }, // noMod: แมมมอธแช่แข็ง · anyMod: รีวิวแมน
   // would player t then control two of a card that allows only one (#ควบคุม … ได้เพียง 1 ใบ)?
   ctlBlocked(s, x, t) { return !!(hk(s, x) || {}).uniq && s.P[t].av.some((y) => y.i !== x.i && E.name(s, y) === E.def(s, x).n); },
+  // why player p may not play a Land Magic now (null: may): the Land on the field, the opponent's abilities
+  landPlayBlocked(s, p) { if (E.landSc(s, "noLand")) return "ใช้ Land Magic ไม่ได้ (Land Magic บนสนาม)"; if (s.landLock && s.landLock[p] >= s.turn) return "ใช้ Land Magic ไม่ได้ในตอนนี้ (ความสามารถของฝ่ายตรงข้าม)";
+    return fieldCards(s).some(({ x: y, L: Ly }) => Ly.p !== p && !y.mute && (scriptOf(s, y) || {}).landBlock && scriptOf(s, y).landBlock(E, s, y, Ly)) ? "ใช้ Land Magic ไม่ได้ (ความสามารถของฝ่ายตรงข้าม)" : null; },
   noControl(s, x) { return !x.mute && !!(hk(s, x) || {}).noControl; },
   // "ในเทิร์นนี้ Avatar {X} ที่เราอัญเชิญ … ได้รับ": buffs given to Avatars summoned later this turn
   summonBuff(s, p, x) { const b = s.tbuff && s.tbuff[p]; if (!b || b.t !== s.turn || (b.sy && !E.hasSy(s, x, b.sy))) return;
@@ -589,7 +592,7 @@ export const E = {
           x.on = act.on; P.mg.push(x); E.log(s, p, `สวมใส่ ${d.n} ให้ ${E.name(s, host.x)}`); E.ev(s, { k: "cast", i: x.i, p, st: "D", on: act.on });
           { const sc = scriptOf(s, x); if (sc ? !!sc.cast : !E.ext.modCast || E.ext.modCast(d.x)) E.addTrig(s, p, x, "cast", { on: act.on }); }
           E.gotMod(s, host.x, x);
-        } else if (st === "L") { need(!E.landSc(s, "noLand"), "ใช้ Land Magic ไม่ได้ (Land Magic บนสนาม)"); need(!(s.landLock && s.landLock[p] >= s.turn), "ใช้ Land Magic ไม่ได้ในตอนนี้ (ความสามารถของฝ่ายตรงข้าม)"); need(!fieldCards(s).some(({ x: y, L: Ly }) => Ly.p !== p && !y.mute && (scriptOf(s, y) || {}).landBlock && scriptOf(s, y).landBlock(E, s, y, Ly)), "ใช้ Land Magic ไม่ได้ (ความสามารถของฝ่ายตรงข้าม)");
+        } else if (st === "L") { { const why = E.landPlayBlocked(s, p); need(!why, why); }
           E.placeLand(s, x); x.t0 = s.turn; E.log(s, p, `ใช้ Land Magic ${d.n}`); if (!(scriptOf(s, x) && !scriptOf(s, x).cast)) E.addTrig(s, p, x, "cast"); E.ev(s, { k: "cast", i: x.i, p, st: "L" });
         } else {
           P.mg.push(x); E.log(s, p, `ใช้ ${SUB_TH[st]} Magic ${d.n}`); E.ev(s, { k: "cast", i: x.i, p, st: st });
@@ -629,7 +632,7 @@ export const E = {
         }
         x.a = false; E.slept(s, p, [x, ...sup.map((i) => P.av.find((z) => z.i === i)).filter(Boolean)]);
         s.pend = { att: x.i, tk: act.tk, ti: act.ti || null, bonus, sup, by: p, ...(bs.length ? { bs } : {}) };
-        s.atk = s.atk && s.atk.t === s.turn ? { t: s.turn, n: s.atk.n + 1 } : { t: s.turn, n: 1 };
+        s.atk = s.atk && s.atk.t === s.turn ? { t: s.turn, n: s.atk.n + 1, ids: [...new Set([...(s.atk.ids || []), x.i])] } : { t: s.turn, n: 1, ids: [x.i] };
         for (const { x: y, L: Ly } of fieldCards(s)) { if (y.mute) continue; const sy = scriptOf(s, y); if (sy && sy.onDeclare) { const ops = sy.onDeclare(E, s, y, Ly, p) || []; if (ops.length) { E.log(s, Ly.p, `เอฟเฟกต์ ${E.name(s, y)}`); E.ops(s, ops, Ly.p); } } }
         for (const y of stab) s.trig.push({ id: tid(s), seat: p, i: y.i, c: y.c, when: "stab" });
         E.ev(s, { k: "declare", att: x.i, by: p, tk: act.tk, ti: act.ti || null });
