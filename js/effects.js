@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261112094934";
-import { CARDS, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, inRed } from "./cards.js?v=20261112094934";
-import { E, scriptOf } from "./engine.js?v=20261112094934";
+import { readAura } from "./auras.js?v=20261112095544";
+import { CARDS, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, inRed } from "./cards.js?v=20261112095544";
+import { E, scriptOf } from "./engine.js?v=20261112095544";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -323,6 +323,8 @@ function sentence(s, t, p, self, ctx) {
       const f = f0; if (/Cost|POWER/.test(t) && f.maxCost == null && f.maxPower == null && f.minCost == null && f.cost == null && f.power == null) return false;
       const all = /ทุกใบ|ทั้งหมด/.test(t); const hm = howMany(t); const n = all ? 99 : hm.n;
       const cands = (/Construct/.test(t) ? O.cs.filter((x) => fits(s, x, f)) : f.type === "M" ? [...O.mg, ...E.lands(s).filter((l) => l.o === 1 - p)].filter((x) => typed(x, f)) : /การ์ด(?:บนสนาม)?\s*\d/.test(t) && !/Avatar/.test(t) ? [...oppAv({ ...f, type: null }), ...O.cs] : oppAv(f));
+      // "Avatar บนสนาม": an Avatar in any zone of the field, the Magic Zone too (FAQ บีมมมมมมมมมม) · "บน Avatar Zone" only there
+      if (!/Construct/.test(t) && f.type !== "M" && /Avatar[^:]*บนสนาม|บนสนาม[^:]*Avatar/.test(t) && !/Avatar Zone/.test(t)) cands.push(...O.mg.filter((x) => !x.fd && ["A", "T"].includes(E.def(s, x).t) && typed(x, f) && !E.noAim(s, x)));
       if (anySide && !all) cands.push(...P.av.filter((x) => typed(x, f) && !(self && x.i === self.i)).sort((a, b) => val(s, a) - val(s, b)));
       const pool = all ? cands : ctx.choose(cands, n, `เลือกการ์ด${anySide ? "บนสนาม" : "ฝ่ายตรงข้าม"}ที่จะทำลาย (${hm.upTo ? "สูงสุด " : ""}${n} ใบ)`, { optional: hm.upTo });
       for (const x of pool) ops.push({ op: "destroy", i: x.i, why: "จากเอฟเฟกต์" });

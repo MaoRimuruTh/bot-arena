@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261112094934";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261112094934";
-import { SCRIPTS } from "./scripts.js?v=20261112094934";
-import { newId, clone } from "./util.js?v=20261112094934";
+import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261112095544";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261112095544";
+import { SCRIPTS } from "./scripts.js?v=20261112095544";
+import { newId, clone } from "./util.js?v=20261112095544";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -35,6 +35,7 @@ export const END_RE = /อัตโนมัติ\s*ใน(?:ช่วง|ท�
 export const MAIN_RE = /อัตโนมัติ\s*(?:เมื่อ|ใน)?(?:ช่วง)?\s*เริ่ม(?:ต้น)?\s*Main Phase\s*(?:ของ)?\s*เรา/;
 const once0 = (s, p, n) => !(s.nu && s.nu[p] && s.nu[p][n] === s.turn);
 function fieldCards(s) { const out = []; for (let p = 0; p < 2; p++) for (const z of FIELD) for (const x of s.P[p][z]) out.push({ x, L: { p, z } }); for (const l of [s.land, s.land2]) if (l) out.push({ x: l, L: { p: l.o, z: "land" } }); return out; }
+const WORN_RE = /เมื่อการ์ดใบนี้\s*สวมใส่/;
 const OD_LOCK = /#\s*Avatar\s*ทุกใบใน\s*สนามฝ่ายเรา\s*จะไม่สามารถใช้ความสามารถได้\s*ยกเว้น/;
 const ATTACKED_RE = /เมื่อ\s*(?:Avatar|การ์ด)\s*(?:ใบนี้|ตัวนี้)\s*ถูกโจมตี/;
 const WIN_RE = /เมื่อ\s*(?:Avatar|การ์ด)\s*(?:ใบนี้|ตัวนี้)\s*ทำลาย\s*Avatar\s*(?:ของ)?\s*(?:ฝ่ายตรงข้าม|อีกฝ่าย)\s*จากการต่อสู้/;
@@ -942,6 +943,8 @@ export const E = {
         if (!H || H.z !== "av") { E.log(s, by, `${E.name(s, L.x)} สวมใส่ไม่ได้ (Avatar ที่จะสวมใส่ไม่อยู่บนสนามแล้ว)`); return; }
         { const ht = H.x.mute ? null : hk(s, H.x); if (ht && ht.uniqWear && [...s.P[0].mg, ...s.P[1].mg].some((m) => m.on === H.x.i && E.def(s, m).n === E.def(s, L.x).n)) { E.log(s, by, `${E.name(s, H.x)} สวมใส่การ์ดชื่อซ้ำกันไม่ได้`); return; } }
         if (L.z === "land") E.unLand(s, L.x); else s.P[L.p][L.z].splice(L.idx, 1); L.x.on = o.on; L.x.a = true; s.P[H.p].mg.push(L.x); if (E.def(s, L.x).st === "D") E.gotMod(s, H.x, L.x);
+        // "เมื่อการ์ดใบนี้สวมใส่ …" works when the card is brought from another zone, not when it moves within the Magic Zone (FAQ มีมมิจัง ไอดอล No.1)
+        if ((L.z !== "mg" || o.wear) && WORN_RE.test(E.def(s, L.x).x || "") && (scriptOf(s, L.x) || {}).cast) s.trig.push({ id: tid(s), seat: H.p, i: L.x.i, c: L.x.c, when: "cast", on: H.x.i });
         E.log(s, by, `${E.name(s, L.x)} สวมใส่ให้ ${E.name(s, H.x)}`); return;
       }
       case "negate": { const k = s.trig.findIndex((t) => t.i === o.i); if (k >= 0) s.trig.splice(k, 1); const L = E.locate(s, o.i); if (L && (L.z === "mg" || L.z === "land")) E.moveTo(s, o.i, "hell"); E.log(s, by, "ยกเลิกผลของการ์ดนั้น"); return; }

@@ -397,7 +397,7 @@ Object.assign(SCRIPTS, {
       run: (c) => { const { E, s, seat: p, self: x } = c; const P = s.P[p];
         const pool = P.av.filter((y) => isAv(E, s, y) && E.named(s, y, "มีมมิ")).sort((a, b) => otaOn(E, s, b).length - otaOn(E, s, a).length || E.power(s, a) - E.power(s, b));
         const m = c.choose(pool, 1, "เลือกมีมมิบน Avatar Zone ที่จะเนรเทศ", { exact: true })[0]; if (!m) return { explain: "ไม่มีมีมมิบน Avatar Zone", ops: [] };
-        const fans = otaOn(E, s, m); const carry = fans.map((f) => ({ op: "attach", i: f.i, on: x.i }));
+        const fans = otaOn(E, s, m); const carry = fans.map((f) => ({ op: "attach", i: f.i, on: x.i, wear: true })); // FAQ: they count as worn anew (ของขวัญจากโอตะ draws)
         const room1 = E.avatars(P) < 4 && P.av.length < 6 && E.fits6(s, p, x); // with room, come down first so the โอตะ go straight across
         const ops = room1 ? [{ op: "put", i: x.i, jt: true }, ...carry, { op: "exile", i: m.i }] : [{ op: "exile", i: m.i }, { op: "put", i: x.i, jt: true }, ...carry];
         return { explain: `เนรเทศ ${E.name(s, m)} · อัญเชิญ ${E.name(s, x)} แบบจุติ${fans.length ? ` · โอตะ ${fans.length} ใบย้ายมาสวมใส่ให้` : ""}`, ops }; } },
@@ -1849,7 +1849,7 @@ Object.assign(SCRIPTS, {
   // ถ้ำนาคา (Land): นาค +1
   "BT06-062": { aura: (E, s, src, L) => (L.z === "land" ? [0, 1].map((seat) => ({ seat, test: (x) => naga(E, s, x), n: 1 })) : []) },
   // ประตูวัลฮัลลา (Land): once per turn mill 2: a "เทพธิดาแห่งวัลฮัลลา" from our hell to the hand
-  "BT06-063": { activate: { label: "ธรณีสูบ 2 ใบ: เทพธิดาแห่งวัลฮัลลาจากนรกขึ้นมือ", can: (E, s, x, L) => L.z === "land" && s.phase === "main" && s.P[L.p].deck.length >= 2 && (!s.P[L.p].bot || s.P[L.p].hell.some((y) => valkyrie(E, s, y))),
+  "BT06-063": { activate: { label: "ธรณีสูบ 2 ใบ: เทพธิดาแห่งวัลฮัลลาจากนรกขึ้นมือ", can: (E, s, x, L) => L.z === "land" && s.phase === "main" && s.P[L.p].deck.length >= 2 && s.P[L.p].hell.some((y) => valkyrie(E, s, y)), // FAQ: a เทพธิดา must already be in the hell
     run: (c) => { const { E, s, seat: p } = c; const t = c.choose(uniq(E, s, [...s.P[p].deck.slice(0, 2), ...s.P[p].hell].filter((y) => valkyrie(E, s, y))).sort((a, b) => worth(E, s, b) - worth(E, s, a)), 1, "เลือกเทพธิดาแห่งวัลฮัลลาในนรก", { exact: true })[0];
       return { explain: `ธรณีสูบ 2 ใบ${t ? ` · ${E.name(s, t)} ขึ้นมือ` : " · ไม่มีเทพธิดาในนรก"}`, ops: [{ op: "mill", seat: p, n: 2 }, ...(t ? [{ op: "move", i: t.i, to: "hand", onlyFrom: "hell" }] : [])] }; } } },
   // รูปปั้นพระอิศวร (Construct): in our Draw Phase scout 2 and take a {เทพ} instead of the normal draw
