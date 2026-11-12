@@ -1,18 +1,20 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261112180249";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261112180249";
-import { AVATARS, MATS, SIGILS, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261112180249";
-import { myFigure, myMat, mySigil, unlocked, needFor } from "./achieve.js?v=20261112180249";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261112180249";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261112180249";
-import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261112180249";
-import { Views, avatarEl } from "./ui.js?v=20261112180249";
-import { Ciel } from "./ai.js?v=20261112180249";
-import "./views/library.js?v=20261112180249";
-import "./views/decks.js?v=20261112180249";
-import "./views/lab.js?v=20261112180249";
-import "./views/history.js?v=20261112180249";
-import { openReport } from "./views/ask.js?v=20261112180249";
-import "./views/play.js?v=20261112180249";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261112181700";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261112181700";
+import { AVATARS, MATS, SIGILS, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261112181700";
+import { myFigure, myMat, mySleeve, mySigil, unlocked, needFor } from "./achieve.js?v=20261112181700";
+import { Vault, startVault } from "./vault.js?v=20261112181700";
+import { vaultSection } from "./vaultui.js?v=20261112181700";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261112181700";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261112181700";
+import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261112181700";
+import { Views, avatarEl } from "./ui.js?v=20261112181700";
+import { Ciel } from "./ai.js?v=20261112181700";
+import "./views/library.js?v=20261112181700";
+import "./views/decks.js?v=20261112181700";
+import "./views/lab.js?v=20261112181700";
+import "./views/history.js?v=20261112181700";
+import { openReport } from "./views/ask.js?v=20261112181700";
+import "./views/play.js?v=20261112181700";
 
 const root = $("#view");
 let current = null, cardsReady = false;
@@ -76,10 +78,11 @@ function avatarSection() {
     ...Object.keys(SIGILS).filter((k) => !unlocked("sig", k)).map((k) => ["วงอัญเชิญ" + SIGILS[k].name, needFor("sig", k)])];
   return [h("div", { class: "eyebrow", style: "margin-top:12px" }, "อวตาร 3 มิติ ผ้าปูโต๊ะ และวงอัญเชิญ"),
     h("div", { class: "small muted" }, "อวตารยืนข้างแถบกลางสนามฝั่งคุณ เด้งตอนเริ่มเทิร์น สะดุ้งตอนเสีย LIFE ดีใจหรือคอตกตอนจบเกม วงอัญเชิญคือวงที่เปิดใต้การ์ดตอนเราอัญเชิญ เปลี่ยนแล้วใช้ตั้งแต่เกมถัดไป"),
-    seg("อวตาร 3 มิติ", "bot.av3", myFigure(), [["", "ไม่มี"], ...Object.entries(AVATARS).map(([k, a]) => [k, a.name])], "av", (t) => `เลือก${t}แล้ว ใช้ตั้งแต่เกมถัดไป`),
-    seg("ผ้าปูโต๊ะ", "bot.mat", myMat(), Object.entries(MATS).map(([k, m]) => [k, m.name]), "mat", (t) => `ผ้าปู${t} ใช้ตั้งแต่เปิดสนามครั้งถัดไป`),
+    seg("อวตาร 3 มิติ", "bot.av3", myFigure(), [["", "ไม่มี"], ...Object.entries(AVATARS).map(([k, a]) => [k, a.name]), ...(Vault.has("fig") ? [["own", "รูปปั้นของฉัน"]] : [])], "av", (t) => `เลือก${t}แล้ว ใช้ตั้งแต่เกมถัดไป`),
+    seg("ผ้าปูโต๊ะ", "bot.mat", myMat(), [...Object.entries(MATS).map(([k, m]) => [k, m.name]), ...(Vault.has("mat") ? [["own", "ผ้าปูของฉัน"]] : [])], "mat", (t) => `ผ้าปู${t} ใช้ตั้งแต่เปิดสนามครั้งถัดไป`),
+    Vault.has("sleeve") ? seg("หลังการ์ด", "bot.sleeve", mySleeve(), [["", "ลายไทย"], ["own", "หลังการ์ดของฉัน"]], "sleeve", (t) => `หลังการ์ด${t} ใช้ตั้งแต่เกมถัดไป`) : null,
     seg("วงอัญเชิญ", "bot.sig", mySigil(), Object.entries(SIGILS).map(([k, m]) => [k, m.name]), "sig", (t) => `วงอัญเชิญลาย${t} ใช้ตั้งแต่เกมถัดไป`),
-    locked.length ? h("div", { class: "tiny muted" }, "ปลดล็อคได้จากการเล่นเท่านั้น: " + locked.map(([n, w]) => `${n} (${w})`).join(" · ")) : null];
+    locked.length ? h("div", { class: "tiny muted" }, "ปลดล็อคได้จากการเล่นเท่านั้น: " + locked.map(([n, w]) => `${n} (${w})`).join(" · ")) : null].filter(Boolean);
 }
 // how much the 3D table draws, and how fast its animations run (both per browser; used the next time the table opens)
 function gfxSection() {
@@ -105,7 +108,7 @@ function settings() {
   openSheet((api) => {
     const key = h("input", { type: "password", value: Ciel.key(), placeholder: "sk-ant-…", autocomplete: "off", "aria-label": "Claude API key" });
     const model = h("select", { "aria-label": "โมเดลหลัก" }, ["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-5-5"].map((m) => h("option", { value: m, selected: m === Ciel.model() }, m)));
-    const out = [...profileSection(api), ...avatarSection(), ...gfxSection(), ...notifySection(), ...appSection(api), h("div", { class: "eyebrow", style: "margin-top:12px" }, "เจอปัญหา?"), h("div", { class: "row" }, h("button", { class: "btn", onclick: () => { api.close(); openReport(); } }, "แจ้งปัญหา")), h("div", { class: "eyebrow", style: "margin-top:12px" }, "ชิเอล (Claude API)"),
+    const out = [...profileSection(api), ...avatarSection(), ...vaultSection(), ...gfxSection(), ...notifySection(), ...appSection(api), h("div", { class: "eyebrow", style: "margin-top:12px" }, "เจอปัญหา?"), h("div", { class: "row" }, h("button", { class: "btn", onclick: () => { api.close(); openReport(); } }, "แจ้งปัญหา")), h("div", { class: "eyebrow", style: "margin-top:12px" }, "ชิเอล (Claude API)"),
       h("div", { class: "small muted" }, "ใส่ API key ของคุณเองเพื่อให้ชิเอลคิดเป็นบอท อ่านเอฟเฟกต์การ์ด และจัดเด็ค key เก็บเฉพาะในเบราว์เซอร์นี้ ไม่ส่งขึ้นฐานข้อมูล ค่าใช้จ่ายคิดกับบัญชี API ของคุณ ถ้าไม่ใส่ ยังเล่นกับบอทพื้นฐานได้"),
       key, h("div", { class: "row" }, h("span", { class: "small muted" }, "โมเดลจัดเด็ค/อ่านการ์ด"), model),
       h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => { const v = key.value.trim(); if (v) lsSet("bot.apiKey", v); else lsDel("bot.apiKey"); lsSet("bot.model", model.value); toast(v ? "บันทึก key ของชิเอลแล้ว" : "ลบ key แล้ว"); meArea(); api.close(); } }, "บันทึก"), Ciel.on() ? h("button", { class: "btn danger sm", onclick: () => { lsDel("bot.apiKey"); meArea(); api.close(); toast("ลบ key แล้ว"); } }, "ลบ key") : null)];
@@ -206,7 +209,7 @@ onUser(async (user) => {
     { const was = isOwnerNow(); applyPersona(); if (booted && was !== isOwnerNow()) route(); } // Ciel's name is for the owner account only
     if (p.status !== "approved") { booted = false; cardsReady = false; return p.status === "blocked" ? gate(h("h2", null, "บัญชีนี้ถูกระงับ"), h("button", { class: "btn", onclick: () => signOut() }, "ออกจากระบบ")) : pendingScreen(); }
     if (booted) { meArea(); return; } booted = true;
-    startData(); meArea(); $("#nav").hidden = false;
+    startData(); startVault(); meArea(); $("#nav").hidden = false;
     gate(busy("กำลังโหลดการ์ดจากเว็บทางการ…"));
     try { await loadCards(); }
     catch (e) {

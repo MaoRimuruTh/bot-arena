@@ -1,11 +1,12 @@
 // Achievements: earned only by playing (nothing here can be bought), each one unlocking something for the table:
 // a 3D figure to stand by your side, a colour of lacquer for the mat, the circle that opens when you summon, or one of the
 // official box decks (คัดสรรเด็ค) that plays stronger than the Starter Decks. Worked out from your own match history.
-import { Data } from "./fb.js?v=20261112180249";
-import { lsGet } from "./util.js?v=20261112180249";
-import { stars } from "./quests.js?v=20261112180249";
-import { AVATARS, MATS, SIGILS } from "./arena3d.js?v=20261112180249";
-import { BOX_LISTS, themeCounts } from "./boxdecks.js?v=20261112180249";
+import { Data } from "./fb.js?v=20261112181700";
+import { lsGet } from "./util.js?v=20261112181700";
+import { stars } from "./quests.js?v=20261112181700";
+import { AVATARS, MATS, SIGILS } from "./arena3d.js?v=20261112181700";
+import { BOX_LISTS, themeCounts } from "./boxdecks.js?v=20261112181700";
+import { Vault } from "./vault.js?v=20261112181700";
 
 const real = (ms) => ms.filter((m) => m.mode !== "goldfish");
 const wins = (ms) => real(ms).filter((m) => m.result === "win").length;
@@ -52,8 +53,10 @@ export const boxGoalsFor = (d, ms = Data.matches) => { if (!d || d.box) return [
 export function newlyEarned(match) { const before = earned(Data.matches.filter((m) => m.id !== match.id)); const after = earned([match, ...Data.matches.filter((m) => m.id !== match.id)]); return ACH.filter((a) => after.has(a.id) && !before.has(a.id)); }
 // your chosen figure and mat colour, if they are open to you (kept per browser)
 const pick = (k) => { try { return localStorage.getItem(k) || ""; } catch { return ""; } };
-export const myFigure = () => { const k = pick("bot.av3"); return AVATARS[k] && unlocked("av", k) ? k : ""; };
-export const myMat = () => { const k = pick("bot.mat"); return MATS[k] && unlocked("mat", k) ? k : "black"; };
+// "own": the owner's own figure / mat picture / card sleeve, kept in his private space (vault.js)
+export const myFigure = () => { const k = pick("bot.av3"); return k === "own" ? (Vault.has("fig") ? "own" : "") : AVATARS[k] && unlocked("av", k) ? k : ""; };
+export const myMat = () => { const k = pick("bot.mat"); return k === "own" && Vault.has("mat") ? "own" : MATS[k] && unlocked("mat", k) ? k : "black"; };
+export const mySleeve = () => (pick("bot.sleeve") === "own" && Vault.has("sleeve") ? "own" : "");
 export const mySigil = () => { const k = pick("bot.sig"); return SIGILS[k] && unlocked("sig", k) ? k : "lotus"; };
 const boxName = (id) => { const k = String(id).replace(/^box-/, "").toUpperCase(); return BOX_LISTS[k] ? `${k} ${BOX_LISTS[k].name}` : id; };
 export const rewardName = (g) => (g.av ? "อวตาร " + AVATARS[g.av].name : g.mat ? "ผ้าปู" + MATS[g.mat].name : g.sig ? "วงอัญเชิญ" + SIGILS[g.sig].name : g.deck ? "เด็คกล่องพิเศษ " + boxName(g.deck) : "");

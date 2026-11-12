@@ -672,3 +672,17 @@ table.t th{white-space:nowrap}
 .faq summary::before{content:"▸";color:var(--gold);transition:transform .15s}
 .faq[open] summary::before{transform:rotate(90deg)}
 .faq-q{border-left:2px solid var(--line-2);padding-left:10px}
+/* the owner's own mat picture, sleeve and figure (settings) */
+.vitem{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;padding:10px;border:1px solid var(--line-2);border-radius:12px;background:rgba(255,255,255,.025)}
+.vthumb{display:block;border-radius:8px;border:1px solid rgba(216,168,74,.35);background:#0d0b12;object-fit:cover}
+.vthumb.mat{width:min(240px,42vw);height:auto;aspect-ratio:15.4/5.8}
+.vthumb.sleeve,.vthumb.fig{width:66px;height:90px}
+.vthumb.empty{display:grid;place-items:center;font-size:.72rem;color:var(--muted);text-align:center;padding:4px}
+.vthumb.empty.fig{font-size:1.6rem}
+.vprev{display:block;width:100%;max-width:100%;height:auto;border-radius:10px;border:1px solid rgba(216,168,74,.4);touch-action:none;cursor:grab;background:#0d0b12}
+.vprev:active{cursor:grabbing}
+.vprev.sleeve{width:min(260px,70vw);margin:0 auto;border-radius:12px}
+.vrow{display:grid;grid-template-columns:7.5em 1fr;gap:10px;align-items:center;font-size:.9rem}
+.vrow input[type=range]{width:100%;accent-color:var(--gold)}
+.vcheck{display:flex;gap:8px;align-items:flex-start;font-size:.88rem}
+.vcheck input{margin-top:3px;accent-color:var(--gold)}
