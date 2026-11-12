@@ -1,10 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112072349";
-import { plain } from "./persona.js?v=20261112072349";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261112072349";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112072349";
-import { Data } from "./fb.js?v=20261112072349";
-import { lsGet, clone } from "./util.js?v=20261112072349";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112073729";
+import { plain } from "./persona.js?v=20261112073729";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261112073729";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112073729";
+import { modPowerFor } from "./auras.js?v=20261112073729";
+import { Data } from "./fb.js?v=20261112073729";
+import { lsGet, clone } from "./util.js?v=20261112073729";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -108,6 +109,7 @@ export const H = {
       for (const x of P.cs) v += 1.4 + E.power(s, x) * 0.3;
       for (const m of P.mg) if (m.on != null) { const d = E.def(s, m); v += ["A", "T"].includes(d.t) ? 1 + (d.c || 0) * 0.45 : 0.5; } // a worn Avatar (โอตะ …) is safe and can come back
       v += P.hand.length * 1.05;
+      for (const l of E.lands(s)) if (l.o === q) v += 1.6; // a Land Magic of ours works every turn
       const down = P.life.filter((y) => !y.up).length; v += down * 2.4 + (down === 0 ? -5 : 0);
       if (P.deck.length < 5) v -= (5 - P.deck.length) * 1.5;
       return v; };
@@ -196,18 +198,23 @@ export const H = {
         let bias = 0; { const sx = scriptOf(s, x); if (sx && sx.botHold) bias = sx.botHold(E, s, x, p) || 0; } // a card that is better kept in hand for now
         if (a.type === "summon") { const fx = d.x && /จุติ/.test(d.x) ? H.opsScore(s, p, H.preview(s, { i: x.i, c: x.c, when: "summon", seat: p, exact: true })) : 0; sc = (d.pw || 0) + 2 + Math.max(0, fx) - payLoss * 0.45 + (P.av.length < 2 ? 3 : 0) + bias; }
         else if (a.type === "build") sc = 3 - payLoss * 0.3;
-        else if (a.type === "cast" && d.st === "L") sc = E.lands(s).some((l) => l.o === p) || (E.lands(s).length && !E.landSc(s, "splitLand")) ? -1 : 2.5;
-        else if (a.type === "cast" && d.st === "D") { const host = P.av.find((y) => y.i === a.on); const sm = scriptOf(s, x); const b = sm && sm.modV ? sm.modV(E, s, x, host) : modBonus(d.x) || gearV(d.x); sc = b > 0 && host ? b + (host.a ? 1.5 : 0) + E.power(s, host) * 0.1 : -1; }
+        else if (a.type === "cast" && d.st === "L") sc = E.lands(s).some((l) => l.o === p) ? -1 : E.lands(s).length && !E.landSc(s, "splitLand") ? 3 : 2.5; // ours replaces theirs: their Land goes too
+        else if (a.type === "cast" && d.st === "D") { const host = P.av.find((y) => y.i === a.on); const sm = scriptOf(s, x); const b = sm && sm.modV ? sm.modV(E, s, x, host) : modBonus(d.x) || (host ? modPowerFor(E, s, x, host) : 0) || gearV(d.x); sc = b > 0 && host ? b + (host.a ? 1.5 : 0) + E.power(s, host) * 0.1 : -1; }
         else if (a.type === "cast" && d.st === "N") sc = H.opsScore(s, p, H.preview(s, { i: x.i, c: x.c, when: "cast", seat: p }));
         if (a.via != null) sc += 4; // ซาร์อึก: a dragon for almost nothing
         cand.push({ m, sc, bias });
       }
       cand.sort((a, b) => b.sc - a.sc);
+      // a free Magic about to be paid away as GEM for the chosen play, while that play can still be paid for without it:
+      // cast it first (the play comes next, paid with the other cards)
+      const first = (m) => { if (!m || !["summon", "build"].includes(m.a.type) || m.a.via != null || !(m.a.pay || []).length) return m;
+        for (const z of cand) if (z.m.a.type === "cast" && z.sc >= 1.5 && m.a.pay.includes(z.m.a.i) && E.autoPay(s, p, m.a.i, undefined, [z.m.a.i])) return z.m;
+        return m; };
       if (H.look && cand.length) { const top = cand.filter((z) => z.sc > -20).slice(0, H.look);
         for (const z of top) z.lv = H.lookahead(s, p, z.m.a);
         const ranked = top.filter((z) => z.lv != null).map((z) => ({ ...z, tot: z.lv + z.sc * 0.25 + (z.bias || 0) })).sort((a, b) => b.tot - a.tot);
-        if (ranked.length) return ranked[0].tot >= 0.9 || (ranked[0].sc >= 1.5 && ranked[0].lv > -1) ? ranked[0].m : moves.find((m) => m.a.type === "battle"); }
-      if (cand.length && cand[0].sc >= 1.5) return cand[0].m;
+        if (ranked.length) return ranked[0].tot >= 0.9 || (ranked[0].sc >= 1.5 && ranked[0].lv > -1) ? first(ranked[0].m) : moves.find((m) => m.a.type === "battle"); }
+      if (cand.length && cand[0].sc >= 1.5) return first(cand[0].m);
       return moves.find((m) => m.a.type === "battle");
     }
     if (s.phase === "battle") {
