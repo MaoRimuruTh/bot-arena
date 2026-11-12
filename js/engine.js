@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113015636";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261113015636";
-import { SCRIPTS } from "./scripts.js?v=20261113015636";
-import { newId, clone } from "./util.js?v=20261113015636";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113020943";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261113020943";
+import { SCRIPTS } from "./scripts.js?v=20261113020943";
+import { newId, clone } from "./util.js?v=20261113020943";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -1207,7 +1207,10 @@ export const E = {
       case "useMod": { s.mu[seat].D = true; E.log(s, by, "นับว่าใช้ Modification Magic ในเทิร์นนี้แล้ว"); return; }
       case "cancelTid": { const k = s.trig.findIndex((t) => t.id === o.id); if (k < 0) return; const [t] = s.trig.splice(k, 1); // เหน็บกินมือ: the whole ability is cancelled (a Magic it would have kept on the Magic Zone goes to hell)
         if (t.toHell) { const L = E.locate(s, t.i); if (L && L.z === "mg" && L.x.on == null) { s.P[L.p].mg.splice(L.idx, 1); s.P[L.x.o].hell.push(L.x); } } E.log(s, by, `ยกเลิกผลความสามารถของ ${(s.cards[t.via || t.c] || {}).n || "การ์ดนั้น"}`); return; }
-      case "cancelTrig": { const n0 = s.trig.length; const gone = s.trig.filter((t) => t.i === o.i && (o.cast || t.when !== "cast")); s.trig = s.trig.filter((t) => !gone.includes(t)); for (const t of gone) if (t.toHell) { const L = E.locate(s, t.i); if (L && L.z === "mg") { s.P[L.p].mg.splice(L.idx, 1); s.P[L.x.o].hell.push(L.x); } } if (s.trig.length < n0) E.log(s, by, "ยกเลิกความสามารถนั้น"); return; }
+      case "cancelTrig": { const n0 = s.trig.length; const gone = s.trig.filter((t) => t.i === o.i && (o.cast || t.when !== "cast")); s.trig = s.trig.filter((t) => !gone.includes(t)); for (const t of gone) if (t.toHell) { const L = E.locate(s, t.i); if (L && L.z === "mg") { s.P[L.p].mg.splice(L.idx, 1); s.P[L.x.o].hell.push(L.x); } }
+        // FAQ พระพิฆเนศ / กระรอกนิสัยไม่ดี: a cancelled "สั่งใช้" that is not once per turn may be used again this turn (the card did not lose its abilities)
+        if (!o.keepUsed) for (const t of gone) if (t.when === "activate") { const L = E.locate(s, t.i); if (L && L.x.used === s.turn && !/เทิร์นละครั้ง/.test(String(E.def(s, L.x).x || ""))) delete L.x.used; }
+        if (s.trig.length < n0) E.log(s, by, "ยกเลิกความสามารถนั้น"); return; }
       case "becomeAvatar": { const L = E.locate(s, o.i); if (!L) return; const P = s.P[seat]; if (E.avatars(P) >= 4 || P.av.length >= 6) throw new RuleError("Avatar Zone เต็ม");
         if (L.z === "land") E.unLand(s, L.x); else s.P[L.p][L.z].splice(L.idx, 1); L.x.ov = o.ov || {}; L.x.a = true; delete L.x.on; P.av.push(L.x); E.noteSummon(s, seat, L.x); E.log(s, by, `${E.name(s, L.x)} กลายเป็น Avatar บน Avatar Zone`); return; }
       case "setName": { const L = E.locate(s, o.i); if (L) { L.x.nameAs = String(o.name || "").slice(0, 30); E.log(s, by, `${E.def(s, L.x).n} เปลี่ยนชื่อเป็น "${L.x.nameAs}"`); } return; }

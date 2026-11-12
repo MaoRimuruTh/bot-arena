@@ -3627,7 +3627,7 @@ Object.assign(SCRIPTS, {
     react: { kinds: ["activate", "summon"], can: (E, s, p, on) => { if (!on || on.by === p) return false; const L = E.locate(s, on.i); return !!L && isAv(E, s, L.x) && (on.kind === "activate" || (L.z === "av" && s.trig.some((t) => t.i === on.i && t.when === "summon"))); },
       botV: (E, s, q, on) => { const L = E.locate(s, on.i); return L ? 2 + (E.def(s, L.x).c || 0) * 0.4 : 0; } },
     cast: (c) => { const { E, s, seat: p } = c; const on = c.t.on || {}; const L = on.i != null ? E.locate(s, on.i) : null; if (!L) return { explain: "Avatar ใบนั้นไม่อยู่แล้ว", ops: [] }; const t = L.x;
-      if (L.z !== "av") return { explain: `ยกเลิกความสามารถของ ${E.name(s, t)} · การ์ดอยู่ที่เดิม`, ops: [{ op: "cancelTrig", i: t.i }] };
+      if (L.z !== "av") return { explain: `ยกเลิกความสามารถของ ${E.name(s, t)} · การ์ดอยู่ที่เดิม`, ops: [{ op: "cancelTrig", i: t.i, keepUsed: true }] };
       const big = E.magicInHell(s, p) >= 8; const kill = big && c.mode([`ทำลาย ${E.name(s, t)} ด้วย`, "ไม่ทำลาย"], "Magic ในนรก 8 ใบขึ้นไป: ทำลาย Avatar ใบนั้นด้วยไหม", 0) === 0;
       return { explain: `${E.name(s, t)} สูญเสียความสามารถทั้งหมดจนจบเทิร์น${kill ? " และถูกทำลาย" : ""}`, ops: [{ op: "cancelTrig", i: t.i }, { op: "mute", i: t.i, until: "turn" }, ...(kill ? [{ op: "destroy", i: t.i, why: "Skill : Hypersense" }] : [])] }; } },
   // อินาริ โอคามิ แห่งการเก็บเกี่ยว: จุติ moves it into our Magic Zone, where its abilities keep working

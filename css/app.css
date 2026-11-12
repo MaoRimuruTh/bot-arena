@@ -724,7 +724,7 @@ table.t th{white-space:nowrap}
 .startbar .sbtxt b{font:700 1rem var(--f-display)}
 .startbar .btn{flex:none}
 .setup{padding-bottom:92px}
-@media (max-width:560px){.hero img{width:74%;right:-30px}.startbar{left:12px;right:12px;transform:none;width:auto;justify-content:space-between}}
+@media (max-width:560px){.hero img{width:74%;right:-30px;top:0;transform:translateY(-22%)}.hero .wash{background:linear-gradient(180deg,rgba(26,15,12,0) 22%,rgba(26,15,12,.9) 50%,#1b100d 72%),linear-gradient(90deg,#1b100d 30%,rgba(26,15,12,.7) 62%,rgba(26,15,12,.15))}.startbar{left:12px;right:12px;transform:none;width:auto;justify-content:space-between}}
 
 /* a phone's top bar shows all six pages at once (the last one used to sit off the edge, out of sight) */
 @media (max-width:430px){.nav{gap:0;justify-content:space-between;margin:0}.nav a{padding:6px 5px;font-size:.88rem}.nav a[aria-current="page"]::after{left:6px;right:6px}}
