@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261112132029";
-import { CARDS, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261112132029";
-import { E, scriptOf } from "./engine.js?v=20261112132029";
+import { readAura } from "./auras.js?v=20261112134653";
+import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261112134653";
+import { E, scriptOf } from "./engine.js?v=20261112134653";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -49,6 +49,8 @@ const TEXTBOX = /ที่มี\s*["“]([^"”]+)["”]\s*(?:อยู่)?\s*
 function filterOf(t) {
   const f = {}; t = String(t).replace(/\{\s*[Ss]ymbol\s*:\s*/g, "{Symbol ");
   { const tb = t.match(TEXTBOX); if (tb) { f.text = tb[1].trim(); t = t.replace(tb[0], " "); } } // 'Avatar ที่มี "X" อยู่ใน Text Box'
+  // "การ์ดที่เป็น โดนใจ": a card with the โดนใจ (collaboration) mark, not a name (a name in quotes stays a name)
+  if (/โดนใจ/.test(t.replace(/["“][^"”]*["”]/g, " "))) { f.collab = true; t = t.replace(/(?:ที่เป็น|ที่มี)?\s*(?<!["“][^"”]*)โดนใจ/g, " "); }
 
   if (/(?:ที่ไม่ใช่|ยกเว้น)\s*\{only\}|ไม่ใช่\s*Only\s*#?1/i.test(t)) { f.notOnly = true; t = t.replace(/(?:ที่ไม่ใช่|ไม่ใช่|ยกเว้น)\s*(?:\{only\}|Only\s*#?1)/gi, " "); }
   const nn = t.match(/(?:ที่ไม่ใช่|ที่ไม่ได้ชื่อ|ไม่ได้ชื่อ|ยกเว้น|ชื่อไม่ซ้ำกับ)\s*["“]?([^"”,]+?)["”]?(?=\s+\d+\s*ใบ|\s+จาก|\s+ใน|\s+บน|\s+ลง|\s+ขึ้น|\s*$)/);
@@ -89,6 +91,7 @@ function fitsD(d, f, pw = () => d.pw || 0, on = false, cst = () => d.c || 0) {
   if (f.names && !f.names.some((n) => nameHas(nm, n))) return false;
   if (f.notName && nm.includes(normName(f.notName))) return false;
   if (f.notOnly && d.o1) return false;
+  if (f.collab && !(d.fl === "dj" || (d.im != null && (card(d.im) || {}).fl === "dj"))) return false;
   if (f.st && d.st !== f.st) return false;
   if (f.maxCost != null && cst() > f.maxCost) return false;
   if (f.minCost != null && cst() < f.minCost) return false;
@@ -156,7 +159,7 @@ function scoutFilter(text, selfDef) {
   m = t.match(/(?:ที่)?(?:มี)?สีเดียวกัน(?:กัน)?(?:กับ|เหมือน)?\s*(?:Avatar|การ์ด)\s*(?:ใบ|ตัว)?นี้/); if (m) { if (!selfDef || !selfDef.co) return null; extra.color = selfDef.co; t = t.replace(m[0], " "); }
   const one = (part, base) => {
     const f = filterOf(part); if (f.bad) return null;
-    if (!(f.name || f.names || f.symbol || f.symbols || f.text || extra.text)) { const bare = part.replace(/(?:ที่ไม่ใช่|ยกเว้น|ไม่ได้ชื่อ)\s*["“]?[^"”]+?["”]?(?=\s+(?:\d+\s*ใบ|จาก|ใน|บน|ลง|ขึ้น)|\s*$)/, " ").replace(SC_STRIP, " ").replace(/\s+/g, " ").trim(); if (bare) { if (base && base.symbolish) f.symbol = bare; else if (nameKnown(bare)) f.name = bare; else return null; } }
+    if (!(f.name || f.names || f.symbol || f.symbols || f.text || f.collab || extra.text)) { const bare = part.replace(/(?:ที่ไม่ใช่|ยกเว้น|ไม่ได้ชื่อ)\s*["“]?[^"”]+?["”]?(?=\s+(?:\d+\s*ใบ|จาก|ใน|บน|ลง|ขึ้น)|\s*$)/, " ").replace(SC_STRIP, " ").replace(/\s+/g, " ").trim(); if (bare) { if (base && base.symbolish) f.symbol = bare; else if (nameKnown(bare)) f.name = bare; else return null; } }
     return f;
   };
   let list;
@@ -238,7 +241,7 @@ function sentence(s, t, p, self, ctx) {
   if (/\sและ\s/.test(t.replace(/["“][^"”]*["”]/g, "")) && !KWGRANT.test(t)) return false; // a second action joined with "และ" that the splitter did not recognise
   const O = s.P[1 - p], P = s.P[p]; const ref = ctx.ref || {};
   const pickN = (t) => howMany(t).n;
-  const named = (f) => f.name || f.names || f.symbol || f.symbols || f.text;
+  const named = (f) => f.name || f.names || f.symbol || f.symbols || f.text || f.collab;
   const typed = (x, f) => fits(s, x, f) && (!f.type || E.def(s, x).t === f.type || (f.type === "A" && E.def(s, x).t === "T")) && !(f.other && self && x.i === self.i);
   // "that Avatar" / "the attacker" in answers to an attack, a summon or a fight
   const refCard = () => { const i = /ที่(?:ประกาศ)?โจมตี|ผู้โจมตี|ใบที่โจมตี/.test(t) && ref.att != null ? ref.att : /ใบนั้น|ตัวนั้น|ที่เป็นเป้าหมาย|ที่ต่อสู้ด้วย|ที่ถูกอัญเชิญ|ที่อัญเชิญ/.test(t) && ref.that != null ? ref.that : null; const L = i != null ? E.locate(s, i) : null; return L && L.z === "av" ? L.x : null; };

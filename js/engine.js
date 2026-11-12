@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112132029";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261112132029";
-import { SCRIPTS } from "./scripts.js?v=20261112132029";
-import { newId, clone } from "./util.js?v=20261112132029";
+import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112134653";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261112134653";
+import { SCRIPTS } from "./scripts.js?v=20261112134653";
+import { newId, clone } from "./util.js?v=20261112134653";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -257,7 +257,9 @@ export const E = {
   critical: (P) => P.life.length > 0 && P.life.every((x) => x.up),
 
   // what a game keeps about a card (looked up from the live card data)
-  cardDef(id) { const c = card(id); return { n: c.n, t: c.t, st: c.st, c: c.c, g: c.g, gc: c.gc, pw: c.pw, sy: c.sy, co: c.co, x: c.x || "", o1: c.o1, im: +id, ...(c.al ? { al: c.al } : {}) }; },
+  cardDef(id) { const c = card(id); return { n: c.n, t: c.t, st: c.st, c: c.c, g: c.g, gc: c.gc, pw: c.pw, sy: c.sy, co: c.co, x: c.x || "", o1: c.o1, im: +id, ...(c.al ? { al: c.al } : {}), ...(c.fl ? { fl: c.fl } : {}) }; },
+  // a "โดนใจ" (collaboration) card: the mark printed on the card, not a word in its text (older saved games: looked up again)
+  collab(s, x) { const d = E.def(s, x); if (!d) return false; if (d.fl) return d.fl === "dj"; const c = d.im != null ? card(d.im) : null; return !!(c && c.fl === "dj"); },
   newGame({ players, decks, seed, first, mode, id }) {
     const s = { v: 1, id: id || newId(), mode, seed: seed | 0, turn: 0, active: first, first, phase: "mull", land: null, cards: {}, nextI: 1, log: [], trig: [], pend: null, need: 0,
       winner: null, reason: "", mull: [false, false], mu: [{}, {}], played: [{}, {}], startedAt: Date.now(), P: [] };

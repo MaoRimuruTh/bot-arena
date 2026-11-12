@@ -1884,6 +1884,7 @@ const wizard = (E, s, x) => isAv(E, s, x) && E.named(s, x, "จอมเวท")
 const spell = (E, s, x) => E.def(s, x).t === "M" && E.named(s, x, "คาถา");
 const police = (E, s, x) => isAv(E, s, x) && E.named(s, x, "ตำรวจ");
 const grass = (E, s, x) => isAv(E, s, x) && (E.named(s, x, "ตั๊กแตน") || String(E.def(s, x).x || "").includes("ตั๊กแตน"));
+const yinYang = (E, s, x) => E.named(s, x, "ตั๊กแตนหยิน") || E.named(s, x, "ตั๊กแตนหยาง");
 const snowMan = (E, s, x) => isAv(E, s, x) && E.named(s, x, "ทหารหิมะ");
 const once = (s, p, n) => !(s.nu && s.nu[p] && s.nu[p][n] === s.turn);
 const facedUp = (s, p) => s.P[p].life.filter((y) => y.up).length;
@@ -1990,7 +1991,12 @@ Object.assign(SCRIPTS, {
   "BT07-035": { attackOk: (E, s) => !!s.pend && s.pend.tk === "av", attack: (c) => { const { E, s } = c; const T = s.pend && s.pend.tk === "av" ? E.locate(s, s.pend.ti) : null; const g = declare(c); if (!g.top || !T) return { explain: "", ops: [] };
     return g.hit ? { explain: `ประกาศ ${TYPE_LABEL[g.k]} · ถูก · ทำลาย ${E.name(s, T.x)} และส่ง ${E.name(s, g.top)} ลงนรก`, ops: [{ op: "destroy", i: T.x.i, why: "ตำรวจไฟแรง" }, { op: "move", i: g.top.i, to: "hell" }] } : { explain: `ประกาศ ${TYPE_LABEL[g.k]} · ผิด`, ops: [] }; } },
   // ตั๊กแตนหยิน: จุติ flip our top LIFE up, then turn one face down (even in critical state) · with the throne, discard 1: a face-up LIFE's ability works now
-  "BT07-036": { summon: () => ({ explain: "หงาย LIFE ใบบนสุด แล้วคว่ำ LIFE 1 ใบ", ops: [{ op: "lifeFlip" }, { op: "lifeFlip", up: false, force: true }] }),
+  // หยิน: flip our top LIFE, then turn one of our face-up LIFE cards face down (even in critical) — the player picks which;
+  // the bot keeps the most useful ones face up for ราชันย์ / หยินหยางทอร์นาโด / its own ability to use
+  "BT07-036": { summon: (c) => { const { E, s, seat: p } = c; const P = s.P[p]; const top = P.life.find((y) => !y.up); const pool = [...P.life.filter((y) => y.up), ...(top ? [top] : [])];
+      if (!pool.length) return { explain: "ไม่มี LIFE ให้หงายหรือคว่ำ", ops: [] };
+      const down = c.choose([...pool].sort((a, b) => lifeVal(E, s, p, a) - lifeVal(E, s, p, b)), 1, "ตั๊กแตนหยิน: หงาย LIFE ใบบนสุดแล้ว เลือก LIFE ที่จะคว่ำกลับ 1 ใบ (ใบแรกคือใบที่ใช้ประโยชน์น้อยที่สุด)", { exact: true, reveal: true })[0];
+      return { explain: `หงาย LIFE ใบบนสุด แล้วคว่ำ ${down ? E.name(s, down) : "LIFE"} กลับ`, ops: [...(top ? [{ op: "lifeFlip" }] : []), { op: "lifeFlip", up: false, force: true, ...(down ? { i: down.i } : {}) }] }; },
     activate: { label: "ทิ้ง 1 ใบ: สั่งใช้ความสามารถของ LIFE ที่หงายอยู่", can: (E, s, x, L) => L.z === "av" && s.phase === "main" && s.P[L.p].hand.length > 0 && s.P[L.p].life.some((y) => y.up) && [...s.P[L.p].cs, ...s.P[L.p].mg].some((y) => E.named(s, y, "บัลลังก์ตั๊กแตนศตวรรษ")),
       run: (c) => { const { E, s, seat: p } = c; const l = c.choose(s.P[p].life.filter((y) => y.up), 1, "เลือก LIFE ที่หงายอยู่", { exact: true })[0]; const pay = c.choose([...s.P[p].hand].sort(cheapCard(E, s)), 1, "ทิ้งการ์ดบนมือ 1 ใบ", { exact: true })[0];
         return l && pay ? { explain: `ทิ้ง ${E.name(s, pay)} · ใช้ความสามารถของ LIFE ${E.name(s, l)}`, ops: [{ op: "discard", seat: p, iids: [pay.i] }, { op: "lifeUse", i: l.i }] } : { explain: "", ops: [] }; } } },
@@ -2074,7 +2080,8 @@ Object.assign(SCRIPTS, {
   // สถานีตำรวจ (Land): ตำรวจ by Symbol: {คน} +2 · {หุ่นยนต์} สามัคคี · {ผี} โล่มนุษย์
   "BT07-069": { aura: (E, s, src, L) => (L.z === "land" ? [0, 1].flatMap((seat) => [{ seat, test: (x) => police(E, s, x) && sy(E, s, x, "คน"), n: 2 }, { seat, test: (x) => police(E, s, x) && sy(E, s, x, "หุ่นยนต์"), n: 0, kw: ["สามัคคี"] }, { seat, test: (x) => police(E, s, x) && sy(E, s, x, "ผี"), n: 0, kw: ["โล่มนุษย์"] }]) : []) },
   // งานเลี้ยงโดนใจ หัวใจโดนเธอ (Land): Avatars with โดนใจ +1
-  "BT07-070": { aura: (E, s, src, L) => (L.z === "land" ? [0, 1].map((seat) => ({ seat, test: (x) => E.kw(s, x, "โดนใจ"), n: 1 })) : []) },
+  // งานเลี้ยงโดนใจ หัวใจโดนเธอ: every Avatar that carries the "โดนใจ" mark (a collaboration card) POWER +1, on both sides
+  "BT07-070": { aura: (E, s, src, L) => (L.z === "land" ? [0, 1].map((seat) => ({ seat, test: (x) => E.collab(s, x) || E.kw(s, x, "โดนใจ"), n: 1 })) : []) },
   // ยานรายการ เถียงทันหน่วง (Construct): Cost 0 with พี่หน่วง · with พี่หน่วง and an opposing Avatar in our Magic Zone: draw 1 in our End Phase · once per turn an Avatar gets โล่มนุษย์ until the end of the opponent's next turn
   "BT07-072": { selfCost: (E, s, x, p) => (s.P[p].av.some((y) => E.named(s, y, "พี่หน่วง")) ? -(E.def(s, x).c || 0) : 0),
     endPhase: (E, s, x, L) => (L.z === "cs" && L.p === s.active && s.P[L.p].av.some((y) => E.named(s, y, "พี่หน่วง")) && stolen(E, s, L.p).length ? [{ op: "draw", seat: L.p, n: 1 }] : []),
@@ -2082,8 +2089,12 @@ Object.assign(SCRIPTS, {
       run: (c) => { const { E, s, seat: p } = c; const t = c.choose([...s.P[p].av].sort((a, b) => worth(E, s, a) - worth(E, s, b)), 1, "เลือก Avatar", { exact: true })[0]; return t ? { explain: `${E.name(s, t)} ได้รับโล่มนุษย์`, ops: [{ op: "keyword", i: t.i, k: "โล่มนุษย์", until: "oppturn" }] } : { explain: "", ops: [] }; } } },
   // บัลลังก์ตั๊กแตนศตวรรษ (Construct): once per turn worn by a ตั๊กแตน: +2, cannot attack, other ตั๊กแตน of ours +1
   "BT07-073": { worn: () => 2, hostNoAttack: true, aura: (E, s, src, L) => (L.z === "mg" && src.on != null ? [{ seat: L.p, test: (x) => x.i !== src.on && grass(E, s, x), n: 1 }] : []),
-    activate: { label: "ไปสวมใส่ให้ Avatar ตั๊กแตน", can: (E, s, x, L) => L.z === "cs" && s.phase === "main" && s.P[L.p].av.some((y) => grass(E, s, y)),
-      run: (c) => { const { E, s, seat: p, self: x } = c; const h = c.choose(s.P[p].av.filter((y) => grass(E, s, y)).sort(strongFirst(E, s)), 1, "เลือก Avatar ตั๊กแตน", { exact: true })[0]; return h ? { explain: `${E.name(s, x)} สวมใส่ให้ ${E.name(s, h)}`, ops: [{ op: "attach", i: x.i, on: h.i }] } : { explain: "", ops: [] }; } } },
+    // the wearer cannot attack: it goes on ราชันย์ตั๊กแตนศตวรรษ first (it gets the LIFE ability from it), else on the weakest
+    // ตั๊กแตน that is not หยิน / หยาง; the bot keeps it in the Construct Zone rather than stop a หยิน / หยาง from attacking
+    activate: { label: "ไปสวมใส่ให้ Avatar ตั๊กแตน (แนะนำราชันย์ตั๊กแตนศตวรรษ)", can: (E, s, x, L) => L.z === "cs" && s.phase === "main" && s.P[L.p].av.some((y) => grass(E, s, y) && (!s.P[L.p].bot || !yinYang(E, s, y))),
+      run: (c) => { const { E, s, seat: p, self: x } = c; const king = (y) => (E.named(s, y, "ราชันย์ตั๊กแตนศตวรรษ") ? 1 : 0), yy = (y) => (yinYang(E, s, y) ? 1 : 0);
+        const pool = s.P[p].av.filter((y) => grass(E, s, y)).sort((a, b) => king(b) - king(a) || yy(a) - yy(b) || E.power(s, a) - E.power(s, b));
+        const h = c.choose(pool, 1, "เลือก Avatar ตั๊กแตนที่จะสวมใส่บัลลังก์ (ใบที่สวมจะโจมตีไม่ได้ · ราชันย์ตั๊กแตนศตวรรษได้ประโยชน์ที่สุด)", { exact: true })[0]; return h ? { explain: `${E.name(s, x)} สวมใส่ให้ ${E.name(s, h)}`, ops: [{ op: "attach", i: x.i, on: h.i }] } : { explain: "", ops: [] }; } } },
 });
 
 // ---------- BT08 ----------
@@ -2588,7 +2599,20 @@ const onlyNinja = (E, s, p) => s.P[p].av.length > 0 && s.P[p].av.every((y) => ni
 const isThrone = (E, s, y) => E.named(s, y, "บัลลังก์ตั๊กแตนศตวรรษ");
 const throneOn = (E, s, x) => [...s.P[0].mg, ...s.P[1].mg].some((m) => m.on === x.i && isThrone(E, s, m));
 const lifeUp = (s, p) => s.P[p].life.filter((y) => y.up);
-const useLife = (c, all) => { const { E, s, seat: p } = c; const t = c.choose(lifeUp(s, p), 1, "เลือก LIFE ที่หงายอยู่ของเรา 1 ใบ", { exact: true, reveal: true })[0]; return t ? { explain: `ใช้ความสามารถของ LIFE ${E.name(s, t)}`, ops: [{ op: "lifeUse", seat: p, i: t.i, all: !!all }] } : { explain: "ไม่มี LIFE ที่หงายอยู่", ops: [] }; };
+// how much a LIFE card's "next Main Phase" effect is worth to player p right now (best first in the pickers; the bot takes it)
+const lifeVal = (E, s, p, l) => { const t = String(E.def(s, l).x || ""); const P = s.P[p]; const room = E.avatars(P) < 4 && P.av.length < 6;
+  let m = t.match(/อัญเชิญ\s*Avatar\s*(?:สี(แดง|ฟ้า|เขียว|ม่วง))?\s*ที่\s*Cost\s*(\d+)\s*หรือต่ำกว่า.*?จากมือ/);
+  if (m) return room && P.hand.some((y) => E.def(s, y).t === "A" && (E.def(s, y).c || 0) <= +m[2] && (!m[1] || E.colors(s, y).includes(m[1]))) ? 6 + Math.max(...P.hand.filter((y) => E.def(s, y).t === "A" && (E.def(s, y).c || 0) <= +m[2] && (!m[1] || E.colors(s, y).includes(m[1]))).map((y) => E.def(s, y).c || 0)) * 0.3 : 0;
+  if ((m = t.match(/อัญเชิญ\s*Avatar.*?จากนรก.*?Cost\s*ไม่เกิน\s*(\d+)/))) return room && P.hell.some((y) => E.def(s, y).t === "A" && (E.def(s, y).c || 0) <= +m[1]) ? 5 : 0;
+  if (/Normal Magic.*?นรก.*?ขึ้นมือ/.test(t)) return P.hell.some((y) => E.def(s, y).t === "M" && E.def(s, y).st === "N") ? 4 : 0;
+  if (/\{mod\}.*?นรก.*?ขึ้นมือ/.test(t)) return P.hell.some((y) => E.def(s, y).t === "M" && E.def(s, y).st === "D") ? 3 : 0;
+  if (/Avatar.*?นรก.*?GEM\s*3.*?ขึ้นมือ|Avatar.*?จาก\s*นรก.*?ขึ้นมือ/.test(t)) return P.hell.some((y) => E.def(s, y).t === "A" && (E.def(s, y).g || 0) >= 3) ? 3.5 : 0;
+  if (/สอดแนม/.test(t)) return P.deck.length >= 5 ? 3 : 0;
+  if (/POWER\s*\+\s*1/.test(t)) return P.av.length ? 1 + P.av.length * 0.5 : 0;
+  if (/จั่วการ์ด/.test(t)) return P.deck.length > 3 ? 2.5 : 0;
+  return 1; };
+const lifeBest = (E, s, p, list) => [...list].sort((a, b) => lifeVal(E, s, p, b) - lifeVal(E, s, p, a));
+const useLife = (c, all) => { const { E, s, seat: p } = c; const t = c.choose(lifeBest(E, s, p, lifeUp(s, p)), 1, "เลือก LIFE ที่หงายอยู่ของเรา 1 ใบ (ใบแรกคือใบที่คุ้มที่สุดตอนนี้)", { exact: true, reveal: true })[0]; return t ? { explain: `ใช้ความสามารถของ LIFE ${E.name(s, t)}`, ops: [{ op: "lifeUse", seat: p, i: t.i, all: !!all }] } : { explain: "ไม่มี LIFE ที่หงายอยู่", ops: [] }; };
 const gangNames = (E, s, p) => new Set(s.P[p].av.filter((y) => gang(E, s, y)).map((y) => E.name(s, y))).size;
 const foeField = (E, s, p) => [...s.P[1 - p].av, ...s.P[1 - p].mg, ...s.P[1 - p].cs, ...E.lands(s).filter((l) => l.o === 1 - p)].filter((y) => !E.noAim(s, y));
 const podAttrs = [["POWER", (E, s, h, y) => E.power(s, y) === (E.def(s, h).pw || 0)], ["Symbol", (E, s, h, y) => String(E.def(s, h).sy || "").split(/[\s,/]+/).filter(Boolean).some((k) => sy(E, s, y, k))], ["ค่า Cost", (E, s, h, y) => (E.def(s, y).c || 0) === (E.def(s, h).c || 0)], ["จำนวน GEM", (E, s, h, y) => (E.def(s, y).g || 0) === (E.def(s, h).g || 0)], ["สี", (E, s, h, y) => !!E.def(s, h).co && E.colors(s, y).includes(E.def(s, h).co)]];
