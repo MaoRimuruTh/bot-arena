@@ -1,11 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112124046";
-import { plain } from "./persona.js?v=20261112124046";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261112124046";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112124046";
-import { modPowerFor } from "./auras.js?v=20261112124046";
-import { Data } from "./fb.js?v=20261112124046";
-import { lsGet, clone } from "./util.js?v=20261112124046";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112130743";
+import { plain } from "./persona.js?v=20261112130743";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261112130743";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112130743";
+import { modPowerFor } from "./auras.js?v=20261112130743";
+import { Data } from "./fb.js?v=20261112130743";
+import { lsGet, clone } from "./util.js?v=20261112130743";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -53,12 +53,13 @@ export function aiErr(e) {
 export const RULES = `กติกา Battle of Talingchan (สรุปจาก Rule Book 3.2):
 - Deck 50 ใบ + LIFE 5 ใบ (ชื่อไม่ซ้ำ). ชื่อเดียวกันไม่เกิน 4 ใบ. ต้องมี Only #1 พอดี 1 ใบ.
 - เริ่มจั่ว 5 ใบ, เปลี่ยนมือได้ 1 ครั้ง. LIFE คว่ำ 5 ใบ.
-- เทิร์น: Draw (มือน้อยกว่า 3 จั่วจนครบ 3 ไม่งั้นจั่ว 1, Avatar ฝ่ายเจ้าของเทิร์นตื่น) → Main (อัญเชิญ/ก่อสร้าง/ใช้ Magic) → Battle (ผู้เริ่มก่อนไม่มีในเทิร์นแรก) → End (มือเกิน 7 ทิ้งเหลือ 7).
+- เทิร์น: Draw (มือน้อยกว่า 3 จั่วจนครบ 3 ไม่งั้นจั่ว 1, เทิร์นแรกสุดของผู้เริ่มก่อนจั่ว 2, Avatar ฝ่ายเจ้าของเทิร์นตื่น) → Main (อัญเชิญ/ก่อสร้าง/ใช้ Magic) → Battle (ผู้เริ่มก่อนไม่มีในเทิร์นแรก) → End (มือเกิน 7 ทิ้งเหลือ 7).
 - จ่าย Cost = ทิ้งการ์ดจากมือลงนรกให้ผลรวม GEM ≥ Cost, ห้ามจ่ายเกินถ้าพอแล้ว, การ์ด GEM 0 ใช้จ่ายไม่ได้, GEM มีสีจ่ายได้เฉพาะการ์ดสีเดียวกัน.
 - Avatar Zone: Avatar ≤4, รวม Token ≤6. Construct ≤3 ชื่อไม่ซ้ำ. Land Magic มีได้ 1 ใบร่วมกันทั้งสนาม.
 - Magic ไม่มี Cost, แต่ละประเภท (Normal/Modification/React/Land) ใช้ได้ 1 ครั้งต่อเทิร์นต่อผู้เล่น. Normal/Modification/Land ใช้ใน Main ของตัวเอง, React ใช้ได้ทุกจังหวะ.
 - โจมตี: Avatar ที่ตื่น → นอน. เป้าหมาย Avatar หรือ Construct ฝ่ายตรงข้าม, หรือ LIFE ได้เมื่ออีกฝ่ายไม่มี Avatar บน Avatar Zone (ยกเว้นเตะไข่). POWER มากกว่าชนะ อีกฝ่ายถูกทำลายลงนรก, เท่ากันถูกทำลายทั้งคู่ (ลูกฮึดชนะเมื่อเสมอ). โจมตี Construct: ทำลายเมื่อ POWER มากกว่า.
-- โจมตี LIFE สำเร็จหงาย 1 ใบจากบนสุด ความสามารถ LIFE ทำงาน. หงายครบ 5 = สาหัส; ถูกโจมตี LIFE อีกครั้งขณะสาหัส = แพ้. Deck หมดตอนต้องจั่ว = แพ้.
+- โจมตี LIFE สำเร็จหงาย 1 ใบจากบนสุด ความสามารถ LIFE ทำงาน. หงายครบ 5 = สาหัส; ถูกโจมตี LIFE อีกครั้งขณะสาหัส = แพ้. การ์ดใน Deck เหลือ 0 ใบเมื่อไร = แพ้ทันที (หมดพร้อมกันทั้งสองฝ่าย = เสมอ).
+- ใช้ผลของการ์ดต้องทำได้ครบทุกส่วน: ถ้าส่วนที่ไม่ใช่ "สามารถ" ไม่มีเป้าหมายหรือทำไม่ได้ (เช่น บีมตอนอีกฝ่ายไม่มี Avatar) จะใช้ความสามารถนั้นไม่ได้เลยและไม่ต้องจ่าย Cost.
 - คีย์เวิร์ด: จุติ (ทำงานเมื่ออัญเชิญแบบจ่าย Cost), คำสั่งเสีย (ทำงานเมื่อถูกทำลายลงนรก), เซ่นไหว้ (ทำลายการ์ดฝ่ายเราเป็นค่าใช้จ่าย), พอดี (จ่าย GEM พอดีกับ Cost), สอดแนม (ดูการ์ดบนสุดของ Deck), ธรณีสูบ (ส่งการ์ดบนสุดของ Deck ลงนรก), สามัคคี (ให้ Avatar ที่ตื่นนอนแล้วบวก POWER ให้ผู้โจมตี), แทงหลัง (+1), โล่มนุษย์ (รับการโจมตีแทน), เตะไข่ (ตีLIFEได้แม้มี Avatar), เนรเทศ (ไปมิติมืด), เทิร์นละครั้ง, ต่อเนื่อง, สั่งใช้.
 - เครื่องหมาย "...." ในชื่อหมายถึงการ์ดที่มีคำนั้นในชื่อ. {Symbol X} หมายถึง Avatar ที่มี Symbol X. หารปัดลง.`;
 

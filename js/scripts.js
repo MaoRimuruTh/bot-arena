@@ -764,7 +764,7 @@ Object.assign(SCRIPTS, {
   "SD06-013": { canCast: (E, s, p) => s.P[p].hand.length >= 2 && s.P[p].hell.some((x) => campText(E, s, x)) && E.avatars(s.P[p]) < 4 && s.P[p].av.length < 6,
     cast: (c) => { const { E, s, seat: p } = c; const P = s.P[p];
       const pay = c.choose([...P.hand].filter((x) => x.i !== c.t.i).sort(cheapCard(E, s)), 1, "ค่าใช้จ่าย: ทิ้งการ์ดบนมือ 1 ใบ", { exact: true })[0]; if (!pay) return { explain: "ไม่มีการ์ดบนมือให้ทิ้ง", ops: [] };
-      const t = c.choose([...P.hell].reverse().concat(pay).filter((x) => campText(E, s, x)).sort(byPw(E, s)), 1, `เลือก Avatar ที่มี "${CAMP}" ในนรกที่จะอัญเชิญ`)[0]; // FAQ: the discarded one counts if (!t) return { explain: `ไม่มี Avatar ที่มี "${CAMP}" ในนรก`, ops: [] };
+      const t = c.choose([...P.hell].reverse().concat(pay).filter((x) => campText(E, s, x)).sort(byPw(E, s)), 1, `เลือก Avatar ที่มี "${CAMP}" ในนรกที่จะอัญเชิญ`)[0]; /* FAQ: the discarded one counts */ if (!t) return { explain: `ไม่มี Avatar ที่มี "${CAMP}" ในนรก`, ops: [] };
       return { explain: `ทิ้ง ${E.name(s, pay)} · อัญเชิญ ${E.name(s, t)} แบบจุติ · จบเทิร์นถัดไปของฝ่ายตรงข้ามจะถูกส่งลงนรก`,
         ops: [{ op: "discard", seat: p, iids: [pay.i] }, { op: "put", i: t.i, jt: true }, { op: "atEnd", turn: s.turn + (s.active === p ? 1 : 2), ops: [{ op: "move", i: t.i, to: "hell", onlyFrom: "av" }], why: `${E.name(s, t)} (วิญญาณวีรชน) ถูกส่งลงนรก` }] }; } },
   // ไปเลยมอนตี้ (React): the attacker gets POWER -2 for every card on our field and in our hand
@@ -1012,7 +1012,7 @@ Object.assign(SCRIPTS, {
     link: (c) => (6 - c.s.P[c.seat].av.length >= 2 ? { explain: "เข้าสู่สถานะ Link: เรียก Token วานร 2 ใบ", ops: [monkeyToken(c.seat, 2)] } : { explain: "Avatar Zone มีที่ไม่พอสำหรับ Token 2 ใบ (ต้องอัญเชิญได้ครบ)", ops: [] }), // FAQ: not just 1
     aura: (E, s, src, L) => (L.z === "av" ? [{ seat: L.p, test: (x) => x.i === src.i, n: s.P[L.p].av.filter((y) => y.tok && E.named(s, y, "วานร")).length }] : []) },
   // สุครีพ: at the start of our Main Phase, 2 opposing Avatars take the lower of their Costs until end of turn (before พาลี checks the lowest Cost)
-  "SD09-003": { early: true, mainStart: (c) => { const { E, s, seat: p } = c; const pool = [...s.P[1 - p].av, ...s.P[1 - p].mg.filter((x) => !x.fd && isAv(E, s, x))].filter((x) => !E.noAim(s, x)); // FAQ: the Magic Zone too if (pool.length < 2) return { explain: "ฝ่ายตรงข้ามมี Avatar ให้เลือกไม่ถึง 2 ใบ", ops: [] };
+  "SD09-003": { early: true, mainStart: (c) => { const { E, s, seat: p } = c; const pool = [...s.P[1 - p].av, ...s.P[1 - p].mg.filter((x) => !x.fd && isAv(E, s, x))].filter((x) => !E.noAim(s, x)); /* FAQ: the Magic Zone too */ if (pool.length < 2) return { explain: "ฝ่ายตรงข้ามมี Avatar ให้เลือกไม่ถึง 2 ใบ", ops: [] };
     const cheap = [...pool].sort((a, b) => E.costNow(s, a) - E.costNow(s, b))[0]; const rich = [...pool].filter((x) => x.i !== cheap.i).sort((a, b) => worth(E, s, b) - worth(E, s, a))[0]; if (!rich) return { explain: "ฝ่ายตรงข้ามมี Avatar ให้เลือกไม่ถึง 2 ใบ", ops: [] };
     const two = c.choose([rich, cheap, ...pool.filter((x) => x !== rich && x !== cheap)], 2, "สุครีพ: เลือก Avatar ฝ่ายตรงข้าม 2 ใบ (Cost ทั้งคู่จะเท่ากับใบที่ต่ำกว่าจนจบเทิร์น)", { exact: true });
     const v = Math.min(...two.map((x) => E.costNow(s, x))); return { explain: `Cost ของ ${two.map((x) => E.name(s, x)).join(" และ ")} เป็น ${v} จนจบเทิร์น`, ops: two.map((x) => ({ op: "setCost", i: x.i, v })) }; } },
@@ -3114,7 +3114,7 @@ Object.assign(SCRIPTS, {
       const sh = c.choose(shows.sort((a, b) => (ok(b) ? 1 : 0) - (ok(a) ? 1 : 0)), 1, "เลือก Avatar ขุนพล (Only) ที่จะแสดง", { exact: true, reveal: true })[0]; if (!sh) return { explain: "", ops: [] }; const t = c.choose(uniq(E, s, s.P[p].deck.filter((y) => isAv(E, s, y) && E.named(s, y, "กุนซือ") && E.colors(s, y).some((k) => E.colors(s, sh).includes(k)))), 1, "เลือก กุนซือ สีเดียวกันจาก Deck", { exact: true })[0];
       return { explain: `แสดง ${E.name(s, sh)}${t ? ` · อัญเชิญ จุติ ${E.name(s, t)} (ได้รับชื่อ ขุนพล)` : " · ไม่มีกุนซือสีเดียวกัน"}`, ops: [...(t ? [{ op: "put", i: t.i, jt: true }, { op: "xn", i: t.i, name: "ขุนพล" }] : []), { op: "shuffle", seat: p }] }; } },
   // ไม่สนจั่วอยู่ดี: everyone discards their hand and draws that many (not on the first turn)
-  "BT12-056": { canCast: (E, s) => s.turn > 1, cast: (c) => { const { s, seat: p, self: x } = c; const a = s.P[p].hand.filter((y) => y !== x), b = s.P[1 - p].hand; return { explain: `ทิ้งมือทั้งหมด · เราจั่ว ${a.length} ใบ ฝ่ายตรงข้ามจั่ว ${b.length} ใบ`, ops: [{ op: "discard", seat: p, iids: a.map((y) => y.i) }, { op: "discard", seat: 1 - p, iids: b.map((y) => y.i) }, ...(a.length ? [{ op: "draw", seat: p, n: a.length }] : []), ...(b.length ? [{ op: "draw", seat: 1 - p, n: b.length }] : [])] }; } },
+  "BT12-056": { canCast: (E, s) => s.turn > 1 && ![0, 1].some((q) => E.deckHandBlocked(s, q, { t: "M" })), cast: (c) => { const { s, seat: p, self: x } = c; const a = s.P[p].hand.filter((y) => y !== x), b = s.P[1 - p].hand; return { explain: `ทิ้งมือทั้งหมด · เราจั่ว ${a.length} ใบ ฝ่ายตรงข้ามจั่ว ${b.length} ใบ`, ops: [{ op: "discard", seat: p, iids: a.map((y) => y.i) }, { op: "discard", seat: 1 - p, iids: b.map((y) => y.i) }, ...(a.length ? [{ op: "draw", seat: p, n: a.length }] : []), ...(b.length ? [{ op: "draw", seat: 1 - p, n: b.length }] : [])] }; } },
   // กองทัพรุกราน: up to 2 กองทัพปีศาจ from our dark zone, or 1 from hell; destroyed at this End Phase
   "BT12-057": { canCast: (E, s, p) => E.avatars(s.P[p]) < 4 && [...s.P[p].dark, ...s.P[p].hell].some((y) => army(E, s, y)),
     cast: (c) => { const { E, s, seat: p } = c; const dk = s.P[p].dark.filter((y) => army(E, s, y)), hl = s.P[p].hell.filter((y) => army(E, s, y)); const opts = [...(dk.length ? [0] : []), ...(hl.length ? [1] : [])]; if (!opts.length) return { explain: "", ops: [] };
@@ -3357,7 +3357,8 @@ Object.assign(SCRIPTS, {
   "CC02-052": { canCast: (E, s) => s.P[0].av.length > 0 || s.P[1].av.length > 0, cast: (c) => { const { E, s, seat: p } = c; const mine = c.choose([...s.P[p].av].sort(cheapCard(E, s)), 1, "เลือก Avatar ฝ่ายเราที่จะกลับเข้าใต้ Deck", { exact: true })[0]; const theirs = [...s.P[1 - p].av].sort(cheapCard(E, s))[0];
     return { explain: `${[mine, theirs].filter(Boolean).map((y) => E.name(s, y)).join(", ")} กลับเข้าใต้ Deck`, ops: [mine, theirs].filter(Boolean).map((y) => ({ op: "move", i: y.i, to: "deckBottom" })) }; } },
   // ล้มโต๊ะ: every hand back into its Deck, shuffled, then 4 each
-  "CC02-053": { cast: (c) => ({ explain: "มือทั้งหมดกลับเข้า Deck · ต่างฝ่ายจั่ว 4 ใบ", ops: [{ op: "handToDeck", seat: 0 }, { op: "handToDeck", seat: 1 }, { op: "draw", seat: 0, n: 4 }, { op: "draw", seat: 1, n: 4 }] }) },
+  // FAQ: both players need cards in hand to put back · Rule Book (แมวนิค): not while a player cannot draw
+  "CC02-053": { canCast: (E, s, p) => s.P[p].hand.length >= 2 && s.P[1 - p].hand.length >= 1 && ![0, 1].some((q) => E.deckHandBlocked(s, q, { t: "M" })), cast: (c) => ({ explain: "มือทั้งหมดกลับเข้า Deck · ต่างฝ่ายจั่ว 4 ใบ", ops: [{ op: "handToDeck", seat: 0 }, { op: "handToDeck", seat: 1 }, { op: "draw", seat: 0, n: 4 }, { op: "draw", seat: 1, n: 4 }] }) },
   // เขาไกรลาสเอียง: whoever declares an attack mills 2
   "CC02-059": { landAtkOps: (E, s, x, p) => [{ op: "mill", seat: p, n: 2 }] },
 });

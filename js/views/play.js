@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261112124046";
-import { fxText, kwGloss } from "../fxtext.js?v=20261112124046";
-import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf } from "../cards.js?v=20261112124046";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261112124046";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261112124046";
-import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261112124046";
-import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261112124046";
-import { themeCounts } from "../boxdecks.js?v=20261112124046";
-import { ladder, ladderReset } from "../ladder.js?v=20261112124046";
-import { notify } from "../notify.js?v=20261112124046";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261112124046";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261112124046";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261112124046";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261112124046";
-import { Music } from "../music.js?v=20261112124046";
-import { Sfx } from "../sfx.js?v=20261112124046";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261112124046";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261112124046";
-import { readAura, traits } from "../auras.js?v=20261112124046";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261112124046";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261112130743";
+import { fxText, kwGloss } from "../fxtext.js?v=20261112130743";
+import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf } from "../cards.js?v=20261112130743";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261112130743";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261112130743";
+import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261112130743";
+import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261112130743";
+import { themeCounts } from "../boxdecks.js?v=20261112130743";
+import { ladder, ladderReset } from "../ladder.js?v=20261112130743";
+import { notify } from "../notify.js?v=20261112130743";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261112130743";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261112130743";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261112130743";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261112130743";
+import { Music } from "../music.js?v=20261112130743";
+import { Sfx } from "../sfx.js?v=20261112130743";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261112130743";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261112130743";
+import { readAura, traits } from "../auras.js?v=20261112130743";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261112130743";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -25,7 +25,7 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261112124046";
+import { allDecks, deckById } from "./decks.js?v=20261112130743";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -527,7 +527,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261112124046").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261112130743").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", bot: true });
@@ -777,7 +777,7 @@ const LESSONS = [
   { k: "start", when: (s) => s.phase === "mull", t: "ยินดีต้อนรับสู่สนามดวล",
     b: () => ["ฝั่งล่างเป็นของคุณ ฝั่งบนเป็นของบอท ทุกคนเริ่มด้วยการ์ดบนมือ 5 ใบ และ LIFE (การ์ดบ้าน) 5 ใบที่คว่ำไว้", "ตอนนี้เปลี่ยนมือได้ครั้งเดียว แตะการ์ดที่ไม่อยากเก็บแล้วกดเปลี่ยน หรือกด เก็บมือเดิม"] },
   { k: "turn", when: mainMine, t: "ลำดับในหนึ่งเทิร์น",
-    b: () => ["Draw → Main → Battle → End ดูเฟสปัจจุบันได้ที่แถบด้านขวา", "ต้นเทิร์นจั่ว 1 ใบ ถ้ามือเหลือไม่ถึง 3 ใบจะจั่วจนครบ 3", "ผู้ที่เริ่มก่อนไม่มี Battle Phase ในเทิร์นแรก"] },
+    b: () => ["Draw → Main → Battle → End ดูเฟสปัจจุบันได้ที่แถบด้านขวา", "ต้นเทิร์นจั่ว 1 ใบ ถ้ามือเหลือไม่ถึง 3 ใบจะจั่วจนครบ 3", "ผู้ที่เริ่มก่อนจั่ว 2 ใบในเทิร์นแรก แต่ไม่มี Battle Phase ในเทิร์นนั้น", "การ์ดใน Deck หมดเมื่อไรแพ้ทันที"] },
   { k: "zones", when: mainMine, t: "โซนบนสนาม",
     b: () => ["Avatar Zone คือกรอบใหญ่ตรงกลาง ลง Avatar ได้ 4 ใบ", "Magic Zone เก็บการ์ดที่สวมใส่อยู่ ส่วน Construct Zone เก็บสิ่งก่อสร้างได้ 3 ใบ", "Land Magic Zone ด้านซ้ายใช้ร่วมกันทั้งสองฝ่าย ลงใบใหม่จะแทนที่ใบเดิม"] },
   { k: "summon", when: (s, V, p) => mainMine(s, V, p) && canDo(s, V, "summon"), t: "อัญเชิญ Avatar",
@@ -1232,7 +1232,7 @@ function promptBox0(s, p) {
       const rk = scx && scx.react ? scx.react.kinds : (reactTiming(d.x) || {}).kinds;
       const anytime = d.st === "R" && !on && scx && scx.react && scx.react.anytime && legalMoves(s, p).some((m) => m.a.type === "cast" && m.a.i === x.i); // no moment written on it: usable in our own turn too
       const block = d.st === "R" && !anytime ? (!on || !E.reactsFor(s, p, on).includes(x) ? `React ใช้ได้${rk && rk.length ? rk.map((k) => KIND_TH[k] || "ตอนฝ่ายตรงข้ามทำบางอย่าง").join(" หรือ ") : "ตอนฝ่ายตรงข้ามทำบางอย่าง"} (และตรงเงื่อนไขบนการ์ด) ตอนนั้นจะมีปุ่มขึ้นให้เอง` : null)
-        : scx && scx.canCast && !scx.canCast(E, s, p) ? "ยังไม่ตรงเงื่อนไขการใช้การ์ดใบนี้" : null;
+        : scx && scx.canCast && !scx.canCast(E, s, p) ? "ยังไม่ตรงเงื่อนไขการใช้การ์ดใบนี้" : (!scx && fx && fx.fail && fx.explain) || (!scx && E.ext.castFail && E.ext.castFail(s, x, p)) || null;
       if (block) return box(`${d.n}`, fxText(d.x || "", "small", "max-height:150px;overflow:auto"), h("div", { class: "small", style: "color:var(--warn)" }, block),
         h("div", { class: "row" }, h("button", { class: "btn", onclick: () => { G.castFor = null; draw(); } }, "ปิด")));
       return box(`ใช้ ${SUB_TH[d.st]} Magic: ${d.n}?`, fxText(d.x || "ไม่มีข้อความ", "small", "max-height:150px;overflow:auto"),

@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112124046";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261112124046";
-import { SCRIPTS } from "./scripts.js?v=20261112124046";
-import { newId, clone } from "./util.js?v=20261112124046";
+import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112130743";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261112130743";
+import { SCRIPTS } from "./scripts.js?v=20261112130743";
+import { newId, clone } from "./util.js?v=20261112130743";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -281,13 +281,18 @@ export const E = {
     }
     return true;
   },
+  // may player `seat` take cards from the Deck into the hand with an ability of card definition `src`? (drawing counts too:
+  // Rule Book ล้มโต๊ะ) · 1 - 2 - 2 stops every ability · แมวนิค stops its controller's Avatar and Magic abilities
+  deckHandBlocked(s, seat, src) { if (s.noSearch && s.noSearch[seat] >= s.turn) return true; if (src && src.t === "C") return false;
+    return fieldCards(s).some(({ x: y, L: Ly }) => Ly.p === seat && Ly.z === "av" && !y.mute && (scriptOf(s, y) || {}).blockSearch); },
   lose(s, p, reason) { if (s.phase === "over") return; s.winner = 1 - p; s.phase = "over"; s.reason = reason; s.pend = null; s.trig = []; E.log(s, null, `${s.P[1 - p].name} ชนะ · ${reason}`); E.ev(s, { k: "over", w: 1 - p }); },
   startTurn(s, p) {
     s.turn++; s.active = p; s.phase = "draw"; s.mu = [{}, {}]; E.ev(s, { k: "turn", p, t: s.turn });
     for (const q of [0, 1]) for (const x of s.P[q].av) x.tm = 0;
     for (const x of s.P[p].av) { if (x.nw && x.nw >= s.turn) { E.log(s, p, `${E.name(s, x)} ยังไม่ตื่น (ผลของการ์ดที่สวมใส่)`); continue; } delete x.nw; x.a = true; }
     for (const q of [0, 1]) for (const x of s.P[q].av) if (x.tn) { delete x.tn[p]; if (!Object.keys(x.tn).length) delete x.tn; } // "until our next Draw Phase" bonuses end
-    const P = s.P[p]; const n = P.hand.length < 3 ? 3 - P.hand.length : 1;
+    // Rule Book (Draw Phase): up to 3 cards in hand, else 1; the very first turn of the player who starts draws 2
+    const P = s.P[p]; const n = s.turn === 1 ? 2 : P.hand.length < 3 ? 3 - P.hand.length : 1;
     E.log(s, p, `เทิร์น ${s.turn} · ${P.name} จั่ว ${n} ใบ`);
     if (s.love && s.love.length) for (const lv of [...s.love]) { if (lv.seat !== p || --lv.n > 0) continue; s.love.splice(s.love.indexOf(lv), 1); const L = E.locate(s, lv.i); if (L && L.z === "hell") { delete L.x.hlock; E.moveTo(s, lv.i, "hand"); E.log(s, p, `${E.name(s, L.x)} กลับขึ้นมือ (หมอเลิฟ)`); } }
     const swap = fieldCards(s).find(({ x, L }) => L.p === p && !x.mute && (scriptOf(s, x) || {}).replacesDraw && (L.z !== "mg" || x.on != null));
@@ -484,7 +489,12 @@ export const E = {
   // after a summon or a Magic, the other player may answer with a React before effects resolve
   openWindow(s, p, kind, i) { const q = 1 - p; const on = { kind, by: p, i }; if (E.reactsFor(s, q, on).length) s.rw = on; },
 
-  apply(s, act, p) { E.sync(s); try { return E.act0(s, act, p); } finally { E.runHeld(s); E.sync(s); E.odPrune(s); } },
+  apply(s, act, p) { E.sync(s); try { return E.act0(s, act, p); } finally { E.runHeld(s); E.sync(s); E.odPrune(s); E.deckOut(s); } },
+  // Rule Book (Win Condition 2): a player whose Deck reaches 0 cards loses at once, not only when a draw finds it empty;
+  // both Decks empty at the same time is a draw
+  deckOut(s) { if (s.phase === "over" || s.phase === "mull") return; const out = [0, 1].filter((p) => !s.P[p].deck.length); if (!out.length) return;
+    if (out.length === 1) return E.lose(s, out[0], "การ์ดใน Deck หมด (เหลือ 0 ใบ)");
+    s.winner = null; s.phase = "over"; s.reason = "การ์ดใน Deck ของทั้งสองฝ่ายหมดพร้อมกัน"; s.pend = null; s.trig = []; s.rw = null; E.log(s, null, `เสมอ · ${s.reason}`); E.ev(s, { k: "over", w: null }); },
   // an effect held back so the other player could answer "when an Avatar would be destroyed / leave the field" runs once that window closes
   runHeld(s) { let g = 0; while (s.phase !== "over" && !s.rw && s.trig.length && s.trig[0].held && g++ < 10) { const t = s.trig[0]; E.act0(s, { type: "trig", id: t.id }, t.seat); } },
   // which of the other player's Avatars / Constructs these ops would destroy or move off the field; a window only if they hold an answer for it
@@ -796,7 +806,8 @@ export const E = {
     const n = Math.max(0, Math.min(20, o.n | 0 || 1));
     const nm = (i) => { const L = E.locate(s, i); return L ? E.name(s, L.x) : "#" + i; };
     switch (o.op) {
-      case "draw": { E.draw(s, seat, n); E.log(s, seat, `${s.P[seat].name} จั่ว ${n} ใบ`); if (!s.rw) E.openWindow(s, seat, "handed", null); return; }
+      case "draw": { if (E.deckHandBlocked(s, seat, s.cards[o.src || s.cur])) { E.log(s, seat, `${s.P[seat].name} จั่วการ์ดด้วยความสามารถไม่ได้ (ห้ามนำการ์ดจาก Deck ขึ้นมือ)`); return; }
+        E.draw(s, seat, n); E.log(s, seat, `${s.P[seat].name} จั่ว ${n} ใบ`); if (!s.rw) E.openWindow(s, seat, "handed", null); return; }
       case "mill": {
         // "when our cards' abilities mill, mill N more" (นายนิรยบาล อ้วน)
         if (s.cur != null && s.cards[s.cur] && ["A", "T"].includes(s.cards[s.cur].t) && s.curSeat != null && E.odHas(s, 1 - s.curSeat, "mill")) { E.log(s, by, "ธรณีสูบไม่ทำงาน (Overdose)"); return; }
@@ -873,8 +884,7 @@ export const E = {
         const P = s.P[seat]; const q = String(o.name || "");
         const k = o.take != null ? P.deck.findIndex((x) => x.i === o.take) : P.deck.findIndex((x) => (q || o.names || o.symbol || o.type || o.maxCost != null) && matchCard(E.def(s, x), o));
         if (k < 0) { E.shuffle(s, P.deck); E.log(s, seat, `ค้นหา "${q}" ไม่พบ · สับ Deck`); return; }
-        if (o.to !== "av" && fieldCards(s).some(({ x: y, L: Ly }) => Ly.p === seat && Ly.z === "av" && !y.mute && (scriptOf(s, y) || {}).blockSearch)) { E.shuffle(s, P.deck); E.log(s, seat, "นำการ์ดจาก Deck ขึ้นมือไม่ได้ (แมวนิค)"); return; }
-        if (o.to !== "av" && s.noSearch && s.noSearch[seat] >= s.turn) { E.shuffle(s, P.deck); E.log(s, seat, "นำการ์ดจาก Deck ขึ้นมือไม่ได้ (1 - 2 - 2)"); return; }
+        if (o.to !== "av" && E.deckHandBlocked(s, seat, s.cards[o.src || s.cur])) { E.shuffle(s, P.deck); E.log(s, seat, `นำการ์ดจาก Deck ขึ้นมือไม่ได้ (${s.noSearch && s.noSearch[seat] >= s.turn ? "1 - 2 - 2" : "แมวนิค"})`); return; }
         const to = o.to === "av" ? "av" : "hand";
         if (to === "av" && fieldCards(s).some(({ x: y, L: Ly }) => Ly.z === "av" && !y.mute && (scriptOf(s, y) || {}).noDeckSummon)) { E.shuffle(s, P.deck); E.log(s, seat, "อัญเชิญ Avatar จาก Deck ไม่ได้ (ความสามารถต่อเนื่องบนสนาม)"); return; }
         if (to === "av" && (E.avatars(P) >= 4 || P.av.length >= 6)) { const nmK = E.name(s, P.deck[k]); E.shuffle(s, P.deck); E.log(s, seat, `Avatar Zone เต็ม อัญเชิญ ${nmK} จาก Deck ไม่ได้ · สับ Deck`); return; }
