@@ -5,7 +5,7 @@
 // The figure can be shown too, as a lighter copy (fewer polygons: fine on the table, poor for printing). Shown copies are
 // stored scrambled, so browsing the database shows no picture or model file; that keeps out casual copying, not a determined
 // expert, since whatever a browser draws has to reach it.
-import { db, F, Me, Data, setMeta } from "./fb.js?v=20261112182606";
+import { db, F, Me, Data, setMeta } from "./fb.js?v=20261112200728";
 
 const CHUNK = 700 * 1024, MAX = 6 * 1024 * 1024;
 const ref = (id) => F.doc(db, "users", Me.uid, "private", id);
@@ -60,13 +60,18 @@ export async function vaultDrop(kind) {
 }
 // a symmetric scramble (xorshift keystream from the version): applying it twice gives the bytes back
 function mix(bytes, v) { const out = new Uint8Array(bytes.length); let x = (v % 2147483647) | 0 || 0x9e3779b9; for (let i = 0; i < bytes.length; i++) { x ^= x << 13; x ^= x >>> 17; x ^= x << 5; out[i] = bytes[i] ^ (x & 255); } return out; }
-// the copy opponents see (or null: stop showing it); kept under 300 KB each so the shared settings stay light
+// the copy opponents see (or null: stop showing it): each under 420 KB, and all of them together under 940 KB, since they
+// share one settings document (the database holds at most 1 MB in one)
+const shownBytes = (but) => Object.entries((Data.meta && Data.meta.show) || {}).reduce((n, [k, v]) => n + (k !== but && v && v.img ? v.img.toUint8Array().length : 0), 0);
 export async function vaultShow(kind, blob, extra = {}) {
   if (!isOwner()) return;
   if (blob && blob.size > 420 * 1024) throw new Error("ฉบับให้เพื่อนเห็นต้องเล็กกว่า 420 KB");
+  if (blob && shownBytes(kind) + blob.size > 940 * 1024) throw new Error("ของที่ให้คู่แข่งเห็นรวมกันเกิน 940 KB ลองซ่อนอย่างอื่นก่อน");
   const v = Date.now(), body = blob ? { img: F.Bytes.fromUint8Array(mix(new Uint8Array(await blob.arrayBuffer()), v)), v, by: Me.uid, type: blob.type || "", ...extra } : F.deleteField();
   await setMeta({ show: { [kind]: body } });
 }
+// the owner's own shown copy, unscrambled (to look at in Settings)
+export const shownBlob = (kind) => { const sh = Data.meta && Data.meta.show && Data.meta.show[kind]; return sh && sh.img && sh.by === Me.uid ? Promise.resolve(new Blob([mix(sh.img.toUint8Array(), sh.v)], { type: sh.type || "" })) : Promise.resolve(null); };
 export const shownNow = (kind) => { const sh = Data.meta && Data.meta.show && Data.meta.show[kind]; return !!(sh && sh.img && sh.by === Me.uid); };
 
 // ---------- what the table draws for a player's own things ----------
@@ -101,5 +106,5 @@ export function customFig(P) {
   if (P.uid === Me.uid && Vault.has("fig")) { const it = Vault.m.fig; key = "fig:" + it.v; get = () => vaultBlob("fig"); finish = it.finish; }
   else { const sh = showOf("fig", P.uid); if (!sh) return null; key = "figS:" + sh.v; get = showBlob(sh); finish = sh.finish; }
   if (!figs.has(key)) figs.set(key, { key, h: 1.4, url: get().then((b) => (b ? URL.createObjectURL(b) : null)) });
-  const f = figs.get(key); f.finish = finish || "porcelain"; return f;
+  const f = figs.get(key); f.finish = finish || ""; return f; // no finish chosen: the file's own colours, or porcelain for an unpainted model
 }

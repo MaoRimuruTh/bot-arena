@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261112182606";
-import { E } from "./engine.js?v=20261112182606";
-import { h } from "./util.js?v=20261112182606";
-import { Sfx } from "./sfx.js?v=20261112182606";
+import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261112200728";
+import { E } from "./engine.js?v=20261112200728";
+import { h } from "./util.js?v=20261112200728";
+import { Sfx } from "./sfx.js?v=20261112200728";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -20,7 +20,10 @@ export const Arena = {
   lifeAim: () => (R && R.lifeT.visible && R.hovered === "life" ? (() => { const c = toScreen(R.lifeT.position); return { x: c.x, y: c.y, w: 70, h: 70 }; })() : null),
   // replays can run fast: every animation and pause in the arena speeds up together
   setSpeed: (k) => { const v = k * animSetting(); if (R) R.speed = v; gsap.globalTimeline.timeScale(v); },
-  cheer: (p) => R && avatarDo(p, "hop"), // an emote makes the sender's figure hop
+  cheer: (p) => R && avatarDo(p, "hop"), // the sender's figure hops
+  // an emote: the sender's figure acts it out (a figure with its own emote moves plays them; any other one hops) under a
+  // small picture bubble
+  emote: (p, k) => R && avatarEmote(p, k),
   setHover: (fn) => R && (R.onHover = fn), setClick: (fn) => R && (R.onClick = fn), setDrag: (fn) => R && (R.onDrag = fn),
   highlight, setLifeTarget, banner, flash, shake, popText, mood,
   // the players' own things (vault.js): how to find them, and a nudge when one has loaded or changed
@@ -233,7 +236,7 @@ function syncAvatars(s, V) {
 function placeAvatar(a, mine) { const sp = avSpot(mine); a.mine = mine; a.grp.position.set(sp.x, 0, sp.z); a.grp.rotation.y = sp.ry; }
 function buildAvatar(slot, g, mine) {
   const model = THREE.SkeletonUtils ? THREE.SkeletonUtils.clone(g.scene) : g.scene.clone(true);
-  model.traverse((o) => { if (!o.isMesh) return; o.material = o.material.clone(); o.castShadow = true; });
+  model.traverse((o) => { if (!o.isMesh) return; o.material = o.material.clone(); o.castShadow = true; if (o.isSkinnedMesh) o.frustumCulled = false; }); // a raised arm can reach past the bounds of the pose it was made in
   if (slot.own) dressFigure(model, slot.own.finish);
   model.traverse((o) => { if (o.isMesh && R.env && R.Q !== "high" && o.material.metalness > 0.5) o.material.envMap = R.env; });
   const box = new THREE.Box3().setFromObject(model), size = box.getSize(new THREE.Vector3()), k = (((slot.own ? slot.own.h : (AVATARS[slot.key] || {}).h) || 1.25) * (R.small ? 0.82 : 1)) / Math.max(0.01, size.y);
@@ -241,23 +244,28 @@ function buildAvatar(slot, g, mine) {
   // layers: grp places it, bob breathes for a model without an idle clip, spin takes the moves made in code, the model plays its own clips
   const spin = new THREE.Group(), bob = new THREE.Group(), grp = new THREE.Group(); spin.add(model); bob.add(spin); grp.add(bob);
   if (slot.own) { const b = figureBase(); b.scale.setScalar(R.small ? 0.82 : 1); grp.add(b); model.position.y += 0.07 * (R.small ? 0.82 : 1); } // the owner's figure stands on a lacquer base
+  // its clips: idle (looping), hit / win / lose, and emote moves named emo_<emote> (each played once)
   const mixer = new THREE.AnimationMixer(model), acts = {};
-  for (const c of g.animations || []) { const n = c.name.toLowerCase(); for (const w of ["idle", "hit", "win", "lose"]) if (n.includes(w) && !acts[w]) acts[w] = mixer.clipAction(c); }
-  for (const w of ["hit", "win", "lose"]) if (acts[w]) { acts[w].setLoop(THREE.LoopOnce, 1); acts[w].clampWhenFinished = true; }
+  for (const c of g.animations || []) { const n = c.name.toLowerCase(); if (/^emo_\w+$/.test(n)) { acts[n] = mixer.clipAction(c); continue; } for (const w of ["idle", "hit", "win", "lose"]) if (n.includes(w) && !acts[w]) acts[w] = mixer.clipAction(c); }
+  for (const w of onceActs(acts)) { acts[w].setLoop(THREE.LoopOnce, 1); acts[w].clampWhenFinished = true; }
   if (acts.idle) acts.idle.play();
-  mixer.addEventListener("finished", (e) => { if (e.action === acts.lose) return; e.action.fadeOut(0.25); if (acts.idle) acts.idle.reset().fadeIn(0.25).play(); });
-  Object.assign(slot, { loading: false, grp, bob, spin, model, mixer, acts, ph: Math.random() * 6 }); placeAvatar(slot, mine);
+  // a move that has ended hands back to idle; one that ended a lost game stays slumped, and an emote made after it goes back to slumping
+  mixer.addEventListener("finished", (e) => { if (e.action === acts.lose) return; e.action.fadeOut(0.25); if (onceActs(acts).some((w) => acts[w] !== e.action && acts[w].isRunning())) return; // a newer move is already playing
+    const back = slot.mood === "lose" && acts.lose ? acts.lose : acts.idle; if (back) back.reset().fadeIn(0.25).play(); });
+  Object.assign(slot, { loading: false, grp, bob, spin, model, mixer, acts, ph: Math.random() * 6, top: (model.position.y + size.y * k) }); placeAvatar(slot, mine);
   R.scene.add(grp); if (!reduce) gsap.from(spin.position, { y: 1.4, duration: 0.6, ease: "bounce.out" });
 }
 // what a player's avatar does: hop (their turn starts), hit (they lose a LIFE), win, lose, rest (back to standing)
+const onceActs = (acts) => Object.keys(acts).filter((w) => w !== "idle");
 function avatarDo(p, what) {
   const a = R.avatars && R.avatars[p]; if (!a || a.loading) return;
   const s = a.spin; gsap.killTweensOf([s.position, s.scale, s.rotation]);
-  if (what === "rest") { s.position.set(0, 0, 0); s.scale.set(1, 1, 1); s.rotation.set(0, 0, 0); for (const w of ["hit", "win", "lose"]) if (a.acts[w]) a.acts[w].stop(); if (a.acts.idle) a.acts.idle.reset().setEffectiveWeight(1).play(); return; }
+  if (what === "rest") { a.mood = ""; s.position.set(0, 0, 0); s.scale.set(1, 1, 1); s.rotation.set(0, 0, 0); for (const w of onceActs(a.acts)) a.acts[w].stop(); if (a.acts.idle) a.acts.idle.reset().setEffectiveWeight(1).play(); return; }
   if (what === "hop") { if (!reduce) gsap.timeline().to(s.position, { y: 0.16, duration: 0.14, ease: "power2.out" }).to(s.position, { y: 0, duration: 0.2, ease: "bounce.out" }); return; }
   if (what === "hit") flashAvatar(a);
+  if (what === "win" || what === "lose") a.mood = what;
   const act = a.acts[what];
-  if (act) { if (a.acts.idle) a.acts.idle.fadeOut(0.08); for (const w of ["hit", "win", "lose"]) if (w !== what && a.acts[w]) a.acts[w].stop(); act.reset().setEffectiveWeight(1).fadeIn(0.06).play(); return; }
+  if (act) { if (a.acts.idle) a.acts.idle.fadeOut(0.08); for (const w of onceActs(a.acts)) if (w !== what) a.acts[w].stop(); act.reset().setEffectiveWeight(1).fadeIn(0.06).play(); return; }
   if (reduce) return;
   if (what === "hit") gsap.timeline().to(s.scale, { x: 1.16, y: 0.8, z: 1.16, duration: 0.07 }).to(s.scale, { x: 0.95, y: 1.08, z: 0.95, duration: 0.14 }).to(s.scale, { x: 1, y: 1, z: 1, duration: 0.22 }).fromTo(s.rotation, { x: -0.3 }, { x: 0, duration: 0.5, ease: "elastic.out(1, 0.35)" }, 0);
   if (what === "win") gsap.timeline().to(s.position, { y: 0.32, duration: 0.18, ease: "power2.out" }).to(s.position, { y: 0, duration: 0.18, ease: "power2.in" }).to(s.position, { y: 0.2, duration: 0.16, ease: "power2.out" }).to(s.position, { y: 0, duration: 0.16, ease: "power2.in" }).to(s.rotation, { y: Math.PI * 2, duration: 0.5, ease: "power2.inOut" }, 0).set(s.rotation, { y: 0 });
@@ -266,6 +274,65 @@ function avatarDo(p, what) {
 // a red flush over the whole figure when it is hit
 function flashAvatar(a) {
   a.model.traverse((o) => { if (!o.isMesh || !o.material.emissive) return; const m = o.material; gsap.killTweensOf(m.emissive); m.emissive.setRGB(0.9, 0.08, 0.05); gsap.to(m.emissive, { r: 0, g: 0, b: 0, duration: 0.45, ease: "power2.out" }); });
+}
+// an emote acted out by the sender's figure: its own move for that emote if the model has one (emo_<emote>), else a hop
+function avatarEmote(p, k) {
+  const a = R.avatars && R.avatars[p]; if (!a || a.loading) return;
+  emoteBubble(a, k);
+  const act = a.acts["emo_" + k]; if (!act) return avatarDo(p, "hop");
+  const s = a.spin; gsap.killTweensOf([s.position, s.scale, s.rotation]); s.position.set(0, 0, 0); s.scale.set(1, 1, 1); s.rotation.set(0, 0, 0);
+  for (const w of onceActs(a.acts)) if (a.acts[w] !== act && a.acts[w].isScheduled()) a.acts[w].fadeOut(0.15);
+  if (a.acts.idle) a.acts.idle.fadeOut(0.15);
+  act.reset().setEffectiveWeight(1).fadeIn(0.15).play();
+}
+// a small picture over the figure's head for a moment: what the emote says, drawn as a manga sign in a speech bubble
+const bubbleTex = new Map();
+function emoteBubble(a, k) {
+  if (!bubbleTex.has(k)) { const t = new THREE.CanvasTexture(drawBubble(k)); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; bubbleTex.set(k, t); }
+  if (a.bubble) { gsap.killTweensOf([a.bubble.scale, a.bubble.position, a.bubble.material]); a.grp.remove(a.bubble); a.bubble.material.dispose(); }
+  const m = new THREE.SpriteMaterial({ map: bubbleTex.get(k), transparent: true, depthTest: false, depthWrite: false, toneMapped: false });
+  // it floats up and to the left of the head with its tail reaching in (straight above, it would cover the other player's
+  // figure, which stands just beyond on screen)
+  const sp = new THREE.Sprite(m), sz = R.small ? 0.66 : 0.76, y = (a.top || 1.3) - 0.12; a.bubble = sp;
+  const at = new THREE.Vector3(-0.3, y, 0.05).applyAxisAngle(new THREE.Vector3(0, 1, 0), -a.grp.rotation.y); // the offset is along the table, not the figure's turn
+  sp.center.set(0.9, 0); sp.renderOrder = 20; sp.position.copy(at); sp.scale.set(reduce ? sz : 0.001, reduce ? sz : 0.001, 1); a.grp.add(sp);
+  const gone = () => { if (a.bubble !== sp) return; a.grp.remove(sp); m.dispose(); a.bubble = null; };
+  if (reduce) { setTimeout(gone, 2600); return; }
+  gsap.timeline({ onComplete: gone }).to(sp.scale, { x: sz, y: sz, duration: 0.35, ease: "back.out(2.4)" }).to(sp.position, { y: at.y + 0.14, duration: 2.2, ease: "sine.out" }, 0).to(m, { opacity: 0, duration: 0.45 }, 2.15);
+}
+function drawBubble(k) {
+  const c = document.createElement("canvas"); c.width = c.height = 256; const g = c.getContext("2d"), X = 128, Y = 108, INK = "#3a2414";
+  g.lineJoin = g.lineCap = "round";
+  // the bubble: a round cream card with a short tail down to the figure
+  g.beginPath(); g.arc(X, Y, 94, Math.PI * 0.42, Math.PI * 2.18); g.quadraticCurveTo(X + 84, 196, 232, 250); g.quadraticCurveTo(X + 52, 220, X + 29, 197); g.closePath();
+  g.fillStyle = "#f6ecd8"; g.fill(); g.lineWidth = 9; g.strokeStyle = INK; g.stroke();
+  g.beginPath(); g.arc(X, Y, 80, 0, Math.PI * 2); g.lineWidth = 3; g.strokeStyle = "rgba(196,150,70,.55)"; g.stroke(); // a thin gold ring inside
+  const shape = (fill, line = INK, w = 7) => { g.fillStyle = fill; g.fill(); g.lineWidth = w; g.strokeStyle = line; g.stroke(); };
+  const word = (t, size, fill, y = Y + size * 0.36, x = X) => { g.font = `900 ${size}px system-ui, "Segoe UI", Roboto, Arial, sans-serif`; g.textAlign = "center"; g.lineWidth = 12; g.strokeStyle = INK; g.strokeText(t, x, y); g.fillStyle = fill; g.fillText(t, x, y); };
+  const star4 = (x, y, r, fill) => { g.beginPath(); g.moveTo(x, y - r); g.quadraticCurveTo(x, y, x + r, y); g.quadraticCurveTo(x, y, x, y + r); g.quadraticCurveTo(x, y, x - r, y); g.quadraticCurveTo(x, y, x, y - r); g.closePath(); shape(fill, INK, 5); };
+  const heart = (x, y, s, fill) => { g.beginPath(); g.moveTo(x, y + s * 0.3); g.bezierCurveTo(x, y, x - s * 0.5, y, x - s * 0.5, y + s * 0.3); g.bezierCurveTo(x - s * 0.5, y + s * 0.6, x, y + s * 0.75, x, y + s); g.bezierCurveTo(x, y + s * 0.75, x + s * 0.5, y + s * 0.6, x + s * 0.5, y + s * 0.3); g.bezierCurveTo(x + s * 0.5, y, x, y, x, y + s * 0.3); g.closePath(); shape(fill); };
+  const drop = (x, y, s, fill) => { g.beginPath(); g.moveTo(x, y - s); g.bezierCurveTo(x + s * 0.25, y - s * 0.45, x + s * 0.6, y - s * 0.1, x + s * 0.6, y + s * 0.25); g.arc(x, y + s * 0.25, s * 0.6, 0, Math.PI); g.bezierCurveTo(x - s * 0.6, y - s * 0.1, x - s * 0.25, y - s * 0.45, x, y - s); g.closePath(); shape(fill, "#1d4f8a", 6);
+    g.beginPath(); g.ellipse(x - s * 0.2, y + s * 0.1, s * 0.12, s * 0.22, 0.4, 0, Math.PI * 2); g.fillStyle = "rgba(255,255,255,.85)"; g.fill(); };
+  const lines = (pts, col, w = 7) => { g.strokeStyle = col; g.lineWidth = w; for (const [x0, y0, x1, y1] of pts) { g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); } };
+  if (k === "hi") { word("Hi!", 86, "#f08a24"); g.lineWidth = 6; g.strokeStyle = "#f08a24"; for (const s of [-1, 1]) for (const r of [74, 86]) { g.beginPath(); g.arc(X, Y - 4, r, s < 0 ? Math.PI * 0.9 : -Math.PI * 0.1, s < 0 ? Math.PI * 1.1 : Math.PI * 0.1); g.stroke(); } }
+  else if (k === "glhf") { star4(X - 8, Y + 4, 52, "#f5c33b"); star4(X + 46, Y - 40, 22, "#ffe08a"); star4(X - 52, Y + 42, 16, "#ffe08a"); }
+  else if (k === "wow") { lines([[X - 62, Y - 46, X - 44, Y - 30], [X + 62, Y - 46, X + 44, Y - 30], [X - 70, Y + 8, X - 50, Y + 8], [X + 70, Y + 8, X + 50, Y + 8]], "#f08a24", 8);
+    g.beginPath(); g.moveTo(X - 15, Y - 66); g.lineTo(X + 15, Y - 66); g.lineTo(X + 9, Y + 22); g.lineTo(X - 9, Y + 22); g.closePath(); shape("#e5482f"); g.beginPath(); g.arc(X, Y + 50, 14, 0, Math.PI * 2); shape("#e5482f"); }
+  else if (k === "gg") { word("GG", 92, "#3f9fe8", Y + 30); star4(X + 62, Y - 46, 15, "#ffe08a"); star4(X - 64, Y + 44, 12, "#ffe08a"); }
+  else if (k === "ggwp") { word("GG", 78, "#f5c33b", Y + 6); word("WP", 44, "#3f9fe8", Y + 58); }
+  else if (k === "oops") { drop(X + 18, Y - 2, 52, "#79c6f5"); lines([[X - 64, Y - 30, X - 42, Y - 20], [X - 68, Y + 2, X - 44, Y + 2], [X - 64, Y + 34, X - 42, Y + 24]], "#1d4f8a", 7); }
+  else if (k === "think") { word("?", 124, "#8a63d2", Y + 44, X - 8); for (const [i, r] of [[0, 9], [1, 7], [2, 5]]) { g.beginPath(); g.arc(X + 46 + i * 16, Y + 40 - i * 4, r, 0, Math.PI * 2); g.fillStyle = INK; g.fill(); } }
+  else if (k === "ty") { for (let i = 0; i < 5; i++) { const t = -Math.PI / 2 + (i * Math.PI * 2) / 5; g.beginPath(); g.ellipse(X + Math.cos(t) * 34, Y + Math.sin(t) * 34, 30, 21, t, 0, Math.PI * 2); shape("#f7a8c4", "#b4466e", 5); }
+    g.beginPath(); g.arc(X, Y, 15, 0, Math.PI * 2); shape("#f6d24a", "#b4466e", 5); }
+  else if (k === "angry") { g.strokeStyle = "#e23a2e"; g.lineWidth = 15; const w = 15, L = 56; for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { g.beginPath(); g.moveTo(X + sx * w, Y + sy * L); g.quadraticCurveTo(X + sx * w * 1.15, Y + sy * w * 1.15, X + sx * L, Y + sy * w); g.stroke(); } }
+  else if (k === "cry") { drop(X - 30, Y - 6, 36, "#79c6f5"); drop(X + 32, Y + 22, 30, "#79c6f5"); lines([[X - 30, Y + 44, X - 30, Y + 60], [X + 32, Y + 66, X + 32, Y + 78]], "#3f9fe8", 6); }
+  else if (k === "love") { heart(X - 10, Y - 46, 96, "#e8435a"); heart(X + 52, Y - 62, 40, "#ff8fab"); }
+  else if (k === "pout") { const P = [[X - 30, Y + 12, 32], [X, Y - 12, 38], [X + 34, Y + 8, 32], [X + 4, Y + 26, 30]];
+    for (const [x, y, r] of P) { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.lineWidth = 14; g.strokeStyle = INK; g.stroke(); }
+    for (const [x, y, r] of P) { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fillStyle = "#dfe5ec"; g.fill(); }
+    lines([[X - 62, Y - 44, X - 46, Y - 30], [X + 66, Y - 40, X + 50, Y - 26]], "#8a96a6", 7); }
+  else { for (let i = -1; i <= 1; i++) { g.beginPath(); g.arc(X + i * 34, Y, 12, 0, Math.PI * 2); g.fillStyle = INK; g.fill(); } }
+  return c;
 }
 
 // the owner's own figure (a print model has no colours of its own): a finish for the whole figure, and a round lacquer
@@ -278,15 +345,100 @@ const FINISH = {
 };
 export const FIG_FINISH = { porcelain: "พอร์ซเลนขาว", gold: "ทองคำ", slime: "สไลม์ใส", sakura: "ซากุระ", file: "สีจากไฟล์" };
 function dressFigure(model, finish) {
-  let plain = true; model.traverse((o) => { if (!o.isMesh) return; if (o.geometry && !o.geometry.attributes.normal) o.geometry.computeVertexNormals(); if (o.material && (o.material.map || o.material.name)) plain = false; });
-  const mk = FINISH[finish] || (plain ? FINISH.porcelain : null); if (!mk) return; // "สีจากไฟล์" keeps the file's own colours (a print model has none: porcelain then)
-  const m = mk(); model.traverse((o) => { if (o.isMesh) o.material = m; });
+  let plain = true; model.traverse((o) => { if (!o.isMesh) return; if (o.geometry && !o.geometry.attributes.normal) o.geometry.computeVertexNormals();
+    if (o.material && (o.material.map || o.material.vertexColors || o.material.name || (o.geometry && o.geometry.attributes.color))) plain = false; });
+  // "สีจากไฟล์" (or no choice yet) keeps the file's own colours; a print model has none: porcelain then
+  const mk = FINISH[finish] || (plain ? FINISH.porcelain : null); if (!mk) return;
+  const m = mk(), ms = mk(); ms.skinning = true; // a figure with bones needs a material that follows them
+  model.traverse((o) => { if (o.isMesh) o.material = o.isSkinnedMesh ? ms : m; });
 }
 function figureBase() {
   const g = new THREE.Group(), disc = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.48, 0.07, 48), new THREE.MeshStandardMaterial({ color: 0x140c0a, roughness: 0.32, metalness: 0 }));
   disc.position.y = 0.035; disc.castShadow = disc.receiveShadow = true;
   const rim = new THREE.Mesh(new THREE.TorusGeometry(0.44, 0.012, 8, 64), new THREE.MeshStandardMaterial({ color: 0xd8a84a, emissive: 0x6a4a12, emissiveIntensity: 0.5, roughness: 0.3, metalness: 0.8 }));
   rim.rotation.x = Math.PI / 2; rim.position.y = 0.07; g.add(disc, rim); return g;
+}
+
+// ---------- the owner's figure up close (Settings): drag to turn it round, pinch or scroll to come closer, play its moves ----------
+// Its own small renderer in the given box, gone (and its memory freed) once the box leaves the page.
+export const FIG_MOVES = { idle: "ยืน", emo_hi: "สวัสดี", emo_glhf: "ขอให้สนุก", emo_wow: "ว้าว!", emo_gg: "เก่งมาก", emo_oops: "อุ๊ย", emo_think: "ขอคิดแป๊บ", emo_ty: "ขอบคุณ", emo_ggwp: "GG เกมดี",
+  emo_love: "ชอบมาก", emo_angry: "ไม่ยอมนะ", emo_pout: "งอน", emo_cry: "ฮือ…", hit: "โดนโจมตี", win: "ชนะ", lose: "แพ้" };
+export function figureViewer(box, url, finish) {
+  const canvas = h("canvas", { class: "figview", "aria-label": "รูปปั้น 3 มิติ ลากเพื่อหมุน บีบหรือเลื่อนเพื่อซูม" }); box.prepend(canvas);
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }); renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1;
+  const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, 1, 0.05, 60), clock = new THREE.Clock();
+  scene.add(new THREE.HemisphereLight(0xfff1e2, 0x2a1a14, 0.85));
+  const key = new THREE.DirectionalLight(0xffe4c4, 1.1); key.position.set(2.2, 3.4, 2.8); scene.add(key);
+  const rim = new THREE.DirectionalLight(0x9ccfff, 0.75); rim.position.set(-2.6, 2.2, -2.4); scene.add(rim); // a cool light from behind outlines the hair
+  scene.add(figureBase());
+  const v = { az: 0.45, el: 0.16, dist: 4.6, look: 0.74, to: { dist: 4.6, look: 0.74 }, acts: {}, mixer: null, top: 1.5, bubble: null };
+  const fit = () => { const w = box.clientWidth || 300, hh = box.clientHeight || 360; renderer.setSize(w, hh, false); cam.aspect = w / hh; cam.updateProjectionMatrix(); };
+  fit(); const ro = window.ResizeObserver ? new ResizeObserver(fit) : null; if (ro) ro.observe(box);
+  // turning and zooming: one finger or the mouse turns it, two fingers or the wheel come closer
+  const pts = new Map(); let pinch = 0;
+  canvas.addEventListener("pointerdown", (e) => { pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); try { canvas.setPointerCapture(e.pointerId); } catch {} });
+  canvas.addEventListener("pointermove", (e) => { const p = pts.get(e.pointerId); if (!p) return;
+    if (pts.size === 1) { v.az -= (e.clientX - p.x) * 0.012; v.el = Math.max(-0.05, Math.min(0.75, v.el + (e.clientY - p.y) * 0.006)); }
+    p.x = e.clientX; p.y = e.clientY;
+    if (pts.size === 2) { const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y); if (pinch) zoomBy(pinch / d); pinch = d; } });
+  for (const ev of ["pointerup", "pointercancel"]) canvas.addEventListener(ev, (e) => { pts.delete(e.pointerId); pinch = 0; });
+  canvas.addEventListener("wheel", (e) => { e.preventDefault(); zoomBy(1 + e.deltaY * 0.0012); }, { passive: false });
+  // closer means looking a little higher too, at the face and the hands
+  function zoomBy(k) { const d = Math.max(1.3, Math.min(6.5, v.to.dist * k)); v.to.dist = d; v.to.look = 0.74 + (4.6 - Math.min(4.6, d)) / (4.6 - 1.3) * 0.36; }
+  let model = null;
+  const ready = new Promise((res) => {
+    if (!THREE.GLTFLoader) return res(false);
+    new THREE.GLTFLoader().load(url, (g) => {
+      if (!box.isConnected) return res(false);
+      model = g.scene; model.traverse((o) => { if (o.isMesh) o.frustumCulled = false; }); dressFigure(model, finish);
+      const bx = new THREE.Box3().setFromObject(model), size = bx.getSize(new THREE.Vector3()), k = 1.4 / Math.max(0.01, size.y);
+      model.scale.setScalar(k); model.position.set((-(bx.min.x + bx.max.x) / 2) * k, -bx.min.y * k + 0.07, (-(bx.min.z + bx.max.z) / 2) * k); scene.add(model); v.top = 0.07 + size.y * k;
+      const mixer = new THREE.AnimationMixer(model); v.mixer = mixer;
+      for (const c of g.animations || []) { const n = c.name.toLowerCase(); if (FIG_MOVES[n] && !v.acts[n]) v.acts[n] = mixer.clipAction(c); }
+      for (const w of onceActs(v.acts)) { v.acts[w].setLoop(THREE.LoopOnce, 1); v.acts[w].clampWhenFinished = true; }
+      if (v.acts.idle) v.acts.idle.play();
+      mixer.addEventListener("finished", (e) => { e.action.fadeOut(0.3); if (v.acts.idle && !onceActs(v.acts).some((w) => v.acts[w] !== e.action && v.acts[w].isRunning())) v.acts.idle.reset().fadeIn(0.3).play(); });
+      res(true);
+    }, undefined, () => res(false));
+  });
+  const tick = () => {
+    if (!box.isConnected) { stop(); return; }
+    const dt = Math.min(0.05, clock.getDelta());
+    v.dist += (v.to.dist - v.dist) * Math.min(1, dt * 8); v.look += (v.to.look - v.look) * Math.min(1, dt * 8);
+    if (v.mixer) v.mixer.update(dt);
+    cam.position.set(Math.sin(v.az) * Math.cos(v.el) * v.dist, v.look + Math.sin(v.el) * v.dist, Math.cos(v.az) * Math.cos(v.el) * v.dist); cam.lookAt(0, v.look, 0);
+    renderer.render(scene, cam); if (v.bubble) placeBubble(); requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+  // the bubble's tail at the side of the head (the head bone when the model has one), the bubble kept within the stage
+  const headAt = new THREE.Vector3();
+  function placeBubble() {
+    const el = v.bubble, hb = model && model.getObjectByName("head"); if (!el) return;
+    if (hb) { hb.getWorldPosition(headAt); headAt.y += 0.12; } else headAt.set(0, v.top - 0.1, 0);
+    headAt.x -= Math.cos(v.az) * 0.26; headAt.z += Math.sin(v.az) * 0.26; // a little to the left of the head as the camera sees it
+    const p = headAt.project(cam), w = box.clientWidth, hh = box.clientHeight, bw = el.offsetWidth || 90, bh = el.offsetHeight || 90;
+    const x = (p.x + 1) / 2 * w - bw * 0.95 - 8, y = (1 - p.y) / 2 * hh - bh;
+    el.style.left = Math.max(6, Math.min(w - bw - 6, x)) + "px"; el.style.top = Math.max(6, Math.min(hh - bh - 6, y)) + "px";
+  }
+  function stop() {
+    if (ro) ro.disconnect();
+    scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); const ms = o.material ? [].concat(o.material) : []; for (const m of ms) { if (m.map && ![...bubbleTex.values()].includes(m.map)) m.map.dispose(); m.dispose(); } });
+    renderer.dispose();
+  }
+  return {
+    ready, moves: () => Object.keys(FIG_MOVES).filter((k) => v.acts[k]),
+    // a move: the others fade out, it plays once and the figure goes back to standing; an emote shows its bubble too
+    play(name) { const act = v.acts[name]; if (!act) return;
+      for (const w of Object.keys(v.acts)) if (v.acts[w] !== act && v.acts[w].isScheduled()) v.acts[w].fadeOut(0.2);
+      if (name === "idle") { act.reset().fadeIn(0.2).play(); return; }
+      act.reset().setEffectiveWeight(1).fadeIn(0.2).play();
+      // an emote's bubble: drawn over the stage beside the head, kept inside the frame however close the camera is
+      if (name.startsWith("emo_")) { if (v.bubble) v.bubble.remove(); const el = drawBubble(name.slice(4)); el.className = "figbubble"; box.append(el); v.bubble = el; placeBubble();
+        const gone = () => { el.remove(); if (v.bubble === el) v.bubble = null; };
+        if (reduce) setTimeout(gone, 2400); else gsap.timeline({ onComplete: gone }).fromTo(el, { scale: 0.2, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.35, ease: "back.out(2.4)" }).to(el, { opacity: 0, duration: 0.4 }, 2.1); } },
+    view(which) { v.to.dist = which === "close" ? 1.9 : 4.6; v.to.look = which === "close" ? 1.05 : 0.74; },
+  };
 }
 
 // ---------- helpers ----------
@@ -714,7 +866,7 @@ function tokenTexture(d) {
 }
 function faceMat(d) {
   // card faces are unlit so the official art keeps its real colours (no light/bloom wash-out); FACE_HOOK adds the sheen and the burn
-  const token = d.t === "T" || d.im == null, c = token ? null : card(d.im);
+  const token = d.im == null, c = token ? null : card(d.im); // (a Token with a printed card of its own shows that card; any other is drawn here)
   const u = { uBurn: { value: 0 }, uSweep: { value: -2 }, uSheen: { value: 0 }, uFoil: { value: (c && FOIL[c.r]) || 0 }, uFlash: { value: 0 }, uEdge: { value: new THREE.Color(0xff8a2a) }, uTint: { value: new THREE.Color(d.co ? colorHex(d.co) : 0xffd9a0) } };
   const mat = new THREE.MeshBasicMaterial({ map: token ? tokenTexture(d) : R.texCache.get(d.im) || R.backTex, color: 0xdedede, toneMapped: false });
   mat.userData.u = u; mat.userData.own = token; mat.onBeforeCompile = FACE_HOOK;

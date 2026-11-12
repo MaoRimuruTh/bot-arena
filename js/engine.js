@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112182606";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261112182606";
-import { SCRIPTS } from "./scripts.js?v=20261112182606";
-import { newId, clone } from "./util.js?v=20261112182606";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112200728";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261112200728";
+import { SCRIPTS } from "./scripts.js?v=20261112200728";
+import { newId, clone } from "./util.js?v=20261112200728";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -15,6 +15,12 @@ let scriptBase = null;
 // trigger ids come from a counter in the game state (not a random id), so replaying the same actions rebuilds the same game
 const tid = (s) => "t" + (s.tidc = (s.tidc || 0) + 1);
 export function scriptOfDef(d) { return d && d.im != null ? scriptOf({ cards: { 0: d } }, { c: 0 }) : null; }
+// the printed Token card an ability calls for, when the card list has one by that name (วานร SD09-026, สัตว์ในตำนาน
+// BT12-076): the Token on the table is that card, picture and all. The ability's own numbers stay the rules.
+function tokenCard(name, pw) {
+  const all = ((CARDS.byName && CARDS.byName.get(name)) || []).filter((c) => c.t === "T"); if (!all.length) return null;
+  return (all.find((c) => c.b == null && c.pw === pw) || all.find((c) => c.pw === pw) || all[0]).i;
+}
 export function scriptOf(s, x) {
   if (x.mute) return null; // "สูญเสียความสามารถทั้งหมด"
   const d = s.cards[x.c]; if (!d || d.im == null) return null;
@@ -949,8 +955,9 @@ export const E = {
         E.log(s, by, `${E.name(s, L.x)} ได้รับ ${k}${o.until ? (o.until === "oppturn" ? " จนจบเทิร์นฝ่ายตรงข้าม" : " จนจบเทิร์น") : ""}`); return; }
       case "token": {
         const P = s.P[seat]; if (E.avatars(P) >= 4 && P.av.length >= 6) throw new RuleError("Avatar Zone เต็ม"); if (P.av.length >= 6) throw new RuleError("Avatar Zone เต็ม");
-        const key = "tok:" + String(o.name || "Token").slice(0, 30) + ":" + (o.power | 0);
-        s.cards[key] = s.cards[key] || { n: String(o.name || "Token").slice(0, 30), t: "T", pw: o.power | 0, sy: o.symbol || "", co: o.color || "", x: "", ...(o.cost != null ? { c: o.cost | 0 } : {}) };
+        const key = "tok:" + String(o.name || "Token").slice(0, 30) + ":" + (o.power | 0), im = tokenCard(String(o.name || ""), o.power | 0);
+        s.cards[key] = s.cards[key] || { n: String(o.name || "Token").slice(0, 30), t: "T", pw: o.power | 0, sy: o.symbol || "", co: o.color || "", x: "", ...(o.cost != null ? { c: o.cost | 0 } : {}), ...(im != null ? { im, g: card(im).g || 0 } : {}) };
+        if (s.cards[key].im == null && im != null) s.cards[key].im = im; // (a game saved before Tokens had their cards)
         let first = null; for (let k = 0; k < n && P.av.length < 6; k++) { const tk = { i: s.nextI++, c: key, o: seat, a: true, tok: true }; P.av.push(tk); first = first || tk; }
         E.log(s, seat, `เรียก Token ${s.cards[key].n} ×${n}`); E.fxSummoned(s, seat, first); return;
       }

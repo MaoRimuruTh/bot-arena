@@ -1,10 +1,10 @@
 // Settings for the owner's own things (vault.js): a picture for his half of the mat, a picture for his card sleeves and a
 // 3D figure. A picture is framed here (drag to move it, slide to zoom) and saved twice: in full for his own screen, and
 // smaller for opponents if he lets them see it. Shown only to the owner account.
-import { h, toast, openSheet } from "./util.js?v=20261112182606";
-import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, isOwner, vaultBlob } from "./vault.js?v=20261112182606";
-import { matLines, FIG_FINISH } from "./arena3d.js?v=20261112182606";
-import { setMeta, Data } from "./fb.js?v=20261112182606";
+import { h, toast, openSheet } from "./util.js?v=20261112200728";
+import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, shownBlob, isOwner, vaultBlob } from "./vault.js?v=20261112200728";
+import { matLines, FIG_FINISH, FIG_MOVES, figureViewer } from "./arena3d.js?v=20261112200728";
+import { setMeta, Data } from "./fb.js?v=20261112200728";
 
 const MAT_A = 15.4 / 5.8, SLEEVE_A = 1.5 / 2.04; // one side of the table; a card
 const KIND = {
@@ -59,6 +59,41 @@ function thumb(kind) {
 }
 const filePick = (accept, fn) => { const i = h("input", { type: "file", accept, hidden: true, onchange: async () => { const f = i.files && i.files[0]; i.value = ""; if (f) await fn(f); } }); return i; };
 const isGlb = async (f) => { const b = new Uint8Array(await f.slice(0, 4).arrayBuffer()); return b[0] === 0x67 && b[1] === 0x6c && b[2] === 0x54 && b[3] === 0x46; }; // "glTF"
+// whether a .glb is painted (a texture, colours on its points, or materials of more than one colour): its own colours are
+// then the figure's finish when it is uploaded; an unpainted print model starts as porcelain
+async function glbPainted(f) {
+  try { const head = new DataView(await f.slice(12, 20).arrayBuffer()), n = head.getUint32(0, true);
+    const j = JSON.parse(new TextDecoder().decode(await f.slice(20, 20 + n).arrayBuffer()));
+    if ((j.textures || []).length) return true;
+    if ((j.meshes || []).some((m) => (m.primitives || []).some((p) => p.attributes && p.attributes.COLOR_0 != null))) return true;
+    return new Set((j.materials || []).map((m) => String((m.pbrMetallicRoughness || {}).baseColorFactor || "1,1,1,1"))).size > 1;
+  } catch { return false; }
+}
+
+// the figure up close: turn it, zoom in, play each of its moves; the copy opponents see can be looked at the same way
+function figSheet() {
+  const it = Vault.m && Vault.m.fig; if (!it) return;
+  const stage = h("div", { class: "figstage" }), moves = h("div", { class: "seg wrap figmoves", role: "group", "aria-label": "ท่าของรูปปั้น" });
+  let url = null, viewer = null, which = "full", zoom = "whole";
+  const sh = Data.meta && Data.meta.show && Data.meta.show.fig;
+  const load = () => {
+    if (url) URL.revokeObjectURL(url); url = null; viewer = null; moves.replaceChildren();
+    const holder = h("div", { class: "figholder" }, h("div", { class: "figload small muted" }, "กำลังโหลดรูปปั้น…")); stage.replaceChildren(holder); // (the viewer before it stops once its box is gone)
+    (which === "shown" ? shownBlob("fig") : vaultBlob("fig")).then((b) => { if (!b || !holder.isConnected) return false; url = URL.createObjectURL(b); viewer = figureViewer(holder, url, which === "shown" ? (sh && sh.finish) || "" : it.finish || ""); return viewer.ready; })
+      .then((ok) => { const l = holder.querySelector(".figload"); if (l) l.remove(); if (!holder.isConnected) return;
+        if (!ok) { holder.append(h("div", { class: "figload small muted" }, "เปิดรูปปั้นไม่ได้")); return; }
+        viewer.view(zoom); moves.replaceChildren(...viewer.moves().map((k) => h("button", { onclick: () => viewer.play(k) }, FIG_MOVES[k]))); })
+      .catch(() => { const l = holder.querySelector(".figload"); if (l) l.textContent = "เปิดรูปปั้นไม่ได้"; });
+  };
+  const pick = shownNow("fig") ? h("div", { class: "seg", role: "group", "aria-label": "ฉบับ" }, [["full", "ฉบับเต็ม"], ["shown", "ฉบับที่คู่แข่งเห็น"]].map(([k, t]) => h("button", { "aria-pressed": k === which ? "true" : "false",
+    onclick: (e) => { which = k; for (const b of e.currentTarget.parentNode.children) b.setAttribute("aria-pressed", b === e.currentTarget ? "true" : "false"); load(); } }, t))) : null;
+  const near = h("div", { class: "seg", role: "group", "aria-label": "ระยะ" }, [["whole", "ทั้งตัว"], ["close", "ใกล้ ๆ"]].map(([k, t], i) => h("button", { "aria-pressed": i ? "false" : "true",
+    onclick: (e) => { zoom = k; if (viewer) viewer.view(k); for (const b of e.currentTarget.parentNode.children) b.setAttribute("aria-pressed", b === e.currentTarget ? "true" : "false"); } }, t)));
+  openSheet(() => [stage, h("div", { class: "row wrap", style: "gap:8px;justify-content:space-between" }, near, pick), moves,
+    h("div", { class: "tiny muted" }, "ลากเพื่อหมุน บีบสองนิ้วหรือเลื่อนลูกกลิ้งเพื่อซูม กดชื่อท่าเพื่อดูท่านั้น")].filter(Boolean),
+    { title: "รูปปั้นของฉัน", wide: true, onClose: () => { if (url) URL.revokeObjectURL(url); } });
+  load();
+}
 
 function rows() {
   const out = [];
@@ -75,14 +110,17 @@ function rows() {
   const has = Vault.has("fig"), it = Vault.m && Vault.m.fig, shown = shownNow("fig"), fin = (it && it.finish) || "porcelain";
   const load = (show) => filePick(".glb,model/gltf-binary", async (f) => {
     if (!(await isGlb(f))) return toast("ต้องเป็นไฟล์ .glb", "bad");
-    try { if (show) { await vaultShow("fig", f, { finish: fin }); toast("คู่แข่งจะเห็นรูปปั้นฉบับเบาแล้ว"); } else { await vaultPut("fig", f, { finish: fin, name: f.name.slice(0, 60) }); try { localStorage.setItem("bot.av3", "own"); } catch {} toast("บันทึกรูปปั้นแล้ว ใช้ตั้งแต่เกมถัดไป"); } }
+    try { if (show) { await vaultShow("fig", f, { finish: fin }); toast("คู่แข่งจะเห็นรูปปั้นฉบับเบาแล้ว"); }
+      else { const painted = await glbPainted(f), finish = painted ? "file" : has ? (fin === "file" ? "porcelain" : fin) : "porcelain"; // a painted model shows its own colours
+        await vaultPut("fig", f, { finish, name: f.name.slice(0, 60) }); if (shown && finish !== fin) await setMeta({ show: { fig: { finish } } });
+        try { localStorage.setItem("bot.av3", "own"); } catch {} toast(painted ? "บันทึกรูปปั้นแล้ว ใช้สีจากไฟล์ ตั้งแต่เกมถัดไป" : "บันทึกรูปปั้นแล้ว ใช้ตั้งแต่เกมถัดไป"); } }
     catch (er) { toast("บันทึกไม่สำเร็จ: " + (er.message || er), "bad"); } });
   const full = load(false), light = load(true);
   out.push(h("div", { class: "vitem" }, h("div", { class: "vthumb empty fig" }, has ? "🗿" : "ยังไม่มี"),
     h("div", { class: "stack", style: "gap:6px;min-width:0" }, h("b", null, "รูปปั้นของฉัน"), h("span", { class: "tiny muted" }, has ? (shown ? "คู่แข่งเห็นฉบับเบาบนโต๊ะของเขา" : "เห็นแค่บนเครื่องของมาสเตอร์") + (it.name ? " · " + it.name : "") : "ไฟล์ .glb ไม่เกิน 6 MB"),
       has ? h("div", { class: "seg wrap", role: "group", "aria-label": "ผิวรูปปั้น" }, Object.entries(FIG_FINISH).map(([k, t]) => h("button", { "aria-pressed": fin === k ? "true" : "false", onclick: async () => {
         try { await vaultMeta("fig", { finish: k }); if (shown) await setMeta({ show: { fig: { finish: k } } }); toast("ผิวรูปปั้น: " + t); } catch { toast("เปลี่ยนไม่สำเร็จ", "bad"); } } }, t))) : null,
-      h("div", { class: "row wrap" }, full, light, h("button", { class: "btn sm gold", onclick: () => full.click() }, has ? "เปลี่ยนไฟล์" : "เลือกไฟล์ .glb"),
+      h("div", { class: "row wrap" }, full, light, has ? h("button", { class: "btn sm gold", onclick: figSheet }, "ดู 3D") : null, h("button", { class: "btn sm" + (has ? "" : " gold"), onclick: () => full.click() }, has ? "เปลี่ยนไฟล์" : "เลือกไฟล์ .glb"),
         has ? h("button", { class: "btn sm", onclick: () => light.click() }, shown ? "เปลี่ยนฉบับให้คู่แข่งเห็น" : "ให้คู่แข่งเห็น (ไฟล์เบา ≤ 420 KB)") : null,
         shown ? h("button", { class: "btn sm", onclick: () => vaultShow("fig", null).then(() => toast("ซ่อนจากคู่แข่งแล้ว")).catch(() => toast("ทำไม่สำเร็จ", "bad")) }, "ซ่อนจากคู่แข่ง") : null,
         has ? h("button", { class: "btn sm danger", onclick: () => vaultDrop("fig").then(() => vaultShow("fig", null)).then(() => toast("ลบแล้ว")).catch(() => toast("ลบไม่สำเร็จ", "bad")) }, "ลบ") : null))));
