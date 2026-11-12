@@ -471,7 +471,7 @@ Object.assign(SCRIPTS, {
   // ศาสตราวุธ โวลุสปา: valkyries only; dies instead of its wearer; when milled (and no Modification used this turn) it may be used from hell
   "BT10-067": { modOnly: modValk, shield: true, millBy: "any",
     milled: (c) => { if (c.s.mu[c.seat].D) return { explain: "เทิร์นนี้ใช้ Modification ไปแล้ว", ops: [] }; const r = attachValk(c, "โวลุสปาถูกธรณีสูบ: ใช้งานจากนรกให้เทพธิดา (ไม่ใช้ก็ได้)");
-      if (r.ops.length) r.ops.push({ op: "mu", seat: c.seat, k: "D" }); return r; } },
+      if (r.ops.length) r.ops = r.ops.map((o) => (o.op === "attach" ? { op: "modFromHell", i: o.i, on: o.on } : o)); return r; } }, // FAQ: a real use of a Mod (it can be cancelled)
   // ซีเกิร์ด (Only #1)
   "BT10-029": {
     aura: (E, s, src, L) => (L.z === "av" ? [{ seat: L.p, test: (x) => valk(E, s, x), n: 1 }, { seat: L.p, test: (x) => valk(E, s, x) && nm(E, s, x, "บรุนฮิลด์"), n: 1 }] : []),
@@ -1903,7 +1903,7 @@ const endUse = (ok) => (E, s, x, L) => { if (L.p === s.active && x.used !== s.tu
 Object.assign(SCRIPTS, {
   // วันชัยเปรตรุ่นพ่อ: +1 per face-up LIFE on both sides · once per turn flip our top LIFE: its ability works now
   "BT07-001": { aura: (E, s, src, L) => (L.z === "av" ? [{ seat: L.p, test: (x) => x.i === src.i, n: facedUp(s, 0) + facedUp(s, 1) }] : []),
-    activate: { label: "หงาย LIFE ใบบนสุดของเรา: สั่งใช้ความสามารถของ LIFE ใบนั้น", can: (E, s, x, L) => L.z === "av" && s.phase === "main" && s.P[L.p].life.filter((y) => !y.up).length > (isBotSeat(s, L.p) ? 2 : 0), run: () => ({ explain: "หงาย LIFE ใบบนสุด แล้วใช้ความสามารถทันที", ops: [{ op: "lifeUse" }] }) } },
+    activate: { label: "หงาย LIFE ใบบนสุดของเรา: สั่งใช้ความสามารถของ LIFE ใบนั้น", can: (E, s, x, L) => L.z === "av" && s.phase === "main" && !E.critical(s.P[L.p]) && s.P[L.p].life.filter((y) => !y.up).length > (isBotSeat(s, L.p) ? 2 : 0), run: () => ({ explain: "หงาย LIFE ใบบนสุด แล้วใช้ความสามารถทันที", ops: [{ op: "lifeUse" }] }) } },
   // พระแม่อุมาเทวี: จุติ discard 1: a {เทพ} card (not a one-copy card) from hell to the hand · while the opponent controls our พระอิศวร: to hell, เจ้าแม่กาลี with จุติ
   "BT07-002": { summon: (c) => { const { E, s, seat: p } = c; const P = s.P[p]; const t = c.choose([...P.hell].reverse().filter((y) => sy(E, s, y, "เทพ") && !E.def(s, y).o1).sort((a, b) => worth(E, s, b) - worth(E, s, a)), 1, "เลือกการ์ด {เทพ} ในนรกที่จะนำขึ้นมือ")[0];
       const pay = t ? c.choose([...P.hand].sort(cheapCard(E, s)), 1, "ทิ้งการ์ดบนมือ 1 ใบ", { exact: true })[0] : null; return t && pay ? { explain: `ทิ้ง ${E.name(s, pay)} · ${E.name(s, t)} ขึ้นมือ`, ops: [{ op: "discard", seat: p, iids: [pay.i] }, { op: "move", i: t.i, to: "hand" }] } : { explain: "ไม่มีการ์ดที่ตรงเงื่อนไข", ops: [] }; },

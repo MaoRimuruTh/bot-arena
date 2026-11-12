@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112103624";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261112103624";
-import { SCRIPTS } from "./scripts.js?v=20261112103624";
-import { newId, clone } from "./util.js?v=20261112103624";
+import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112104551";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261112104551";
+import { SCRIPTS } from "./scripts.js?v=20261112104551";
+import { newId, clone } from "./util.js?v=20261112104551";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -691,7 +691,9 @@ export const E = {
         s.trig.splice(k, 1);
         const nm = s.cards[t.c] ? s.cards[t.c].n : "การ์ด";
         if (act.skip && !t.held) E.log(s, p, `ข้ามเอฟเฟกต์ ${nm}`);
-        else { const ops0 = t.held ? t.hops : act.ops || [], ex0 = t.held ? t.hex : act.explain;
+        else { let ops0 = t.held ? t.hops : act.ops || []; const ex0 = t.held ? t.hex : act.explain;
+          // a Magic whose effect ลูเซเน่ uses after exiling it stays exiled: it cannot put itself on the field (FAQ: no เครื่องบิน Super Air, no Magic Zone)
+          if (t.via && (E.locate(s, t.i) || {}).z === "dark") ops0 = ops0.filter((o) => !(o && o.i === t.i && ["move", "put", "attach", "toLand", "payPut"].includes(o.op)));
           if (!t.held) { const doom = E.doomFor(s, ops0, p); if (doom) { s.trig.splice(k, 0, { ...t, held: true, hops: ops0, hex: ex0 }); s.rw = doom; E.log(s, doom.p, `${doom.ids.map((i) => E.name(s, E.locate(s, i).x)).join(", ")} กำลังจะ${doom.kill.length || doom.killCs.length ? "ถูกทำลาย" : "ออกจากสนาม"} (${nm})`); return; }
             const hw = E.handWin(s, t, ops0, p); if (hw) { s.trig.splice(k, 0, { ...t, held: true, hops: ops0, hex: ex0 }); s.rw = hw; E.log(s, hw.p, `${s.P[hw.p].name} ใช้ React ตอบโต้ได้ก่อนที่ความสามารถของ ${nm} จะทำงาน`); return; } }
           if (ex0) { E.log(s, p, `เอฟเฟกต์ ${nm}: ${ex0}`); E.ev(s, { k: "fx", c: t.c, p, t: String(ex0).replace(/^อ่านอัตโนมัติ: /, "").slice(0, 180) }); } s.cur = t.via || t.c; s.curI = t.via ? t.viaI : t.i; s.curSeat = t.seat; if (t.now) s.lifeNow = t.now; try { E.ops(s, ops0, p); } finally { delete s.cur; delete s.curI; delete s.curSeat; delete s.lifeNow; } }
