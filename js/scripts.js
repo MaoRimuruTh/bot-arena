@@ -1403,7 +1403,7 @@ Object.assign(SCRIPTS, {
   // ริกกี้ คุณตา: unaffected by the opponent's Magic
   "BT04-016": { magicProof: true },
   // รัททาทุย 2 หัว: โล่มนุษย์ · once per turn, instead of being destroyed in a fight it gets POWER -1 · at POWER 0 it is destroyed
-  "BT04-018": { wouldDestroy: (E, s, x, L, o) => { if (!o || !o.fight || E.power(s, x) <= 1) return false; E.log(s, L.p, `${E.name(s, x)} POWER -1 แทนการถูกทำลาย`); E.ops(s, [{ op: "power", i: x.i, n: -1, temp: false }], L.p); return true; },
+  "BT04-018": { wouldDestroy: (E, s, x, L, o) => { if (!o || !o.fight || E.power(s, x) <= 1 || E.wornHas(s, x, "noLower")) return false; E.log(s, L.p, `${E.name(s, x)} POWER -1 แทนการถูกทำลาย`); E.ops(s, [{ op: "power", i: x.i, n: -1, temp: false }], L.p); return true; },
     check: (E, s, x, L) => (L.z === "av" && E.power(s, x) === 0 ? [{ op: "destroy", i: x.i, why: "POWER เป็น 0" }] : []) },
   // คนแก่สติเลอะเลือนผู้รู้ความจริง: scouted by a "ผู้รู้ความจริง" Avatar it is summoned (see truthSpill) · once per turn: draw 1
   "BT04-019": { activate: { label: "จั่วการ์ด 1 ใบ", can: (E, s, x, L) => L.z === "av" && s.phase === "main", run: (c) => ({ explain: "จั่ว 1 ใบ", ops: [{ op: "draw", seat: c.seat, n: 1 }] }) } },
@@ -1531,7 +1531,7 @@ Object.assign(SCRIPTS, {
   // เจนนี่ อย่าบู้บี้เลขา: nobody can summon Avatars from hell
   "BT05-012": { noHellSummon: true },
   // ลานเซลอต: จุติ scout 2: an "อัศวินโต๊ะกลม" is summoned, the rest shuffled back; red: our knights +1 this turn, blue: draw 1
-  "BT05-014": { summon: (c) => { const { E, s, seat: p } = c; const { top, t } = scoutPick(c, 2, (y) => knight(E, s, y), "เลือกอัศวินโต๊ะกลมจากที่สอดแนมเพื่ออัญเชิญ"); if (!top.length) return { explain: "Deck หมด", ops: [] };
+  "BT05-014": { summon: (c) => { const { E, s, seat: p } = c; if (E.avatars(s.P[p]) >= 4 || s.P[p].av.length >= 6) return { explain: "Avatar Zone ไม่มีที่ว่าง ความสามารถไม่ทำงาน", ops: [] }; /* FAQ: no room, no scouting either */ const { top, t } = scoutPick(c, 2, (y) => knight(E, s, y), "เลือกอัศวินโต๊ะกลมจากที่สอดแนมเพื่ออัญเชิญ"); if (!top.length) return { explain: "Deck หมด", ops: [] };
     const ops = [{ op: "scoutShow", seat: p, ids: top.map((y) => y.i) }]; const say = [`สอดแนม ${top.length} ใบ`]; const room = E.avatars(s.P[p]) < 4;
     if (t && room) { ops.push({ op: "put", i: t.i }); say.push(`อัญเชิญ ${E.name(s, t)}`); const co = E.colors(s, t);
       if (co.includes("แดง")) { for (const y of s.P[p].av.filter((z) => knight(E, s, z))) ops.push({ op: "power", i: y.i, n: 1, temp: true }); ops.push({ op: "power", i: t.i, n: 1, temp: true }); say.push("สีแดง: อัศวินโต๊ะกลมเรา POWER +1"); }
@@ -2332,7 +2332,7 @@ Object.assign(SCRIPTS, {
     aura: (E, s, src, L) => (L.z === "av" && s.active === L.p ? [{ seat: L.p, test: (x) => x.lk && (pemmu(E, s, x) || E.named(s, x, "เมย์ แวมไพร์โกธิค")), n: 2 }] : []),
     noAtk: (E, s, x, L) => s.P[L.p].av.some((y) => y.lk && E.named(s, y, "เมย์ แวมไพร์โกธิค")), untargetable: (E, s, x, L) => s.P[L.p].av.some((y) => y.lk && E.named(s, y, "เมย์ แวมไพร์โกธิค")) && !!s.trig[0] && s.trig[0].seat !== L.p },
   // เพนกวินหิมะ เหลียง: sacrifice it: 2 POWER 2 ทหารหิมะ from the Deck (12+ in hell: ราชาหิมะ บิง and ราชินีหิมะ ชีหลิน instead) · 4 blue GEM for a ราชินีหิมะ · counts as ทหารหิมะ {ต่างชาติ}
-  "BT09-015": { extraSy: "ต่างชาติ", gemFor: (td) => (td && String(td.n || "").includes("ราชินีหิมะ") ? 4 : null), activate: { label: "เซ่นไหว้ใบนี้: อัญเชิญทหารหิมะ 2 ใบจาก Deck", can: (E, s, x, L) => L.z === "av" && s.phase === "main" && s.P[L.p].deck.some((y) => snowMan(E, s, y)),
+  "BT09-015": { extraSy: "ต่างชาติ", gemFor: (td) => (td && String(td.n || "").includes("ราชินีหิมะ") ? 4 : null), activate: { label: "เซ่นไหว้ใบนี้: อัญเชิญทหารหิมะ 2 ใบจาก Deck", can: (E, s, x, L) => L.z === "av" && s.phase === "main" && E.avatars(s.P[L.p]) + 2 <= 4 && s.P[L.p].av.length + 2 <= 6 && s.P[L.p].deck.some((y) => snowMan(E, s, y)),
     run: (c) => { const { E, s, seat: p, self: x } = c; const P = s.P[p]; const big = P.hell.filter((y) => snowMan(E, s, y)).length >= 12 && ["ราชาหิมะ บิง", "ราชินีหิมะ ชีหลิน"].map((n) => P.deck.find((y) => E.named(s, y, n)));
       const pair = big && big.every(Boolean) && c.mode(["อัญเชิญราชาหิมะและราชินีหิมะ", "อัญเชิญทหารหิมะ 2 ใบ"], "เพนกวินหิมะ", 0) === 0 ? big : P.deck.filter((y) => snowMan(E, s, y) && (E.def(s, y).pw || 0) === 2).slice(0, 2);
       return { explain: `เซ่นไหว้ ${E.name(s, x)} · อัญเชิญ ${pair.map((y) => E.name(s, y)).join(", ") || "-"}`, ops: [{ op: "destroy", i: x.i, why: "เซ่นไหว้" }, ...pair.map((y) => ({ op: "put", i: y.i })), { op: "shuffle", seat: p }] }; } } },
@@ -2541,7 +2541,7 @@ Object.assign(SCRIPTS, {
   "BT10-019": { summon: (c) => { const { E, s, seat: p, self: x } = c; if (!c.t.exact && !(x && x.sb != null && String((s.cards[x.sb] || {}).n || "").includes("สิ่งปฏิกูล"))) return { explain: "ไม่ได้อัญเชิญแบบพอดี", ops: [] }; if (s.P[p].hell.filter((y) => E.named(s, y, "สิ่งปฏิกูล")).length < 5) return { explain: "สิ่งปฏิกูลในนรกไม่ถึง 5 ใบ", ops: [] };
       const t = c.choose(bestFoe(E, s, p), 1, "เลือก Avatar ฝ่ายตรงข้ามที่จะกลายเป็น สิ่งปฏิกูล POWER 1", { exact: true })[0]; return t ? { explain: `${E.name(s, t)} กลายเป็น "สิ่งปฏิกูล" {สัตว์วิเศษ} POWER 1`, ops: [{ op: "ovSet", i: t.i, ov: { n: "สิ่งปฏิกูล", sy: "สัตว์วิเศษ", pw: 1 } }, { op: "resetPower", i: t.i }] } : { explain: "", ops: [] }; },
     byOk: (E, s, src) => !!src && String(src.n || "").includes("สิ่งปฏิกูล"), summonedBy: (c) => SCRIPTS["BT10-019"].summon({ ...c, t: { ...c.t, exact: true } }),
-    activate: { label: "ทำลายสิ่งปฏิกูล 1 ใบ: สุ่มทิ้งการ์ดบนมือฝ่ายตรงข้าม", can: (E, s, x, L) => L.z === "av" && s.phase === "main" && [...s.P[0].av, ...s.P[1].av].some((y) => y.i !== x.i && E.named(s, y, "สิ่งปฏิกูล")),
+    activate: { label: "ทำลายสิ่งปฏิกูล 1 ใบ: สุ่มทิ้งการ์ดบนมือฝ่ายตรงข้าม", can: (E, s, x, L) => L.z === "av" && s.phase === "main" && s.P[1 - L.p].hand.length > 0 && [...s.P[0].av, ...s.P[1].av].some((y) => y.i !== x.i && E.named(s, y, "สิ่งปฏิกูล")),
       run: (c) => { const { E, s, seat: p, self: x } = c; const t = c.choose([...s.P[1 - p].av, ...s.P[p].av].filter((y) => y.i !== x.i && E.named(s, y, "สิ่งปฏิกูล")), 1, "เลือกสิ่งปฏิกูล", { exact: true })[0]; return t ? { explain: `ทำลาย ${E.name(s, t)} · สุ่มทิ้งการ์ดฝ่ายตรงข้าม 1 ใบ`, ops: [{ op: "destroy", i: t.i, why: "ราชาสิ่งปฏิกูล" }, { op: "discardRandom", seat: 1 - p }] } : { explain: "", ops: [] }; } } },
   // เตียวคับ: the opponent cannot attack our other วุยก๊ก · summoned by a ขุนพล {ต่างชาติ}: +2 and deals 2 LIFE damage
   "BT10-020": { guardOthers: (E, s, y, t) => E.named(s, t, "วุยก๊ก"), byOk: (E, s, src) => !!src && src.t === "A" && (String(src.n || "").includes("ขุนพล") || String(src.x || "").includes('ถือว่ามีชื่อ "ขุนพล')) && String(src.sy || "").includes("ต่างชาติ"),

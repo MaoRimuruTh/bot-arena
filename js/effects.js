@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261112103303";
-import { CARDS, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261112103303";
-import { E, scriptOf } from "./engine.js?v=20261112103303";
+import { readAura } from "./auras.js?v=20261112103624";
+import { CARDS, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261112103624";
+import { E, scriptOf } from "./engine.js?v=20261112103624";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -331,6 +331,8 @@ function sentence(s, t, p, self, ctx) {
       // "ทุกใบ / ทั้งหมด" picks nothing, so cards that cannot be targeted go too (FAQ กวนอู ขุนพลภักดีแห่งจ๊กก๊ก)
       if (all && !/Construct/.test(t) && f.type !== "M") for (const x of O.av) if (typed(x, f) && !cands.includes(x)) cands.push(x);
       if (anySide && !all) cands.push(...P.av.filter((x) => typed(x, f) && !(self && x.i === self.i)).sort((a, b) => val(s, a) - val(s, b)));
+      // "ทำลายการ์ดบนสนาม 1 ใบ" with nothing else there: it has to be this card itself (FAQ พระอิศวร เทพผู้ทำลาย: the ability is not optional)
+      if (anySide && !all && !cands.length && self && !hm.upTo && !/ใบอื่น|สามารถ/.test(t)) cands.push(self);
       const pool = all ? cands : ctx.choose(cands, n, `เลือกการ์ด${anySide ? "บนสนาม" : "ฝ่ายตรงข้าม"}ที่จะทำลาย (${hm.upTo ? "สูงสุด " : ""}${n} ใบ)`, { optional: hm.upTo });
       for (const x of pool) ops.push({ op: "destroy", i: x.i, why: "จากเอฟเฟกต์" });
       say.push(pool.length ? `ทำลาย ${pool.map((x) => E.name(s, x)).join(", ")}` : "ไม่มีเป้าหมายให้ทำลาย");
@@ -371,7 +373,8 @@ function sentence(s, t, p, self, ctx) {
     const seats = dm[1] || /แต่ละฝ่าย/.test(t) ? [p, 1 - p] : seatOf(t.split("จั่ว")[0], p); for (const q of seats) ops.push({ op: "draw", seat: q, n });
     say.push(`${seats.length > 1 ? "ทุกคน" : seats[0] === p ? "" : "ฝ่ายตรงข้าม"}จั่ว ${n} ใบ`);
   } else if (/นำการ์ดบนมือ.*ทั้งหมด.*กลับเข้า\s*Deck/.test(t)) {
-    const seats = /ทั้ง\s*2\s*ฝ่าย|ผู้เล่นทุกคน|ทั้งสองฝ่าย/.test(t) ? [p, 1 - p] : OPP.test(t) ? [1 - p] : [p]; for (const q of seats) ops.push({ op: "handToDeck", seat: q }); say.push(`${seats.length > 1 ? "ทุกคน" : ""}นำการ์ดบนมือทั้งหมดกลับเข้า Deck แล้วสับ`);
+    const seats = /ทั้ง\s*2\s*ฝ่าย|ผู้เล่นทุกคน|ทั้งสองฝ่าย/.test(t) ? [p, 1 - p] : OPP.test(t) ? [1 - p] : [p]; if (seats.length > 1 && seats.some((q) => !s.P[q].hand.filter((x) => x.i !== (ctx.me || {}).i).length)) return { ops: [], say: [], fail: "ผู้เล่นทุกคนต้องมีการ์ดบนมือให้นำกลับเข้า Deck ได้" }; // FAQ ล้มโต๊ะ
+    for (const q of seats) ops.push({ op: "handToDeck", seat: q }); say.push(`${seats.length > 1 ? "ทุกคน" : ""}นำการ์ดบนมือทั้งหมดกลับเข้า Deck แล้วสับ`);
   } else if (/ธรณีสูบ/.test(t)) {
     const n = num(t, /ธรณีสูบ\s*(?:\([^)]*\)\s*)?(\d+)/); for (const q of seatOf(t.split("ธรณีสูบ")[0], p)) ops.push({ op: "mill", seat: q, n }); say.push(`ธรณีสูบ ${n} ใบ`);
   } else if (/(?:ส่ง|นำ).*จาก(?:ใน)?\s*Deck.*ลงนรก/.test(t)) {

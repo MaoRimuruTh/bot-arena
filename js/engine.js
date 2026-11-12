@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112103303";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261112103303";
-import { SCRIPTS } from "./scripts.js?v=20261112103303";
-import { newId, clone } from "./util.js?v=20261112103303";
+import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112103624";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261112103624";
+import { SCRIPTS } from "./scripts.js?v=20261112103624";
+import { newId, clone } from "./util.js?v=20261112103624";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -185,7 +185,7 @@ export const E = {
     const src = s.cur != null ? s.cards[s.cur] : null; if (!src || src.t !== "M" || s.curSeat == null || s.curSeat === L.p) return false;
     { const mp = !x.mute && (scriptOf(s, x) || {}).magicProof; if (typeof mp === "function" ? mp(E, s, x) : mp) return true; } if (x.rimm === s.turn && src.st === "R") return true;
     if (x.mprot && x.mprot.until >= s.turn && (x.mprot.all || (opName !== "power" && opName !== "mute"))) return true;
-    const blk = [...s.P[0].mg, ...s.P[1].mg].find((m) => m.on === x.i && !m.mute && (scriptOf(s, m) || {}).magicBlock); if (blk) { E.log(s, L.p, `${E.name(s, blk)} ถูกทำลาย: ยกเลิกความสามารถของ ${src.n} ที่มีต่อ ${E.name(s, x)}`); E.moveTo(s, blk.i, "hell"); s.blockedCur = s.cur; x.blk = s.turn; return true; }
+    const blk = !(/ทั้งหมด|ทุกใบ/.test(String(src.x || "")) && !/เลือก/.test(String(src.x || ""))) && [...s.P[0].mg, ...s.P[1].mg].find((m) => m.on === x.i && !m.mute && (scriptOf(s, m) || {}).magicBlock); if (blk) { E.log(s, L.p, `${E.name(s, blk)} ถูกทำลาย: ยกเลิกความสามารถของ ${src.n} ที่มีต่อ ${E.name(s, x)}`); E.moveTo(s, blk.i, "hell"); s.blockedCur = s.cur; x.blk = s.turn; return true; }
     return x.blk === s.turn && s.blockedCur === s.cur; },
   hostSaved(s, x, L, fromOpp, fight) { for (const P of s.P) for (const m of P.mg) { if (m.on !== x.i || m.mute || m.used === s.turn) continue; const sc = scriptOf(s, m); if (sc && sc.hostSave) { const r = sc.hostSave(E, s, m, x, { fromOpp, fight: !!fight }); if (r != null) { m.used = s.turn; if (r) return true; } } } return false; },
   // what p summoned this turn (เครื่องบิน Super Air)
@@ -400,7 +400,7 @@ export const E = {
     if (L.z === "av") { const sh = [0, 1].flatMap((q) => s.P[q].mg).find((m) => m.on === L.x.i && (hk(s, m) || {}).shield);
       if (sh) { E.log(s, L.p, `${E.name(s, sh)} ถูกทำลายแทน ${E.name(s, L.x)}`); E.moveTo(s, sh.i, "hell"); return; } }
     { const sc = scriptOf(s, L.x); const fight = /^(?:แพ้|เสมอ|พลังเท่ากัน)/.test(String(cause || "")); const fromOpp = opt.by != null ? opt.by !== L.p : fight;
-      if (L.z === "av" && E.hostSaved(s, L.x, L, fromOpp, fight)) return;
+      if (L.z === "av" && !/เซ่นไหว้|ค่าความสามารถ|ค่าใช้จ่าย/.test(String(cause || "")) && E.hostSaved(s, L.x, L, fromOpp, fight)) return;
       if (sc && sc.wouldDestroy && L.x.saved !== s.turn && sc.wouldDestroy(E, s, L.x, L, { fight, fromOpp, cause })) { L.x.saved = s.turn; return; } }
     const x = L.x; const tok = x.tok; const had = kwHas(E.def(s, x).x, "คำสั่งเสีย") || !!(!x.mute && (scriptOf(s, x) || {}).death);
     E.ev(s, { k: "destroy", i, p: L.p });
@@ -785,7 +785,7 @@ export const E = {
       if (s.phase === "over") return;
     }
   },
-  redirMagic(s, o) { if (o.i == null || s.cur == null || s.curSeat == null || o.noRedirect || !["destroy", "move", "power", "mute", "control", "setPower", "keyword", "exile", "stun", "noWake", "ovSet"].includes(o.op)) return o; const src = s.cards[s.cur]; if (!src || src.t !== "M") return o; const L = E.locate(s, o.i); if (!L || L.z !== "av" || L.p === s.curSeat) return o;
+  redirMagic(s, o) { if (o.i == null || s.cur == null || s.curSeat == null || o.noRedirect || !["destroy", "move", "power", "mute", "control", "setPower", "keyword", "exile", "stun", "noWake", "ovSet"].includes(o.op)) return o; const src = s.cards[s.cur]; if (!src || src.t !== "M" || (/ทั้งหมด|ทุกใบ/.test(String(src.x || "")) && !/เลือก/.test(String(src.x || "")))) return o; const L = E.locate(s, o.i); if (!L || L.z !== "av" || L.p === s.curSeat) return o;
     if (s.redir && s.redir.c === s.cur && s.redir.t === s.turn) return s.redir.from === o.i ? { ...o, i: s.redir.to } : o;
     for (const { x: y, L: Ly } of fieldCards(s)) { if (Ly.p !== L.p || Ly.z !== "av" || y.i === L.x.i || y.mute || !y.a) continue; const sc = scriptOf(s, y); if (sc && sc.magicRedirect && sc.magicRedirect(E, s, y, L.x)) { y.a = false; s.redir = { c: s.cur, t: s.turn, from: o.i, to: y.i }; E.log(s, L.p, `${E.name(s, y)} เปลี่ยนเป็นสภาพนอน: ผลของ ${src.n} เปลี่ยนมาที่ ${E.name(s, y)} แทน ${E.name(s, L.x)}`); return { ...o, i: y.i }; } } return o; },
   op(s, o, by) {
@@ -994,7 +994,7 @@ export const E = {
       case "discard": { // chosen discard (used for "ทิ้งการ์ดบนมือ N ใบ" costs)
         const P = s.P[seat]; let k0 = 0; const gone = []; for (const i of o.iids || []) { const k = P.hand.findIndex((x) => x.i === i); if (k >= 0) { const x = P.hand.splice(k, 1)[0]; s.P[x.o != null ? x.o : seat].hell.push(x); k0++; gone.push(x); E.log(s, seat, `ทิ้ง ${E.name(s, x)} ลงนรก`); E.anyHell(s, [x]); } }
         if (gone.length) E.discarded(s, gone);
-        if (k0 && s.cur != null && s.curSeat === seat) for (const y of P.hell) { const sc = scriptOf(s, y); if (sc && sc.onDiscard && y.used !== s.turn) s.trig.push({ id: tid(s), seat, i: y.i, c: y.c, when: "onDiscard", optional: true }); } return;
+        if (k0 && s.cur != null && s.curSeat === seat) { const seen = new Set(); for (const y of P.hell) { const sc = scriptOf(s, y); const n = E.def(s, y).n; if (sc && sc.onDiscard && y.used !== s.turn && !gone.includes(y) && !seen.has(n)) { seen.add(n); s.trig.push({ id: tid(s), seat, i: y.i, c: y.c, when: "onDiscard", optional: true }); } } } return; // FAQ ลาพิเน่: not the card just discarded, one per discard
       }
       case "discardRandom": { const P = s.P[seat]; for (let k = 0; k < n && P.hand.length; k++) { const j = Math.floor(E.rnd(s) * P.hand.length); const x = P.hand.splice(j, 1)[0]; s.P[x.o != null ? x.o : seat].hell.push(x); E.log(s, seat, `ทิ้งแบบสุ่ม ${E.name(s, x)}`); E.discarded(s, [x]); E.anyHell(s, [x]); } return; }
       case "control": { const L = E.locate(s, o.i); if (!L || L.z !== "av") throw new RuleError("ควบคุมได้เฉพาะ Avatar บนสนาม"); if (E.immuneNow(s, L.x)) { E.log(s, by, `${E.name(s, L.x)} ไม่รับผลความสามารถนี้`); return; }
