@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261112084544";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261112084544";
-import { SCRIPTS } from "./scripts.js?v=20261112084544";
-import { newId, clone } from "./util.js?v=20261112084544";
+import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261112085609";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261112085609";
+import { SCRIPTS } from "./scripts.js?v=20261112085609";
+import { newId, clone } from "./util.js?v=20261112085609";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -833,7 +833,7 @@ export const E = {
         const P = s.P[seat];
         if (o.up === false) { if (E.landSc(s, "noLifeDown")) { E.log(s, by, "LIFE คว่ำไม่ได้ (Land Magic บนสนาม)"); return; } if (E.critical(P) && !o.force) throw new RuleError("สถานะสาหัสคว่ำ LIFE ด้วยความสามารถไม่ได้");
           // "สุ่มคว่ำ": any of the face-up LIFE cards, by chance; otherwise the last one turned up
-          const ups = P.life.filter((y) => y.up); const x = o.rnd && ups.length > 1 ? ups[Math.floor(E.rnd(s) * ups.length)] : ups[ups.length - 1];
+          const ups = P.life.filter((y) => y.up); const x = (o.i != null && ups.find((y) => y.i === o.i)) || (o.rnd && ups.length > 1 ? ups[Math.floor(E.rnd(s) * ups.length)] : ups[ups.length - 1]); // o.i: the one the player chose
           if (x) { x.up = false; E.log(s, seat, `${o.rnd ? "สุ่มคว่ำ" : "คว่ำ"} LIFE ${E.name(s, x)}`); E.ev(s, { k: "heal", p: seat, i: x.i }); } }
         else { const x = P.life.find((y) => !y.up); if (x) { x.up = true; E.log(s, seat, `หงาย LIFE ${E.name(s, x)} (จากความสามารถ ไม่ทำงาน)`); E.ev(s, { k: "life", p: seat, i: x.i, by }); if (E.critical(P)) E.log(s, seat, `${P.name} เข้าสู่สถานะสาหัส`); E.lifeFlipped(s, seat); } }
         return;
