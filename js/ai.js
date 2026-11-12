@@ -1,11 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112121618";
-import { plain } from "./persona.js?v=20261112121618";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261112121618";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112121618";
-import { modPowerFor } from "./auras.js?v=20261112121618";
-import { Data } from "./fb.js?v=20261112121618";
-import { lsGet, clone } from "./util.js?v=20261112121618";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112122148";
+import { plain } from "./persona.js?v=20261112122148";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261112122148";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112122148";
+import { modPowerFor } from "./auras.js?v=20261112122148";
+import { Data } from "./fb.js?v=20261112122148";
+import { lsGet, clone } from "./util.js?v=20261112122148";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -292,10 +292,16 @@ export const H = {
   // answer a window (s.rw) or an attack (s.pend) with a React if it is clearly worth it
   react(s, q) {
     const on = s.rw && s.rw.by !== q ? s.rw : s.pend && s.pend.by !== q ? { kind: "attack", by: s.pend.by, att: s.pend.att, tk: s.pend.tk, ti: s.pend.ti } : null; if (!on) return null;
+    // what the Magic or React being answered would do for its player: a counter (ชายจากอนาคต, อย่าให้มีครั้งที่ 2) is kept
+    // for one that matters (removal of ours, a Land, a weapon, a big swing) instead of going on the first card seen
+    let threat = null;
+    if (on.kind === "cast" || on.kind === "react") { const t = s.trig.find((y) => y.i === on.i); const d = t ? s.cards[t.c] || {} : {}; const r0 = t ? H.preview(s, t) : null;
+      threat = r0 ? H.opsScore(s, on.by, r0) : 2; if (d.st === "L" || d.st === "D") threat = Math.max(threat, 4); }
     let best = null;
     for (const x of E.reactsFor(s, q, on)) {
       const r = H.preview(s, { i: x.i, c: x.c, when: E.def(s, x).t === "M" ? "cast" : "handReact", seat: q, on }); let v = H.opsScore(s, q, r);
       if (r && r.ops.some((o) => o.op === "cancelAttack")) v += 3;
+      if (threat != null && r && r.ops.some((o) => o.op === "negate" || o.op === "cancelTrig")) v += threat >= 4 ? 1 : -5;
       { const sc = scriptOf(s, x); if (sc && sc.react && sc.react.botV) v += sc.react.botV(E, s, q, on, x) || 0; }
       if (on.kind === "attack") { const A = E.locate(s, on.att); const T = on.tk === "av" ? E.locate(s, on.ti) : null; const ap = A ? E.power(s, A.x) + (s.pend.bonus || 0) : 0;
         const danger = on.tk === "life" ? (E.critical(s.P[q]) ? 30 : 4) : T && ap >= E.power(s, T.x) ? 3 + E.power(s, T.x) * 0.5 : 0; if (!danger) v -= 3; else v += danger * 0.3; }
