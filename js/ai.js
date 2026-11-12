@@ -1,11 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112153412";
-import { plain } from "./persona.js?v=20261112153412";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261112153412";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112153412";
-import { modPowerFor } from "./auras.js?v=20261112153412";
-import { Data } from "./fb.js?v=20261112153412";
-import { lsGet, clone } from "./util.js?v=20261112153412";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112162808";
+import { plain } from "./persona.js?v=20261112162808";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261112162808";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112162808";
+import { modPowerFor } from "./auras.js?v=20261112162808";
+import { Data } from "./fb.js?v=20261112162808";
+import { lsGet, clone } from "./util.js?v=20261112162808";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -234,8 +234,12 @@ export const H = {
       const tr = moves.find((m) => m.a.type === "activate" && /แปลงร่าง|โจมตีได้/.test(m.d)); if (tr) return tr; // transform / unlock attacks before attacking
       // their awake โล่มนุษย์ can take any attack (a LIFE attack too): the strongest one they could put in the way
       const shieldP = (x, ti) => (x.nsh === s.turn ? -1 : Math.max(-1, ...O.av.filter((y) => y.a && y.i !== ti && E.kw(s, y, "โล่มนุษย์")).map((y) => E.power(s, y))));
+      // while we are สาหัส every LIFE hit ends the game: an awake โล่มนุษย์ of ours that their coming attacks need stays home
+      // (it is asleep once it attacks), unless this attack wins the game right now
+      const guards = P.av.filter((y) => y.a && E.kw(s, y, "โล่มนุษย์")); const threats = E.critical(P) ? O.av.length : 0;
       const atk = moves.filter((m) => m.a.type === "attack").map((m) => {
         const x = E.locate(s, m.a.i).x; const ap = E.power(s, x);
+        if (threats && guards.includes(x) && guards.length <= threats && !(m.a.tk === "life" && E.critical(O) && shieldP(x, null) < 0)) return { m, score: -5 };
         if (m.a.tk === "life") { const sp = shieldP(x, null); // they block when the shield holds (or when the hit would end the game)
           if (sp >= 0 && (sp >= ap - 1 || E.critical(O))) return { m, score: ap > sp ? 20 + sp : ap === sp ? 4 : -8 };
           return { m, score: 50 + (E.critical(O) ? 100 : 0) }; }

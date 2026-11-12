@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261112153412";
-import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261112153412";
-import { E, scriptOf } from "./engine.js?v=20261112153412";
+import { readAura } from "./auras.js?v=20261112162808";
+import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261112162808";
+import { E, scriptOf } from "./engine.js?v=20261112162808";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -82,8 +82,8 @@ function filterOf(t) {
 const seatOf = (t, p) => (/ผู้เล่นทุกคน|ทั้งสองฝ่าย|ทุกฝ่าย|ทั้ง\s*2\s*ฝ่าย/.test(t) ? [p, 1 - p] : /ฝ่ายตรงข้าม|อีกฝ่าย/.test(t) ? [1 - p] : [p]);
 const num = (t, re, d = 1) => { const m = t.match(re); return m ? +m[1] : d; };
 const val = (s, x) => E.power(s, x) + (E.def(s, x).c || 0) * 0.5 + (E.def(s, x).o1 ? 6 : 0);
-const fits = (s, x, f) => { let d = E.def(s, x); const so = E.syNow ? E.syNow(s, x) : E.syOver(s, x); if (so) { d = { ...d, sy: so }; delete d.al; } return fitsD(d, f, () => E.power(s, x), hasFieldAlias(d) && E.onField(s, x), () => E.costNow(s, x)); };
-function fitsD(d, f, pw = () => d.pw || 0, on = false, cst = () => d.c || 0) {
+const fits = (s, x, f) => { let d = E.def(s, x); const so = E.syNow ? E.syNow(s, x) : E.syOver(s, x); if (so) { d = { ...d, sy: so }; delete d.al; } return fitsD(d, f, () => E.power(s, x), hasFieldAlias(d) && E.onField(s, x), () => E.costNow(s, x), () => E.gemNow(s, x)); };
+function fitsD(d, f, pw = () => d.pw || 0, on = false, cst = () => d.c || 0, gm = () => d.g || 0) {
   const nm = nameText(d, on); const syt = syText(d, on); const anySy = allSy(d, on);
   if (f.symbol && !anySy && !syt.includes(f.symbol)) return false;
   if (f.symbols && !anySy && !f.symbols.some((y) => syt.includes(y))) return false;
@@ -95,9 +95,9 @@ function fitsD(d, f, pw = () => d.pw || 0, on = false, cst = () => d.c || 0) {
   if (f.st && d.st !== f.st) return false;
   if (f.maxCost != null && cst() > f.maxCost) return false;
   if (f.minCost != null && cst() < f.minCost) return false;
-  if (f.minGem != null && (d.g || 0) < f.minGem) return false;
+  if (f.minGem != null && gm() < f.minGem) return false;
   if (f.cost != null && cst() !== f.cost) return false;
-  if (f.gem != null && (d.g || 0) !== f.gem) return false;
+  if (f.gem != null && gm() !== f.gem) return false;
   if (f.power != null && pw() !== f.power) return false;
   if (f.maxPower != null && pw() > f.maxPower) return false;
   if (f.color && !colorIs(d, f.color, on)) return false;
@@ -107,7 +107,7 @@ function fitsD(d, f, pw = () => d.pw || 0, on = false, cst = () => d.c || 0) {
 }
 
 // the first condition of a filter that a card misses, in words for the player (shown on cards that cannot be picked)
-function whyD(d, f, pw = () => d.pw || 0, on = false, cst = () => d.c || 0) {
+function whyD(d, f, pw = () => d.pw || 0, on = false, cst = () => d.c || 0, gm = () => d.g || 0) {
   const nm = nameText(d, on); const syt = syText(d, on); const anySy = allSy(d, on);
   if (f.type && d.t !== f.type && !(f.type === "A" && d.t === "T")) return "ไม่ใช่ " + (TYPE_TH[f.type] || f.type);
   if (f.symbol && !anySy && !syt.includes(f.symbol)) return "ไม่ใช่ {" + f.symbol + "}";
@@ -119,16 +119,16 @@ function whyD(d, f, pw = () => d.pw || 0, on = false, cst = () => d.c || 0) {
   if (f.st && d.st !== f.st) return "ชนิด Magic ไม่ตรง";
   if (f.maxCost != null && cst() > f.maxCost) return "Cost เกิน " + f.maxCost;
   if (f.minCost != null && cst() < f.minCost) return "Cost ต่ำกว่า " + f.minCost;
-  if (f.minGem != null && (d.g || 0) < f.minGem) return "GEM ไม่ถึง " + f.minGem;
+  if (f.minGem != null && gm() < f.minGem) return "GEM ไม่ถึง " + f.minGem;
   if (f.cost != null && cst() !== f.cost) return "Cost ไม่ใช่ " + f.cost;
-  if (f.gem != null && (d.g || 0) !== f.gem) return "GEM ไม่ใช่ " + f.gem;
+  if (f.gem != null && gm() !== f.gem) return "GEM ไม่ใช่ " + f.gem;
   if (f.power != null && pw() !== f.power) return "POWER ไม่ใช่ " + f.power;
   if (f.maxPower != null && pw() > f.maxPower) return "POWER เกิน " + f.maxPower;
   if (f.color && !colorIs(d, f.color, on)) return "ไม่ใช่สี" + f.color;
   if (f.text && !String(d.x || "").includes(f.text)) return "ข้อความไม่ตรง";
   return null;
 }
-const whyX = (s, x, f) => { let d = E.def(s, x); const so = E.syOver(s, x); if (so) { d = { ...d, sy: so }; delete d.al; } return whyD(d, f, () => E.power(s, x), hasFieldAlias(d) && E.onField(s, x), () => E.costNow(s, x)); };
+const whyX = (s, x, f) => { let d = E.def(s, x); const so = E.syOver(s, x); if (so) { d = { ...d, sy: so }; delete d.al; } return whyD(d, f, () => E.power(s, x), hasFieldAlias(d) && E.onField(s, x), () => E.costNow(s, x), () => E.gemNow(s, x)); };
 // reasons for every revealed card that is not a candidate
 const whyMap = (ids, cands, fn) => { const ok = new Set(cands.map((x) => x.i)), out = {}; for (const i of ids) if (!ok.has(i)) out[i] = fn(i) || "ไม่ตรงเงื่อนไข"; return out; };
 
@@ -193,7 +193,7 @@ function readScout(s, body, p, self, ctx, trig) {
     const F = scoutFilter(m[1], meDef); const to = dest(m[2]); const cut = m[3].split(SC_TAIL); if (!F || !to || !scoutWhere(cut[0])) return null; const where = whereOf(cut[0]);
     const x = top[0]; ops.push({ op: "scoutShow", seat, ids });
     if (!x) say.push("Deck หมด ไม่มีการ์ดให้สอดแนม");
-    else if (F.list.some((f) => fitsD(E.def(s, x), { ...f, strict: true })) && !(to === "av" && seat === p && (E.avatars(s.P[p]) >= 4 || s.P[p].av.length >= 6))) { ops.push(seat === p || to === "hell" || to === "dark" ? moveOp(x, to) : { op: "move", i: x.i, to: "hell" }); say.push(`สอดแนมเจอ ${E.name(s, x)} · ${TO_TH[to]}`); }
+    else if (F.list.some((f) => fitsD(E.def(s, x), { ...f, strict: true }, undefined, false, undefined, () => E.gemNow(s, x))) && !(to === "av" && seat === p && (E.avatars(s.P[p]) >= 4 || s.P[p].av.length >= 6))) { ops.push(seat === p || to === "hell" || to === "dark" ? moveOp(x, to) : { op: "move", i: x.i, to: "hell" }); say.push(`สอดแนมเจอ ${E.name(s, x)} · ${TO_TH[to]}`); }
     else { ops.push({ op: "scoutRest", seat, ids, rest: where }); say.push(`สอดแนมเจอ ${E.name(s, x)} ไม่ตรงเงื่อนไข`); }
     tail(cut.slice(1).join(" ")); return { ops, say };
   }
@@ -212,14 +212,14 @@ function readScout(s, body, p, self, ctx, trig) {
   if (to === "hand" && !/สามารถ/.test(pick) && E.deckHandBlocked(s, p, s.cards[trig.c])) missed(ctx); // FAQ แมวนิค: no taking cards from the Deck into the hand
   const F = scoutFilter(pick, meDef); if (!F) return null;
   const all = /กี่ใบก็ได้|ทั้งหมด|ทุกใบ/.test(pick); const hm = howMany(pick.replace(/จาก(?:ใน)?(?:ที่)?\s*สอดแนม/g, " ")); let want = all ? 99 : hm.n; const optional = all || hm.upTo || /สามารถ/.test(pick);
-  let cands = top.filter((x) => F.list.some((f) => fitsD(E.def(s, x), { ...f, strict: true })) && !(F.list[0].other && self && x.i === self.i)).sort((a, b) => val(s, b) - val(s, a));
+  let cands = top.filter((x) => F.list.some((f) => fitsD(E.def(s, x), { ...f, strict: true }, undefined, false, undefined, () => E.gemNow(s, x))) && !(F.list[0].other && self && x.i === self.i)).sort((a, b) => val(s, b) - val(s, a));
   if (F.distinct) { const seen = new Set(); cands = cands.filter((x) => { const nm = E.def(s, x).n; if (seen.has(nm)) return false; seen.add(nm); return true; }); }
   if (to === "av") { const P = s.P[p]; const free = Math.max(0, Math.min(4 - E.avatars(P), 6 - P.av.length)); cands = cands.filter((x) => E.def(s, x).t === "A"); want = Math.min(want, free); }
   if (to === "cs") { cands = cands.filter((x) => E.def(s, x).t === "C" && !s.P[p].cs.some((y) => E.name(s, y) === E.def(s, x).n)); want = Math.min(want, 3 - s.P[p].cs.length); }
   want = Math.min(want, cands.length);
   const why = whyMap(ids, cands, (i) => { const x = top.find((y) => y.i === i); if (!x) return null; const d = E.def(s, x);
     if (to === "av" && d.t !== "A") return "ไม่ใช่ Avatar"; if (to === "cs" && d.t !== "C") return "ไม่ใช่ Construct";
-    if (F.list[0].other && self && x.i === self.i) return "ใบเดียวกับที่ใช้"; return F.list.length === 1 ? whyD(d, { ...F.list[0], strict: true }) : null; });
+    if (F.list[0].other && self && x.i === self.i) return "ใบเดียวกับที่ใช้"; return F.list.length === 1 ? whyD(d, { ...F.list[0], strict: true }, undefined, false, undefined, () => E.gemNow(s, x)) : null; });
   const got = want > 0 ? ctx.choose(cands, want, `สอดแนม ${n} ใบ: เลือกการ์ดที่จะ${TO_TH[to]}${want > 1 ? ` (${optional ? "สูงสุด " : ""}${want} ใบ)` : ""}`, { optional, reveal: ids, why }) : [];
   for (const x of got) ops.push(moveOp(x, to));
   ops.push({ op: "scoutRest", seat, ids, rest: where });

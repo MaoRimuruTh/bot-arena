@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261112153412";
-import { h } from "./util.js?v=20261112153412";
-import { Data } from "./fb.js?v=20261112153412";
+import { CARD_SOURCE } from "./config.js?v=20261112162808";
+import { h } from "./util.js?v=20261112162808";
+import { Data } from "./fb.js?v=20261112162808";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -247,6 +247,8 @@ export function validateDeck(d) {
   out.push({ ok: total === 50, msg: `Main Deck ${total}/50 ใบ` });
   const byName = {};
   for (const e of ents) { byName[e.c.n] = byName[e.c.n] || { n: 0, lim: limitOf(e.c) }; byName[e.c.n].n += e.n; byName[e.c.n].lim = Math.max(byName[e.c.n].lim, limitOf(e.c)); }
+  // FAQ วิหารเจ้าสมุทร: a card whose "#" rule makes it count as another card's name shares that card's copy limit ("ใส่รวมกันได้เพียง 4 ใบ")
+  for (const e of ents) for (const a of (e.c.al && e.c.al.an) || []) { const k = Object.keys(byName).find((n) => n !== e.c.n && nn(n) === nn(a)); if (k) { byName[k].n += e.n; byName[k].lim = Math.min(byName[k].lim, limitOf(e.c)); } }
   const over = Object.entries(byName).filter(([, v]) => v.n > v.lim);
   out.push({ ok: !over.length, msg: over.length ? "เกินจำนวนต่อชื่อ: " + over.map(([k, v]) => `${k} ${v.n}/${v.lim}`).join(", ") : "ชื่อเดียวกันไม่เกินจำนวนที่กำหนด" });
   const o1 = ents.filter((e) => e.c.o1).reduce((a, e) => a + e.n, 0);
