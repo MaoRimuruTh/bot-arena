@@ -1,7 +1,7 @@
 // Free reader for continuous POWER effects ("ต่อเนื่อง ... POWER +N").
 // Conservative like effects.js: anything it can't express exactly is ignored (returns no aura).
 // readAura(def) -> null or { desc, run(E, s, src, L) -> [{ seat, test(x), n }] }
-import { nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261112152547";
+import { nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261112153039";
 const cache = new Map();
 
 const ON_FIELD = { A: "av", T: "av", C: "cs" };

@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112152547";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261112152547";
-import { SCRIPTS } from "./scripts.js?v=20261112152547";
-import { newId, clone } from "./util.js?v=20261112152547";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112153039";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261112153039";
+import { SCRIPTS } from "./scripts.js?v=20261112153039";
+import { newId, clone } from "./util.js?v=20261112153039";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -691,7 +691,6 @@ export const E = {
         {
           for (const m of [...s.P[0].mg, ...s.P[1].mg]) if (m.on === x.i && !m.mute && (scriptOf(s, m) || {}).hostAttack) s.trig.push({ id: tid(s), seat: p, i: m.i, c: m.c, when: "hostAttack" });
           if (fires(s, x, "attack", /เมื่อ\s*(?:Avatar\s*|การ์ด)?(?:ใบนี้|ตัวนี้)?\s*(?:ประกาศ)?โจมตี|เมื่อโจมตี/)) E.addTrig(s, p, x, "attack"); }
-        if (act.tk === "av") { const T = E.locate(s, act.ti).x; if (fires(s, T, "attacked", ATTACKED_RE)) E.addTrig(s, 1 - p, T, "attacked"); }
         for (const l0 of E.lands(s)) { const ls = l0.mute ? null : scriptOf(s, l0); if (ls && ls.landAtkOps) { const ops = ls.landAtkOps(E, s, x, p) || []; if (ops.length) E.ops(s, ops, p); } }
         for (const l0 of E.lands(s)) { const ls = l0.mute ? null : scriptOf(s, l0); const n = ls && ls.landAttack ? ls.landAttack(E, s, x) || 0 : 0; if (n) { x.fm = (x.fm || 0) + n; E.log(s, p, `${E.name(s, x)} POWER +${n} จนจบการต่อสู้ (${E.name(s, l0)})`); } }
         if (x.feed === s.turn) { E.log(s, 1 - p, `${E.name(s, x)} โจมตี: ${s.P[1 - p].name} จั่วการ์ด 1 ใบ`); E.draw(s, 1 - p, 1); }
@@ -773,6 +772,9 @@ export const E = {
   },
   // the fight begins: "เมื่อ Avatar ใบนี้ต่อสู้" abilities of both Avatars resolve first, then POWER is compared
   startFight(s) { const pd = s.pend; if (!pd) return;
+    // Rule Book (ช่วงโจมตี ขั้นที่ 3): "when attacked / made the target" abilities work once the target is confirmed — after the
+    // defender's โล่มนุษย์, so a shield that steps in is the one they fire for
+    if (!pd.at) { pd.at = true; const T0 = pd.tk === "av" && pd.ti != null ? E.locate(s, pd.ti) : null; if (T0 && T0.z === "av" && fires(s, T0.x, "attacked", ATTACKED_RE)) { E.addTrig(s, T0.p, T0.x, "attacked"); pd.go = true; return; } }
     if (!pd.ft && pd.tk !== "life") { pd.ft = true; let n = 0; const A = E.locate(s, pd.att); const T = pd.ti != null ? E.locate(s, pd.ti) : null;
       if (A && A.z === "av" && T && (T.z === "av" || T.z === "cs")) { if (fires(s, A.x, "fight")) { E.addTrig(s, A.p, A.x, "fight"); n++; } if (T.z === "av" && fires(s, T.x, "fight")) { E.addTrig(s, T.p, T.x, "fight"); n++; }
         if (T.z === "av") for (const [H, F] of [[A, T], [T, A]]) for (const m of [...s.P[0].mg, ...s.P[1].mg]) { if (m.on !== H.x.i || m.mute) continue; const sc = scriptOf(s, m); if (sc && sc.hostFight && (!sc.hostFightOk || sc.hostFightOk(E, s, m, H.x, F.x))) { s.trig.push({ id: tid(s), seat: H.p, i: m.i, c: m.c, when: "hostFight", foe: F.x.i }); n++; } } }
