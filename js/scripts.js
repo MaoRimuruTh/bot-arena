@@ -152,12 +152,19 @@ Object.assign(SCRIPTS, {
       E.log(s, L.p, ok ? `${E.name(s, x)} ไม่ถูกทำลาย (ธรณีสูบได้ Magic ทั้ง 2 ใบ)` : `${E.name(s, x)} ธรณีสูบแล้วไม่ได้ Magic ครบ 2 ใบ`); return ok; },
   },
   // ขวัญตา เรื่องราว ผู้กำหนดชีวิต
-  "BT12-049": { mullKeep: storyKeep,
+  "BT12-049": { mullKeep: storyKeep, storyOnly: true,
     aura: (E, s, src, L) => { if (!src.story || L.z !== "av") return []; const n = Math.floor(E.magicInHell(s, L.p) / 2); return n ? [0, 1].map((q) => ({ seat: q, test: (x) => !String(E.def(s, x).x || "").trim(), n: -n })) : []; },
-    activate: { label: "ทำความเสียหาย LIFE เรา 1: ให้ Avatar ฝ่ายตรงข้ามเสียความสามารถ", battle: true,
-      can: (E, s, x, L) => x.story && L.z === "av" && s.phase === "battle" && s.P[1 - L.p].av.length > 0 && s.P[L.p].life.some((y) => !y.up),
-      run: (c) => { const t = c.choose(c.s.P[1 - c.seat].av.filter((x) => !c.E.noAim(c.s, x)).sort(strongFirst(c.E, c.s)), 1, "เลือก Avatar ฝ่ายตรงข้ามที่จะเสียความสามารถ")[0];
-        return t ? { explain: `หงาย LIFE ตัวเอง 1 ใบ · ${c.E.name(c.s, t)} เสียความสามารถจนจบเทิร์นฝ่ายตรงข้าม`, ops: [{ op: "lifeFlip", seat: c.seat, up: true }, { op: "mute", i: t.i, until: "oppturn" }] } : { explain: "ไม่มีเป้าหมาย", ops: [] }; } },
+    // "สั่งใช้ เมื่อ Avatar ใบนี้ ต่อสู้": only while it fights (attacking or attacked), paid by 1 damage to our own LIFE (its LIFE ability works for us)
+    fight: (c) => { const { E, s, seat: p, self: x } = c; if (!x || !x.story) return { explain: "", ops: [] };
+      const foes = s.P[1 - p].av.filter((y) => !E.noAim(s, y)); if (!foes.length || E.critical(s.P[p]) || !s.P[p].life.some((y) => !y.up)) return { explain: "", ops: [] };
+      const F = foeOf(E, s, x); const hasText = (y) => !!String(E.def(s, y).x || "").trim() && !y.mute;
+      // the bot pays only when it turns this fight: the foe's own boosts go away, or its waiting fight ability is stopped
+      const myP = E.power(s, x); let fp = 0, fpOff = 0; if (F) { fp = E.power(s, F); const m0 = F.mute; F.mute = true; fpOff = E.power(s, F); F.mute = m0; }
+      const turns = F && hasText(F) && (s.trig.some((t) => t.i === F.i && t.when === "fight") || (fp >= myP && fpOff < myP));
+      const def = turns && foes.includes(F) && s.P[p].life.filter((y) => !y.up).length >= 2 ? 0 : 1;
+      if (c.mode(["ทำความเสียหาย LIFE เรา 1 ครั้ง: Avatar ฝ่ายตรงข้าม 1 ใบเสียความสามารถ", "ไม่ใช้"], "ขวัญตา เรื่องราว ผู้กำหนดชีวิต", def) !== 0) return { explain: "ไม่ใช้ความสามารถ", ops: [] };
+      const t = c.choose([...foes].sort((a, b) => (b === F ? 1 : 0) - (a === F ? 1 : 0) || (hasText(b) ? 1 : 0) - (hasText(a) ? 1 : 0) || E.power(s, b) - E.power(s, a)), 1, "เลือก Avatar ฝ่ายตรงข้ามที่จะเสียความสามารถ", { exact: true })[0];
+      return t ? { explain: `ทำความเสียหาย LIFE ตัวเอง 1 ครั้ง · ${E.name(s, t)} เสียความสามารถจนจบเทิร์นฝ่ายตรงข้าม`, ops: [{ op: "lifeDamage", seat: p }, { op: "mute", i: t.i, until: "oppturn" }] } : { explain: "", ops: [] }; },
   },
   // Skill : Full Drive
   "BT09-056": {
