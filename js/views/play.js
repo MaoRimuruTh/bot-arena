@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261112130743";
-import { fxText, kwGloss } from "../fxtext.js?v=20261112130743";
-import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf } from "../cards.js?v=20261112130743";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261112130743";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261112130743";
-import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261112130743";
-import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261112130743";
-import { themeCounts } from "../boxdecks.js?v=20261112130743";
-import { ladder, ladderReset } from "../ladder.js?v=20261112130743";
-import { notify } from "../notify.js?v=20261112130743";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261112130743";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261112130743";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261112130743";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261112130743";
-import { Music } from "../music.js?v=20261112130743";
-import { Sfx } from "../sfx.js?v=20261112130743";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261112130743";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261112130743";
-import { readAura, traits } from "../auras.js?v=20261112130743";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261112130743";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261112132029";
+import { fxText, kwGloss } from "../fxtext.js?v=20261112132029";
+import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf } from "../cards.js?v=20261112132029";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261112132029";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261112132029";
+import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261112132029";
+import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261112132029";
+import { themeCounts } from "../boxdecks.js?v=20261112132029";
+import { ladder, ladderReset } from "../ladder.js?v=20261112132029";
+import { notify } from "../notify.js?v=20261112132029";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261112132029";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261112132029";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261112132029";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261112132029";
+import { Music } from "../music.js?v=20261112132029";
+import { Sfx } from "../sfx.js?v=20261112132029";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261112132029";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261112132029";
+import { readAura, traits } from "../auras.js?v=20261112132029";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261112132029";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -25,7 +25,7 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261112130743";
+import { allDecks, deckById } from "./decks.js?v=20261112132029";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -473,10 +473,15 @@ function lethalMove(s, p) {
   G.noLethal = k; return null;
 }
 // player's own effects: run by themselves; stop only to ask for a choice or when unreadable
+const WHEN_TH = { summon: "จุติ", death: "คำสั่งเสีย", attack: "เมื่อโจมตี", attacked: "เมื่อถูกโจมตี", win: "เมื่อชนะการต่อสู้", mainStart: "ต้น Main Phase", end: "End Phase", activate: "สั่งใช้", cast: "ใช้การ์ด" };
 function humanTrig(s, p) {
   const t = s.trig[0];
   if (G.tk !== t.id) { G.tk = t.id; G.tpicks = []; G.ask = null; G.askSel = []; G.tbusy = false; }
   if (G.tbusy) return;
+  // Rule Book: when abilities of two or more of our cards come up together, we choose which goes first
+  { const run = E.ownRun(s, p); const key = run.map((x) => x.id).sort().join(","); const same = run.every((x) => x.c === run[0].c && x.when === run[0].when); // copies of one ability: the order changes nothing
+    if (run.length > 1 && !same && G.tOrd !== key && !G.tpicks.length) { if (!G.ask || !G.ask.order) { G.ask = { idx: -1, order: run.map((x) => x.id), key, prompt: "ความสามารถของการ์ดเราเกิดขึ้นพร้อมกัน เลือกอันที่จะให้ทำงานก่อน",
+        modes: run.map((x) => `${(s.cards[x.c] || {}).n || "การ์ด"} · ${WHEN_TH[x.when] || "ความสามารถ"}`) }; draw(); } return; } }
   let r = null; try { r = resolveEffect(s, t, G.tpicks, true); } catch (e) { console.warn(e); }
   if (r && r.ask) { if (!G.ask || G.ask.idx !== r.ask.idx) { G.ask = r.ask; G.askSel = []; draw(); } return; }
   if (!(r && r.ops)) { try { r = resolveEffect(s, t); } catch (e) { console.warn(e); r = null; } } // the card's choices made the automatic way
@@ -527,7 +532,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261112130743").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261112132029").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", bot: true });
@@ -1271,6 +1276,7 @@ function promptBox0(s, p) {
   }
   if (s.trig.length && G.ask && G.tk === s.trig[0].id) {
     const t = s.trig[0]; const d = s.cards[t.c] || {}; const a = G.ask; const sel = G.askSel || [];
+    if (a.order) return box(a.prompt, h("div", { class: "opts" }, a.modes.map((t, k) => h("button", { class: "btn sm", onclick: () => { G.tOrd = a.key; G.ask = null; if (k > 0) doAct({ type: "trigFirst", id: a.order[k] }, p); else humanTrig(G.s, p); } }, t))));
     if (a.modes) return box(`${d.n}: ${a.prompt}`, h("div", { class: "opts" }, a.modes.map((t, k) => h("button", { class: "btn sm", onclick: () => { G.tpicks[a.idx] = [k]; G.ask = null; humanTrig(G.s, p); } }, t))));
     const need = Math.min(a.n, a.options.length); const show = Array.isArray(a.reveal) ? a.reveal : a.options;
     const okN = a.optional ? sel.length <= need : sel.length === need;

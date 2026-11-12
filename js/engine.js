@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112130743";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261112130743";
-import { SCRIPTS } from "./scripts.js?v=20261112130743";
-import { newId, clone } from "./util.js?v=20261112130743";
+import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112132029";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261112132029";
+import { SCRIPTS } from "./scripts.js?v=20261112132029";
+import { newId, clone } from "./util.js?v=20261112132029";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -471,6 +471,9 @@ export const E = {
     }
     return best ? best.pay : null;
   },
+  // the abilities of player p's cards waiting at the front of the queue that came up together and may go in any order
+  // (not the rest of an effect already under way, not LIFE cards: those go from the top card down, Rule Book)
+  ownRun(s, p) { const out = []; const b = s.trig.length ? s.trig[0].b : null; for (const t of s.trig) { if (t.seat !== p || t.b !== b || b == null || t.held || t.part || t.tail || t.manualRest || t.now || t.via || ["trim", "life", "handReact", "answer"].includes(t.when)) break; out.push(t); } return out; },
   canAct(s, p) { return s.phase !== "over" && !s.trig.length && !s.pend && !s.rw && s.active === p && s.phase !== "mull"; },
   // which React cards in p's hand fit this moment (on = the window: summon / cast / attack)
   reactsFor(s, p, on) {
@@ -489,7 +492,8 @@ export const E = {
   // after a summon or a Magic, the other player may answer with a React before effects resolve
   openWindow(s, p, kind, i) { const q = 1 - p; const on = { kind, by: p, i }; if (E.reactsFor(s, q, on).length) s.rw = on; },
 
-  apply(s, act, p) { E.sync(s); try { return E.act0(s, act, p); } finally { E.runHeld(s); E.sync(s); E.odPrune(s); E.deckOut(s); } },
+  // s.na counts the actions; every ability that comes up during one is marked with it (t.b), so "at the same time" can be told
+  apply(s, act, p) { E.sync(s); s.na = (s.na || 0) + 1; try { return E.act0(s, act, p); } finally { E.runHeld(s); E.sync(s); E.odPrune(s); E.deckOut(s); for (const t of s.trig) if (t.b == null) t.b = s.na; } },
   // Rule Book (Win Condition 2): a player whose Deck reaches 0 cards loses at once, not only when a draw finds it empty;
   // both Decks empty at the same time is a draw
   deckOut(s) { if (s.phase === "over" || s.phase === "mull") return; const out = [0, 1].filter((p) => !s.P[p].deck.length); if (!out.length) return;
@@ -695,6 +699,10 @@ export const E = {
         for (const i of act.iids) { const k = P.hand.findIndex((x) => x.i === i); need(k >= 0, "การ์ดไม่อยู่บนมือ"); const x = P.hand.splice(k, 1)[0]; P.hell.push(x); E.anyHell(s, [x]); }
         E.log(s, p, `ทิ้งการ์ด ${act.iids.length} ใบลงนรก`); E.nextTurn(s); return;
       }
+      case "trigFirst": { // Rule Book: abilities of our own cards that come up together — we choose which one goes first
+        need(!s.rw, "รอฝ่ายตรงข้ามตอบโต้ก่อน"); const run = E.ownRun(s, p); const t = run.find((x) => x.id === act.id); need(t && run.length > 1, "เลือกลำดับความสามารถนี้ไม่ได้");
+        s.trig.splice(s.trig.indexOf(t), 1); s.trig.unshift(t); E.log(s, p, `${P.name} ให้ความสามารถของ ${(s.cards[t.c] || {}).n || "การ์ด"} ทำงานก่อน`); return;
+      }
       case "trig": {
         const k = s.trig.findIndex((t) => t.id === act.id); need(k >= 0, "เอฟเฟกต์นี้จบไปแล้ว");
         const t = s.trig[k]; need(t.seat === p, "ไม่ใช่เอฟเฟกต์ของคุณ"); need(!(t.held && s.rw), "รอฝ่ายตรงข้ามตอบโต้ก่อน");
@@ -770,7 +778,8 @@ export const E = {
         const ah = E.kw(s, att, "ลูกฮึด"), dh = E.kw(s, T.x, "ลูกฮึด");
         if (ah && !dh) E.destroy(s, T.x.i, "เสมอ แต่อีกฝ่ายมีลูกฮึด");
         else if (dh && !ah) E.destroy(s, att.i, "เสมอ แต่อีกฝ่ายมีลูกฮึด");
-        else { E.destroy(s, att.i, `พลังเท่ากัน ${ap}`); E.destroy(s, T.x.i, `พลังเท่ากัน ${tp}`); }
+        // Rule Book (หลังจบการต่อสู้): both destroyed together, the turn player's คำสั่งเสีย comes up first and so resolves last
+        else { E.destroy(s, T.x.i, `พลังเท่ากัน ${tp}`); E.destroy(s, att.i, `พลังเท่ากัน ${ap}`); }
       }
       for (const { y, py } of side) { const Y = E.locate(s, y.i); if (!Y || Y.z !== "av") continue; const alive = () => E.locate(s, att.i)?.z === "av";
         if (ap > py) E.destroy(s, y.i, `แพ้การต่อสู้ ${py} ต่อ ${ap}`); else if (py > ap) { if (alive()) E.destroy(s, att.i, `แพ้การต่อสู้ ${ap} ต่อ ${py}`); }
