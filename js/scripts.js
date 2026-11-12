@@ -113,7 +113,9 @@ function traveller(bonus, drawOnExile) {
 }
 // a story form is only worth keeping in the opening hand next to a traveller that can bring it out
 const storyKeep = (E, s, x, hand) => hand.some((y) => nm(E, s, y, "นักท่องเรื่องราว"));
-const virusMill = (c, n) => { const top = [0, 1].flatMap((q) => c.s.P[q].deck.slice(0, n)); return { ops: [0, 1].map((q) => ({ op: "mill", seat: q, n, virus: true })), avatars: top.filter((x) => isAv(c.E, c.s, x)).length }; };
+// "ผู้เล่นทุกคน ธรณีสูบ N ใบ": FAQ — both players' milled cards count (milled viruses still count, then exile themselves to the dark zone);
+// an opposing Overdose that stops our Avatars' ธรณีสูบ leaves nothing milled, so nothing to count
+const virusMill = (c, n) => { if (c.E.odHas(c.s, 1 - c.seat, "mill")) return { ops: [], avatars: 0, blocked: true }; const top = [0, 1].flatMap((q) => c.s.P[q].deck.slice(0, n)); return { ops: [0, 1].map((q) => ({ op: "mill", seat: q, n, virus: true })), avatars: top.filter((x) => isAv(c.E, c.s, x)).length }; };
 const fromDark = {
   label: "อัญเชิญจากมิติมืด (ทิ้งการ์ดบนมือ 2 ใบ)",
   can: (E, s, x, L) => L.z === "dark" && s.P[L.p].dark.filter((y) => virus(E, s, y)).length >= 5 && s.P[L.p].hand.length >= 2 && E.avatars(s.P[L.p]) < 4,
@@ -199,12 +201,12 @@ Object.assign(SCRIPTS, {
   },
   // ไวรัส
   "BT11-020": { virusExile: true, activate: fromDark,
-    death: (c) => { const m = virusMill(c, 2); let ops = m.ops, say = "ทุกคนธรณีสูบ 2 ใบ";
+    death: (c) => { const m = virusMill(c, 2); let ops = m.ops, say = m.blocked ? "ธรณีสูบไม่ทำงาน (Overdose ฝ่ายตรงข้าม)" : "ทุกคนธรณีสูบ 2 ใบ";
       if (m.avatars >= 3) { const pick = c.choose(uniq(c.E, c.s, c.s.P[c.seat].dark.filter((x) => virus(c.E, c.s, x) && x.i !== c.t.i)), 2, "อัญเชิญไวรัสจากมิติมืด (สูงสุด 2 ใบ ชื่อต่างกัน)", { optional: true });
         ops = [...ops, ...pick.map((x) => ({ op: "move", i: x.i, to: "av" }))]; if (pick.length) say += ` · อัญเชิญ ${pick.map((x) => c.E.name(c.s, x)).join(", ")}`; }
       return { explain: say + (m.avatars >= 3 ? "" : ` (ได้ Avatar ${m.avatars} ใบ ไม่ถึง 3)`), ops }; } },
   "BT11-021": { virusExile: true, activate: fromDark,
-    summon: (c) => { const m = virusMill(c, 3); let ops = m.ops, say = "ทุกคนธรณีสูบ 3 ใบ";
+    summon: (c) => { const m = virusMill(c, 3); let ops = m.ops, say = m.blocked ? "ธรณีสูบไม่ทำงาน (Overdose ฝ่ายตรงข้าม)" : "ทุกคนธรณีสูบ 3 ใบ";
       if (m.avatars >= 4) { const o = c.choose(c.s.P[1 - c.seat].av.filter((x) => !c.E.noAim(c.s, x)).sort(strongFirst(c.E, c.s)), 1, "เลือก Avatar ฝ่ายตรงข้าม POWER -2", { optional: true })[0];
         const v = c.choose(c.s.P[c.seat].av.filter((x) => virus(c.E, c.s, x)).sort(strongFirst(c.E, c.s)), 1, "เลือกไวรัสฝ่ายเรา POWER +2", { optional: true })[0];
         if (o) ops.push({ op: "power", i: o.i, n: -2, temp: true }); if (v) ops.push({ op: "power", i: v.i, n: 2, temp: true });
@@ -213,7 +215,7 @@ Object.assign(SCRIPTS, {
       return { explain: say, ops }; } },
   "BT11-022": { virusExile: true, activate: fromDark,
     attack: (c) => { if (c.self && c.self.used === "a" + c.s.turn) return { explain: "ใช้ไปแล้วในเทิร์นนี้", ops: [] }; if (c.self) c.self.used = "a" + c.s.turn;
-      const m = virusMill(c, 3); const ops = [...m.ops]; let say = "ทุกคนธรณีสูบ 3 ใบ";
+      const m = virusMill(c, 3); const ops = [...m.ops]; let say = m.blocked ? "ธรณีสูบไม่ทำงาน (Overdose ฝ่ายตรงข้าม)" : "ทุกคนธรณีสูบ 3 ใบ";
       if (m.avatars >= 4) { const t = c.choose(c.s.P[1 - c.seat].av.filter((x) => !c.E.noAim(c.s, x)).sort(strongFirst(c.E, c.s)), 1, "เลือก Avatar ฝ่ายตรงข้ามให้เสียความสามารถและ POWER ตั้งต้น 0", { optional: true })[0];
         say += ` · ได้ Avatar ${m.avatars} ใบ (ถึง 4)`; if (t) { ops.push({ op: "mute", i: t.i, until: "turn", zero: true }); say += ` · ${c.E.name(c.s, t)} เสียความสามารถ และ POWER ตั้งต้นเป็น 0 จนจบเทิร์น`; } }
       else say += ` (ได้ Avatar ${m.avatars} ใบ ไม่ถึง 4)`;
