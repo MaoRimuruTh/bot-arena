@@ -2008,8 +2008,10 @@ Object.assign(SCRIPTS, {
   "BT07-038": { summon: (c) => { const { E, s, seat: p } = c; if (!s.P[p].av.some((y) => E.named(s, y, "ตั๊กแตน")) || facedUp(s, p) < 2) return { explain: "เงื่อนไขไม่ครบ", ops: [] }; const t = [...s.P[p].hell].reverse().find((y) => E.named(s, y, "ตั๊กแตน"));
     return t ? { explain: `${E.name(s, t)} จากนรกขึ้นมือ`, ops: [{ op: "move", i: t.i, to: "hand" }] } : { explain: "ไม่มีตั๊กแตนในนรก", ops: [] }; } },
   // ตั๊กแตนหญิง: จุติ flip our top LIFE: a "ตั๊กแตน" from the Deck to the hand
-  "BT07-039": { summon: (c) => { const { E, s, seat: p } = c; const down = s.P[p].life.filter((y) => !y.up).length; const t = s.P[p].deck.find((y) => E.named(s, y, "ตั๊กแตน")); if (!down || !t) return { explain: "จ่ายค่าความสามารถไม่ได้", ops: [] };
-    if (c.mode(["หงาย LIFE ใบบนสุด: ค้นหาตั๊กแตนขึ้นมือ", "ไม่ใช้"], "ตั๊กแตนหญิง", down >= 3 ? 0 : 1) !== 0) return { explain: "ไม่ใช้ความสามารถ", ops: [] }; return { explain: `หงาย LIFE ใบบนสุด · ${E.name(s, t)} ขึ้นมือ`, ops: [{ op: "lifeFlip" }, { op: "search", seat: p, take: t.i, to: "hand" }] }; } },
+  // ตั๊กแตนหญิง: the player picks which "ตั๊กแตน" comes up from the Deck (the bot's first option is the first one in the Deck)
+  "BT07-039": { summon: (c) => { const { E, s, seat: p } = c; const down = s.P[p].life.filter((y) => !y.up).length; const pool = uniq(E, s, s.P[p].deck.filter((y) => E.named(s, y, "ตั๊กแตน"))); if (!down || !pool.length) return { explain: "จ่ายค่าความสามารถไม่ได้", ops: [] };
+    if (c.mode(["หงาย LIFE ใบบนสุด: นำตั๊กแตนจาก Deck ขึ้นมือ", "ไม่ใช้"], "ตั๊กแตนหญิง", down >= 3 ? 0 : 1) !== 0) return { explain: "ไม่ใช้ความสามารถ", ops: [] };
+    const t = c.choose(pool, 1, "เลือกการ์ด ตั๊กแตน จาก Deck ขึ้นมือ", { exact: true })[0]; return t ? { explain: `หงาย LIFE ใบบนสุด · ${E.name(s, t)} ขึ้นมือ`, ops: [{ op: "lifeFlip" }, { op: "search", seat: p, take: t.i, to: "hand" }] } : { explain: "", ops: [] }; } },
   // หมอเลิฟ ฟันเหยิน: จุติ any card from the Deck shown and sent to hell (it cannot leave), back to the hand at our 2nd Draw Phase
   "BT07-040": { summon: (c) => { const { E, s, seat: p } = c; const t = c.choose([...s.P[p].deck].sort((a, b) => worth(E, s, b) - worth(E, s, a)).slice(0, 40), 1, "เลือกการ์ดจาก Deck", { exact: true })[0];
     return t ? { explain: `แสดง ${E.name(s, t)} แล้วส่งลงนรก · กลับขึ้นมือใน Draw Phase ที่ 2 ของเรา`, ops: [{ op: "move", i: t.i, to: "hell" }, { op: "hellLock", i: t.i }, { op: "shuffle", seat: p }] } : { explain: "Deck ว่าง", ops: [] }; } },
