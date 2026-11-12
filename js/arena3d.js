@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261112073729";
-import { E } from "./engine.js?v=20261112073729";
-import { h } from "./util.js?v=20261112073729";
-import { Sfx } from "./sfx.js?v=20261112073729";
+import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261112074802";
+import { E } from "./engine.js?v=20261112074802";
+import { h } from "./util.js?v=20261112074802";
+import { Sfx } from "./sfx.js?v=20261112074802";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -584,7 +584,8 @@ export function banner(t, s) {
   let b = document.querySelector(".banner"); if (!b) { b = h("div", { class: "banner" }, h("div", { class: "band" }, h("b"), h("span"))); document.body.append(b); }
   b.querySelector("b").textContent = t; b.querySelector("span").textContent = s || ""; const band = b.querySelector(".band");
   gsap.killTweensOf(band); gsap.fromTo(band, { opacity: 0, scaleX: 0.4 }, { opacity: 1, scaleX: 1, duration: 0.35, ease: "power3.out" });
-  gsap.fromTo(b.querySelector("b"), { letterSpacing: "0.6em", opacity: 0 }, { letterSpacing: "0.25em", opacity: 1, duration: 0.5, ease: "power3.out" });
+  const th = /[\u0E00-\u0E7F]/.test(t); /* a Thai name is not tracked out like YOUR TURN */
+  gsap.fromTo(b.querySelector("b"), { letterSpacing: th ? "0.2em" : "0.6em", opacity: 0 }, { letterSpacing: th ? "0.03em" : "0.25em", opacity: 1, duration: 0.5, ease: "power3.out" });
   gsap.to(band, { opacity: 0, duration: 0.4, delay: 1.3 });
 }
 export function flash(color, a = 0.45) { let f = document.querySelector(".flash"); if (!f) { f = h("div", { class: "flash" }); document.body.append(f); } f.style.background = color; gsap.fromTo(f, { opacity: a }, { opacity: 0, duration: 0.5, ease: "power2.out" }); }
