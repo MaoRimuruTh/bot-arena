@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112153039";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261112153039";
-import { SCRIPTS } from "./scripts.js?v=20261112153039";
-import { newId, clone } from "./util.js?v=20261112153039";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112153412";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261112153412";
+import { SCRIPTS } from "./scripts.js?v=20261112153412";
+import { newId, clone } from "./util.js?v=20261112153412";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -113,13 +113,14 @@ export const E = {
     if (s.P) for (let q = 0; q < 2; q++) if (s.P[q].hell.includes(x)) for (const y of s.P[q].av) { if (y.mute) continue; const sh = scriptOf(s, y); if (sh && sh.hellName) { const hn = sh.hellName(E, s, y, x); if (hn && normName(hn).includes(normName(n))) return true; } } if (x.nameAs) return normName(x.nameAs).includes(normName(n)); const d = E.def(s, x); if (nameHas(nameText(d, hasFieldAlias(d) && E.onField(s, x)), n)) return true;
     for (const P of s.P || []) for (const m of P.mg) if (m.on === x.i && !m.mute) { const sm = scriptOf(s, m); if (sm && sm.addName && normName(sm.addName).includes(normName(n))) return true; }
     if (s.P) for (let q = 0; q < 2; q++) for (const y of s.P[q].av) { if (y.mute || y.i === x.i) continue; const sy = scriptOf(s, y); if (sy && sy.nameAura && normName(sy.nameAura.name).includes(normName(n)) && s.P[q].av.includes(x) && sy.nameAura.test(E, s, x)) return true; } return false; },
-  hasSy(s, x, k) { k = SY_ALIAS[k] || k; const lockSy = (x.sye || x.syAs) && E.syLocked(s, x); if (x.sye && x.sye.until >= s.turn && !lockSy) return x.sye.k === k; { const own = x.mute ? null : scriptOf(s, x); if (own && own.allSyOnField && (E.locate(s, x.i) || {}).z === "av") return true; } if (x.xsy && x.xsy.t === s.turn && x.xsy.list.includes(k)) return true; if (x.syAs && !lockSy) return x.syAs === k; const o = E.syOver(s, x) || E.landSy(s, x); if (o) return o === k; { const own = x.mute ? null : scriptOf(s, x); if (own && own.extraSy === k) return true; } const d = E.def(s, x); const on = hasFieldAlias(d) && E.onField(s, x); return allSy(d, on) || syText(d, on).includes(k); },
+  // Rule Book (Layers): a Land that sets every Avatar's Symbol (Layer 2) wins over a Modification's (Layer 1) — กุ่ย wearing วูตาตู is only {เทพ} under แอสการ์ด
+  hasSy(s, x, k) { k = SY_ALIAS[k] || k; const lockSy = (x.sye || x.syAs) && E.syLocked(s, x); if (x.sye && x.sye.until >= s.turn && !lockSy) return x.sye.k === k; { const own = x.mute ? null : scriptOf(s, x); if (own && own.allSyOnField && (E.locate(s, x.i) || {}).z === "av") return true; } if (x.xsy && x.xsy.t === s.turn && x.xsy.list.includes(k)) return true; if (x.syAs && !lockSy) return x.syAs === k; const o = E.landSy(s, x) || E.syOver(s, x); if (o) return o === k; { const own = x.mute ? null : scriptOf(s, x); if (own && own.extraSy === k) return true; } const d = E.def(s, x); const on = hasFieldAlias(d) && E.onField(s, x); return allSy(d, on) || syText(d, on).includes(k); },
   // a Land Magic that changes the symbol of every Avatar on the Avatar Zones ("เปลี่ยน Symbol ของ Avatar ทุกใบบน Avatar Zone เป็น Symbol {เทพ}")
   landSy(s, x) { if (!s.P || !(s.land || s.land2)) return null; const sc = E.landSc(s, "landSy"); if (!sc) return null; const L = E.locate(s, x.i); return L && L.z === "av" && !E.syLocked(s, x) ? sc.landSy : null; },
   // "Avatar ที่สวมใส่การ์ดใบนี้ จะไม่ถูกเปลี่ยน Symbol" (GHD โคลค): nothing replaces its Symbol, a Land that turns every Avatar into {เทพ} included
   syLocked(s, x) { if (!s.P) return false; for (const P of s.P) for (const m of P.mg) if (m.on === x.i && !m.mute) { const sc = scriptOf(s, m); if (sc && sc.syLock) return true; } return false; },
   // the single symbol a card has right now instead of its printed ones, or null
-  syNow(s, x) { const lock = (x.sye || x.syAs) && E.syLocked(s, x); if (x.sye && x.sye.until >= s.turn && !lock) return x.sye.k; if (x.syAs && !lock) return x.syAs; return E.syOver(s, x) || E.landSy(s, x) || null; },
+  syNow(s, x) { const lock = (x.sye || x.syAs) && E.syLocked(s, x); if (x.sye && x.sye.until >= s.turn && !lock) return x.sye.k; if (x.syAs && !lock) return x.syAs; return E.landSy(s, x) || E.syOver(s, x) || null; },
   syOver(s, x) { if (x.on != null || !s.P) return null; let o = null, lock = false; for (const P of s.P) for (const m of P.mg) if (m.on === x.i && !m.mute) { const sc = scriptOf(s, m); if (sc && sc.syLock) lock = true; else if (sc && sc.syOver) o = sc.syOver; } return lock ? null : o; },
   // "เมื่อ LIFE Card ของเราถูกหงาย": field cards of that player with a lifeFlip script
   lifeFlipped(s, p) { for (const { x: y, L: Ly } of fieldCards(s)) if (Ly.p === p && !y.mute && (scriptOf(s, y) || {}).lifeFlip) s.trig.push({ id: tid(s), seat: p, i: y.i, c: y.c, when: "lifeFlip", optional: true }); },
