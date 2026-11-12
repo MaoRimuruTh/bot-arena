@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261112085609";
-import { h } from "./util.js?v=20261112085609";
-import { Data } from "./fb.js?v=20261112085609";
+import { CARD_SOURCE } from "./config.js?v=20261112091205";
+import { h } from "./util.js?v=20261112091205";
+import { Data } from "./fb.js?v=20261112091205";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -135,12 +135,23 @@ const byKey = (k) => { if (!keyIndex) { keyIndex = new Map(); for (const c of CA
 Data.skinCodec = {
   ready: () => CARDS.length > 0,
   encode: (map) => { const out = {}; for (const [b, v] of Object.entries(map || {})) { const B = CARDS[+b], V = CARDS[+v]; if (B && V) out[B.p + "-" + B.r] = V.p + "-" + V.r; } return out; },
-  decode: (prints) => { const out = {}; for (const [kb, kv] of Object.entries(prints || {})) { const B = byKey(kb), V = byKey(kv); if (!B || !V) continue; const base = B.b != null ? B.b : B.i; if ((V.b != null ? V.b : V.i) !== base || V.i === base) continue; out[String(base)] = V.i; } return out; },
+  decode: (prints) => { const out = {}; for (const [kb, kv] of Object.entries(prints || {})) { const B = byKey(kb), V = byKey(kv); if (!B || !V) continue; const base = B.b != null ? B.b : B.i; if (!artBases(base).includes(V.b != null ? V.b : V.i) || V.i === base) continue; out[String(base)] = V.i; } return out; },
 };
 // skins: the player can pick any alternate print of a card as the art shown everywhere
 export const SkinCtx = { on: true }; // skins show only on the deck pages and in the arena (set by the router)
-export function skinOf(c) { if (!c || c.b != null || !SkinCtx.on) return c; const v = Data.skins && Data.skins[String(c.i)]; const s = v != null ? CARDS[+v] : null; return s && (s.b === c.i || s.i === c.i) ? s : c; }
-export const variantsOf = (c) => { const b = c.b != null ? c.b : c.i; return CARDS.filter((x) => x.i === b || x.b === b); };
+// prints of the same card that the data keeps apart because their text is worded a little differently (a reprint such
+// as CC02-028 of BT03-011 ไดโนกาฬสินธุ์ - กินรีมิมัส): same name, type, Cost, GEM, POWER, Symbol and colour. They share
+// their art (any of them can be the skin) and their market prices; in decks they stay separate cards.
+let artIdx = null;
+const artKey = (c) => [sp1(c.n), c.t, c.st || "", c.c ?? "", c.g ?? "", c.pw ?? "", c.sy || "", c.co || ""].join("|");
+export function artBases(b) {
+  if (!artIdx && CARDS.length) { artIdx = new Map(); for (const c of CARDS) if (c.b == null) { const k = artKey(c); if (!artIdx.has(k)) artIdx.set(k, []); artIdx.get(k).push(c.i); } }
+  const c = CARDS[b]; return (artIdx && c && artIdx.get(artKey(c))) || [b];
+}
+const baseOf = (x) => (x.b != null ? x.b : x.i);
+export function skinOf(c) { if (!c || c.b != null || !SkinCtx.on) return c; const v = Data.skins && Data.skins[String(c.i)]; const s = v != null ? CARDS[+v] : null; return s && artBases(c.i).includes(baseOf(s)) ? s : c; }
+// every print of this card: its own first, then those of the same card worded differently
+export const variantsOf = (c) => { const b = baseOf(c), bs = artBases(b); return [...CARDS.filter((x) => baseOf(x) === b), ...CARDS.filter((x) => baseOf(x) !== b && bs.includes(baseOf(x)))]; };
 export const favKey = (c) => c.p + "-" + c.r;
 // latest noted price of exactly this print+rarity: { p, at, src } or null
 export const priceOf = (c) => { const e = c && Data.prices && Data.prices[favKey(c)]; return e && e.h && e.h.length ? e.h[e.h.length - 1] : null; };

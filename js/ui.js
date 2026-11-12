@@ -1,8 +1,8 @@
-import { h, openSheet, holo, toast, fmtDate } from "./util.js?v=20261112085609";
-import { fxText, kwGloss } from "./fxtext.js?v=20261112085609";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt, priceOf, setCode } from "./cards.js?v=20261112085609";
-import { Data, saveOwned, saveSkins, saveFavs, savePrices } from "./fb.js?v=20261112085609";
-import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261112085609";
+import { h, openSheet, holo, toast, fmtDate } from "./util.js?v=20261112091205";
+import { fxText, kwGloss } from "./fxtext.js?v=20261112091205";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt, priceOf, setCode } from "./cards.js?v=20261112091205";
+import { Data, saveOwned, saveSkins, saveFavs, savePrices } from "./fb.js?v=20261112091205";
+import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261112091205";
 
 export function cardBtn(id, opts = {}) {
   const c = card(id); const b = h("button", { class: "ccard" + (opts.cls ? " " + opts.cls : "") + (opts.note ? " noted" : ""), type: "button", "aria-label": c ? c.n + (opts.note ? " · " + opts.note : "") : "การ์ด", title: c ? c.n : "", onclick: opts.onclick });
@@ -85,7 +85,7 @@ function skinPicker(c, api, extra) {
   return h("div", { class: "stack", style: "gap:6px" }, h("div", { class: "eyebrow" }, `สกินการ์ด · ${all.length} ภาพ`),
     h("div", { class: "pick" }, all.map((v) => h("div", { class: "stack", style: "gap:4px" },
       h("button", { class: "ccard" + (cur === v.i ? " sel" : ""), "aria-label": `${v.n} ${v.r}`, onclick: () => { api.close(); showCard(v.i, extra); } }, artImgRaw(v), h("span", { class: "badge" }, v.r)),
-      cur === v.i ? h("span", { class: "chip gold", style: "justify-content:center" }, "ใช้อยู่") : h("button", { class: "btn sm", onclick: () => { if (v.i === b) delete Data.skins[String(b)]; else Data.skins[String(b)] = v.i; saveSkins(); api.close(); showCard(v.i, extra); } }, "ใช้ภาพนี้")))));
+      cur === v.i ? h("span", { class: "chip gold", style: "justify-content:center" }, "ใช้อยู่") : h("button", { class: "btn sm", onclick: () => { if (v.i === b) delete Data.skins[String(b)]; else Data.skins[String(b)] = v.i; saveSkins(); api.close(); showCard(baseId(v.i) === b ? v.i : c.i, extra); } }, "ใช้ภาพนี้")))));
 }
 // art of exactly this print (ignores the player's skin choice)
 function artImgRaw(v) { const saved = Data.skins[String(baseId(v.i))]; if (saved == null) return artImg(v); delete Data.skins[String(baseId(v.i))]; const im = artImg(v); Data.skins[String(baseId(v.i))] = saved; return im; }
