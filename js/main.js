@@ -1,20 +1,20 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261113014047";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261113014047";
-import { AVATARS, MATS, SIGILS, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261113014047";
-import { myFigure, myMat, mySleeve, mySigil, unlocked, needFor } from "./achieve.js?v=20261113014047";
-import { Vault, startVault } from "./vault.js?v=20261113014047";
-import { vaultSection } from "./vaultui.js?v=20261113014047";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261113014047";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261113014047";
-import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261113014047";
-import { Views, avatarEl } from "./ui.js?v=20261113014047";
-import { Ciel } from "./ai.js?v=20261113014047";
-import "./views/library.js?v=20261113014047";
-import "./views/decks.js?v=20261113014047";
-import "./views/lab.js?v=20261113014047";
-import "./views/history.js?v=20261113014047";
-import { openReport } from "./views/ask.js?v=20261113014047";
-import "./views/play.js?v=20261113014047";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261113015636";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261113015636";
+import { AVATARS, MATS, SIGILS, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261113015636";
+import { myFigure, myMat, mySleeve, mySigil, unlocked, needFor } from "./achieve.js?v=20261113015636";
+import { Vault, startVault } from "./vault.js?v=20261113015636";
+import { vaultSection } from "./vaultui.js?v=20261113015636";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261113015636";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261113015636";
+import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261113015636";
+import { Views, avatarEl } from "./ui.js?v=20261113015636";
+import { Ciel } from "./ai.js?v=20261113015636";
+import "./views/library.js?v=20261113015636";
+import "./views/decks.js?v=20261113015636";
+import "./views/lab.js?v=20261113015636";
+import "./views/history.js?v=20261113015636";
+import { openReport } from "./views/ask.js?v=20261113015636";
+import "./views/play.js?v=20261113015636";
 
 const root = $("#view");
 let current = null, cardsReady = false;
@@ -71,9 +71,9 @@ function meArea() {
 }
 // the little 3D figure by your side of the table, and the colour of the mat's lacquer: some are opened by achievements (kept per browser)
 function avatarSection() {
-  const seg = (label, key, cur, opts, kind, done) => h("div", { class: "seg wrap", role: "group", "aria-label": label }, opts.map(([k, t]) => { const open = !k || unlocked(kind, k);
+  const seg = (label, key, cur, opts, kind, done) => h("div", { class: "segfield" }, h("div", { class: "seglabel", "aria-hidden": "true" }, label), h("div", { class: "seg wrap", role: "group", "aria-label": label }, opts.map(([k, t]) => { const open = !k || unlocked(kind, k);
     return h("button", { "aria-pressed": cur === k ? "true" : "false", disabled: !open, title: open ? t : "ล็อคอยู่ · " + needFor(kind, k), onclick: (e) => {
-      try { if (k) localStorage.setItem(key, k); else localStorage.removeItem(key); } catch {} for (const b of e.currentTarget.parentElement.children) b.setAttribute("aria-pressed", b === e.currentTarget ? "true" : "false"); toast(done(t)); } }, open ? t : "🔒 " + t); }));
+      try { if (k) localStorage.setItem(key, k); else localStorage.removeItem(key); } catch {} for (const b of e.currentTarget.parentElement.children) b.setAttribute("aria-pressed", b === e.currentTarget ? "true" : "false"); toast(done(t)); } }, open ? t : "🔒 " + t); })));
   const locked = [...Object.keys(AVATARS).filter((k) => !unlocked("av", k)).map((k) => [AVATARS[k].name, needFor("av", k)]), ...Object.keys(MATS).filter((k) => !unlocked("mat", k)).map((k) => ["ผ้าปู" + MATS[k].name, needFor("mat", k)]),
     ...Object.keys(SIGILS).filter((k) => !unlocked("sig", k)).map((k) => ["วงอัญเชิญ" + SIGILS[k].name, needFor("sig", k)])];
   return [h("div", { class: "eyebrow", style: "margin-top:12px" }, "อวตาร 3 มิติ ผ้าปูโต๊ะ และวงอัญเชิญ"),
@@ -82,12 +82,12 @@ function avatarSection() {
     seg("ผ้าปูโต๊ะ", "bot.mat", myMat(), [...Object.entries(MATS).map(([k, m]) => [k, m.name]), ...(Vault.has("mat") ? [["own", "ผ้าปูของฉัน"]] : [])], "mat", (t) => `ผ้าปู${t} ใช้ตั้งแต่เปิดสนามครั้งถัดไป`),
     Vault.has("sleeve") ? seg("หลังการ์ด", "bot.sleeve", mySleeve(), [["", "ลายไทย"], ["own", "หลังการ์ดของฉัน"]], "sleeve", (t) => `หลังการ์ด${t} ใช้ตั้งแต่เกมถัดไป`) : null,
     seg("วงอัญเชิญ", "bot.sig", mySigil(), Object.entries(SIGILS).map(([k, m]) => [k, m.name]), "sig", (t) => `วงอัญเชิญลาย${t} ใช้ตั้งแต่เกมถัดไป`),
-    locked.length ? h("div", { class: "tiny muted" }, "ปลดล็อคได้จากการเล่นเท่านั้น: " + locked.map(([n, w]) => `${n} (${w})`).join(" · ")) : null].filter(Boolean);
+    locked.length ? h("details", { class: "unlocks" }, h("summary", null, `วิธีปลดล็อคที่เหลืออีก ${locked.length} อย่าง (ได้จากการเล่นเท่านั้น)`), h("ul", null, locked.map(([n, w]) => h("li", null, h("b", null, n), h("span", null, w))))) : null].filter(Boolean);
 }
 // how much the 3D table draws, and how fast its animations run (both per browser; used the next time the table opens)
 function gfxSection() {
-  const seg = (label, cur, opts, key, done) => h("div", { class: "seg", role: "group", "aria-label": label }, opts.map(([v, t]) => h("button", { "aria-pressed": String(cur) === String(v) ? "true" : "false", onclick: (e) => {
-    try { localStorage.setItem(key, v); } catch {} for (const b of e.currentTarget.parentElement.children) b.setAttribute("aria-pressed", b === e.currentTarget ? "true" : "false"); toast(done(t)); } }, t)));
+  const seg = (label, cur, opts, key, done) => h("div", { class: "segfield" }, h("div", { class: "seglabel", "aria-hidden": "true" }, label), h("div", { class: "seg wrap", role: "group", "aria-label": label }, opts.map(([v, t]) => h("button", { "aria-pressed": String(cur) === String(v) ? "true" : "false", onclick: (e) => {
+    try { localStorage.setItem(key, v); } catch {} for (const b of e.currentTarget.parentElement.children) b.setAttribute("aria-pressed", b === e.currentTarget ? "true" : "false"); toast(done(t)); } }, t))));
   return [h("div", { class: "eyebrow", style: "margin-top:12px" }, "ภาพและความเร็ว"),
     h("div", { class: "small muted" }, "สวยสุด: แสงฟุ้ง เงา และทองสะท้อนแสงทุกเครื่อง · ประหยัดเครื่อง: เหมาะกับมือถือรุ่นเก่า วาดภาพ 30 เฟรมต่อวินาที แบตอยู่นานขึ้น · อัตโนมัติ: เริ่มตามขนาดจอ แล้วลดแสงฟุ้งและความละเอียดลงเองถ้าเครื่องเล่นไม่ลื่น · แบบเรียบ 2D: ไม่มีโต๊ะ 3 มิติ การ์ดบนสนามวางเป็นแถว เบาเครื่องที่สุด"),
     seg("คุณภาพภาพ", gfxSetting(), [["auto", "อัตโนมัติ"], ["high", "สวยสุด"], ["low", "ประหยัดเครื่อง"], ["flat", "แบบเรียบ 2D"]], "bot.gfx", (t) => `ภาพ: ${t} มีผลตอนเปิดสนามครั้งถัดไป`),

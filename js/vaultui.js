@@ -1,10 +1,10 @@
 // Settings for the owner's own things (vault.js): a picture for his half of the mat, a picture for his card sleeves and a
 // 3D figure. A picture is framed here (drag to move it, slide to zoom) and saved twice: in full for his own screen, and
 // smaller for opponents if he lets them see it. Shown only to the owner account.
-import { h, toast, openSheet } from "./util.js?v=20261113014047";
-import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, shownBlob, isOwner, vaultBlob } from "./vault.js?v=20261113014047";
-import { matLines, sleeveFrame, MAT_ASPECT, FIG_FINISH, FIG_MOVES, figureViewer } from "./arena3d.js?v=20261113014047";
-import { setMeta, Data } from "./fb.js?v=20261113014047";
+import { h, toast, openSheet } from "./util.js?v=20261113015636";
+import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, shownBlob, isOwner, vaultBlob } from "./vault.js?v=20261113015636";
+import { matLines, sleeveFrame, MAT_ASPECT, FIG_FINISH, FIG_MOVES, figureViewer } from "./arena3d.js?v=20261113015636";
+import { setMeta, Data } from "./fb.js?v=20261113015636";
 
 const MAT_A = MAT_ASPECT, SLEEVE_A = 1.5 / 2.04; // a player's playmat on their side of the table (arena3d.js); a card
 const KIND = {
@@ -117,7 +117,7 @@ function rows() {
         try { localStorage.setItem("bot.av3", "own"); } catch {} toast(painted ? "บันทึกรูปปั้นแล้ว ใช้สีจากไฟล์ ตั้งแต่เกมถัดไป" : "บันทึกรูปปั้นแล้ว ใช้ตั้งแต่เกมถัดไป"); } }
     catch (er) { toast("บันทึกไม่สำเร็จ: " + (er.message || er), "bad"); } });
   const full = load(false), light = load(true);
-  out.push(h("div", { class: "vitem" }, h("div", { class: "vthumb empty fig" }, has ? "🗿" : "ยังไม่มี"),
+  out.push(h("div", { class: "vitem" }, h("div", { class: "vthumb empty fig" + (has ? " has" : "") }, has ? "🗿" : "ยังไม่มีไฟล์"),
     h("div", { class: "stack", style: "gap:6px;min-width:0" }, h("b", null, "รูปปั้นของฉัน"), h("span", { class: "tiny muted" }, has ? (shown ? "คู่แข่งเห็นฉบับเบาบนโต๊ะของเขา" : "เห็นแค่บนเครื่องของมาสเตอร์") + (it.name ? " · " + it.name : "") : "ไฟล์ .glb ไม่เกิน 6 MB"),
       has ? h("div", { class: "seg wrap", role: "group", "aria-label": "ผิวรูปปั้น" }, Object.entries(FIG_FINISH).map(([k, t]) => h("button", { "aria-pressed": fin === k ? "true" : "false", onclick: async () => {
         try { await vaultMeta("fig", { finish: k }); if (shown) await setMeta({ show: { fig: { finish: k } } }); toast("ผิวรูปปั้น: " + t); } catch { toast("เปลี่ยนไม่สำเร็จ", "bad"); } } }, t))) : null,
