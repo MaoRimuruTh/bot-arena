@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113005645";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261113005645";
-import { SCRIPTS } from "./scripts.js?v=20261113005645";
-import { newId, clone } from "./util.js?v=20261113005645";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113012456";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261113012456";
+import { SCRIPTS } from "./scripts.js?v=20261113012456";
+import { newId, clone } from "./util.js?v=20261113012456";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -533,7 +533,7 @@ export const E = {
     if (s.phase === "over") return [];
     const handAv = s.P[p].hand.filter((x) => { const sc = scriptOf(s, x); return !!sc && typeof sc.handReact === "function" && !!sc.react && E.def(s, x).t === "A" && sc.react.kinds.includes(on.kind) && (!sc.react.can || sc.react.can(E, s, p, on, x)); });
     // (the attacker's own window in a fight: only the Reacts written for our own fighting Avatar)
-    if (on.own) return E.reactsFor0(s, p, on).filter((x) => { const sc = scriptOf(s, x); return !!(sc && sc.react && sc.react.own); });
+    if (on.own) return E.reactsFor0(s, p, on).filter((x) => { const sc = scriptOf(s, x); return sc ? !!(sc.react && sc.react.own) : !!E.ext.react && E.ext.react(s, x, p, on) === true; });
     return [...E.reactsFor0(s, p, on), ...handAv];
   },
   // does this scripted React answer the moment `on`? ("phase": the end of the opponent's Phase, for the ones that name no moment)
@@ -659,7 +659,7 @@ export const E = {
           on = s.rw && s.rw.by !== p ? { ...s.rw } : s.pend && s.pend.by !== p ? { kind: "attack", by: s.pend.by, att: s.pend.att, tk: s.pend.tk, ti: s.pend.ti } : null;
           const sc = scriptOf(s, x); if (E.rishiOpp(s, p, d) && on && (d.st === "N" || ["attack", "activate", "cast"].includes(on.kind))) { /* ฤๅษี ภฤคุ: usable now */ } else if (sc && sc.react && !on && sc.react.anytime) need(E.canAct(s, p) && ["main", "battle"].includes(s.phase) && !s.trig.length && (!sc.react.can || sc.react.can(E, s, p, null, x)), "ใช้ React ใบนี้ตอนนี้ไม่ได้");
           else if (sc && sc.react) need(on && (!on.own || sc.react.own) && E.rkOk(sc, on) && (!sc.react.can || sc.react.can(E, s, p, on, x)), "ยังไม่ถึงจังหวะของ React ใบนี้");
-          else if (!sc && E.ext.react) need(!!on && !on.own && E.ext.react(s, x, p, on, true) !== false && E.reactsFor0(s, p, on).includes(x), "ยังไม่ถึงจังหวะของ React ใบนี้");
+          else if (!sc && E.ext.react) need(!!on && E.ext.react(s, x, p, on, true) !== false && E.reactsFor0(s, p, on).includes(x), "ยังไม่ถึงจังหวะของ React ใบนี้");
         }
         if (st === "R" && s.mu[p].R) { const scx = scriptOf(s, x); if (scx && scx.react && scx.react.ignoreLimit && !s.mu[p].R2) s.mu[p].R2 = true; else s.mu[p].RS = (+s.mu[p].RS || 0) + 1; } // a React allowed after another one (อย่าให้มีครั้งที่ 2 / an extra "Skill")
         if (st === "R" && /^Skill\b/.test(String(d.n || ""))) { s.skillUsed = s.skillUsed || [null, null]; const u = s.skillUsed[p] && s.skillUsed[p].t === s.turn ? s.skillUsed[p] : { t: s.turn, n: [] }; u.n.push(d.n); s.skillUsed[p] = u; }

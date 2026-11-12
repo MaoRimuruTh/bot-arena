@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261113005645";
-import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261113005645";
-import { E, scriptOf } from "./engine.js?v=20261113005645";
+import { readAura } from "./auras.js?v=20261113012456";
+import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261113012456";
+import { E, scriptOf } from "./engine.js?v=20261113012456";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -244,7 +244,7 @@ function sentence(s, t, p, self, ctx) {
   const named = (f) => f.name || f.names || f.symbol || f.symbols || f.text || f.collab;
   const typed = (x, f) => fits(s, x, f) && (!f.type || E.def(s, x).t === f.type || (f.type === "A" && E.def(s, x).t === "T")) && !(f.other && self && x.i === self.i);
   // "that Avatar" / "the attacker" in answers to an attack, a summon or a fight
-  const refCard = () => { const i = /ที่(?:ประกาศ)?โจมตี|ผู้โจมตี|ใบที่โจมตี/.test(t) && ref.att != null ? ref.att : /ใบนั้น|ตัวนั้น|ที่เป็นเป้าหมาย|ที่ต่อสู้ด้วย|ที่ถูกอัญเชิญ|ที่อัญเชิญ/.test(t) && ref.that != null ? ref.that : null; const L = i != null ? E.locate(s, i) : null; return L && L.z === "av" ? L.x : null; };
+  const refCard = () => { const i = /ที่(?:ประกาศ)?โจมตี|ผู้โจมตี|ใบที่โจมตี/.test(t) && ref.att != null ? ref.att : /ที่ต่อสู้ด้วย/.test(t) && ref.foe != null ? ref.foe : /ใบนั้น|ตัวนั้น|ที่เป็นเป้าหมาย|ที่ต่อสู้ด้วย|ที่ถูกอัญเชิญ|ที่อัญเชิญ/.test(t) && ref.that != null ? ref.that : null; const L = i != null ? E.locate(s, i) : null; return L && L.z === "av" ? L.x : null; };
   const oppAv = (f) => O.av.filter((x) => typed(x, f) && !E.noAim(s, x)).sort((a, b) => val(s, b) - val(s, a));
   const me = ctx.me;
   if (/สวม/.test(t)) { // "bring X onto this Avatar" / "put this card onto an Avatar"
@@ -493,7 +493,7 @@ export function reactTiming(text) {
   if ((m = t.match(/^เมื่อ\s*Avatar\s*(?:ของ)?(?:ฝ่ายตรงข้าม|อีกฝ่าย)\s*(?:ประกาศ)?โจมตี\s*(เข้ามา(?:ที่)?\s*LIFE(?:\s*Card)?\s*)?/))) return { kinds: ["attack"], life: !!m[1], rest: t.slice(m[0].length) };
   if ((m = t.match(/^เมื่อ\s*(?:ฝ่ายตรงข้าม|อีกฝ่าย)\s*อัญเชิญ\s*Avatar\s*/))) return { kinds: ["summon"], rest: t.slice(m[0].length) };
   if ((m = t.match(/^เมื่อมีการ(?:สั่ง)?ใช้\s*Magic(?:\s*Card)?\s*/i))) return { kinds: ["cast"], rest: t.slice(m[0].length) };
-  if ((m = t.match(DEFENDER))) { const f = defenderFilter(m); if (f === false) return null; return { kinds: ["attack"], mine: true, f, rest: t.slice(m[0].length) }; }
+  if ((m = t.match(DEFENDER))) { const f = defenderFilter(m); if (f === false) return null; return { kinds: ["attack"], mine: true, either: /ต่อสู้\s*$/.test(m[0]), f, rest: t.slice(m[0].length) }; }
   if ((m = t.match(/^เมื่อ(?:มี)?\s*Avatar\s*(?:ถูก)?อัญเชิญ(?:ลง(?:มา)?)?\s*(?:บน\s*(?:สนาม|Avatar Zone))?\s*/))) return { kinds: ["summon"], rest: t.slice(m[0].length) };
   if ((m = t.match(/^เมื่อ\s*(?:ฝ่ายตรงข้าม|อีกฝ่าย)\s*(?:ใช้|ใช้งาน)\s*(?:การ์ด\s*)?(?:Magic(?:\s*Card)?|\{magic\})\s*/i))) return { kinds: ["cast"], rest: t.slice(m[0].length) };
   // "เมื่อ Avatar (…) ฝ่ายเรา/บนสนามของเรา ถูกทำลาย(จากการต่อสู้)" — after one of ours was destroyed
@@ -662,7 +662,7 @@ export function autoEffect(s, trig, ctx = makeCtx(s, trig)) {
   if (trig.tail) { const r = readClause(s, trig.tail, p, self, ctx, { ...trig, tail: null }); if (!r) return null; if (r.fail) return { explain: r.fail, ops: [], fail: true }; return { explain: "อ่านอัตโนมัติ: " + (r.say.join(" · ") || "ไม่มีผลเพิ่ม"), ops: r.ops }; }
   if (when === "activate") { const a = activations(d.x)[trig.k | 0]; if (!a || a.where !== "field" || a.timed) return null; text = a.text; }
   else if (when === "cast" && d.st === "R") { const rt = reactTiming(d.x); if (!rt) return null; text = rt.rest.replace(/^:\s*/, ""); const on = trig.on || {};
-    ctx.ref = on.kind === "attack" ? { att: on.att, that: rt.mine ? on.ti : on.att, cancel: true } : on.kind === "summon" ? { that: on.i } : on.kind === "cast" ? { magic: on.i } : {}; }
+    ctx.ref = on.kind === "attack" ? { att: on.att, that: rt.mine ? (on.own ? on.att : on.ti) : on.att, foe: rt.mine ? (on.own ? on.ti : on.att) : null, cancel: true } : on.kind === "summon" ? { that: on.i } : on.kind === "cast" ? { magic: on.i } : {}; }
   else if (when === "paid") { const cl = clause(d.x, "paid"); if (!cl) return null; const pf = paidFilter(cl.head); if (pf === null) return null; const td = s.cards[trig.for];
     if (pf && td && !fitsD(td, pf)) return { explain: "การ์ดที่อัญเชิญไม่ตรงเงื่อนไขของความสามารถ", ops: [], fail: true }; text = cl.body; }
   else if (when === "milled") { const cl = clause(d.x, "milled"); if (!cl) return null; text = cl.head ? cl.head + " : " + cl.body : cl.body; }
@@ -752,10 +752,12 @@ function looseReact(s, x, p, on) {
 }
 E.ext.react = (s, x, p, on, asPlayer) => {
   const d = E.def(s, x); const rt = reactTiming(d.x);
+  // our own attack, asked after the defender answered: only a card about "our Avatar fights" (พลังแฝง), with our attacker as that Avatar
+  if (on.own) { const A = rt && rt.mine && rt.either && on.tk === "av" ? E.locate(s, on.att) : null; if (!A || A.p !== p || A.z !== "av" || (rt.f && !fits(s, A.x, rt.f))) return false; }
   if (!rt) return asPlayer ? null : s.P[p].bot ? false : looseReact(s, x, p, on);
   if (!rt.kinds.includes(on.kind)) return false;
   if (rt.life && on.tk !== "life") return false;
-  if (rt.mine) { const T = on.tk === "av" ? E.locate(s, on.ti) : null; if (!T || T.p !== p || (rt.f && !fits(s, T.x, rt.f))) return false; }
+  if (rt.mine && !on.own) { const T = on.tk === "av" ? E.locate(s, on.ti) : null; if (!T || T.p !== p || (rt.f && !fits(s, T.x, rt.f))) return false; }
   if (rt.dead) { const L = E.locate(s, on.i); if (on.p !== p || !L || (rt.fight && !on.fight) || (rt.f && !fits(s, L.x, rt.f))) return false; }
   if (asPlayer || !s.P[p].bot) return true; // players resolve it themselves if the effect is unreadable
   const r = quiet(() => autoEffect(s, { i: x.i, c: x.c, when: "cast", seat: p, on }, makeCtx(s, { i: x.i, c: x.c, seat: p }))); return !!(r && !r.fail && r.ops.length);
