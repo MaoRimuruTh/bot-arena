@@ -62,7 +62,10 @@ export const SCRIPTS = {
   // เนอมัส มังกรแห่งป่าไร้เงา
   "BT12-052": {
     battle: weakTo("คน"),
-    untargetable: (E, s, x, L) => L.z === "av" && s.P[L.p].av.some((y) => y.i !== x.i && dragon(E, s, y)),
+    // with another dragon of ours: cannot be attacked, and cannot be chosen by the opponent's Magic Cards (their Avatar,
+    // Construct and LIFE abilities still can choose it)
+    noAtk: (E, s, x, L) => L.z === "av" && s.P[L.p].av.some((y) => y.i !== x.i && dragon(E, s, y)),
+    untargetable: (E, s, x, L) => { if (L.z !== "av" || !s.P[L.p].av.some((y) => y.i !== x.i && dragon(E, s, y))) return false; const t = s.trig[0]; const src = t && s.cards[t.c]; return !!src && src.t === "M" && t.seat !== L.p; },
   },
   // สายเลือดมังกร
   "BT12-062": {
@@ -361,7 +364,8 @@ Object.assign(SCRIPTS, {
       return { explain: `ทำลาย ${o.map((x) => c.E.name(c.s, x)).join(", ")}${t ? ` · ทำลาย ${c.E.name(c.s, t)}` : ""}`, ops: [...o.map((x) => ({ op: "destroy", i: x.i, why: "ค่าความสามารถของแบมบูจัง" })), ...(t ? [{ op: "destroy", i: t.i, why: "แบมบูจัง" }] : [])] }; } } },
   // โทมาโทจัง: other idols wearing an โอตะ +2; can't be attacked while it wears one and another idol is here
   "KD03-005": { aura: (E, s, src, L) => (L.z === "av" ? [{ seat: L.p, test: (x) => x.i !== src.i && idol(E, s, x) && otaOn(E, s, x).length > 0, n: 2 }] : []),
-    untargetable: (E, s, x, L) => L.z === "av" && otaOn(E, s, x).length > 0 && s.P[L.p].av.some((y) => y.i !== x.i && idol(E, s, y) && E.def(s, y).n !== E.def(s, x).n) },
+    // only an attack cannot choose it (as on BT04-009, the same card): effects still can
+    noAtk: (E, s, x, L) => L.z === "av" && otaOn(E, s, x).length > 0 && s.P[L.p].av.some((y) => y.i !== x.i && idol(E, s, y) && E.def(s, y).n !== E.def(s, x).n) },
   // มยุราซัง: an โอตะ Avatar from hell (or the deck with ทัตดนัยซัง) onto another idol
   "KD03-006": { activate: { label: "นำโอตะจากนรกมาสวมใส่ให้ไอดอลใบอื่น",
     can: (E, s, x, L) => L.z === "av" && s.P[L.p].av.some((h) => h.i !== x.i && idol(E, s, h)) && (s.P[L.p].hell.some((y) => isAv(E, s, y) && ota(E, s, y)) || (s.P[L.p].av.some((y) => nm(E, s, y, "ทัตดนัยซัง")) && s.P[L.p].deck.some((y) => isAv(E, s, y) && ota(E, s, y)))),
