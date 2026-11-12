@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113022201";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261113022201";
-import { SCRIPTS } from "./scripts.js?v=20261113022201";
-import { newId, clone } from "./util.js?v=20261113022201";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113023623";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261113023623";
+import { SCRIPTS } from "./scripts.js?v=20261113023623";
+import { newId, clone } from "./util.js?v=20261113023623";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -797,7 +797,7 @@ export const E = {
           if (!t.held) { const doom = E.doomFor(s, ops0, p); if (doom) { s.trig.splice(k, 0, { ...t, held: true, hops: ops0, hex: ex0 }); s.rw = doom; E.log(s, doom.p, `${doom.ids.map((i) => E.name(s, E.locate(s, i).x)).join(", ")} กำลังจะ${doom.kill.length || doom.killCs.length ? "ถูกทำลาย" : "ออกจากสนาม"} (${nm})`); return; }
             const hw = E.handWin(s, t, ops0, p); if (hw) { s.trig.splice(k, 0, { ...t, held: true, hops: ops0, hex: ex0 }); s.rw = hw; E.log(s, hw.p, `${s.P[hw.p].name} ใช้ React ตอบโต้ได้ก่อนที่ความสามารถของ ${nm} จะทำงาน`); return; }
             const dw = E.deckHandWin(s, t, ops0, p); if (dw) { s.trig.splice(k, 0, { ...t, held: true, hops: ops0, hex: ex0 }); s.rw = dw; E.log(s, 1 - p, `${nm} กำลังจะนำการ์ดจาก Deck ขึ้นมือ · ${s.P[1 - p].name} ใช้ React ได้ก่อน`); return; } }
-          if (ex0) { E.log(s, p, `เอฟเฟกต์ ${nm}: ${ex0}`); E.ev(s, { k: "fx", c: t.c, p, t: String(ex0).replace(/^อ่านอัตโนมัติ: /, "").slice(0, 180) }); } s.cur = t.via || t.c; s.curI = t.via ? t.viaI : t.i; s.curSeat = t.seat; if (t.now) s.lifeNow = t.now; try { E.ops(s, ops0, p); } finally { delete s.cur; delete s.curI; delete s.curSeat; delete s.lifeNow; } }
+          if (ex0) { E.log(s, p, `เอฟเฟกต์ ${nm}: ${ex0}`); E.ev(s, { k: "fx", c: t.c, p, t: String(ex0).replace(/^อ่านอัตโนมัติ: /, "").slice(0, 180) }); } const ap = t.as === 0 || t.as === 1 ? t.as : p; /* (a choice the other player makes for our card: the effect is still ours) */ s.cur = t.via || t.c; s.curI = t.via ? t.viaI : t.i; s.curSeat = ap; if (t.now) s.lifeNow = t.now; try { E.ops(s, ops0, ap); } finally { delete s.cur; delete s.curI; delete s.curSeat; delete s.lifeNow; } }
         if (t.toHell) { const L = E.locate(s, t.i); if (L && L.z === "mg" && L.x.on == null && !(scriptOf(s, L.x) || {}).stay) { s.P[L.p].mg.splice(L.idx, 1); s.P[L.x.o].hell.push(L.x); } } // บลัดดี้แมรี่ stays
         if (s.pend && !s.trig.length && s.pend.resolved) s.pend = null;
         if (s.pend && !s.trig.length && s.pend.go) { delete s.pend.go; E.startFight(s); }
