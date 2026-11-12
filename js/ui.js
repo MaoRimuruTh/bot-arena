@@ -1,10 +1,10 @@
-import { h, openSheet, holo, toast, fmtDate } from "./util.js?v=20261112134653";
-import { fxText, kwGloss } from "./fxtext.js?v=20261112134653";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt, priceOf, setCode } from "./cards.js?v=20261112134653";
-import { Data, saveOwned, saveSkins, saveFavs, savePrices } from "./fb.js?v=20261112134653";
-import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261112134653";
-import { loadFaq, faqFor } from "./faq.js?v=20261112134653";
-import { CARD_SOURCE } from "./config.js?v=20261112134653";
+import { h, openSheet, holo, toast, fmtDate } from "./util.js?v=20261112135937";
+import { fxText, kwGloss } from "./fxtext.js?v=20261112135937";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt, priceOf, setCode } from "./cards.js?v=20261112135937";
+import { Data, saveOwned, saveSkins, saveFavs, savePrices } from "./fb.js?v=20261112135937";
+import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261112135937";
+import { loadFaq, faqFor } from "./faq.js?v=20261112135937";
+import { CARD_SOURCE } from "./config.js?v=20261112135937";
 
 export function cardBtn(id, opts = {}) {
   const c = card(id); const b = h("button", { class: "ccard" + (opts.cls ? " " + opts.cls : "") + (opts.note ? " noted" : ""), type: "button", "aria-label": c ? c.n + (opts.note ? " · " + opts.note : "") : "การ์ด", title: c ? c.n : "", onclick: opts.onclick });
