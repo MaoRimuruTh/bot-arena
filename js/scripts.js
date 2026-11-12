@@ -225,7 +225,7 @@ Object.assign(SCRIPTS, {
     cast: (c) => { const P = c.s.P[c.seat], O = c.s.P[1 - c.seat];
       const best = O.av.length >= 2 ? 1 : P.hand.length <= 2 ? 0 : P.hell.length ? 2 : 0;
       const m = c.mode(["1) จั่วให้การ์ดบนมือครบ 5 ใบ", "2) ทำลาย Avatar อีกฝ่ายไม่เกิน 2 ใบ", "3) นำการ์ดจากนรกเราขึ้นมือ 2 ใบ"], "พรของอิศวร: เลือกปฏิบัติ", best);
-      if (m === 0) { const n = Math.max(0, 5 - P.hand.length); return { explain: `จั่ว ${n} ใบ`, ops: n ? [{ op: "draw", seat: c.seat, n }] : [] }; }
+      if (m === 0) { const n = Math.max(0, 5 - P.hand.length); return { explain: `จั่ว ${n} ใบ`, ops: n ? [{ op: "draw", seat: c.seat, n, late: true }] : [] }; } // (FAQ เหน็บกินมือ: picked while resolving, too late to answer)
       if (m === 1) { const t = c.choose(O.av.filter((x) => !c.E.noAim(c.s, x)).sort(strongFirst(c.E, c.s)), 2, "เลือก Avatar อีกฝ่ายที่จะทำลาย (ไม่เกิน 2 ใบ)", { optional: true });
         return { explain: t.length ? `ทำลาย ${t.map((x) => c.E.name(c.s, x)).join(", ")}` : "ไม่ทำลาย", ops: t.map((x) => ({ op: "destroy", i: x.i, why: "พรของอิศวร" })) }; }
       const t = c.choose([...P.hell].reverse(), 2, "เลือกการ์ดในนรกขึ้นมือ 2 ใบ");
@@ -1741,7 +1741,7 @@ Object.assign(SCRIPTS, {
   // กัปตัน 7 สี: จุติ choose by the colours of our other Avatars: red +2 · blue draw 1 · purple mill 1, then 1 card from hell under the Deck · green not destroyed this turn
   "BT06-012": { summon: (c) => { const { E, s, seat: p, self: x } = c; if (!x) return { explain: "", ops: [] }; const co = new Set(s.P[p].av.filter((y) => y.i !== x.i).flatMap((y) => E.colors(s, y))); const opts = ["แดง", "ฟ้า", "เขียว", "ม่วง"].filter((k) => co.has(k));
     if (!opts.length) return { explain: "ไม่มี Avatar ใบอื่นบน Avatar Zone เรา", ops: [] }; const k = opts[c.mode(opts.map((o) => ({ แดง: "สีแดง: POWER +2", ฟ้า: "สีฟ้า: จั่ว 1 ใบ", ม่วง: "สีม่วง: ธรณีสูบ 1 แล้วนำการ์ดในนรก 1 ใบเข้าใต้ Deck", เขียว: "สีเขียว: ไม่ถูกทำลายจนจบเทิร์น" })[o]), "กัปตัน 7 สี: เลือกปฏิบัติ", 0)];
-    if (k === "แดง") return { explain: "POWER +2", ops: [{ op: "power", i: x.i, n: 2, temp: false }] }; if (k === "ฟ้า") return { explain: "จั่ว 1 ใบ", ops: [{ op: "draw", seat: p, n: 1 }] }; if (k === "เขียว") return { explain: "ไม่ถูกทำลายจนจบเทิร์น", ops: [{ op: "ind", i: x.i }] };
+    if (k === "แดง") return { explain: "POWER +2", ops: [{ op: "power", i: x.i, n: 2, temp: false }] }; if (k === "ฟ้า") return { explain: "จั่ว 1 ใบ", ops: [{ op: "draw", seat: p, n: 1, late: true }] }; if (k === "เขียว") return { explain: "ไม่ถูกทำลายจนจบเทิร์น", ops: [{ op: "ind", i: x.i }] };
     const top = s.P[p].deck[0]; const back = c.choose([...(top ? [top] : []), ...s.P[p].hell].sort((a, b) => worth(E, s, b) - worth(E, s, a)), 1, "เลือกการ์ดในนรกที่จะนำเข้าใต้ Deck", { exact: true })[0];
     return { explain: `ธรณีสูบ 1 ใบ${back ? ` · ${E.name(s, back)} เข้าใต้ Deck` : ""}`, ops: [{ op: "mill", seat: p, n: 1 }, ...(back ? [{ op: "move", i: back.i, to: "deckBottom" }] : [])] }; } },
   // คุณบลูลอบสเตอร์: drawn in the Draw Phase with "บึงทมิฬ" on the Land Magic Zone, or put into the hand by a "บึงทมิฬ": summoned, then destroys an opposing Avatar
@@ -2084,7 +2084,12 @@ Object.assign(SCRIPTS, {
   // เก้าอี้ เฟิร์สคลาส: the wearer is also named "Super Air"
   "BT07-064": { worn: () => 0, addName: "Super Air" },
   // ปลอกคอซื่อสัตย์: the wearer's control cannot change
-  "BT07-065": { worn: () => 0, keepControl: true },
+  // FAQ: worn by an Avatar the other side took from us, it goes back to the player who put it on the field (and stays there if the collar leaves later);
+  // on a card of ours that the other side summoned themselves, nothing happens
+  "BT07-065": { worn: () => 0, keepControl: true,
+    cast: (c) => { const { E, s } = c; const H = c.t.on != null ? E.locate(s, c.t.on) : null; if (!H || H.z !== "av" || H.x.home == null || H.x.home === H.p) return { explain: "", ops: [] };
+      if (E.avatars(s.P[H.x.home]) >= 4) return { explain: `Avatar Zone ของ ${s.P[H.x.home].name} เต็ม ${E.name(s, H.x)} จึงยังไม่กลับ`, ops: [] };
+      return { explain: `${E.name(s, H.x)} กลับไปอยู่กับผู้ควบคุมเดิม`, ops: [{ op: "control", i: H.x.i, seat: H.x.home, home: true }] }; } },
   // อาคารผู้โดยสารชั้นต่ำ (Land): once per turn with the plane, discard 1: a "ผู้โดยสาร Super Air" from hell or the Deck
   "BT07-066": { activate: { label: "ทิ้ง 1 ใบ: อัญเชิญผู้โดยสาร Super Air จากนรกหรือ Deck", can: (E, s, x, L) => L.z === "land" && s.phase === "main" && plane(E, s, L.p) && s.P[L.p].hand.length > 0 && E.avatars(s.P[L.p]) < 4 && [...s.P[L.p].hell, ...s.P[L.p].deck].some((y) => E.named(s, y, "ผู้โดยสาร Super Air")),
     run: (c) => { const { E, s, seat: p } = c; const h = s.P[p].hell.find((y) => E.named(s, y, "ผู้โดยสาร Super Air")); const t = h || s.P[p].deck.find((y) => E.named(s, y, "ผู้โดยสาร Super Air")); const pay = c.choose([...s.P[p].hand].sort(cheapCard(E, s)), 1, "ทิ้งการ์ดบนมือ 1 ใบ", { exact: true })[0];
@@ -3323,7 +3328,7 @@ Object.assign(SCRIPTS, {
   // ฤๅษี ภฤคุ: our {ฤษี} Normal Magic in the opponent's turn, and {ฤษี} Reacts answer attacks, abilities and Magic
   "BT05-011": { rishiTime: true },
   // เหน็บกินมือ: the opponent takes a card from the Deck with an ability: it goes back
-  // FAQ: the React comes before the card leaves the Deck and cancels that whole ability (สอดแนม-Magic like หนังสือเอาตัวรอดของกุ่ย are not put on the Magic Zone) · drawing is not "taking from the Deck"
+  // FAQ: the React comes before the card leaves the Deck and cancels that whole ability (สอดแนม-Magic like หนังสือเอาตัวรอดของกุ่ย are not put on the Magic Zone) · a draw made by an ability counts too (FAQ ลานเซลอต), unless it is picked while the effect resolves (FAQ พรของอิศวร)
   "BT05-060": { react: { kinds: ["handed"], can: (E, s, p, on) => !!on.pre && on.by === 1 - p, botV: () => 3 },
     cast: (c) => { const { E, s } = c; const on = onTarget(c); const t = s.trig.find((y) => y.id === on.tid); return t ? { explain: `ยกเลิกผลความสามารถของ ${(s.cards[t.via || t.c] || {}).n || "การ์ดนั้น"}`, ops: [{ op: "cancelTid", id: t.id }] } : { explain: "", ops: [] }; } },
   // มหาราชาสีนิล: +2 in fights · destroyed in a fight: its Mods go to hell instead · คำสั่งเสีย our Avatars +1
@@ -3341,7 +3346,7 @@ Object.assign(SCRIPTS, {
   // หมีบราซิล (red): show a red Avatar: one of ours +2, or draw 2 discard 1
   "CC02-005": { summon: (c) => { const { E, s, seat: p, self: x } = c; if (!bearShow("แดง")(E, s, p, x)) return { explain: "ไม่มี Avatar สีแดงบนมือ", ops: [] }; const m = c.mode(["1) Avatar ฝ่ายเรา 1 ใบ POWER +2", "2) จั่ว 2 ใบ ทิ้ง 1 ใบ"], "หมีบราซิล", 1);
     if (m === 0) { const t = c.choose([...s.P[p].av].sort(strongFirst(E, s)), 1, "เลือก Avatar ฝ่ายเรา", { exact: true })[0]; return t ? { explain: `${E.name(s, t)} POWER +2`, ops: [{ op: "power", i: t.i, n: 2, temp: false }] } : { explain: "", ops: [] }; }
-    return { explain: "จั่ว 2 ใบ แล้วทิ้ง 1 ใบ", ops: [{ op: "draw", seat: p, n: 2 }, ...(x ? [{ op: "resume", t: { seat: p, i: x.i, c: x.c, when: "dropOne" } }] : [])] }; },
+    return { explain: "จั่ว 2 ใบ แล้วทิ้ง 1 ใบ", ops: [{ op: "draw", seat: p, n: 2, late: true }, ...(x ? [{ op: "resume", t: { seat: p, i: x.i, c: x.c, when: "dropOne" } }] : [])] }; },
     dropOne: (c) => { const { E, s, seat: p } = c; const t = c.choose([...s.P[p].hand].sort(cheapCard(E, s)), 1, "ทิ้งการ์ดบนมือ 1 ใบ", { exact: true })[0]; return t ? { explain: `ทิ้ง ${E.name(s, t)}`, ops: [{ op: "discard", seat: p, iids: [t.i] }] } : { explain: "", ops: [] }; } },
   // ซุส: จุติ any 2 cards from the Deck
   "CC02-006": { summon: (c) => { const { E, s, seat: p } = c; const ts = c.choose(uniq(E, s, s.P[p].deck).sort((a, b) => worth(E, s, b) - worth(E, s, a)), 2, "เลือกการ์ด 2 ใบจาก Deck ขึ้นมือ", { exact: true }); return { explain: `${ts.map((y) => E.name(s, y)).join(", ")} ขึ้นมือ`, ops: [...ts.map((y) => ({ op: "move", i: y.i, to: "hand" })), { op: "shuffle", seat: p }] }; } },
