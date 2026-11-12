@@ -1,8 +1,8 @@
 // Daily quests: three a day, the same three for everyone, picked by the date. Worked out from your match history and
 // the puzzles you have solved, so nothing extra is stored. Every quest done is a star; stars open things to wear,
 // like the achievements do (see achieve.js). Played for, never bought.
-import { Data } from "./fb.js?v=20261112135937";
-import { lsGet } from "./util.js?v=20261112135937";
+import { Data } from "./fb.js?v=20261112140652";
+import { lsGet } from "./util.js?v=20261112140652";
 
 const real = (m) => m.mode === "bot" || m.mode === "friend"; // practice against the dummy and two-sided games do not count
 const won = (m) => real(m) && m.result === "win";
