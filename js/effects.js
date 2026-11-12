@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261112095544";
-import { CARDS, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, inRed } from "./cards.js?v=20261112095544";
-import { E, scriptOf } from "./engine.js?v=20261112095544";
+import { readAura } from "./auras.js?v=20261112102002";
+import { CARDS, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261112102002";
+import { E, scriptOf } from "./engine.js?v=20261112102002";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -85,8 +85,8 @@ function fitsD(d, f, pw = () => d.pw || 0, on = false, cst = () => d.c || 0) {
   const nm = nameText(d, on); const syt = syText(d, on); const anySy = allSy(d, on);
   if (f.symbol && !anySy && !syt.includes(f.symbol)) return false;
   if (f.symbols && !anySy && !f.symbols.some((y) => syt.includes(y))) return false;
-  if (f.name && !nm.includes(normName(f.name))) return false;
-  if (f.names && !f.names.some((n) => nm.includes(normName(n)))) return false;
+  if (f.name && !nameHas(nm, f.name)) return false;
+  if (f.names && !f.names.some((n) => nameHas(nm, n))) return false;
   if (f.notName && nm.includes(normName(f.notName))) return false;
   if (f.notOnly && d.o1) return false;
   if (f.st && d.st !== f.st) return false;
@@ -263,12 +263,13 @@ function sentence(s, t, p, self, ctx) {
   if (/Land\s*Magic/i.test(t) && !/ขึ้นมือ|นรก/.test(t)) {
     let m;
     if ((m = t.match(/^ทำลาย(?:การ์ด)?\s*Land\s*Magic\s*(?:1\s*ใบ\s*)?(?:(?:บน|ใน)\s*(?:Land\s*Magic\s*Zone|สนาม))?\s*$/i))) {
-      { const on = E.lands(s); const L0 = on.length > 1 ? ctx.choose([...on].sort((a, b) => (a.o === p) - (b.o === p)), 1, "เลือก Land Magic ที่จะทำลาย", { exact: true })[0] : on[0]; if (L0 && !ctx.landGone) { ops.push({ op: "destroy", i: L0.i, why: "จากเอฟเฟกต์" }); say.push(`ทำลาย Land Magic ${E.name(s, L0)}`); ctx.landGone = true; } else say.push("ไม่มี Land Magic บนสนาม"); return { ops, say }; }
+      { const on = E.lands(s); const L0 = on.length > 1 ? ctx.choose([...on].sort((a, b) => (a.o === p) - (b.o === p)), 1, "เลือก Land Magic ที่จะทำลาย", { exact: true })[0] : on[0]; if (L0 && !ctx.landGone) { ops.push({ op: "destroy", i: L0.i, why: "จากเอฟเฟกต์" }); say.push(`ทำลาย Land Magic ${E.name(s, L0)}`); ctx.landGone = true; } else if (!L0) return { ops, say, fail: "ไม่มี Land Magic บนสนาม ความสามารถไม่ทำงาน" }; else say.push("ไม่มี Land Magic บนสนาม"); return { ops, say }; } // FAQ แมลงปอแจ็ค
     }
     if ((m = t.match(/^(?:สามารถ\s*)?(?:นำ|สั่งใช้|ใช้)\s*Land\s*Magic\s*(?:["“]([^"”]+)["”]\s*)?(?:1\s*ใบ\s*)?จาก(?:ใน)?\s*Deck\s*(?:(?:ฝ่าย|ของ)?เรา)?\s*(?:1\s*ใบ\s*)?(?:มา(?:เล่น|วาง|ใช้)?(?:ไว้)?\s*(?:บน|ใน|ที่)\s*(?:Land\s*Magic\s*Zone|สนาม)(?:\s*(?:ฝ่าย)?เรา)?)?\s*$/i))) {
       const seen = new Set(); const cands = P.deck.filter((x) => { const d = E.def(s, x); return d.t === "M" && d.st === "L" && (!m[1] || String(d.n).includes(m[1])); }).filter((x) => { const k = E.def(s, x).n; if (seen.has(k)) return false; seen.add(k); return true; });
+      if (s.mu[p].L) return { ops: [], say: [], fail: "เทิร์นนี้ใช้ Land Magic ไปแล้ว (การนำ Land Magic มาเล่นนับเป็นการใช้สิทธิ์นั้น)" }; // FAQ แมลงปอแจ็ค
       const got = ctx.choose(cands, 1, "เลือก Land Magic จาก Deck มาเล่นบนสนาม", { optional: /สามารถ/.test(t) })[0];
-      if (got) { ops.push({ op: "toLand", i: got.i }, { op: "shuffle", seat: p }); say.push(`นำ ${E.name(s, got)} จาก Deck มาเล่นบน Land Magic Zone`); } else { ops.push({ op: "shuffle", seat: p }); say.push("ไม่มี Land Magic ใน Deck"); }
+      if (got) { ops.push({ op: "toLand", i: got.i }, { op: "mu", seat: p, k: "L" }, { op: "shuffle", seat: p }); say.push(`นำ ${E.name(s, got)} จาก Deck มาเล่นบน Land Magic Zone`); } else { ops.push({ op: "shuffle", seat: p }); say.push("ไม่มี Land Magic ใน Deck"); }
       return { ops, say };
     }
   }
@@ -325,6 +326,8 @@ function sentence(s, t, p, self, ctx) {
       const cands = (/Construct/.test(t) ? O.cs.filter((x) => fits(s, x, f)) : f.type === "M" ? [...O.mg, ...E.lands(s).filter((l) => l.o === 1 - p)].filter((x) => typed(x, f)) : /การ์ด(?:บนสนาม)?\s*\d/.test(t) && !/Avatar/.test(t) ? [...oppAv({ ...f, type: null }), ...O.cs] : oppAv(f));
       // "Avatar บนสนาม": an Avatar in any zone of the field, the Magic Zone too (FAQ บีมมมมมมมมมม) · "บน Avatar Zone" only there
       if (!/Construct/.test(t) && f.type !== "M" && /Avatar[^:]*บนสนาม|บนสนาม[^:]*Avatar/.test(t) && !/Avatar Zone/.test(t)) cands.push(...O.mg.filter((x) => !x.fd && ["A", "T"].includes(E.def(s, x).t) && typed(x, f) && !E.noAim(s, x)));
+      // "ทุกใบ / ทั้งหมด" picks nothing, so cards that cannot be targeted go too (FAQ กวนอู ขุนพลภักดีแห่งจ๊กก๊ก)
+      if (all && !/Construct/.test(t) && f.type !== "M") for (const x of O.av) if (typed(x, f) && !cands.includes(x)) cands.push(x);
       if (anySide && !all) cands.push(...P.av.filter((x) => typed(x, f) && !(self && x.i === self.i)).sort((a, b) => val(s, a) - val(s, b)));
       const pool = all ? cands : ctx.choose(cands, n, `เลือกการ์ด${anySide ? "บนสนาม" : "ฝ่ายตรงข้าม"}ที่จะทำลาย (${hm.upTo ? "สูงสุด " : ""}${n} ใบ)`, { optional: hm.upTo });
       for (const x of pool) ops.push({ op: "destroy", i: x.i, why: "จากเอฟเฟกต์" });
@@ -613,7 +616,7 @@ function readClause(s, text, p, self, ctx, trig) {
     if (dirty.length && (k > start || !trig.part) && dirty.some((z) => t.includes(z)) && !later && !trig.dry) { // let the earlier steps happen first, then continue from here
       const dry = makeCtx(s, trig); dry.ref = ctx.ref; dry.when = ctx.when; for (let j = k; j < parts.length; j++) if (!sentence(s, parts[j], p, self, dry)) return null; // the rest must be readable too
       eops.push({ op: "resume", t: { i: trig.i, c: trig.c, when: trig.when, seat: trig.seat, ...(trig.k != null ? { k: trig.k } : {}), ...(trig.on ? { on: trig.on } : {}), part: k + 1 } }); esay.push("แล้วทำส่วนที่เหลือต่อ"); break; }
-    const r = sentence(s, t, p, self, ctx); if (!r) return why("sentence: " + t); eops.push(...r.ops); esay.push(...r.say); }
+    const r = sentence(s, t, p, self, ctx); if (!r) return why("sentence: " + t); if (r.fail) return { fail: r.fail }; eops.push(...r.ops); esay.push(...r.say); }
   return { ops: [...ops, ...eops], say: [...say, ...esay] };
 }
 
@@ -675,6 +678,8 @@ export function makeCtx(s, t, picks = [], interactive = false) {
 export function resolveEffect(s, t, picks = [], interactive = false) {
   const ctx = makeCtx(s, t, picks, interactive);
   try {
+    if (t.when === "trim") { const P = s.P[t.seat]; const n = Math.max(0, E.avatars(P) - 4); const pick = n ? ctx.choose(P.av.filter((x) => !x.tok).sort((a, b) => cardVal(s, a) - cardVal(s, b)), n, `Avatar Zone เกินจำนวนที่ควบคุมได้: เลือก Avatar ${n} ใบส่งลงนรก`, { exact: true }) : [];
+      return { explain: pick.length ? `ควบคุมได้ไม่เกินจำนวนที่กำหนด: ${pick.map((x) => E.name(s, x)).join(", ")} ลงนรก` : "", ops: pick.map((x) => ({ op: "move", i: x.i, to: "hell" })) }; }
     const sc = scriptOf(s, { c: t.c });
     const run = sc && (t.when === "activate" ? t.k == null && sc.activate && sc.activate.run : t.when === "answer" ? sc.answer && sc.answer.run : sc[t.when]);
     if (run) return run(ctx);

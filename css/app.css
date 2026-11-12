@@ -315,7 +315,7 @@ body.arena-on main{padding:0;max-width:none}
 /* a choice box never squeezes its cards: the card grid keeps its height (it scrolls inside), the box scrolls if it must */
 .prompt>.pick,.prompt>.opts,.prompt>.row{flex-shrink:0}
 /* the attack row on a computer table: one slim line of names, not a panel of pictures */
-.prompt.slim{flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:8px 12px;width:auto;max-width:min(900px,92vw)}
+.prompt.slim{flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:8px 12px;left:0;right:0;margin-inline:auto;transform:none;width:fit-content;max-width:min(900px,92vw)}
 .prompt.slim>b{font-size:.9rem;margin-right:4px}
 .prompt.slim .btn.sm{height:32px;padding:0 12px}
 .pick .ccard{aspect-ratio:388/528;min-height:0}

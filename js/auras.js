@@ -1,7 +1,7 @@
 // Free reader for continuous POWER effects ("ต่อเนื่อง ... POWER +N").
 // Conservative like effects.js: anything it can't express exactly is ignored (returns no aura).
 // readAura(def) -> null or { desc, run(E, s, src, L) -> [{ seat, test(x), n }] }
-import { nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261112095544";
+import { nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261112102002";
 const cache = new Map();
 
 const ON_FIELD = { A: "av", T: "av", C: "cs" };
@@ -69,8 +69,8 @@ function parse(seg) {
     if (t.slice(0, t.indexOf(cm[0])).replace(/การ์ดใบนี้|Avatar ใบนี้|ใบนี้|POWER ของ|ของ|Avatar|การ์ด/g, "").trim()) return null; // must be about this card
     if (/LIFE/.test(what)) { if (!/หงาย/.test(what)) return null; return { ...spec, kind: "count", per, count: { life: /ทั้ง\s*2\s*ฝ่าย|ทั้งสองฝ่าย/.test(what) ? "both" : "mine" } }; }
     const f = filterOf(what); if (!named(f) || f.bad) return null;
-    const zone = /นรก/.test(what) ? "hell" : /Avatar Zone|สนาม/.test(what) ? "av" : null; if (!zone) return null;
-    const side = /ฝ่ายเรา|ของเรา|Zone\s*เรา|นรกเรา/.test(what) ? "mine" : /ฝ่ายตรงข้าม/.test(what) ? null : zone === "av" ? "both" : null; if (!side) return null;
+    const zone = /นรก/.test(what) ? "hell" : /Avatar Zone/.test(what) ? "av" : /สนาม/.test(what) ? "field" : null; if (!zone) return null; // "บนสนาม": every zone of the field (FAQ หนุมาน)
+    const side = /ฝ่ายเรา|ของเรา|Zone\s*เรา|นรกเรา/.test(what) ? "mine" : /ฝ่ายตรงข้าม/.test(what) ? null : zone === "av" || zone === "field" ? "both" : null; if (!side) return null;
     return { ...spec, kind: "count", per, count: { f, zone, side, other: /ใบอื่น/.test(what), uniq: /ชื่อต่างกัน|ไม่ซ้ำ/.test(what) } };
   }
   if (/ตามจำนวน|ต่อจำนวน|ใบละ/.test(t)) return null;
@@ -132,7 +132,7 @@ function run(E, s, src, L, specs, zone) {
       if (c.worn) k = [...s.P[0].mg, ...s.P[1].mg].filter((m) => m.on === src.i && (!c.mod || E.def(s, m).st === "D") && (!c.name || String(E.def(s, m).n || "").includes(c.name))).length;
       else if (c.token) k = s.P[p].av.filter((x) => x.tok && String(E.def(s, x).n || "").includes(c.token)).length;
       else if (c.life) k = (c.life === "both" ? [0, 1] : [p]).reduce((a, q) => a + s.P[q].life.filter((x) => x.up).length, 0);
-      else { const seats = c.side === "both" ? [0, 1] : [p]; let list = seats.flatMap((q) => s.P[q][c.zone]).filter((x) => fits(E, s, x, c.f) && !(c.other && x.i === src.i));
+      else { const seats = c.side === "both" ? [0, 1] : [p]; let list = seats.flatMap((q) => (c.zone === "field" ? [...s.P[q].av, ...s.P[q].cs, ...s.P[q].mg.filter((x) => !x.fd)] : s.P[q][c.zone])).filter((x) => fits(E, s, x, c.f) && !(c.other && x.i === src.i));
         if (c.uniq) list = [...new Set(list.map((x) => E.def(s, x).n))]; k = list.length; }
       if (k) res.push({ seat: p, test: (x) => x.i === src.i, n: k * sp.per });
     }

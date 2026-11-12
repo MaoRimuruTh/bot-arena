@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261112095544";
-import { h } from "./util.js?v=20261112095544";
-import { Data } from "./fb.js?v=20261112095544";
+import { CARD_SOURCE } from "./config.js?v=20261112102002";
+import { h } from "./util.js?v=20261112102002";
+import { Data } from "./fb.js?v=20261112102002";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -72,6 +72,9 @@ export const hasFieldAlias = (d) => !!(d && d.al && (d.al.anF || d.al.asyF || d.
 // names as card texts quote them, with the misprints some texts carry mapped to the printed names: "บีมมิ" (มีมมิ),
 // "อาวุร..." (อาวุธของเพมมุ, อาวุธหุ่นนักรบผู้กล้า), "ไม้ท์เกรน" (ไมเกรน), "นายนิรบาล" (นายนิรยบาล),
 // "ตัวอะไรซักอย่าง" (สักอย่าง), "โพลิกอน" (โพลีกอน)
+// a name asked for inside a longer word that is a name of its own does not count: "นาย" is not in "นายนิรยบาล" (FAQ ฮอล)
+const NAME_WORDS = { "นาย": ["นายนิรยบาล"] };
+export const nameHas = (text, q) => { const k = normName(q); let t = String(text || ""); for (const w of NAME_WORDS[k] || []) t = t.split(w).join(" "); return t.includes(k); };
 export const normName = (t) => sp1(t).replace(/บีมมิ/g, "มีมมิ").replace(/อาวุร/g, "อาวุธ").replace(/ไม้ท์เกรน/g, "ไมเกรน").replace(/นิรบาล/g, "นิรยบาล").replace(/ซักอย่าง/g, "สักอย่าง").replace(/โพลิกอน/g, "โพลีกอน");
 
 function transform(raw) {
