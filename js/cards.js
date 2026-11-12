@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261112210146";
-import { h } from "./util.js?v=20261112210146";
-import { Data } from "./fb.js?v=20261112210146";
+import { CARD_SOURCE } from "./config.js?v=20261112210526";
+import { h } from "./util.js?v=20261112210526";
+import { Data } from "./fb.js?v=20261112210526";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -54,11 +54,14 @@ const SUB = { Normal: "N", Modification: "D", React: "R", Land: "L" };
 //          โอตะตัวกะปอม BT04-013 2 like KD03-009 · เสามงคล ทรงโรมัน 4 · เจ้าของร้านอาบน้ำสัตว์ 3 · อนงค์ 2 · จ่านุ้ย ทหารช่าง 4
 //   GEM    ซุนเซ็ก ไฟแรง 0 (both printings) · แมลงปอ บรรพบุรุษ 3 · ยายกบ 1954 0 · อนงค์ 1 · จ่านุ้ย ทหารช่าง 3 · มายา เรื่องราว 2 ·
 //          หนุมาน ODY1-010 2 like its other printings · มาติเนซ BT04-030 3 like its SCR · โซน่า โพลีกอน 2 (its SCR says 3: it prints 2)
+//   Magic GEM (the 558 Magic printings' diamonds): ช่วยโลกใบนี้ไว้ 4 (BT02-041 and PRMO-010 print 4, as CC02-051 does) ·
+//          วิชานินจา รุกรับพลิกผัน 1 · สัญญาเลือด 2 (both printings)
 // (A single printing that differs from all its reprints keeps the data, which follows the reprints.)
 const DATA_FIX = { "SD05-014": { st: "L" }, "SD05-020": { st: "R" }, "SD06-014": { st: "R" }, "ODY1-064": { st: "R" },
   "BT04-010": { pw: 7 }, "FPRO-007": { pw: 7 }, "BT04-019": { c: 5, pw: 6 }, "BT04-020": { pw: 4 }, "PRMO-137": { pw: 4 }, "ODY1-007": { pw: 3 },
   "BT04-005": { c: 5, g: 0 }, "BT04-007": { c: 6 }, "BT04-013": { c: 2 }, "BT04-029": { c: 4 }, "BT04-033": { c: 3 }, "BT04-034": { c: 2, g: 1 }, "BT06-035": { c: 4, g: 3 },
-  "SD07-006": { g: 0 }, "PRMO-102": { g: 0 }, "BT03-033": { g: 3 }, "BT11-049": { g: 2 }, "ODY1-010": { g: 2 }, "BT04-030": { g: 3 }, "BT09-022": { g: 2 } };
+  "SD07-006": { g: 0 }, "PRMO-102": { g: 0 }, "BT03-033": { g: 3 }, "BT11-049": { g: 2 }, "ODY1-010": { g: 2 }, "BT04-030": { g: 3 }, "BT09-022": { g: 2 },
+  "BT02-041": { g: 4 }, "PRMO-010": { g: 4 }, "BT10-065": { g: 1 }, "KD02-014": { g: 2 } };
 
 // ---------- names, Symbols and colours a card counts as ----------
 // "#Avatar ใบนี้ถือว่ามีชื่อ "รถถัง"" · "#การ์ดใบนี้นับเป็นชื่อ บึงทมิฬ" · "#Avatar ใบนี้ นับว่าเป็น {Symbol สัตว์} ด้วย" ·
