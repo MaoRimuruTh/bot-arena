@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261112215336";
-import { E } from "./engine.js?v=20261112215336";
-import { h } from "./util.js?v=20261112215336";
-import { Sfx } from "./sfx.js?v=20261112215336";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261112220720";
+import { E } from "./engine.js?v=20261112220720";
+import { h } from "./util.js?v=20261112220720";
+import { Sfx } from "./sfx.js?v=20261112220720";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -457,6 +457,10 @@ function points(n, color, size, map, spread) {
 // ---------- lacquer and gold leaf ----------
 // world ↔ mat canvas: x ∈ [-MW/2, MW/2], z ∈ [MZ - MD/2, MZ + MD/2]; the top of the canvas is the opponent's side
 const MW = 15.4, MD = 11.6, MZ = -0.2;
+// a player's own picture lies on their half as a cloth playmat would: inside the table's gilded border and clear of the
+// centre band, its corners rounded, its edge bound and stitched; the zones' gold line-work is printed over it
+const PM = { x: 7.2, z0: 0.42, z1: 0.46, r: 0.3, bind: 0.075 }; // half its width; gap to the centre line; gap to the near edge; corner; binding
+export const MAT_ASPECT = (2 * PM.x) / (MD / 2 - PM.z0 - PM.z1); // the shape of the picture (width : depth)
 // where the zones sit on the mat. "wide" is the table for screens held sideways; "tall" is for phones held upright,
 // where the screen is too narrow for the wide table: the Land Magic Zone moves in from the left edge to the middle
 // band, the Construct and Magic Zones close in, and five or six Avatars stand closer together, so every card fits
@@ -649,10 +653,31 @@ function decor() {
 const rgbaOf = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
 // the gold line-work of our half of the wide table, gold on black, for the playmat editor to lay over a picture ("screen")
 export function matLines() {
-  const mt = matTextures(true, { near: MATS.black, far: MATS.black }, ZONES.wide), src = mt.glow.image, c = document.createElement("canvas");
-  c.width = src.width; c.height = Math.round(src.height / 2); const g = c.getContext("2d");
-  g.drawImage(src, 0, src.height - c.height, src.width, c.height, 0, 0, c.width, c.height); g.globalCompositeOperation = "multiply"; g.fillStyle = GOLD; g.fillRect(0, 0, c.width, c.height);
+  const mt = matTextures(true, { near: MATS.black, far: MATS.black }, ZONES.wide), src = mt.glow.image, S = src.width / MW;
+  const [x0, y0, x1, y1] = matRect(true, (x) => (x + MW / 2) * S, (z) => (z - MZ + MD / 2) * S), c = document.createElement("canvas");
+  c.width = Math.round(x1 - x0); c.height = Math.round(y1 - y0); const g = c.getContext("2d");
+  g.drawImage(src, x0, y0, x1 - x0, y1 - y0, 0, 0, c.width, c.height); g.globalCompositeOperation = "multiply"; g.fillStyle = GOLD; g.fillRect(0, 0, c.width, c.height);
   for (const t of [mt.base, mt.glow, mt.rough]) t.dispose(); return c;
+}
+// where a player's playmat lies on the mat canvas: [left, top, right, bottom] in canvas pixels
+const matRect = (near, X, Y) => (near ? [X(-PM.x), Y(MZ + PM.z0), X(PM.x), Y(MZ + MD / 2 - PM.z1)] : [X(-PM.x), Y(MZ - MD / 2 + PM.z1), X(PM.x), Y(MZ - PM.z0)]);
+const roundRect = (c, x0, y0, x1, y1, r) => { c.beginPath(); c.moveTo(x0 + r, y0); c.arcTo(x1, y0, x1, y1, r); c.arcTo(x1, y1, x0, y1, r); c.arcTo(x0, y1, x0, y0, r); c.arcTo(x0, y0, x1, y0, r); c.closePath(); };
+// the playmat: a soft shadow on the lacquer round it, the picture covering it (cropped to fit, never stretched) under the
+// owner's veil, a dark bound edge with a row of stitches, and cloth's matt finish in the roughness map
+function playmat(g, rq, m, near, [x0, y0, x1, y1], U) {
+  const r = U(PM.r), bw = U(PM.bind), w = x1 - x0, hh = y1 - y0;
+  g.save(); g.shadowColor = "rgba(0,0,0,.6)"; g.shadowBlur = U(0.22); g.shadowOffsetY = U(near ? 0.05 : -0.05); g.fillStyle = "#0c0b0e"; roundRect(g, x0, y0, x1, y1, r); g.fill(); g.restore();
+  g.save(); roundRect(g, x0, y0, x1, y1, r); g.clip();
+  const iw = m.img.width, ih = m.img.height, k = Math.max(w / iw, hh / ih), dw = iw * k, dh = ih * k;
+  if (near) g.drawImage(m.img, x0 + (w - dw) / 2, y0 + (hh - dh) / 2, dw, dh); else { g.translate(x1, y1); g.rotate(Math.PI); g.drawImage(m.img, (w - dw) / 2, (hh - dh) / 2, dw, dh); }
+  g.restore();
+  g.save(); roundRect(g, x0, y0, x1, y1, r); g.clip(); g.fillStyle = rgbaOf(m.lac, m.veil != null ? m.veil : 0.3); g.fillRect(x0, y0, w, hh);
+  // the binding round the edge, a little sheen along its inner side, and the stitching along it
+  g.lineWidth = bw * 2; g.strokeStyle = "#0e0d12"; roundRect(g, x0, y0, x1, y1, r); g.stroke();
+  g.lineWidth = Math.max(1, U(0.012)); g.strokeStyle = "rgba(255,255,255,.10)"; roundRect(g, x0 + bw, y0 + bw, x1 - bw, y1 - bw, Math.max(1, r - bw)); g.stroke();
+  g.setLineDash([U(0.07), U(0.045)]); g.lineWidth = Math.max(1, U(0.016)); g.strokeStyle = "rgba(150,140,128,.55)"; const sx = bw * 0.5; roundRect(g, x0 + sx, y0 + sx, x1 - sx, y1 - sx, Math.max(1, r - sx)); g.stroke(); g.setLineDash([]);
+  g.restore();
+  rq.save(); rq.fillStyle = "#e4e4e4"; roundRect(rq, x0, y0, x1, y1, r); rq.fill(); rq.restore(); // cloth is matt: the hall's light does not shine in it
 }
 function matTextures(small, mats = {}, Z = ZONES.wide) {
   const NEAR = mats.near || MATS.black, FAR = mats.far || NEAR, theme = NEAR;
@@ -667,18 +692,17 @@ function matTextures(small, mats = {}, Z = ZONES.wide) {
   g.fillStyle = FAR.lac; g.fillRect(0, 0, CW, yMid); g.fillStyle = NEAR.lac; g.fillRect(0, yMid, CW, CH - yMid);
   q.fillStyle = "#000"; q.fillRect(0, 0, CW, CH); rq.fillStyle = "#c0c0c0"; rq.fillRect(0, 0, CW, CH); // roughness: lacquer satin, so the hall reflects in it only as a soft glow; gold leaf a little glossier
   let gr = g.createRadialGradient(CW / 2, CH * 0.55, CW * 0.05, CW / 2, CH * 0.55, CW * 0.62); gr.addColorStop(0, "rgba(64,38,28,.55)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, 0, CW, CH);
-  // a player's own picture (vault.js) is their half of the mat, the far one turned round to face its owner, under a veil of
-  // lacquer so the cards and the gold line-work stay clear on it
-  for (const [m, near] of [[FAR, false], [NEAR, true]]) if (m.img) {
-    g.save(); if (near) g.drawImage(m.img, 0, yMid, CW, CH - yMid); else { g.translate(CW, yMid); g.rotate(Math.PI); g.drawImage(m.img, 0, 0, CW, yMid); } g.restore();
-    g.fillStyle = rgbaOf(m.lac, m.veil != null ? m.veil : 0.3); if (near) g.fillRect(0, yMid, CW, CH - yMid); else g.fillRect(0, 0, CW, yMid); }
   gr = g.createLinearGradient(0, 0, 0, CH * 0.42); gr.addColorStop(0, FAR.edge + ".30)"); gr.addColorStop(1, FAR.edge + "0)"); g.fillStyle = gr; g.fillRect(0, 0, CW, CH * 0.42);
   if (NEAR !== FAR || NEAR.kind) { gr = g.createLinearGradient(0, CH, 0, CH * 0.6); gr.addColorStop(0, NEAR.edge + ".22)"); gr.addColorStop(1, NEAR.edge + "0)"); g.fillStyle = gr; g.fillRect(0, CH * 0.6, CW, CH * 0.4); }
   gr = g.createLinearGradient(0, CH, 0, CH * 0.6); gr.addColorStop(0, "rgba(216,168,74,.10)"); gr.addColorStop(1, "rgba(216,168,74,0)"); g.fillStyle = gr; g.fillRect(0, CH * 0.6, CW, CH * 0.4);
   // ซากุระราตรี: branches in bloom painted across that side (under the gold line-work; the cards lie on top)
   for (const [m, near] of [[FAR, false], [NEAR, true]]) if (m.kind === "sakura") paintSakura(g, X, Y, U, near, small);
   for (let k = 0; k < CW * CH / 900; k++) { const v = Math.random(); g.fillStyle = v < 0.5 ? "rgba(255,255,255,.018)" : "rgba(0,0,0,.05)"; g.fillRect(Math.random() * CW, Math.random() * CH, 1 + Math.random() * 2, 1 + Math.random() * 2); }
-  for (let k = 0; k < (small ? 260 : 520); k++) { const x = Math.random() * CW, y = Math.random() * CH, r = Math.random() * 1.6 + 0.4, a = Math.random() * 0.22 + 0.04; g.fillStyle = `rgba(232,186,92,${a})`; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); q.fillStyle = `rgba(255,255,255,${a * 0.6})`; q.beginPath(); q.arc(x, y, r, 0, 7); q.fill(); }
+  // a player's own picture (vault.js): a cloth playmat on their half, the far one turned round to face its owner
+  const cloths = [[FAR, false], [NEAR, true]].filter(([m]) => m.img).map(([m, near]) => ({ m, near, r: matRect(near, X, Y) }));
+  for (const { m, near, r } of cloths) playmat(g, rq, m, near, r, U);
+  const onCloth = (x, y) => cloths.some(({ r }) => x > r[0] && x < r[2] && y > r[1] && y < r[3]);
+  for (let k = 0; k < (small ? 260 : 520); k++) { const x = Math.random() * CW, y = Math.random() * CH, r = Math.random() * 1.6 + 0.4, a = Math.random() * 0.22 + 0.04; if (onCloth(x, y)) continue; g.fillStyle = `rgba(232,186,92,${a})`; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); q.fillStyle = `rgba(255,255,255,${a * 0.6})`; q.beginPath(); q.arc(x, y, r, 0, 7); q.fill(); }
   // everything gilded is drawn three times: in gold on the mat, in white on the glow (and metal) map, in grey on the roughness map
   const gild = (fn) => { for (const [c, col, gr] of [[g, GOLD, LAC], [q, "#fff", "#000"], [rq, "#a0a0a0", "#c0c0c0"]]) { c.save(); c.strokeStyle = c.fillStyle = col; c.lineJoin = "miter"; fn(c, gr); c.restore(); } };
   const frame = (c, x0, z0, x1, z1, st, w = 0.035) => { c.lineWidth = U(w); stepPath(c, X(x0), Y(z0), X(x1), Y(z1), U(st)); c.stroke(); c.lineWidth = U(w * 0.38); stepPath(c, X(x0) + U(0.1), Y(z0) + U(0.1), X(x1) - U(0.1), Y(z1) - U(0.1), U(st * 0.8)); c.stroke(); };
@@ -1052,9 +1076,25 @@ function dropMesh(o) { R.scene.remove(o.grp); if (o.face && o.face.material.disp
 function backFor(s, p) {
   const P = s && s.P && s.P[p], o = P && P.sleeve === "own" && custom.sleeve ? custom.sleeve(P) : null;
   if (!o || !o.img) return R.backMat;
-  if (!o.mat) { const c = document.createElement("canvas"); c.width = 512; c.height = 697; c.getContext("2d").drawImage(o.img, 0, 0, 512, 697);
-    const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; o.mat = new THREE.MeshBasicMaterial({ map: t, color: 0xd6d6d6, toneMapped: false }); o.mat.userData.keep = true; }
+  if (!o.mat) { o.mat = new THREE.MeshBasicMaterial({ map: sleeveTexture(o.img), color: 0xd6d6d6, toneMapped: false }); o.mat.userData.keep = true; }
   return o.mat;
+}
+// a player's own sleeve as a printed art sleeve: the picture under a soft gloss (light from the top left, a little shade
+// toward the far corner), the dark folded edge of the sleeve round it and a thin bright rim where its plastic catches the
+// light
+function sleeveTexture(img, W = 512) {
+  const H = Math.round(W * 697 / 512), c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
+  const k = Math.max(W / img.width, H / img.height), dw = img.width * k, dh = img.height * k; g.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  sleeveFrame(g, W, H);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; return t;
+}
+// the sleeve drawn over a picture already in a W×H canvas (the table's card backs, and the sleeve editor's preview)
+export function sleeveFrame(g, W, H) {
+  let gr = g.createLinearGradient(0, 0, W * 0.9, H); gr.addColorStop(0, "rgba(255,255,255,.17)"); gr.addColorStop(0.3, "rgba(255,255,255,.05)"); gr.addColorStop(0.52, "rgba(255,255,255,0)"); gr.addColorStop(1, "rgba(0,0,0,.16)"); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  gr = g.createLinearGradient(W * 0.12, 0, W * 0.62, H * 0.5); gr.addColorStop(0, "rgba(255,255,255,0)"); gr.addColorStop(0.45, "rgba(255,255,255,.09)"); gr.addColorStop(0.55, "rgba(255,255,255,.09)"); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; g.fillRect(0, 0, W, H); // a band of shine
+  const b = W * 0.026, r = W * 0.05;
+  g.lineWidth = b * 2; g.strokeStyle = "#0c0b0f"; roundRect(g, 0, 0, W, H, r); g.stroke();
+  g.lineWidth = Math.max(1, W * 0.004); g.strokeStyle = "rgba(255,255,255,.32)"; roundRect(g, b, b, W - b, H - b, Math.max(1, r - b)); g.stroke();
 }
 function syncBacks(s) {
   for (const m of R.meshes.values()) if (m.p != null) m.back.material = backFor(s, m.own != null ? m.own : m.p);

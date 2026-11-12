@@ -1,12 +1,12 @@
 // Settings for the owner's own things (vault.js): a picture for his half of the mat, a picture for his card sleeves and a
 // 3D figure. A picture is framed here (drag to move it, slide to zoom) and saved twice: in full for his own screen, and
 // smaller for opponents if he lets them see it. Shown only to the owner account.
-import { h, toast, openSheet } from "./util.js?v=20261112215336";
-import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, shownBlob, isOwner, vaultBlob } from "./vault.js?v=20261112215336";
-import { matLines, FIG_FINISH, FIG_MOVES, figureViewer } from "./arena3d.js?v=20261112215336";
-import { setMeta, Data } from "./fb.js?v=20261112215336";
+import { h, toast, openSheet } from "./util.js?v=20261112220720";
+import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, shownBlob, isOwner, vaultBlob } from "./vault.js?v=20261112220720";
+import { matLines, sleeveFrame, MAT_ASPECT, FIG_FINISH, FIG_MOVES, figureViewer } from "./arena3d.js?v=20261112220720";
+import { setMeta, Data } from "./fb.js?v=20261112220720";
 
-const MAT_A = 15.4 / 5.8, SLEEVE_A = 1.5 / 2.04; // one side of the table; a card
+const MAT_A = MAT_ASPECT, SLEEVE_A = 1.5 / 2.04; // a player's playmat on their side of the table (arena3d.js); a card
 const KIND = {
   mat: { a: MAT_A, full: 2048, show: 1280, title: "จัดภาพผ้าปู", pick: "bot.mat", label: "ผ้าปูของฉัน", hint: "ภาพนี้เป็นฝั่งของมาสเตอร์บนโต๊ะ เส้นทองคือกรอบโซนที่จะวาดทับ" },
   sleeve: { a: SLEEVE_A, full: 600, show: 360, title: "จัดภาพหลังการ์ด", pick: "bot.sleeve", label: "หลังการ์ดของฉัน", hint: "ภาพนี้จะอยู่หลังการ์ดทุกใบของมาสเตอร์ ทั้ง Deck และ LIFE ที่คว่ำอยู่" },
@@ -30,7 +30,8 @@ function editor(kind, img) {
   const cv = h("canvas", { class: "vprev " + kind, width: W, height: H, "aria-label": "ตัวอย่างภาพ ลากเพื่อเลื่อน" }), g = cv.getContext("2d");
   const lines = kind === "mat" ? matLines() : null;
   const draw = () => { g.clearRect(0, 0, W, H); drawCrop(g, W, H, img, st);
-    if (lines) { g.fillStyle = `rgba(13,11,18,${st.veil})`; g.fillRect(0, 0, W, H); g.globalCompositeOperation = "screen"; g.drawImage(lines, 0, 0, W, H); g.globalCompositeOperation = "source-over"; } };
+    if (lines) { g.fillStyle = `rgba(13,11,18,${st.veil})`; g.fillRect(0, 0, W, H); g.globalCompositeOperation = "screen"; g.drawImage(lines, 0, 0, W, H); g.globalCompositeOperation = "source-over"; }
+    if (kind === "sleeve") sleeveFrame(g, W, H); }; // (the sleeve's edge and gloss are the table's, not part of the saved picture)
   let drag = null;
   cv.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY, cx: st.cx, cy: st.cy }; try { cv.setPointerCapture(e.pointerId); } catch {} });
   cv.addEventListener("pointermove", (e) => { if (!drag) return; const r = cv.getBoundingClientRect(), k = W / r.width, s = Math.max(W / img.width, H / img.height) * st.z;
@@ -54,7 +55,7 @@ function editor(kind, img) {
 // a small picture of what is stored
 function thumb(kind) {
   const K = KIND[kind], w = kind === "mat" ? 240 : 66, c = h("canvas", { class: "vthumb " + kind, width: w, height: Math.round(w / K.a) });
-  vaultBlob(kind).then((b) => b && createImageBitmap(b)).then((bm) => { if (bm) c.getContext("2d").drawImage(bm, 0, 0, c.width, c.height); }).catch(() => {});
+  vaultBlob(kind).then((b) => b && createImageBitmap(b)).then((bm) => { if (!bm) return; const g = c.getContext("2d"); g.drawImage(bm, 0, 0, c.width, c.height); if (kind === "sleeve") sleeveFrame(g, c.width, c.height); }).catch(() => {});
   return c;
 }
 const filePick = (accept, fn) => { const i = h("input", { type: "file", accept, hidden: true, onchange: async () => { const f = i.files && i.files[0]; i.value = ""; if (f) await fn(f); } }); return i; };
