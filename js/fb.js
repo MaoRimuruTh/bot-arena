@@ -1,4 +1,4 @@
-import { firebaseConfig, FB_VERSION } from "./config.js?v=20261113020943";
+import { firebaseConfig, FB_VERSION } from "./config.js?v=20261113022201";
 const base = `https://www.gstatic.com/firebasejs/${FB_VERSION}/`;
 const { initializeApp } = await import(base + "firebase-app.js");
 const A = await import(base + "firebase-auth.js");

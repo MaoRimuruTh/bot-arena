@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113020943";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261113020943";
-import { SCRIPTS } from "./scripts.js?v=20261113020943";
-import { newId, clone } from "./util.js?v=20261113020943";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113022201";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261113022201";
+import { SCRIPTS } from "./scripts.js?v=20261113022201";
+import { newId, clone } from "./util.js?v=20261113022201";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -270,7 +270,10 @@ export const E = {
   // Avatars counted against the 4-Avatar limit (พิภพรัททาทุย: 6 while every Avatar of ours is รัททาทุย, so 2 are not counted)
   avatars: (P) => { const n = P.av.filter((x) => !x.tok).length; return P.c6 ? Math.max(0, n - 2) : P.c3 ? P.av.length + 1 : n; }, // c3: นรกในกรง (only 3, Tokens included: FAQ)
   sync(s) { if (s.later2 && s.later2.length && !s.inCheck) { const ids = s.later2; s.later2 = []; for (const i of ids) { const L = E.locate(s, i); if (L && L.z === "av") { E.log(s, L.p, `${E.name(s, L.x)} ถูกส่งลงนรก (การ์ดที่สวมใส่ออกจากสนาม)`); E.moveTo(s, i, "hell"); } } } E.capSync(s); E.linkSync(s); E.modSync(s); E.stateCheck(s); },
-  stateCheck(s) { if (s.inCheck || s.phase === "over") return; s.inCheck = true; try { for (const { x, L } of fieldCards(s)) { if (x.mute) continue; const sc = scriptOf(s, x); if (sc && sc.check) { const ops = sc.check(E, s, x, L) || []; if (ops.length) E.ops(s, ops, L.p); } } } finally { delete s.inCheck; } },
+  stateCheck(s) { if (s.inCheck || s.phase === "over") return;
+    // a Land Magic that can still be answered (ชายจากอนาคต) is not in play yet: what it would force (บึงทมิฬ + คุณปลาชด, FAQ) waits for the answer
+    { const open = [s.rw, ...s.trig.map((t) => t.on)].filter((on) => on && on.kind === "cast"); if (open.some((on) => { const Lw = E.locate(s, on.i); return !!Lw && Lw.z === "land"; })) return; }
+    s.inCheck = true; try { for (const { x, L } of fieldCards(s)) { if (x.mute) continue; const sc = scriptOf(s, x); if (sc && sc.check) { const ops = sc.check(E, s, x, L) || []; if (ops.length) E.ops(s, ops, L.p); } } } finally { delete s.inCheck; } },
   // สถานะคู่หู (Rule Book p.19–20): an Avatar with "[Link ชื่อ]" and an Avatar of that name on the same Avatar Zone are put into Link
   // together — by their player, once a turn (done here for them in their own turn, the strongest pair first) · an Avatar is in one pair
   // at most (a second โลกิ does not link while ธอร์ is linked to the first) · the pair ends when either card leaves the Avatar Zone
