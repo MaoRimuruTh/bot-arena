@@ -1,11 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112102630";
-import { plain } from "./persona.js?v=20261112102630";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261112102630";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112102630";
-import { modPowerFor } from "./auras.js?v=20261112102630";
-import { Data } from "./fb.js?v=20261112102630";
-import { lsGet, clone } from "./util.js?v=20261112102630";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112102949";
+import { plain } from "./persona.js?v=20261112102949";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261112102949";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112102949";
+import { modPowerFor } from "./auras.js?v=20261112102949";
+import { Data } from "./fb.js?v=20261112102949";
+import { lsGet, clone } from "./util.js?v=20261112102949";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -175,7 +175,7 @@ export const H = {
       return H.evalBoard(t, p);
     } catch { return null; } finally { H.look = look; }
   },
-  value(s, x) { const d = E.def(s, x); return d.t === "A" ? (d.pw || 0) + (d.c || 0) * 0.5 + (d.o1 ? 10 : 0) : d.t === "C" ? 3 : 2; },
+  value(s, x) { const d = E.def(s, x); if ((scriptOf(s, x) || {}).anyHell) return 8; return d.t === "A" ? (d.pw || 0) + (d.c || 0) * 0.5 + (d.o1 ? 10 : 0) : d.t === "C" ? 3 : 2; },
   mulligan(s, p) {
     const P = s.P[p]; const cheap = P.hand.filter((x) => { const d = E.def(s, x); return d.t === "A" && (d.c || 0) <= 3; });
     if (cheap.length >= 2) return [];

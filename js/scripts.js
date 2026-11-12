@@ -1070,7 +1070,7 @@ Object.assign(SCRIPTS, {
 
 // ---------- BT01 ----------
 const syIs = (E, s, x, k) => { const d = E.def(s, x); return E.hasSy(s, x, k) && (String(d.sy || "").split(/[\s,\/]+/).includes(k) || !String(d.sy || "").includes(k)); }; // "สัตว์" is not "สัตว์วิเศษ"
-const flipsOwnLife = { toHell: (c) => (c.E.critical(c.s.P[c.seat]) ? { explain: "LIFE หงายหมดแล้ว", ops: [] } : { explain: "ตกลงสู่นรก: หงาย LIFE Card ใบบนสุดฝ่ายเรา 1 ใบ", ops: [{ op: "lifeFlip", seat: c.seat }] }) };
+const flipsOwnLife = { anyHell: true, toHell: (c) => (c.E.critical(c.s.P[c.seat]) ? { explain: "LIFE หงายหมดแล้ว", ops: [] } : { explain: "ตกลงสู่นรก: หงาย LIFE Card ใบบนสุดฝ่ายเรา 1 ใบ", ops: [{ op: "lifeFlip", seat: c.seat }] }) };
 Object.assign(SCRIPTS, {
   // นนทก นิ้วเพชร: attacking a {เทพ} Avatar destroys it
   "BT01-001": { attackOk: (E, s) => { const T = s.pend && s.pend.tk === "av" ? E.locate(s, s.pend.ti) : null; return !!T && sy(E, s, T.x, "เทพ"); }, attack: (c) => { const { E, s } = c; const T = s.pend && s.pend.tk === "av" ? E.locate(s, s.pend.ti) : null; if (!T || T.z !== "av" || !sy(E, s, T.x, "เทพ")) return { explain: "เป้าหมายไม่ใช่ Avatar {เทพ}", ops: [] };
@@ -1312,7 +1312,7 @@ Object.assign(SCRIPTS, {
   // จมน้ำ: each player puts one of its own Avatars at the bottom of its Deck (the opponent picks its cheapest)
   "BT03-046": { canCast: (E, s) => s.P[0].av.length > 0 && s.P[1].av.length > 0, // FAQ
     cast: (c) => { const { E, s, seat: p } = c; const mine = c.choose([...s.P[p].av].sort(cheapCard(E, s)), 1, "เลือก Avatar ฝ่ายเรา 1 ใบ กลับเข้าใต้ Deck", { exact: true })[0]; const theirs = [...s.P[1 - p].av].sort(cheapCard(E, s))[0];
-    return { explain: `${mine ? E.name(s, mine) : "-"} และ ${theirs ? E.name(s, theirs) : "-"} กลับเข้าใต้ Deck เจ้าของ`, ops: [...(mine ? [{ op: "move", i: mine.i, to: "deckBottom" }] : []), ...(theirs ? [{ op: "move", i: theirs.i, to: "deckBottom" }] : [])] }; } },
+    return { explain: `${mine ? E.name(s, mine) : "-"} และ ${theirs ? E.name(s, theirs) : "-"} กลับเข้าใต้ Deck เจ้าของ`, ops: [...(mine ? [{ op: "move", i: mine.i, to: "deckBottom", player: true }] : []), ...(theirs ? [{ op: "move", i: theirs.i, to: "deckBottom", player: true }] : [])] }; } },
   // เอาเสื้อมาหมุนๆแล้วตบ (React): a hand card back into the Deck, shuffle: destroy an opposing {แมลง} Avatar
   "BT03-048": { react: { kinds: ["attack", "summon", "cast", "destroyed"], can: (E, s, p) => s.P[1 - p].av.some((y) => sy(E, s, y, "แมลง") && !E.noAim(s, y)) && s.P[p].hand.length >= 2 },
     cast: (c) => { const { E, s, seat: p } = c; const back = c.choose(s.P[p].hand.filter((y) => y.i !== c.t.i).sort(cheapCard(E, s)), 1, "นำการ์ดบนมือ 1 ใบกลับเข้า Deck", { exact: true })[0]; const t = c.choose(s.P[1 - p].av.filter((y) => sy(E, s, y, "แมลง") && !E.noAim(s, y)).sort(strongFirst(E, s)), 1, "เลือก Avatar {แมลง} ฝ่ายตรงข้ามที่จะทำลาย", { exact: true })[0];
@@ -1841,7 +1841,7 @@ Object.assign(SCRIPTS, {
   // ดาบศักดิ์สิทธิ์ แกลลาติน: only knights · an awake wearer is not destroyed by Magic · from hell like the other holy swords
   "BT06-058": { modOnly: (E, s, h) => knight(E, s, h), worn: () => 0, awakeMagicGuard: true, activate: fromHellMod(knight, "อัศวินโต๊ะกลม") },
   // นรกในกรง (Land): 3 Avatars each at most
-  "BT06-059": { cap3: true, check: (E, s, x, L) => (L.z === "land" ? [0, 1].flatMap((q) => { const real = s.P[q].av.filter((y) => !y.tok); return real.length > 3 ? [...real].sort(cheapCard(E, s)).slice(0, real.length - 3).map((y) => ({ op: "move", i: y.i, to: "hell" })) : []; }) : []) },
+  "BT06-059": { cap3: true }, // the extra Avatars (Tokens count, FAQ) are sent to hell by their player through the engine's "trim" (no card stops it)
   // คาเฟ่หมาแมว (Land): once per turn in our End Phase: a หมา/แมว back into the Deck, a different-name one from the Deck, then a หมา/แมว +1
   "BT06-060": { endPhase: (E, s, x, L) => { const p = s.active; if (L.z === "land" && x.used !== s.turn && s.P[p].av.some((y) => dogCat(E, s, y)) && s.P[p].deck.some((y) => dogCat(E, s, y))) E.addTrig(s, p, x, "cafe", { optional: true }); return []; }, // a Land Magic: the player whose End Phase it is
     cafe: (c) => { const { E, s, seat: p, self: x } = c; if (x) x.used = s.turn; const back = c.choose(s.P[p].av.filter((y) => dogCat(E, s, y)).sort(cheapCard(E, s)), 1, "เลือกหมาหรือแมวกลับเข้า Deck", { exact: true })[0]; if (!back) return { explain: "", ops: [] };
@@ -2404,7 +2404,7 @@ Object.assign(SCRIPTS, {
   // ท้าวเวสสุวรรณ: when our {ยักษ์} is destroyed by an opposing card: summoned from the hand, may destroy an opposing card · our {ยักษ์} +2 in the Battle Phase
   "BT09-041": { handDeathOk: (E, s, y, dead, fromOpp) => fromOpp && sy(E, s, dead, "ยักษ์") && E.avatars(s.P[y.o]) < 4, handDeath: (c) => { const { E, s, seat: p, self: x } = c; const O = s.P[1 - p]; const t = [...O.av.filter((y) => !E.noAim(s, y)).sort((a, b) => worth(E, s, b) - worth(E, s, a)), ...O.cs][0];
       return { explain: `อัญเชิญ ${E.name(s, x)}${t ? ` · ทำลาย ${E.name(s, t)}` : ""}`, ops: [{ op: "put", i: x.i }, ...(t ? [{ op: "destroy", i: t.i, why: "ท้าวเวสสุวรรณ" }] : [])] }; },
-    aura: (E, s, src, L) => (L.z === "av" && s.phase === "battle" ? [{ seat: L.p, test: (x) => giant(E, s, x), n: 2 }] : []) },
+    aura: (E, s, src, L) => (L.z === "av" && s.phase === "battle" && s.active === L.p ? [{ seat: L.p, test: (x) => giant(E, s, x), n: 2 }] : []) }, // FAQ: our Battle Phase
   // ตัวอะไรสักอย่าง: flavour text only
   "BT09-046": { vanilla: true },
   // ขอโทษสังคม: this turn DJ ปีโป้'s apologies are always accepted · pays only for DJ ปีโป้
