@@ -324,7 +324,23 @@ body.arena-on main{padding:0;max-width:none}
 .prompt .opts{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto}
 .prompt .opts .btn{justify-content:flex-start;white-space:normal;height:auto;min-height:36px;padding:6px 12px;text-align:left}
 .setup{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px}
-@media (max-width:860px){.setup{grid-template-columns:1fr}}
+@media (max-width:860px){.setup{grid-template-columns:minmax(0,1fr)}}
+/* the deck shelf: each deck a dark box with a gold edge and its ace card behind the front window; the picked box stands forward */
+.shelf{display:flex;flex-direction:column;gap:8px;margin:-6px 0 14px;min-width:0}
+.shelfgrp{display:flex;flex-direction:column;gap:2px;min-width:0}
+.shelfrow{display:flex;gap:14px;overflow-x:auto;padding:8px 6px 12px 2px;scroll-snap-type:x proximity;scrollbar-width:thin}
+.dbx{flex:none;width:92px;display:flex;flex-direction:column;align-items:center;gap:7px;padding:0;border:0;background:none;color:var(--muted);font:inherit;cursor:pointer;scroll-snap-align:start}
+.dbox{position:relative;display:block;width:100%;aspect-ratio:5/7;border-radius:9px;background:linear-gradient(155deg,#3d2618,#170e0b 72%);border:1px solid #5b3b22;box-shadow:inset 0 0 0 1px rgba(243,205,119,.1),5px 6px 0 -1px #0b0605,5px 6px 0 0 #3a2418,0 10px 18px rgba(0,0,0,.45);transition:transform .18s ease,box-shadow .18s,border-color .18s}
+.dface{position:absolute;inset:6px 6px 14px;border-radius:5px;overflow:hidden;background:var(--ink);box-shadow:inset 0 0 0 1px rgba(0,0,0,.6)}
+.dface img{width:100%;height:100%;object-fit:cover;object-position:50% 14%;display:block;transition:transform .25s ease}
+.dq{display:grid;place-items:center;height:100%;font:700 2rem var(--f-display);color:var(--gold)}
+.dband{position:absolute;left:6px;right:6px;bottom:6px;height:4px;border-radius:2px;background:var(--c-none)}
+.dname{font-size:.76rem;line-height:1.25;text-align:center;max-width:100%;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dbx:hover .dbox{transform:translateY(-3px)} .dbx:hover .dface img{transform:scale(1.05)}
+.dbx.on .dbox{transform:translateY(-7px);border-color:var(--gold);box-shadow:inset 0 0 0 1px rgba(243,205,119,.45),5px 6px 0 -1px #0b0605,5px 6px 0 0 #6b4a20,0 0 0 2px rgba(216,168,74,.6),0 14px 28px rgba(216,168,74,.25)}
+.dbx.on .dname{color:var(--gold-hi);font-weight:600}
+.dbx:focus-visible{outline:none} .dbx:focus-visible .dbox{outline:2px solid var(--gold-hi);outline-offset:3px}
+@media (prefers-reduced-motion: reduce){.dbox,.dface img{transition:none}}
 .modes{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .mode{display:flex;flex-direction:column;gap:4px;padding:14px;border-radius:14px;border:1px solid var(--line-2);background:rgba(255,255,255,.03);cursor:pointer;text-align:left;color:inherit;font:inherit}
 .mode b{font:700 1rem var(--f-display)} .mode span{font-size:.78rem;color:var(--muted)}
