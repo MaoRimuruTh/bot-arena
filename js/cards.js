@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261112203513";
-import { h } from "./util.js?v=20261112203513";
-import { Data } from "./fb.js?v=20261112203513";
+import { CARD_SOURCE } from "./config.js?v=20261112210146";
+import { h } from "./util.js?v=20261112210146";
+import { Data } from "./fb.js?v=20261112210146";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -45,8 +45,20 @@ export function kwWhere(t, k) {
 
 const TYPE = { Avatar: "A", Magic: "M", Construct: "C", Life: "L", Token: "T" };
 const SUB = { Normal: "N", Modification: "D", React: "R", Land: "L" };
-// Subtypes that are wrong in the official data: the card text (and reprints of the same card) show the real one
-const DATA_FIX = { "SD05-014": { st: "L" }, "SD05-020": { st: "R" }, "SD06-014": { st: "R" }, "ODY1-064": { st: "R" } };
+// Values that are wrong in the official data: the printed cards (and reprints of the same card) show the real ones.
+// Subtypes, from the card text. POWER, COST and GEM, read off the picture of every printing that has them (1,372
+// checked, Nov 2026), where every printing of the card says otherwise than the data:
+//   POWER  สยามโมไทรันนัส 7 (the later FPRO promo too) · คนแก่สติเลอะเลือน 6 · อู๊ด ประธาน 4 (the later PRMO-137 too) ·
+//          นนทก ODY1-007 3 like its other printings
+//   COST   คนแก่สติเลอะเลือน 5 (the data has its COST and POWER swapped) · ยายกบ 1954 5 · ราม และ วิโรจน์ 6 ·
+//          โอตะตัวกะปอม BT04-013 2 like KD03-009 · เสามงคล ทรงโรมัน 4 · เจ้าของร้านอาบน้ำสัตว์ 3 · อนงค์ 2 · จ่านุ้ย ทหารช่าง 4
+//   GEM    ซุนเซ็ก ไฟแรง 0 (both printings) · แมลงปอ บรรพบุรุษ 3 · ยายกบ 1954 0 · อนงค์ 1 · จ่านุ้ย ทหารช่าง 3 · มายา เรื่องราว 2 ·
+//          หนุมาน ODY1-010 2 like its other printings · มาติเนซ BT04-030 3 like its SCR · โซน่า โพลีกอน 2 (its SCR says 3: it prints 2)
+// (A single printing that differs from all its reprints keeps the data, which follows the reprints.)
+const DATA_FIX = { "SD05-014": { st: "L" }, "SD05-020": { st: "R" }, "SD06-014": { st: "R" }, "ODY1-064": { st: "R" },
+  "BT04-010": { pw: 7 }, "FPRO-007": { pw: 7 }, "BT04-019": { c: 5, pw: 6 }, "BT04-020": { pw: 4 }, "PRMO-137": { pw: 4 }, "ODY1-007": { pw: 3 },
+  "BT04-005": { c: 5, g: 0 }, "BT04-007": { c: 6 }, "BT04-013": { c: 2 }, "BT04-029": { c: 4 }, "BT04-033": { c: 3 }, "BT04-034": { c: 2, g: 1 }, "BT06-035": { c: 4, g: 3 },
+  "SD07-006": { g: 0 }, "PRMO-102": { g: 0 }, "BT03-033": { g: 3 }, "BT11-049": { g: 2 }, "ODY1-010": { g: 2 }, "BT04-030": { g: 3 }, "BT09-022": { g: 2 } };
 
 // ---------- names, Symbols and colours a card counts as ----------
 // "#Avatar ใบนี้ถือว่ามีชื่อ "รถถัง"" · "#การ์ดใบนี้นับเป็นชื่อ บึงทมิฬ" · "#Avatar ใบนี้ นับว่าเป็น {Symbol สัตว์} ด้วย" ·
