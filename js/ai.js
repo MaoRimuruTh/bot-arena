@@ -1,11 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112083030";
-import { plain } from "./persona.js?v=20261112083030";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261112083030";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112083030";
-import { modPowerFor } from "./auras.js?v=20261112083030";
-import { Data } from "./fb.js?v=20261112083030";
-import { lsGet, clone } from "./util.js?v=20261112083030";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112083622";
+import { plain } from "./persona.js?v=20261112083622";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261112083622";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112083622";
+import { modPowerFor } from "./auras.js?v=20261112083622";
+import { Data } from "./fb.js?v=20261112083622";
+import { lsGet, clone } from "./util.js?v=20261112083622";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -97,6 +97,15 @@ export function stateText(s, view, opts = {}) {
 
 // ===== heuristic bot =====
 // worth of a worn card that gives no flat POWER bonus: an ability, a conditional bonus or a trigger for the wearer
+// what a Construct's lasting text does for its side when it reads generic (not tied to a named theme): the other side
+// cannot attack our LIFE (ป้อมยาม), every Avatar of ours gets POWER or a keyword (เวทีเพื่อชีวิต, เสาธง), it turns our
+// LIFE back down (ตู้วารีบำบัด). The board evaluation counts the body only, so these were never worth building.
+const csCache = new Map();
+const csBonus = (d) => { const t = String((d && d.x) || ""); if (csCache.has(t)) return csCache.get(t); let v = 0;
+  if (/ฝ่ายตรงข้าม\s*(?:ไม่สามารถ|ไม่)\s*โจมตี\s*LIFE/.test(t)) v += 6;
+  else if (/Avatar\s*ทุกใบ[^/\n]{0,40}ฝ่ายเรา[^/\n]{0,30}(?:POWER\s*\+|ได้รับ)/.test(t)) v += 2.5;
+  if (/คว่ำ/.test(t) && /LIFE/.test(t)) v += 1.2;
+  csCache.set(t, v); return v; };
 const gearV = (t) => (/ได้รับความสามารถ|ได้รับ\s*(?:POWER|การ์ด)|ที่สวมใส่การ์ดใบนี้/.test(String(t || "")) ? 2 : 0);
 export const H = {
   look: 4, // how many of the best-looking main-phase options get played out on a copy before choosing (0 = off)
@@ -106,7 +115,7 @@ export const H = {
     if (s.phase === "over") return s.winner === p ? 999 : -999;
     const side = (q) => { const P = s.P[q]; let v = 0;
       for (const x of P.av) { const d = E.def(s, x); v += E.power(s, x) + (d.c || 0) * 0.45 + (x.a ? 0.35 : 0) + (d.o1 ? 2 : 0); }
-      for (const x of P.cs) v += 1.4 + E.power(s, x) * 0.3;
+      for (const x of P.cs) v += 1.4 + E.power(s, x) * 0.3 + csBonus(E.def(s, x));
       for (const m of P.mg) if (m.on != null) { const d = E.def(s, m); v += ["A", "T"].includes(d.t) ? 1 + (d.c || 0) * 0.45 : 0.5; } // a worn Avatar (โอตะ …) is safe and can come back
       v += P.hand.length * 1.05;
       for (const l of E.lands(s)) if (l.o === q) v += 1.6; // a Land Magic of ours works every turn
@@ -197,7 +206,7 @@ export const H = {
         let sc = -99;
         let bias = 0; { const sx = scriptOf(s, x); if (sx && sx.botHold) bias = sx.botHold(E, s, x, p) || 0; } // a card that is better kept in hand for now
         if (a.type === "summon") { const fx = d.x && /จุติ/.test(d.x) ? H.opsScore(s, p, H.preview(s, { i: x.i, c: x.c, when: "summon", seat: p, exact: true })) : 0; sc = (d.pw || 0) + 2 + Math.max(0, fx) - payLoss * 0.45 + (P.av.length < 2 ? 3 : 0) + bias; }
-        else if (a.type === "build") sc = 3 - payLoss * 0.3;
+        else if (a.type === "build") sc = 3 + csBonus(d) - payLoss * 0.3;
         else if (a.type === "cast" && d.st === "L") sc = E.lands(s).some((l) => l.o === p) ? -1 : E.lands(s).length && !E.landSc(s, "splitLand") ? 3 : 2.5; // ours replaces theirs: their Land goes too
         else if (a.type === "cast" && d.st === "D") { const host = P.av.find((y) => y.i === a.on); const sm = scriptOf(s, x); const b = sm && sm.modV ? sm.modV(E, s, x, host) : modBonus(d.x) || (host ? modPowerFor(E, s, x, host) : 0) || gearV(d.x); sc = b > 0 && host ? b + (host.a ? 1.5 : 0) + E.power(s, host) * 0.1 : -1; }
         else if (a.type === "cast" && d.st === "N") sc = H.opsScore(s, p, H.preview(s, { i: x.i, c: x.c, when: "cast", seat: p }));
