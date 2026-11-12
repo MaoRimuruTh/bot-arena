@@ -1,11 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112075323";
-import { plain } from "./persona.js?v=20261112075323";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261112075323";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112075323";
-import { modPowerFor } from "./auras.js?v=20261112075323";
-import { Data } from "./fb.js?v=20261112075323";
-import { lsGet, clone } from "./util.js?v=20261112075323";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112075619";
+import { plain } from "./persona.js?v=20261112075619";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261112075619";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112075619";
+import { modPowerFor } from "./auras.js?v=20261112075619";
+import { Data } from "./fb.js?v=20261112075619";
+import { lsGet, clone } from "./util.js?v=20261112075619";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -247,7 +247,7 @@ export const H = {
     for (const o of r.ops) {
       if (o.op === "draw") v += o.seat === p ? (s.P[p].hand.length < 7 ? 1.5 : 0.3) * (o.n || 1) : -1.2 * (o.n || 1);
       else if (o.op === "mill") v += o.seat === p ? -0.2 * (o.n || 1) : 0.3 * (o.n || 1);
-      else if (o.op === "destroy") { const L = E.locate(s, o.i); v += L ? (L.p === p ? -6 : 5 + E.power(s, L.x) * 0.6) : 0; }
+      else if (o.op === "destroy") { const L = E.locate(s, o.i); v += L ? (L.p === p ? -(2 + E.power(s, L.x) * 0.6 + (E.def(s, L.x).c || 0) * 0.3 - (L.x.tok ? 1 : 0)) : 5 + E.power(s, L.x) * 0.6) : 0; } // ours: a weak one costs less than a strong one
       else if (o.op === "move" && o.to === "hand") { const L = E.locate(s, o.i); v += L && L.p !== p ? 4 : -2; }
       else if (o.op === "power") { const L = E.locate(s, o.i); v += L ? ((L.p === p) === (o.n > 0) ? Math.abs(o.n) * (s.turn > 1 ? 0.8 : 0.3) : -Math.abs(o.n)) : 0; }
       else if (o.op === "wake") { const L = E.locate(s, o.i); const mine = L && L.p === p; v += !L ? 0 : o.v === false ? (mine ? -2 : 2) : mine ? (L.x.a ? 0 : 2) : -2; }

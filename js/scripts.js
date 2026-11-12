@@ -719,7 +719,9 @@ Object.assign(SCRIPTS, {
   // ปืนฉมวก: when the Avatar wearing it attacks a sleeping Avatar: it gets POWER +1 and the target POWER -1 (worn only by บึงทมิฬ People: printed rule)
   "SD05-017": { worn: (E, s, m, host) => { if (!(s.pend && s.pend.att === host.i && s.pend.tk === "av")) return 0; const T = E.locate(s, s.pend.ti); return T && !T.x.a ? 1 : 0; }, foeWorn: (E, s, m, att, foe) => (foe.a ? 0 : -1) },
   // ตรีศูล ไตรตัน: if no Land Magic was used this turn, send it (worn) to hell : a Land "บึงทมิฬ" from the Deck goes onto the Land Magic Zone (counts as using a Land Magic)
-  "SD05-018": { activate: { label: "ส่งลงนรก แล้วนำ Land บึงทมิฬ จาก Deck มาวาง", can: (E, s, x, L) => L.z === "mg" && x.on != null && L.p === s.active && s.phase === "main" && !s.mu[L.p].L && s.P[L.p].deck.some((y) => E.def(s, y).t === "M" && E.def(s, y).st === "L" && E.named(s, y, "บึงทมิฬ")),
+  // worth wearing while our Deck still holds a บึงทมิฬ Land and no Land of ours is on the table: the ability puts it there
+  "SD05-018": { modV: (E, s, m) => (s.P[m.o].deck.some((y) => E.def(s, y).t === "M" && E.def(s, y).st === "L" && E.named(s, y, "บึงทมิฬ")) && !E.lands(s).some((l) => l.o === m.o) ? 2.2 : 0),
+    activate: { label: "ส่งลงนรก แล้วนำ Land บึงทมิฬ จาก Deck มาวาง", can: (E, s, x, L) => L.z === "mg" && x.on != null && L.p === s.active && s.phase === "main" && !s.mu[L.p].L && s.P[L.p].deck.some((y) => E.def(s, y).t === "M" && E.def(s, y).st === "L" && E.named(s, y, "บึงทมิฬ")),
     run: (c) => { const { E, s, seat: p } = c; const seen = new Set(); const cands = s.P[p].deck.filter((y) => E.def(s, y).t === "M" && E.def(s, y).st === "L" && E.named(s, y, "บึงทมิฬ")).filter((y) => { const n = E.name(s, y); if (seen.has(n)) return false; seen.add(n); return true; });
       const t = c.choose(cands, 1, "เลือก Land Magic บึงทมิฬ จาก Deck")[0];
       return t ? { explain: `ส่ง ${E.name(s, c.self)} ลงนรก · วาง ${E.name(s, t)} บน Land Magic Zone`, ops: [{ op: "move", i: c.self.i, to: "hell" }, { op: "toLand", i: t.i }, { op: "shuffle", seat: p }, { op: "mu", seat: p, k: "L" }] } : { explain: "ไม่มี Land บึงทมิฬ ใน Deck", ops: [] }; } } },
@@ -1044,6 +1046,8 @@ Object.assign(SCRIPTS, {
       return sac ? { explain: `เซ่นไหว้ ${E.name(s, sac)} · ${E.name(s, T.x)} POWER +2 จนจบเทิร์น`, ops: [{ op: "destroy", i: sac.i, why: "เซ่นไหว้" }, { op: "power", i: T.x.i, n: 2, temp: true }] } : { explain: "ไม่มีวานรใบอื่นให้เซ่นไหว้", ops: [] }; } },
   // ตรีเพชร: worn only by วานร · destroy the wearer: summon หนุมาน or นิลพัท from our hell
   "SD09-018": { modOnly: (E, s, host) => monkey(E, s, host),
+    // worth wearing when a stronger หนุมาน / นิลพัท waits in our hell: the ability swaps the วานร for it
+    modV: (E, s, m, host) => { if (!host || !monkey(E, s, host)) return 0; const best = Math.max(0, ...s.P[m.o].hell.filter((y) => isAv(E, s, y) && (E.named(s, y, "หนุมาน") || E.named(s, y, "นิลพัท"))).map((y) => E.def(s, y).pw || 0)); const hp = E.power(s, host); return best > hp ? 1.5 + (best - hp) * 0.4 : 0; },
     activate: { label: "ทำลาย Avatar ที่สวมใส่ แล้วอัญเชิญหนุมานหรือนิลพัทจากนรก", can: (E, s, x, L) => { const H = L.z === "mg" && x.on != null ? E.locate(s, x.on) : null; return !!H && H.p === L.p && s.phase === "main" && s.P[L.p].hell.some((y) => isAv(E, s, y) && (E.named(s, y, "หนุมาน") || E.named(s, y, "นิลพัท"))); },
       run: (c) => { const { E, s, seat: p, self: m } = c; const H = m && m.on != null ? E.locate(s, m.on) : null; if (!H) return { explain: "ไม่ได้สวมใส่อยู่", ops: [] };
         const t = c.choose(uniq(E, s, [...s.P[p].hell].reverse().filter((y) => isAv(E, s, y) && (E.named(s, y, "หนุมาน") || E.named(s, y, "นิลพัท")))).sort(byPw(E, s)), 1, "เลือกหนุมานหรือนิลพัทในนรกที่จะอัญเชิญ", { exact: true })[0];
