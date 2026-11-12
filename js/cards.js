@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261112092930";
-import { h } from "./util.js?v=20261112092930";
-import { Data } from "./fb.js?v=20261112092930";
+import { CARD_SOURCE } from "./config.js?v=20261112094934";
+import { h } from "./util.js?v=20261112094934";
+import { Data } from "./fb.js?v=20261112094934";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
