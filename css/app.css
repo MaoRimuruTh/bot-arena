@@ -649,3 +649,8 @@ table.t th{white-space:nowrap}
   .mbar .mturn{flex-direction:row;gap:5px;align-items:baseline} .mbar .mturn b{font-size:.82rem} .mbar .mturn span{font-size:.68rem}
   .mbar .cry{width:9px;height:13px} .mbar .crys{gap:2px} .mbar .btn.sm{padding:0 9px;font-size:.84rem}
 }
+.faq summary{cursor:pointer;list-style:none;display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::before{content:"▸";color:var(--gold);transition:transform .15s}
+.faq[open] summary::before{transform:rotate(90deg)}
+.faq-q{border-left:2px solid var(--line-2);padding-left:10px}

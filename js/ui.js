@@ -1,8 +1,10 @@
-import { h, openSheet, holo, toast, fmtDate } from "./util.js?v=20261112092652";
-import { fxText, kwGloss } from "./fxtext.js?v=20261112092652";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt, priceOf, setCode } from "./cards.js?v=20261112092652";
-import { Data, saveOwned, saveSkins, saveFavs, savePrices } from "./fb.js?v=20261112092652";
-import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261112092652";
+import { h, openSheet, holo, toast, fmtDate } from "./util.js?v=20261112092930";
+import { fxText, kwGloss } from "./fxtext.js?v=20261112092930";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt, priceOf, setCode } from "./cards.js?v=20261112092930";
+import { Data, saveOwned, saveSkins, saveFavs, savePrices } from "./fb.js?v=20261112092930";
+import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261112092930";
+import { loadFaq, faqFor } from "./faq.js?v=20261112092930";
+import { CARD_SOURCE } from "./config.js?v=20261112092930";
 
 export function cardBtn(id, opts = {}) {
   const c = card(id); const b = h("button", { class: "ccard" + (opts.cls ? " " + opts.cls : "") + (opts.note ? " noted" : ""), type: "button", "aria-label": c ? c.n + (opts.note ? " · " + opts.note : "") : "การ์ด", title: c ? c.n : "", onclick: opts.onclick });
@@ -38,12 +40,23 @@ export function showCard(id, extra) {
       h("div", { class: "stack" }, favButton(c), cardInfo(c), c.x ? fxText(c.x) : h("div", { class: "muted small" }, "ไม่มีข้อความความสามารถ"), kwGloss(c.x), c.ex ? h("div", { class: "small muted" }, c.ex) : null,
         h("div", { class: "row" }, h("span", { class: "muted small" }, "ฉันมีจริง"), h("button", { class: "mini", "aria-label": "ลด", onclick: () => { setOwned(c.i, Math.max(0, ownedOf(c.i) - 1)); own.textContent = ownedOf(c.i); } }, "−"), own, h("button", { class: "mini", "aria-label": "เพิ่ม", onclick: () => { setOwned(c.i, ownedOf(c.i) + 1); own.textContent = ownedOf(c.i); } }, "+")),
         others.length ? h("div", { class: "stack", style: "gap:6px" }, h("div", { class: "eyebrow" }, "ชื่อเดียวกันแต่คนละใบ · นับรวมโควตาชื่อ"), h("div", { class: "pick" }, others.map((v) => cardBtn(v.i, { badge: v.p, onclick: () => { api.close(); showCard(v.i, extra); } })))) : null,
-        skinPicker(c, api, extra), priceBox(c),
+        skinPicker(c, api, extra), faqBox(c), priceBox(c),
         extra ? extra(c, api) : null,
         c.t === "A" ? h("div", { class: "row" },
           h("button", { class: "btn ciel sm", onclick: async (e) => { const b = e.currentTarget; if (!Ciel.on()) { aceBox.replaceChildren(h("div", { class: "muted small" }, aiErr({ code: "no_key" }))); return; } b.disabled = true; aceBox.replaceChildren(h("span", { class: "muted small" }, "ชิเอลกำลังประเมิน…")); try { const r = await cielAceCheck(c); aceBox.replaceChildren(aceView(r)); } catch (err) { aceBox.replaceChildren(h("div", { class: "muted small" }, aiErr(err))); } b.disabled = false; } }, "ประเมินเป็นเอซ"),
           h("a", { class: "btn sm", href: "#decks/ace/" + c.i, onclick: () => api.close() }, "จัดเด็ครอบใบนี้")) : null, aceBox))];
   }, { title: c.n, sub: `${TYPE_TH[c.t]} · ${c.p}`, wide: true });
+}
+// the official FAQ for this card (loaded on first use): folded, with a link to the source
+function faqBox(c) {
+  const box = h("div");
+  const fill = () => { const qs = faqFor(c.n); if (!qs.length) return box.replaceChildren();
+    box.replaceChildren(h("details", { class: "faq panel" },
+      h("summary", null, h("b", null, "คำถามจากผู้เล่น ตอบโดยทีมผู้พัฒนา"), h("span", { class: "muted small" }, ` · ${qs.length} ข้อ`)),
+      h("div", { class: "stack", style: "gap:10px;margin-top:8px" }, qs.map((q) => h("div", { class: "faq-q" }, h("div", { class: "small" }, h("b", null, "ถาม "), q.question), h("div", { class: "small" }, h("b", null, "ตอบ "), q.answer || "-")))),
+      h("a", { class: "tiny", href: CARD_SOURCE.faqPage, target: "_blank", rel: "noopener noreferrer" }, "ที่มา: คำถามที่พบบ่อย bottcg.com ↗"))); };
+  if (faqFor(c.n).length) fill(); else loadFaq().then(fill).catch(() => {});
+  return box;
 }
 // market check: which box each print comes from, links to look the card up, and prices the player noted down
 const SRC = ["TCG Thailand", "Shopee", "ร้านการ์ด", "กลุ่ม Facebook", "อื่นๆ"];

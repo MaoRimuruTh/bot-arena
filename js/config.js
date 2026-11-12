@@ -12,5 +12,9 @@ export const CARD_SOURCE = {
   dataUrl: "https://cdn.bottcg.com/data/cards.feab7649.json",
   imgBase: "https://cdn.bottcg.com/cards/",
   folders: { SD09: "123v1k1/", BT12: "thankyoupnes/", B2SA: "thankyoupnes/", B2SB: "thankyoupnes/", RM01: "0aslabe/" },
+  // the official card FAQ (questions players sent in, answered by the game's team), also read live, never stored here
+  faqMeta: "https://cdn.bottcg.com/faq.meta.json",
+  faqData: "https://cdn.bottcg.com/faq.json",
+  faqPage: "https://bottcg.com/faq",
 };
 export const FB_VERSION = "10.12.2";
