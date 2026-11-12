@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261112233523";
-import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261112233523";
-import { E, scriptOf } from "./engine.js?v=20261112233523";
+import { readAura } from "./auras.js?v=20261113004005";
+import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261113004005";
+import { E, scriptOf } from "./engine.js?v=20261113004005";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -503,7 +503,12 @@ export function reactTiming(text) {
 
 // ---------- costs and conditions written before ":" ----------
 const NEXT = "(?=\\s*(?:$|และ|,|ธรณีสูบ|ทิ้ง|เปลี่ยน|เซ่นไหว้|เซ่นไหว์|เนรเทศ|หงาย|ส่ง|เลือก|สอดแนม|แสดง))";
-const nameOrFilter = (t) => { t = t.replace(/(?:บน|ใน)\s*(?:Avatar Zone|สนาม)(?:\s*(?:ฝ่าย)?เรา)?/g, " "); const f = filterOf(t); if (f.symbols) f.symbol = f.symbol || "\u0000"; if (!f.name && !f.names && !f.symbol) { const bare = t.replace(/Avatar|การ์ด|Construct|Magic|ใบอื่น|ชื่อ/g, "").trim(); if (bare && bare.length <= 40 && !/\d|ที่|หรือ/.test(bare)) f.name = bare; } return f; };
+// a Symbol word written bare ("Avatar เครื่องจักร"): only when no card is named after it (จอมเวทย์ and ขุนพล are names)
+const SY_WORD = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" }; let SYS = null;
+const bareSymbol = (w) => { if (!SYS) SYS = new Set(CARDS.filter((c) => c.t === "A" && c.sy).map((c) => String(c.sy).trim())); const k = SY_WORD[w] || w; return SYS.has(k) && !CARDS.some((c) => String(c.n).includes(w)) ? k : null; };
+const nameOrFilter = (t) => { t = t.replace(/(?:บน|ใน)\s*(?:Avatar Zone|สนาม)(?:\s*(?:ฝ่าย)?เรา)?/g, " "); const f = filterOf(t); if (f.symbols) f.symbol = f.symbol || "\u0000";
+  // (the words for a kind of card are not a name: "ทิ้งการ์ด Modification Magic 1 ใบ" is any Modification)
+  if (!f.name && !f.names && !f.symbol) { const bare = t.replace(/Avatar|การ์ด|Construct|Modification|Normal|React|Land|Magic|\{(?:mod|react|land|magic)\}|ใบอื่น|ชื่อ/gi, "").trim(); if (bare && bare.length <= 40 && !/\d|ที่|หรือ/.test(bare)) { const sy = bareSymbol(bare); if (sy) f.symbol = sy; else f.name = bare; } } return f; };
 const fieldOf = (s, p, zone) => (zone === "Construct Zone" ? s.P[p].cs : zone === "Land Magic Zone" ? E.lands(s) : zone === "Avatar Zone" ? s.P[p].av : [...s.P[p].av, ...s.P[p].cs, ...s.P[p].mg, ...E.lands(s).filter((l) => l.o === p)]);
 // "สามารถใช้(การ์ดนี้)ได้เมื่อ …" → true / false, or null when the condition cannot be read
 export function playCond(s, text, p) {
