@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261112200728";
-import { E } from "./engine.js?v=20261112200728";
-import { h } from "./util.js?v=20261112200728";
-import { Sfx } from "./sfx.js?v=20261112200728";
+import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261112203513";
+import { E } from "./engine.js?v=20261112203513";
+import { h } from "./util.js?v=20261112203513";
+import { Sfx } from "./sfx.js?v=20261112203513";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -385,7 +385,8 @@ export function figureViewer(box, url, finish) {
   for (const ev of ["pointerup", "pointercancel"]) canvas.addEventListener(ev, (e) => { pts.delete(e.pointerId); pinch = 0; });
   canvas.addEventListener("wheel", (e) => { e.preventDefault(); zoomBy(1 + e.deltaY * 0.0012); }, { passive: false });
   // closer means looking a little higher too, at the face and the hands
-  function zoomBy(k) { const d = Math.max(1.3, Math.min(6.5, v.to.dist * k)); v.to.dist = d; v.to.look = 0.74 + (4.6 - Math.min(4.6, d)) / (4.6 - 1.3) * 0.36; }
+  const lookAt = (d) => 0.74 + 0.42 * Math.max(0, Math.min(1, (4.6 - d) / (4.6 - 1.9)));
+  function zoomBy(k) { const d = Math.max(1.3, Math.min(6.5, v.to.dist * k)); v.to.dist = d; v.to.look = lookAt(d); }
   let model = null;
   const ready = new Promise((res) => {
     if (!THREE.GLTFLoader) return res(false);
@@ -437,7 +438,7 @@ export function figureViewer(box, url, finish) {
       if (name.startsWith("emo_")) { if (v.bubble) v.bubble.remove(); const el = drawBubble(name.slice(4)); el.className = "figbubble"; box.append(el); v.bubble = el; placeBubble();
         const gone = () => { el.remove(); if (v.bubble === el) v.bubble = null; };
         if (reduce) setTimeout(gone, 2400); else gsap.timeline({ onComplete: gone }).fromTo(el, { scale: 0.2, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.35, ease: "back.out(2.4)" }).to(el, { opacity: 0, duration: 0.4 }, 2.1); } },
-    view(which) { v.to.dist = which === "close" ? 1.9 : 4.6; v.to.look = which === "close" ? 1.05 : 0.74; },
+    view(which) { v.to.dist = which === "close" ? 2.05 : 4.6; v.to.look = lookAt(v.to.dist); }, // close: the head and the raised hand
   };
 }
 

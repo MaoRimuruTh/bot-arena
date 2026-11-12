@@ -1,10 +1,10 @@
 // Settings for the owner's own things (vault.js): a picture for his half of the mat, a picture for his card sleeves and a
 // 3D figure. A picture is framed here (drag to move it, slide to zoom) and saved twice: in full for his own screen, and
 // smaller for opponents if he lets them see it. Shown only to the owner account.
-import { h, toast, openSheet } from "./util.js?v=20261112200728";
-import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, shownBlob, isOwner, vaultBlob } from "./vault.js?v=20261112200728";
-import { matLines, FIG_FINISH, FIG_MOVES, figureViewer } from "./arena3d.js?v=20261112200728";
-import { setMeta, Data } from "./fb.js?v=20261112200728";
+import { h, toast, openSheet } from "./util.js?v=20261112203513";
+import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, shownBlob, isOwner, vaultBlob } from "./vault.js?v=20261112203513";
+import { matLines, FIG_FINISH, FIG_MOVES, figureViewer } from "./arena3d.js?v=20261112203513";
+import { setMeta, Data } from "./fb.js?v=20261112203513";
 
 const MAT_A = 15.4 / 5.8, SLEEVE_A = 1.5 / 2.04; // one side of the table; a card
 const KIND = {
