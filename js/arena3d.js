@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261112181700";
-import { E } from "./engine.js?v=20261112181700";
-import { h } from "./util.js?v=20261112181700";
-import { Sfx } from "./sfx.js?v=20261112181700";
+import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261112182606";
+import { E } from "./engine.js?v=20261112182606";
+import { h } from "./util.js?v=20261112182606";
+import { Sfx } from "./sfx.js?v=20261112182606";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -28,6 +28,12 @@ export const Arena = {
   customReady: (o) => { if (!R || !R.last) return; const k = R.matKey && R.matKey[1]; if (k && (k.near === o || k.far === o)) swapMat(); if (o.sleeve) syncBacks(R.last.s); },
   refreshCustom: () => { if (!R || !R.last) return; const { s, V } = R.last; applyMats(s, V); syncBacks(s); syncAvatars(s, V); },
   setQuiet: (v) => { quiet = !!v; },
+  // a picture of the table as it is now (the cards in hand are not part of it): one frame drawn and copied at once
+  // (drawn at twice the screen's size at least, so a phone's picture is sharp too)
+  snapshot: () => { if (!R) return null; const pr = R.renderer.getPixelRatio(), want = Math.max(pr, 2);
+    try { if (want !== pr) { R.renderer.setPixelRatio(want); R.resize(); } if (R.composer) R.composer.render(); else R.renderer.render(R.scene, R.camera);
+      const src = R.canvas, c = document.createElement("canvas"); c.width = src.width; c.height = src.height; const g = c.getContext("2d"); g.fillStyle = "#0e0807"; g.fillRect(0, 0, c.width, c.height); g.drawImage(src, 0, 0); return c; }
+    catch (e) { console.warn(e); return null; } finally { if (R && want !== pr) { R.renderer.setPixelRatio(pr); R.resize(); } } },
 };
 
 // how much the 3D table draws, from Settings: "high" everywhere, "low" for weak phones, "auto" by screen size
