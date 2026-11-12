@@ -1,11 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112082556";
-import { plain } from "./persona.js?v=20261112082556";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261112082556";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112082556";
-import { modPowerFor } from "./auras.js?v=20261112082556";
-import { Data } from "./fb.js?v=20261112082556";
-import { lsGet, clone } from "./util.js?v=20261112082556";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112083030";
+import { plain } from "./persona.js?v=20261112083030";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261112083030";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112083030";
+import { modPowerFor } from "./auras.js?v=20261112083030";
+import { Data } from "./fb.js?v=20261112083030";
+import { lsGet, clone } from "./util.js?v=20261112083030";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -265,6 +265,15 @@ export const H = {
       else if (o.op === "exile") { const L = E.locate(s, o.i); v += L && L.p !== p && L.z === "av" ? 5 + E.power(s, L.x) * 0.6 : 0; }
       else if (o.op === "negate") v += 4;
       else if (o.op === "keyword") v += 1.2;
+      // LIFE turned up (as a cost or an attack-free hit) or back down; tokens; the other side's hand thinned
+      else if (o.op === "lifeFlip") { const sq = o.seat === 0 || o.seat === 1 ? o.seat : p, Q = s.P[sq], mine = sq === p;
+        if (o.up === false) v += Q.life.some((y) => y.up) && !(E.critical(Q) && !o.force) ? (mine ? 2.4 : -2.4) : 0;
+        else { const down = Q.life.filter((y) => !y.up).length; v += !down ? 0 : (mine ? -1 : 1) * (2.4 + (down === 1 ? 5 : 0)); } }
+      else if (o.op === "token") { const sq = o.seat === 0 || o.seat === 1 ? o.seat : p; v += (sq === p ? 1 : -1) * (o.n || 1) * (1.5 + (o.power | 0) * 0.5); }
+      else if (o.op === "discardRandom") { const sq = o.seat === 0 || o.seat === 1 ? o.seat : p; v += sq === p ? -1.6 * (o.n || 1) : Math.min(o.n || 1, s.P[sq].hand.length) * 1.4; }
+      else if (o.op === "borrow") v += s.P[1 - p].hand.length ? 2.2 : 0;
+      else if (o.op === "enslave") { const L = E.locate(s, o.i); v += L && L.p !== p ? 5 + E.power(s, L.x) * 0.6 : 0; }
+      else if (o.op === "extraN") v += 1;
     }
     return v;
   },
