@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261112074802";
-import { h } from "./util.js?v=20261112074802";
-import { Data } from "./fb.js?v=20261112074802";
+import { CARD_SOURCE } from "./config.js?v=20261112075323";
+import { h } from "./util.js?v=20261112075323";
+import { Data } from "./fb.js?v=20261112075323";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -69,7 +69,10 @@ export const allSy = (d, on) => !!(d && d.al && (d.al.allSy || (on && d.al.allSy
 export const colorIs = (d, c, on) => !!d && (d.co === c || !!(d.al && (d.al.allCo || (on && d.al.allCoF) || (d.al.aco || []).includes(c) || (on && (d.al.acoF || []).includes(c)))));
 export const hasFieldAlias = (d) => !!(d && d.al && (d.al.anF || d.al.asyF || d.al.acoF || d.al.allSyF || d.al.allCoF));
 // "บีมมิ" on มีมมิจัง ไอดอล No.1 and โอตะคูลา is a misprint of มีมมิ, the idol No.1 grows out of (no card is called บีมมิ)
-export const normName = (t) => sp1(t).replace(/บีมมิ/g, "มีมมิ");
+// names as card texts quote them, with the misprints some texts carry mapped to the printed names: "บีมมิ" (มีมมิ),
+// "อาวุร..." (อาวุธของเพมมุ, อาวุธหุ่นนักรบผู้กล้า), "ไม้ท์เกรน" (ไมเกรน), "นายนิรบาล" (นายนิรยบาล),
+// "ตัวอะไรซักอย่าง" (สักอย่าง), "โพลิกอน" (โพลีกอน)
+export const normName = (t) => sp1(t).replace(/บีมมิ/g, "มีมมิ").replace(/อาวุร/g, "อาวุธ").replace(/ไม้ท์เกรน/g, "ไมเกรน").replace(/นิรบาล/g, "นิรยบาล").replace(/ซักอย่าง/g, "สักอย่าง").replace(/โพลิกอน/g, "โพลีกอน");
 
 function transform(raw) {
   // same card = same name and type, and either the same print code or the same text once spacing,

@@ -1,8 +1,11 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261112074802";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261112074802";
-import { SCRIPTS } from "./scripts.js?v=20261112074802";
-import { newId, clone } from "./util.js?v=20261112074802";
+import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261112075323";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261112075323";
+import { SCRIPTS } from "./scripts.js?v=20261112075323";
+import { newId, clone } from "./util.js?v=20261112075323";
+// Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
+// means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
+const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
 export const ZONES = ["deck", "hand", "av", "mg", "cs", "hell", "dark", "life"];
 export const ZONE_TH = { deck: "Deck", hand: "มือ", av: "Avatar Zone", mg: "Magic Zone", cs: "Construct Zone", hell: "นรก", dark: "มิติมืด", life: "LIFE", land: "Land Magic" };
 export const PHASE_TH = { mull: "เปลี่ยนมือ", draw: "Draw", main: "Main", battle: "Battle", end: "End", over: "จบเกม" };
@@ -101,7 +104,7 @@ export const E = {
     if (s.P) for (let q = 0; q < 2; q++) if (s.P[q].hell.includes(x)) for (const y of s.P[q].av) { if (y.mute) continue; const sh = scriptOf(s, y); if (sh && sh.hellName) { const hn = sh.hellName(E, s, y, x); if (hn && normName(hn).includes(normName(n))) return true; } } if (x.nameAs) return normName(x.nameAs).includes(normName(n)); const d = E.def(s, x); if (nameText(d, hasFieldAlias(d) && E.onField(s, x)).includes(normName(n))) return true;
     for (const P of s.P || []) for (const m of P.mg) if (m.on === x.i && !m.mute) { const sm = scriptOf(s, m); if (sm && sm.addName && normName(sm.addName).includes(normName(n))) return true; }
     if (s.P) for (let q = 0; q < 2; q++) for (const y of s.P[q].av) { if (y.mute || y.i === x.i) continue; const sy = scriptOf(s, y); if (sy && sy.nameAura && normName(sy.nameAura.name).includes(normName(n)) && s.P[q].av.includes(x) && sy.nameAura.test(E, s, x)) return true; } return false; },
-  hasSy(s, x, k) { if (x.sye && x.sye.until >= s.turn) return x.sye.k === k; { const own = x.mute ? null : scriptOf(s, x); if (own && own.allSyOnField && (E.locate(s, x.i) || {}).z === "av") return true; } if (x.xsy && x.xsy.t === s.turn && x.xsy.list.includes(k)) return true; if (x.syAs) return x.syAs === k; const o = E.syOver(s, x) || E.landSy(s, x); if (o) return o === k; { const own = x.mute ? null : scriptOf(s, x); if (own && own.extraSy === k) return true; } const d = E.def(s, x); const on = hasFieldAlias(d) && E.onField(s, x); return allSy(d, on) || syText(d, on).includes(k); },
+  hasSy(s, x, k) { k = SY_ALIAS[k] || k; if (x.sye && x.sye.until >= s.turn) return x.sye.k === k; { const own = x.mute ? null : scriptOf(s, x); if (own && own.allSyOnField && (E.locate(s, x.i) || {}).z === "av") return true; } if (x.xsy && x.xsy.t === s.turn && x.xsy.list.includes(k)) return true; if (x.syAs) return x.syAs === k; const o = E.syOver(s, x) || E.landSy(s, x); if (o) return o === k; { const own = x.mute ? null : scriptOf(s, x); if (own && own.extraSy === k) return true; } const d = E.def(s, x); const on = hasFieldAlias(d) && E.onField(s, x); return allSy(d, on) || syText(d, on).includes(k); },
   // a Land Magic that changes the symbol of every Avatar on the Avatar Zones ("เปลี่ยน Symbol ของ Avatar ทุกใบบน Avatar Zone เป็น Symbol {เทพ}")
   landSy(s, x) { if (!s.P || !(s.land || s.land2)) return null; const sc = E.landSc(s, "landSy"); if (!sc) return null; const L = E.locate(s, x.i); return L && L.z === "av" ? sc.landSy : null; },
   // the single symbol a card has right now instead of its printed ones, or null
