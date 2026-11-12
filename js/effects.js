@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261112091205";
-import { CARDS, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, inRed } from "./cards.js?v=20261112091205";
-import { E, scriptOf } from "./engine.js?v=20261112091205";
+import { readAura } from "./auras.js?v=20261112092652";
+import { CARDS, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, inRed } from "./cards.js?v=20261112092652";
+import { E, scriptOf } from "./engine.js?v=20261112092652";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -392,13 +392,13 @@ function sentence(s, t, p, self, ctx) {
     else { ops.push({ op: "search", seat: p, ...(got ? { take: got.i } : f), to }); say.push(got ? `ค้น ${E.name(s, got)} จาก Deck` : `ค้น ${f.name || f.symbol || "การ์ด"} จาก Deck`); }
   } else if (KWGRANT.test(t)) {
     const k = t.match(KWGRANT)[1]; if (!/จนจบเทิร์น|เทิร์นนี้/.test(t) && ctx.when !== "cast") return false;
-    const until = /เทิร์น(?:ถัดไป)?\s*(?:ของ)?\s*(?:ฝ่ายตรงข้าม|อีกฝ่าย)/.test(t) ? "oppturn" : "turn"; const rc = refCard();
+    const until = /เทิร์น(?:ถัดไป)?\s*(?:ของ)?\s*(?:ฝ่ายตรงข้าม|อีกฝ่าย)/.test(t) ? "oppturn" : /จนจบเทิร์น|เทิร์นนี้/.test(t) ? "turn" : null; const rc = refCard(); // no duration written: it stays
     const tgt = rc ? [rc] : self && /ใบนี้|ตัวนี้/.test(t) ? [self] : /ทุกใบ/.test(t) ? P.av.filter((x) => typed(x, f0)) : ctx.choose(P.av.filter((x) => typed(x, f0)).sort((a, b) => E.power(s, b) - E.power(s, a)), 1, `เลือก Avatar ฝ่ายเราที่จะได้รับ ${k}`);
     for (const x of tgt) ops.push({ op: "keyword", i: x.i, k, until }); say.push(tgt.length ? `${tgt.map((x) => E.name(s, x)).join(", ")} ได้รับ ${k}` : "ไม่มีเป้าหมาย");
-    const pm = t.match(/POWER\s*([+\-−–])\s*(\d+)/); if (pm) for (const x of tgt) ops.push({ op: "power", i: x.i, n: (pm[1] === "+" ? 1 : -1) * +pm[2], temp: true });
+    const pm = t.match(/POWER\s*([+\-−–])\s*(\d+)/); if (pm) for (const x of tgt) ops.push({ op: "power", i: x.i, n: (pm[1] === "+" ? 1 : -1) * +pm[2], temp: until === "oppturn" ? "next" : until ? true : false });
   } else if (/POWER\s*([+\-−–])\s*(\d+)/.test(t)) {
     const m = t.match(/POWER\s*([+\-−–])\s*(\d+)/); const times = num(t, /POWER\s*[+\-−–]\s*\d+\s*(\d+)\s*ครั้ง/, 1); const v = (m[1] === "+" ? 1 : -1) * +m[2] * Math.min(times, 9);
-    let temp = /Draw Phase (?:ถัดไป|ต่อไป)|จนจบเทิร์น(?:ถัดไป)?\s*(?:ของ)?\s*(?:ฝ่ายตรงข้าม|อีกฝ่าย)/.test(t) ? "next" : /จนจบการต่อสู้/.test(t) ? "fight" : /จนจบเทิร์น|เทิร์นนี้/.test(t) || ["cast", "attack", "attacked", "activate", "win", "summon", "death", "life", "paid", "milled"].includes(ctx.when) ? true : null;
+    let temp = /Draw Phase (?:ถัดไป|ต่อไป)|จนจบเทิร์น(?:ถัดไป)?\s*(?:ของ)?\s*(?:ฝ่ายตรงข้าม|อีกฝ่าย)/.test(t) ? "next" : /จนจบการต่อสู้/.test(t) ? "fight" : /จนจบเทิร์น|เทิร์นนี้/.test(t) ? true : ["cast", "attack", "attacked", "activate", "win", "summon", "death", "life", "paid", "milled"].includes(ctx.when) && !/จนถึง|จนกว่า/.test(t) ? false : null; // no duration on the card: permanent (as ริมุรุ plays it)
     if (temp == null && (ctx.when === "end" || ctx.when === "mainStart") && !/จนถึง|จนกว่า/.test(t)) temp = false; // a printed timed boost stays
     if (temp == null) return false; // continuous wording: leave it
     const f = f0; let tgt; const rc = refCard();
