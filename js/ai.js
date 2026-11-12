@@ -1,11 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261113004005";
-import { plain } from "./persona.js?v=20261113004005";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261113004005";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261113004005";
-import { modPowerFor } from "./auras.js?v=20261113004005";
-import { Data } from "./fb.js?v=20261113004005";
-import { lsGet, clone } from "./util.js?v=20261113004005";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261113005645";
+import { plain } from "./persona.js?v=20261113005645";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261113005645";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261113005645";
+import { modPowerFor } from "./auras.js?v=20261113005645";
+import { Data } from "./fb.js?v=20261113005645";
+import { lsGet, clone } from "./util.js?v=20261113005645";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -318,7 +318,7 @@ export const H = {
       if (r && r.ops.some((o) => o.op === "cancelAttack")) v += 3;
       if (threat != null && r && r.ops.some((o) => o.op === "negate" || o.op === "cancelTrig")) v += threat >= 4 ? 1 : -5;
       { const sc = scriptOf(s, x); if (sc && sc.react && sc.react.botV) v += sc.react.botV(E, s, q, on, x) || 0; }
-      if (on.kind === "attack") { const A = E.locate(s, on.att); const T = on.tk === "av" ? E.locate(s, on.ti) : null; const ap = A ? E.power(s, A.x) + (s.pend.bonus || 0) : 0;
+      if (on.kind === "attack" && !on.own) { const A = E.locate(s, on.att); const T = on.tk === "av" ? E.locate(s, on.ti) : null; const ap = A ? E.power(s, A.x) + (s.pend.bonus || 0) : 0;
         const danger = on.tk === "life" ? (E.critical(s.P[q]) ? 30 : 4) : T && ap >= E.power(s, T.x) ? 3 + E.power(s, T.x) * 0.5 : 0; if (!danger) v -= 3; else v += danger * 0.3; }
       if (on.kind === "summon") { const L = E.locate(s, on.i); if (L) v += (E.def(s, L.x).c || 0) >= 4 || E.power(s, L.x) >= 5 ? 2 : -3; }
       if (!best || v > best.v) best = { v, x };
