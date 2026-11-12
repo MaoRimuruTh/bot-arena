@@ -1,10 +1,10 @@
-import { h, openSheet, fmtDate, busy } from "../util.js?v=20261112220720";
-import { Data, Me } from "../fb.js?v=20261112220720";
-import { Views, avatarEl } from "../ui.js?v=20261112220720";
-import { ladder, ladderNow, ladderFresh } from "../ladder.js?v=20261112220720";
-import { stars } from "../quests.js?v=20261112220720";
-import { hasReplay, openReplay } from "./play.js?v=20261112220720";
-import { ACH, progress, rewardName } from "../achieve.js?v=20261112220720";
+import { h, openSheet, fmtDate, busy } from "../util.js?v=20261112232546";
+import { Data, Me } from "../fb.js?v=20261112232546";
+import { Views, avatarEl } from "../ui.js?v=20261112232546";
+import { ladder, ladderNow, ladderFresh } from "../ladder.js?v=20261112232546";
+import { stars } from "../quests.js?v=20261112232546";
+import { hasReplay, openReplay } from "./play.js?v=20261112232546";
+import { ACH, progress, rewardName } from "../achieve.js?v=20261112232546";
 
 const MODE_TH = { bot: "บอท", friend: "เพื่อน", solo: "สองฝั่ง", goldfish: "ซ้อมมือเดียว" };
 Views.history = {
@@ -12,7 +12,7 @@ Views.history = {
     const all = Data.matches, ms = all.filter((m) => m.mode !== "goldfish"), fish = all.filter((m) => m.mode === "goldfish"); // practice against the dummy is kept out of the win rates
     const head = h("div", { class: "pagehead" }, h("div", null, h("h1", null, "ประวัติการดวล"), h("div", { class: "muted small" }, "ทุกเกมที่จบจะบันทึกอัตโนมัติ ชิเอลใช้ข้อมูลนี้วิเคราะห์เด็ค")));
     if (!Data.ready.matches) return root.replaceChildren(head, busy());
-    if (!all.length) return root.replaceChildren(head, h("div", { class: "stack" }, h("div", { class: "empty" }, "ยังไม่มีเกมที่จบ ลงสนามสักเกมก่อนนะ"), ladderPanel()));
+    if (!all.length) return root.replaceChildren(head, h("div", { class: "stack" }, h("div", { class: "empty" }, h("div", null, "ยังไม่มีเกมที่จบ เกมแรกของคุณจะมาอยู่ตรงนี้พร้อมรีเพลย์"), h("div", { class: "row", style: "justify-content:center;margin-top:12px" }, h("a", { class: "btn gold", href: "#play" }, "ไปสนามดวล"))), ladderPanel()));
     const w = ms.filter((m) => m.result === "win").length;
     const byDeck = {};
     for (const m of ms) { const k = m.deckName || "ไม่ทราบ"; byDeck[k] = byDeck[k] || { n: 0, w: 0, t: 0 }; byDeck[k].n++; byDeck[k].t += m.turns || 0; if (m.result === "win") byDeck[k].w++; }
