@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261112171712";
-import { E } from "./engine.js?v=20261112171712";
-import { h } from "./util.js?v=20261112171712";
-import { Sfx } from "./sfx.js?v=20261112171712";
+import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261112180249";
+import { E } from "./engine.js?v=20261112180249";
+import { h } from "./util.js?v=20261112180249";
+import { Sfx } from "./sfx.js?v=20261112180249";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -56,7 +56,7 @@ function mount(container, opts = {}) {
   R.redL = new THREE.PointLight(0xff4a3a, 0.55, 16, 2); R.redL.position.set(0, 4.2, -4.4); scene.add(R.redL);
 
   // the play mat: black lacquer with gold-leaf line-work (ลายรดน้ำ), stepped corners (ย่อมุม) round every zone
-  const small = innerWidth < 760; R.small = small; R.Q = Q; R.watch = !!opts.watch; /* a friend looking on: no "your turn", and the winner gets the banner */ R.matKey = [small || Q === "low", MATS[opts.mat] || MATS.black]; R.zones = tallScreen(container) ? ZONES.tall : ZONES.wide; const mt = matTextures(...R.matKey, R.zones);
+  const small = innerWidth < 760; R.small = small; R.Q = Q; R.watch = !!opts.watch; /* a friend looking on: no "your turn", and the winner gets the banner */ R.matKey = [small || Q === "low", { near: MATS[opts.mat] || MATS.black, far: MATS[opts.farMat] || MATS[opts.mat] || MATS.black }]; R.zones = tallScreen(container) ? ZONES.tall : ZONES.wide; const mt = matTextures(...R.matKey, R.zones);
   R.matMat = new THREE.MeshStandardMaterial({ map: mt.base, emissiveMap: mt.glow, emissive: new THREE.Color(0xe0982c), emissiveIntensity: 0.2, roughness: 0.62, roughnessMap: mt.rough, metalness: 0 }); R.matGlow = mt.glow;
   const top = new THREE.Mesh(new THREE.PlaneGeometry(MW, MD), R.matMat); top.rotation.x = -Math.PI / 2; top.position.set(0, 0, MZ); top.receiveShadow = true; scene.add(top);
   const lacq = new THREE.MeshStandardMaterial({ color: 0x5a1812, roughness: 0.34, metalness: 0, envMapIntensity: 0.3 }); R.lacq = lacq;
@@ -73,6 +73,7 @@ function mount(container, opts = {}) {
   R.geo = cardGeometry(); R.capMat = new THREE.MeshBasicMaterial({ visible: false });
   R.edgeMat = new THREE.MeshStandardMaterial({ color: 0x3a2a20, roughness: 0.62, metalness: 0 }); // the paper core, not metal
   R.backMat = new THREE.MeshBasicMaterial({ map: R.backTex, color: 0xcccccc, toneMapped: false });
+  R.pileMat = new THREE.MeshStandardMaterial({ color: 0xbdb2a0, roughness: 0.85, metalness: 0 }); // the edges of a stack of cards
   // the teak table the mat lies on, and candles in brass dishes round it, each throwing a flickering pool of light on the wood
   // unlit, with the lamplight baked into vertex colours: it covers much of a phone screen, so it must be cheap to draw
   const tg = new THREE.PlaneGeometry(70, 50, 28, 20), tp = tg.attributes.position, tc = new Float32Array(tp.count * 3);
@@ -115,7 +116,7 @@ function mount(container, opts = {}) {
   R.resize = (smooth) => {
     const w = container.clientWidth || innerWidth, hh = container.clientHeight || innerHeight; renderer.setSize(w, hh, false); camera.aspect = w / hh;
     const portrait = w / hh < 0.9; const k = portrait ? 1 : Math.min(1.45, Math.max(1, 820 / hh, 1250 / w));
-    const Z = portrait ? ZONES.tall : ZONES.wide; if (Z !== R.zones) { R.zones = Z; swapMat(); if (R.last) update(R.last.s, R.last.V); } // turned the phone: the other table
+    const Z = portrait ? ZONES.tall : ZONES.wide; if (Z !== R.zones) { R.zones = Z; swapMat(); decor(); if (R.last) update(R.last.s, R.last.V); } // turned the phone: the other table
     camera.fov = portrait ? 50 : 38; camera.updateProjectionMatrix();
     const cam = portrait ? fitTall(camera, w, hh) : wideCam(camera, w, hh, k);
     gsap.killTweensOf(R.camBase); gsap.killTweensOf(R.look);
@@ -131,8 +132,8 @@ function mount(container, opts = {}) {
   const ray = new THREE.Raycaster(); const ptr = new THREE.Vector2();
   const pick = (e) => {
     const r = canvas.getBoundingClientRect(); ptr.x = ((e.clientX - r.left) / r.width) * 2 - 1; ptr.y = -((e.clientY - r.top) / r.height) * 2 + 1; ray.setFromCamera(ptr, camera);
-    const objs = [...R.meshes.values()].map((m) => m.mesh); if (R.lifeT.visible) objs.push(R.lifeT);
-    const hit = ray.intersectObjects(objs)[0]; return hit ? (hit.object === R.lifeT ? "life" : hit.object.userData.i) : null;
+    const objs = [...R.meshes.values()].map((m) => m.mesh); if (R.lifeT.visible) objs.push(R.lifeT); if (R.side) objs.push(...R.side.objs);
+    const hit = ray.intersectObjects(objs)[0]; return hit ? (hit.object === R.lifeT ? "life" : hit.object.userData.i != null ? hit.object.userData.i : sidePick(hit.object)) : null;
   };
   canvas.addEventListener("pointermove", (e) => {
     const p = pick(e); if (p === R.hovered) return;
@@ -140,7 +141,7 @@ function mount(container, opts = {}) {
     R.hovered = p; canvas.style.cursor = p != null ? "pointer" : "default";
     // picked up: the card lifts, tips toward you and the light runs across its laminate
     const m = R.meshes.get(p); if (m && !m.busy) { gsap.to(m.grp.position, { y: m.restY + 0.32, duration: 0.2 }); gsap.to(m.grp.rotation, { x: 0.22, duration: 0.25, ease: "power2.out" }); sweep(m, 0.75, 0.6); }
-    if (R.onHover) R.onHover(p != null && p !== "life" ? p : null);
+    if (R.onHover) R.onHover(p != null && p !== "life" && typeof p !== "string" ? p : null);
   });
   // a press on a card, a move and a release somewhere else is a drag (the attack gesture, as in other card games); the
   // click the browser sends after it is not a second pick. The table takes touch drags itself (no page pan or zoom on it)
@@ -160,6 +161,7 @@ function mount(container, opts = {}) {
     if (!reduce) {
       for (const pts of [R.motes]) { const a = pts.geometry.attributes.position.array, sp = pts.userData.sp; for (let i = 0; i < sp.length; i++) { a[i * 3 + 1] += sp[i] * 60 * dt * (pts === R.motes ? 0.35 : 1); a[i * 3] += Math.sin(t + i) * 0.002; if (a[i * 3 + 1] > 9) a[i * 3 + 1] = 0; } pts.geometry.attributes.position.needsUpdate = true; }
       for (const c of R.candles) { const f = 1 + 0.07 * Math.sin(t * 13 + c.ph) + 0.05 * Math.sin(t * 7.3 + c.ph * 2) + Math.random() * 0.03; c.flame.scale.set(0.16 * (2 - f), 0.36 * f, 1); c.halo.material.opacity = 0.32 * f; c.pool.material.opacity = 0.2 * f; }
+      if (R.sakura) stepSakura(R.sakura, dt, t);
       R.lifeT.rotation.y = t * 1.2; R.lifeT.position.y = 1 + Math.sin(t * 2) * 0.12; R.lifeHalo.position.copy(R.lifeT.position);
       for (const m of R.meshes.values()) {
         if (m.pulse) m.glow.material.opacity = 0.45 + Math.sin(t * 6) * 0.3;
@@ -169,12 +171,13 @@ function mount(container, opts = {}) {
     if (R.avatars) for (const a of R.avatars) { if (!a || a.loading) continue; a.mixer.update(dt * (R.speed || 1)); if (!a.acts.idle && !reduce) { a.bob.position.y = Math.max(0, Math.sin(t * 2.6 + a.ph)) * 0.025; a.bob.scale.y = 1 + Math.sin(t * 2.6 + a.ph) * 0.018; } }
     R.t = t; for (const m of R.meshes.values()) placeShadow(m); for (const m of R.dying) placeShadow(m);
     camera.position.set(R.camBase.x + Math.sin(t * 0.15) * 0.35 + R.off.x, R.camBase.y + R.off.y, R.camBase.z + Math.cos(t * 0.12) * 0.2); camera.lookAt(R.look);
+    if (R.side) for (const o of R.side.piles.values()) { if (!o.grp.visible && !o.n) { o.el.style.display = "none"; continue; } o.el.style.display = ""; const sp = toScreen(o.grp.position.clone().add(new THREE.Vector3(0, 0.2, (o.mine ? 0.62 : -0.62)))); o.el.style.left = sp.x + "px"; o.el.style.top = sp.y + "px"; }
     for (const [i, el] of R.labels) { const m = R.meshes.get(i); if (!m) continue; const s = toScreen(m.grp.position.clone().add(new THREE.Vector3(-0.55 * m.scale, 0.1, (m.side === "me" ? 0.85 : -0.85) * m.scale))); el.style.left = s.x + "px"; el.style.top = s.y + "px"; }
     if (R.composer) R.composer.render(); else renderer.render(scene, camera);
     if (R.autoQ) watchFps(R.autoQ);
     requestAnimationFrame(tick);
   };
-  tick();
+  tick(); decor();
   R.speed = animSetting(); gsap.globalTimeline.timeScale(R.speed); // "fast animations" in Settings speed up every move and pause on the table
   gsap.from(R.camBase, { y: 22, z: 18, duration: reduce ? 0 : 2, ease: "power3.out" });
   gsap.from(R.matMat, { emissiveIntensity: 0, duration: reduce ? 0 : 1.8, ease: "power2.out" }); // the gold leaf catches the light once
@@ -182,7 +185,7 @@ function mount(container, opts = {}) {
 function unmount() {
   document.querySelectorAll(".fxcuts,.rpsduel").forEach((x) => x.remove());
   if (!R) return; R.alive = false; removeEventListener("resize", R.onResize); if (R.onVis) document.removeEventListener("visibilitychange", R.onVis); gsap.globalTimeline.timeScale(1);
-  for (const el of R.labels.values()) el.remove();
+  for (const el of R.labels.values()) el.remove(); if (R.side) for (const o of R.side.piles.values()) o.el.remove();
   R.renderer.dispose(); R.canvas.remove(); R = null;
 }
 
@@ -191,7 +194,9 @@ function unmount() {
 export const AVATARS = { chang: { name: "ช้างน้อย", file: "chang.glb", h: 1.25 }, naga: { name: "ลูกพญานาค", file: "naga.glb", h: 1.3 }, maew: { name: "แมววิเชียรมาศ", file: "maew.glb", h: 1.2 }, suea: { name: "เสือน้อย", file: "suea.glb", h: 1.25 }, kai: { name: "ไก่ชนน้อย", file: "kai.glb", h: 1.2 } };
 // lacquer colours for the mat (the gold line-work stays); the edge colour washes in on the opponent's side
 export const MATS = { black: { name: "รักดำ", lac: "#120b09", edge: "rgba(150,34,24," }, red: { name: "รักแดง", lac: "#3a0d09", edge: "rgba(190,60,30," },
-  navy: { name: "กรมท่า", lac: "#0b1324", edge: "rgba(60,90,170," }, jade: { name: "เขียวหยก", lac: "#0a1c15", edge: "rgba(40,140,100," }, violet: { name: "ม่วงไพลิน", lac: "#190e22", edge: "rgba(130,70,170," }, gold: { name: "ทองคำเปลว", lac: "#21160a", edge: "rgba(214,166,64," }, indigo: { name: "ครามจันทร์", lac: "#0f1030", edge: "rgba(110,110,210," } };
+  navy: { name: "กรมท่า", lac: "#0b1324", edge: "rgba(60,90,170," }, jade: { name: "เขียวหยก", lac: "#0a1c15", edge: "rgba(40,140,100," }, violet: { name: "ม่วงไพลิน", lac: "#190e22", edge: "rgba(130,70,170," }, gold: { name: "ทองคำเปลว", lac: "#21160a", edge: "rgba(214,166,64," }, indigo: { name: "ครามจันทร์", lac: "#0f1030", edge: "rgba(110,110,210," },
+  // ซากุระราตรี: night-lacquer with sakura painted in the corners (maki-e style) — and sakura trees by the table, petals drifting over it
+  sakura: { name: "ซากุระราตรี", lac: "#160d22", edge: "rgba(236,140,178,", kind: "sakura" } };
 const avCache = new Map();
 const loadAvatar = (key) => {
   const a = AVATARS[key]; if (!a || !THREE.GLTFLoader) return Promise.resolve(null);
@@ -268,8 +273,11 @@ const MW = 15.4, MD = 11.6, MZ = -0.2;
 // on the screen and can be tapped
 const ZONES = {
   wide: { avGap: (n) => (n > 4 ? Math.min(2.05, 9.2 / (n - 1)) : 2.05) /* five or six Avatars close up a little */, cs: [-5.8, -1.8], mg: [-1.2, 5.8], csX: (k) => -5.1 + k * 1.3, csS: 0.68, mgX: (k) => 5.1 - k * 1.15, mgS: 0.6,
-    land: { x0: -6.98, x1: -5.12, dz: 1.72, x: -6.05, s: 0.72, s2: 0.6, dz2: 0.8, lx: -6.05, lz: MZ + 1.95, align: "center" }, band: [-4.6, 6.85],
-    fit: [[-6.8, -5.2], [5.7, -5.2], [-6.8, 4.9], [5.7, 4.9]] }, // the outer cards of a full table
+    // the Land Magic Zone sits in the middle of the table, between the two sides (it is shared: one Land for both players)
+    land: { x0: -1.25, x1: 1.25, dz: 0.92, x: 0, s: 0.72, s2: 0.6, dx2: 0.7, lx: 1.42, lz: MZ, align: "left", center: true }, band: [-4.35, 4.35],
+    // each player's own left: LIFE laid sideways down the side like a damage zone; their right: Deck, hell and the dark zone
+    side: { life: { x: -6.3, z0: 0.5, dz: 0.6, s: 0.46 }, piles: { x: 6.3, s: 0.46, deck: 2.85, hell: 1.7, dark: 0.55 } },
+    fit: [[-6.95, -5.2], [6.95, -5.2], [-6.95, 4.9], [6.95, 4.9]] }, // the outer cards of a full table
   tall: { avGap: (n) => (n > 4 ? Math.min(2.05, 8.1 / (n - 1)) : 2.05), cs: [-4.35, -1.15], mg: [-0.75, 4.35], csX: (k) => -3.75 + k * 1.0, csS: 0.6, mgX: (k) => 3.8 - k * 0.92, mgS: 0.55,
     land: { x0: -4.45, x1: -2.85, dz: 1.08, x: -3.65, s: 0.62, s2: 0.5, dz2: 0.55, lx: -2.65, lz: MZ - 0.62, align: "left" }, band: [-2.45, 4.35],
     // the part of the table that must be on screen: the zones' outer edges (six Avatars included)
@@ -305,17 +313,167 @@ function lowerQuality() {
   const pr = R.renderer.getPixelRatio(); if (pr > 1) { R.renderer.setPixelRatio(Math.max(1, pr - 0.25)); R.resize(); console.info("3D: resolution", Math.max(1, pr - 0.25)); return; }
   R.autoQ = null; // nothing left to lower
 }
-function matTextures(small, theme = MATS.black, Z = ZONES.wide) {
+// ---------- ซากุระราตรี: sakura painted in maki-e over one side of the mat ----------
+// near: our side (the bottom of the canvas); the far side gets the same picture turned round, for the player who sits there.
+// Branches taper and bend, the thin ones carry blossoms (five notched petals, deep pink at the heart, stamens) and buds,
+// and loose petals lie scattered over the side. A fixed seed: the picture is the same every time the mat is drawn.
+function paintSakura(g, X, Y, U, near, small) {
+  let seed = near ? 7 : 19; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const P = (x, z) => (near ? [X(x), Y(z)] : [X(-x), Y(2 * MZ - z)]);
+  const flowers = [];
+  const branch = (x, z, ang, len, w, depth) => {
+    const x1 = x + Math.cos(ang) * len, z1 = z + Math.sin(ang) * len, bend = (rnd() - 0.5) * len * 0.45;
+    const nx = -Math.sin(ang), nz = Math.cos(ang), mx = (x + x1) / 2 + nx * bend, mz = (z + z1) / 2 + nz * bend, w1 = w * 0.64, wm = (w + w1) / 4;
+    g.beginPath(); g.moveTo(...P(x + (nx * w) / 2, z + (nz * w) / 2)); g.quadraticCurveTo(...P(mx + nx * wm, mz + nz * wm), ...P(x1 + (nx * w1) / 2, z1 + (nz * w1) / 2));
+    g.lineTo(...P(x1 - (nx * w1) / 2, z1 - (nz * w1) / 2)); g.quadraticCurveTo(...P(mx - nx * wm, mz - nz * wm), ...P(x - (nx * w) / 2, z - (nz * w) / 2)); g.closePath();
+    g.fillStyle = "rgba(40,18,24,.94)"; g.fill();
+    g.strokeStyle = "rgba(216,168,74,.42)"; g.lineWidth = Math.max(1, U(w * 0.13)); g.beginPath(); g.moveTo(...P(x + (nx * w) / 2, z + (nz * w) / 2)); g.quadraticCurveTo(...P(mx + nx * wm, mz + nz * wm), ...P(x1 + (nx * w1) / 2, z1 + (nz * w1) / 2)); g.stroke();
+    if (depth > 0) { const kids = depth > 2 ? 2 : 2 + (rnd() < 0.5 ? 1 : 0); for (let k = 0; k < kids; k++) branch(x1, z1, ang + (k - (kids - 1) / 2) * (0.55 + rnd() * 0.3) + (rnd() - 0.5) * 0.3, len * (0.6 + rnd() * 0.18), w1, depth - 1); }
+    if (depth <= 2) { const n = depth === 0 ? 4 + Math.floor(rnd() * 4) : 1 + Math.floor(rnd() * 3); for (let k = 0; k < n; k++) { const f = depth === 0 ? 0.75 + rnd() * 0.3 : 0.25 + rnd() * 0.65; flowers.push([x + (x1 - x) * f + (rnd() - 0.5) * 0.32, z + (z1 - z) * f + (rnd() - 0.5) * 0.32, 0.075 + rnd() * 0.06, rnd() * 6.28, rnd() < 0.18]); } }
+  };
+  branch(-7.55, 5.45, -0.6, 1.95, 0.3, 3); branch(7.6, 4.95, Math.PI + 0.45, 1.6, 0.26, 3); branch(-2.2, 5.62, -1.3, 0.85, 0.14, 2);
+  for (const [fx, fz, r, rot, bud] of flowers) { const [cx, cy] = P(fx, fz), R0 = U(r);
+    if (bud) { g.fillStyle = "rgba(214,84,126,.92)"; g.beginPath(); g.ellipse(cx, cy, R0 * 0.34, R0 * 0.56, rot, 0, 7); g.fill(); continue; }
+    for (let k = 0; k < 5; k++) { g.save(); g.translate(cx, cy); g.rotate(rot + (k * Math.PI * 2) / 5);
+      const pg = g.createLinearGradient(0, 0, 0, -R0); pg.addColorStop(0, "rgba(206,86,128,.86)"); pg.addColorStop(0.5, "rgba(236,166,192,.8)"); pg.addColorStop(1, "rgba(250,222,232,.78)"); g.fillStyle = pg;
+      g.beginPath(); g.moveTo(0, 0); g.bezierCurveTo(R0 * 0.56, -R0 * 0.24, R0 * 0.52, -R0 * 0.94, R0 * 0.13, -R0); g.lineTo(0, -R0 * 0.85); g.lineTo(-R0 * 0.13, -R0); g.bezierCurveTo(-R0 * 0.52, -R0 * 0.94, -R0 * 0.56, -R0 * 0.24, 0, 0); g.fill();
+      g.strokeStyle = "rgba(216,168,74,.55)"; g.lineWidth = Math.max(0.6, R0 * 0.05); g.stroke(); g.restore(); }
+    g.fillStyle = "rgba(190,48,92,.95)"; g.beginPath(); g.arc(cx, cy, R0 * 0.2, 0, 7); g.fill();
+    g.fillStyle = "rgba(255,224,138,.95)"; for (let k = 0; k < 6; k++) { const a = rot + k * 1.05; g.beginPath(); g.arc(cx + Math.cos(a) * R0 * 0.3, cy + Math.sin(a) * R0 * 0.3, Math.max(0.6, R0 * 0.05), 0, 7); g.fill(); } }
+  for (let k = 0; k < (small ? 18 : 32); k++) { const [cx, cy] = P(-7.1 + rnd() * 14.2, 0.1 + rnd() * 5.3), R0 = U(0.045 + rnd() * 0.04);
+    g.save(); g.translate(cx, cy); g.rotate(rnd() * 6.28); g.fillStyle = `rgba(255,${192 + Math.floor(rnd() * 40)},${210 + Math.floor(rnd() * 30)},${(0.32 + rnd() * 0.36).toFixed(2)})`; g.beginPath(); g.ellipse(0, 0, R0 * 0.56, R0, 0, 0, 7); g.fill(); g.restore(); }
+}
+// ---------- ซากุระราตรี in 3D: cherry trees round the table, petals drifting over it ----------
+// Built while either side's mat is the sakura mat. Each tree grows the same way every time (its own seed): a trunk that forks
+// into limbs and twigs, every one a tube that bends and thins toward its end, with thousands of five-petalled flowers (one
+// small card each, all drawn in one batch) along the twigs. Petals fall on a light breeze and tumble as they go; one that
+// lands rests a moment and fades. The trees stand off the mat, beside and behind it, so they frame the table and never
+// hide a card: x, z, turn, size, seed (a wide screen sees its sides, an upright phone sees past its far edge).
+const SAKURA = { wide: [[-10.6, -2.6, 0.6, 1.0, 3], [10.9, -3.6, -0.7, 0.95, 5], [-6.4, -10.9, 0.3, 1.1, 7], [7.2, -11.6, -0.3, 1.05, 9]],
+  tall: [[-5.1, -9.9, 0.4, 0.92, 3], [5.6, -10.6, -0.5, 0.9, 5]] };
+function flowerTexture() {
+  return canvasTex(128, (g, S) => { const C = S / 2, R0 = S * 0.47;
+    for (let k = 0; k < 5; k++) { g.save(); g.translate(C, C); g.rotate((k * Math.PI * 2) / 5);
+      const pg = g.createLinearGradient(0, 0, 0, -R0); pg.addColorStop(0, "#d9557f"); pg.addColorStop(0.3, "#f4a9c2"); pg.addColorStop(1, "#fff2f6"); g.fillStyle = pg;
+      g.beginPath(); g.moveTo(0, 0); g.bezierCurveTo(R0 * 0.62, -R0 * 0.2, R0 * 0.56, -R0 * 0.95, R0 * 0.14, -R0); g.lineTo(0, -R0 * 0.83); g.lineTo(-R0 * 0.14, -R0); g.bezierCurveTo(-R0 * 0.56, -R0 * 0.95, -R0 * 0.62, -R0 * 0.2, 0, 0); g.fill();
+      g.strokeStyle = "rgba(190,60,100,.22)"; g.lineWidth = 1; g.beginPath(); g.moveTo(0, -R0 * 0.18); g.lineTo(0, -R0 * 0.68); g.stroke(); g.restore(); }
+    g.fillStyle = "#b8295a"; g.beginPath(); g.arc(C, C, R0 * 0.16, 0, 7); g.fill();
+    g.strokeStyle = "rgba(255,232,170,.9)"; g.fillStyle = "#ffdf86"; g.lineWidth = 1.2;
+    for (let k = 0; k < 11; k++) { const a = k * 0.571 + 0.2, x = C + Math.cos(a) * R0 * 0.34, y = C + Math.sin(a) * R0 * 0.34; g.beginPath(); g.moveTo(C + Math.cos(a) * R0 * 0.1, C + Math.sin(a) * R0 * 0.1); g.lineTo(x, y); g.stroke(); g.beginPath(); g.arc(x, y, 2.1, 0, 7); g.fill(); } });
+}
+function petalTexture() {
+  return canvasTex(64, (g, S) => { const pg = g.createLinearGradient(0, S, 0, 0); pg.addColorStop(0, "#df6890"); pg.addColorStop(0.4, "#f8bfd1"); pg.addColorStop(1, "#fff4f8"); g.fillStyle = pg;
+    g.beginPath(); g.moveTo(S / 2, S * 0.97); g.bezierCurveTo(S * 0.99, S * 0.6, S * 0.9, S * 0.05, S * 0.61, S * 0.04); g.lineTo(S / 2, S * 0.18); g.lineTo(S * 0.39, S * 0.04); g.bezierCurveTo(S * 0.1, S * 0.05, S * 0.01, S * 0.6, S / 2, S * 0.97); g.fill(); });
+}
+// sakura bark: dark plum-brown with the pale bands (lenticels) that run round the trunk, and faint cracks along it
+function barkTexture() {
+  return canvasTex(128, (g, S) => { g.fillStyle = "#3a2327"; g.fillRect(0, 0, S, S);
+    let seed = 5; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let k = 0; k < 40; k++) { g.strokeStyle = `rgba(16,8,10,${0.2 + rnd() * 0.25})`; g.lineWidth = 1 + rnd(); const x = rnd() * S; g.beginPath(); g.moveTo(x, 0); g.bezierCurveTo(x + (rnd() - 0.5) * 14, S / 3, x + (rnd() - 0.5) * 14, (2 * S) / 3, x, S); g.stroke(); }
+    for (let k = 0; k < 150; k++) { const y = rnd() * S, x = rnd() * S, w = 5 + rnd() * 24, hh = 1 + rnd() * 1.8; g.fillStyle = rnd() < 0.62 ? `rgba(150,110,100,${0.25 + rnd() * 0.3})` : `rgba(12,5,7,${0.3 + rnd() * 0.3})`; g.fillRect(x, y, w, hh); if (x + w > S) g.fillRect(x - S, y, w, hh); } });
+}
+// a limb: a tube along a smooth curve through pts, radius r0 at its root to r1 at its tip (flare: a wider foot for a trunk)
+function limbGeometry(pts, r0, r1, radial, seg, flare = 0) {
+  const curve = new THREE.CatmullRomCurve3(pts, false, "centripetal"), fr = curve.computeFrenetFrames(seg, false), P = new THREE.Vector3(), L = curve.getLength();
+  const pos = [], uv = [], idx = [];
+  for (let i = 0; i <= seg; i++) { const t = i / seg; curve.getPointAt(t, P); const r = r0 + (r1 - r0) * t + flare * Math.exp(-t * 9), N = fr.normals[i], B = fr.binormals[i];
+    for (let j = 0; j <= radial; j++) { const a = (j / radial) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a); pos.push(P.x + r * (c * N.x + s * B.x), P.y + r * (c * N.y + s * B.y), P.z + r * (c * N.z + s * B.z)); uv.push(j / radial, (t * L) / 1.1); } }
+  for (let i = 0; i < seg; i++) for (let j = 0; j < radial; j++) { const a = i * (radial + 1) + j, b = a + radial + 1; idx.push(a, a + 1, b, b, a + 1, b + 1); }
+  return { pos, uv, idx };
+}
+// one tree: limbs grow from the trunk up, forking two or three ways, the upper ones leaning out toward the level (a sakura's
+// broad crown); the last forks are the twigs that carry the flowers
+function sakuraTree(seed, Q, bark, flower, fGeo) {
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647; for (let k = 0; k < 4; k++) rnd();
+  const limbs = [], twigs = [], D = Q === "high" ? 5 : 4;
+  const grow = (p0, dir, len, r0, depth) => {
+    const pts = [p0.clone()], d = dir.clone(); let p = p0.clone();
+    for (let k = 0; k < 3; k++) { d.x += (rnd() - 0.5) * 0.42; d.z += (rnd() - 0.5) * 0.42; d.y += (rnd() - 0.5) * 0.22 + (depth >= D - 1 ? 0.07 : -0.035); d.normalize(); p = p.clone().addScaledVector(d, len / 3); pts.push(p); }
+    const r1 = depth ? r0 * 0.66 : r0 * 0.3; limbs.push([pts, r0, r1, depth]);
+    if (!depth) { twigs.push(pts); return; }
+    const n = depth >= D - 1 ? 3 : rnd() < 0.55 ? 3 : 2;
+    for (let k = 0; k < n; k++) { const b = (k / n) * Math.PI * 2 + rnd() * 1.4, ax = new THREE.Vector3(Math.cos(b), 0, Math.sin(b)).cross(d); if (ax.lengthSq() < 1e-4) ax.set(1, 0, 0); ax.normalize();
+      const nd = d.clone().applyAxisAngle(ax, 0.45 + rnd() * 0.42); if (depth <= D - 2) nd.y *= 0.7; nd.normalize();
+      grow(p, nd, len * (0.66 + rnd() * 0.16), r1, depth - 1); }
+  };
+  grow(new THREE.Vector3(0, -0.25, 0), new THREE.Vector3(0, 1, 0), D === 5 ? 2.5 : 2.2, 0.3, D);
+  const P = [], UV = [], I = []; let nv = 0;
+  for (const [pts, r0, r1, depth] of limbs) { const big = depth >= D - 1, L = limbGeometry(pts, r0, r1, big ? 10 : depth >= 2 ? 6 : 4, big ? 9 : depth >= 2 ? 5 : 3, depth === D ? 0.2 : 0);
+    P.push(...L.pos); UV.push(...L.uv); for (const i of L.idx) I.push(i + nv); nv += L.pos.length / 3; }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute("uv", new THREE.Float32BufferAttribute(UV, 2)); geo.setIndex(I); geo.computeVertexNormals();
+  const grp = new THREE.Group(); grp.add(new THREE.Mesh(geo, bark));
+  // flowers along the last third of each twig and round its tip, more toward the tip, a few pinker, a few whiter
+  const per = Q === "high" ? 17 : 11, fl = new THREE.InstancedMesh(fGeo, flower, twigs.length * per), M = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3(), at = new THREE.Vector3(), col = new THREE.Color();
+  let n = 0; for (const pts of twigs) for (let k = 0; k < per; k++) { const f = Math.sqrt(rnd()), sp = 0.14 + f * 0.3; at.lerpVectors(pts[1], pts[3], f); at.x += (rnd() - 0.5) * sp * 2; at.y += (rnd() - 0.3) * sp * 1.5; at.z += (rnd() - 0.5) * sp * 2;
+    e.set(rnd() * 6.28, rnd() * 6.28, rnd() * 6.28); q.setFromEuler(e); const s = 0.72 + rnd() * 0.56; sc.set(s, s, s); M.compose(at, q, sc); fl.setMatrixAt(n, M); col.setRGB(1, 0.84 + rnd() * 0.16, 0.9 + rnd() * 0.1); fl.setColorAt(n, col); n++; }
+  fl.frustumCulled = false; grp.add(fl); return grp;
+}
+function buildSakura() {
+  const Q = R.Q, grp = new THREE.Group(); grp.name = "sakura"; R.scene.add(grp);
+  const S = { grp, zk: R.zones, tex: [petalTexture(), flowerTexture(), barkTexture()], o: new THREE.Object3D() }, [pt, ft, bt] = S.tex; bt.wrapS = bt.wrapT = THREE.RepeatWrapping;
+  const bark = new THREE.MeshStandardMaterial({ map: bt, color: 0xc8b2b0, roughness: 0.93, metalness: 0 });
+  const flower = new THREE.MeshStandardMaterial({ map: ft, alphaTest: 0.42, side: THREE.DoubleSide, roughness: 0.7, metalness: 0, emissive: 0xff86b0, emissiveMap: ft, emissiveIntensity: 0.26 });
+  const petal = new THREE.MeshStandardMaterial({ map: pt, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.65, metalness: 0, emissive: 0xff8ab0, emissiveMap: pt, emissiveIntensity: 0.2 });
+  const fGeo = new THREE.PlaneGeometry(0.22, 0.22), pGeo = new THREE.PlaneGeometry(0.15, 0.12); S.mats = [bark, flower, petal]; S.geos = [fGeo, pGeo];
+  if (Q !== "low") for (const [x, z, ry, k, seed] of SAKURA[R.zones === ZONES.tall ? "tall" : "wide"].slice(0, Q === "high" ? 4 : 2)) { const t = sakuraTree(seed * 7919, Q, bark, flower, fGeo); t.position.set(x, -0.335, z); t.rotation.y = ry; t.scale.setScalar(k); grp.add(t); }
+  // fallen petals: on the wood round the mat, thickest under the trees, and a few on the mat's border
+  { const n = Q === "high" ? 320 : Q === "mid" ? 180 : 90, m = new THREE.InstancedMesh(pGeo, petal, n), o = S.o; let seed = 23; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const spots = SAKURA[R.zones === ZONES.tall ? "tall" : "wide"];
+    for (let i = 0; i < n; i++) { let x, z, y = -0.326;
+      if (i % 4 === 0) { const side = Math.floor(rnd() * 4), u = rnd(); [x, z] = side < 2 ? [-MW / 2 + 0.12 + u * (MW - 0.24), MZ + (side ? 1 : -1) * (MD / 2 - 0.12 - rnd() * 0.14)] : [(side === 2 ? 1 : -1) * (MW / 2 - 0.12 - rnd() * 0.14), MZ - MD / 2 + 0.12 + u * (MD - 0.24)]; y = 0.006; }
+      else if (i % 4 === 1) { const [tx, tz] = spots[Math.floor(rnd() * spots.length)], a = rnd() * 6.28, r = Math.sqrt(rnd()) * 3.2; x = tx + Math.cos(a) * r; z = tz + Math.sin(a) * r; }
+      else { do { x = -13 + rnd() * 26; z = -13 + rnd() * 21; } while (Math.abs(x) < MW / 2 + 0.15 && Math.abs(z - MZ) < MD / 2 + 0.15); }
+      o.position.set(x, y + rnd() * 0.004, z); o.rotation.set(-Math.PI / 2, 0, rnd() * 6.28); o.scale.setScalar(0.75 + rnd() * 0.55); o.updateMatrix(); m.setMatrixAt(i, o.matrix); }
+    m.frustumCulled = false; grp.add(m); }
+  // falling petals (none when the device asks for less motion)
+  const nf = reduce ? 0 : Q === "high" ? 70 : Q === "mid" ? 42 : 22;
+  if (nf) { const m = new THREE.InstancedMesh(pGeo, petal, nf); m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false; grp.add(m); S.fall = { m, st: Array.from({ length: nf }, () => respawnPetal({}, true)) }; }
+  return S;
+}
+function respawnPetal(st, first) {
+  Object.assign(st, { x: -10.5 + Math.random() * 18, z: -8.5 + Math.random() * 14, y: first ? 0.3 + Math.random() * 7 : 5.5 + Math.random() * 3, v: 0.26 + Math.random() * 0.26, a: 0.25 + Math.random() * 0.45, f: 0.7 + Math.random() * 0.9,
+    ph: Math.random() * 6.28, rx: 1 + Math.random() * 2.2, ry: 0.6 + Math.random() * 1.4, rz: 0.5 + Math.random() * 1.5, s: 0.8 + Math.random() * 0.5, rest: 0, lie: 0 }); return st;
+}
+// each frame: a light breeze toward the right, a sway and a tumble; a petal that lands lies still a moment, then shrinks away
+function stepSakura(S, dt, t) {
+  const F = S.fall, o = S.o; if (!F) return;
+  for (let i = 0; i < F.st.length; i++) { const st = F.st[i];
+    if (st.rest > 0) { st.rest -= dt; o.position.set(st.x, st.y, st.z); o.rotation.set(-Math.PI / 2, 0, st.lie); o.scale.setScalar(st.s * Math.min(1, Math.max(0, st.rest / 0.8))); if (st.rest <= 0) respawnPetal(st, false); }
+    else { st.y -= st.v * dt; st.x += (0.22 + Math.sin(t * st.f + st.ph) * st.a) * dt; st.z += (Math.cos(t * st.f * 0.7 + st.ph) * st.a * 0.5 - 0.04) * dt;
+      const floor = Math.abs(st.x) < MW / 2 && Math.abs(st.z - MZ) < MD / 2 ? 0.012 : -0.322;
+      if (st.y <= floor) { st.y = floor; st.rest = 2 + Math.random() * 4; st.lie = Math.random() * 6.28; }
+      o.position.set(st.x, st.y, st.z); o.rotation.set(t * st.rx + st.ph, t * st.ry, t * st.rz + st.ph * 2); o.scale.setScalar(st.s); }
+    o.updateMatrix(); F.m.setMatrixAt(i, o.matrix); }
+  F.m.instanceMatrix.needsUpdate = true;
+}
+function dropSakura(S) {
+  R.scene.remove(S.grp); S.grp.traverse((o) => { if (o.isMesh && !S.geos.includes(o.geometry)) o.geometry.dispose(); });
+  for (const x of [...S.geos, ...S.mats, ...S.tex]) x.dispose();
+}
+// the table's surroundings follow the mats: the sakura trees and petals stand while either side has the sakura mat
+function decor() {
+  if (!R) return; const k = R.matKey && R.matKey[1], want = !!k && [k.near, k.far].some((m) => m && m.kind === "sakura");
+  if (R.sakura && (!want || R.sakura.zk !== R.zones)) { dropSakura(R.sakura); R.sakura = null; }
+  if (want && !R.sakura) R.sakura = buildSakura();
+}
+function matTextures(small, mats = {}, Z = ZONES.wide) {
+  const NEAR = mats.near || MATS.black, FAR = mats.far || NEAR, theme = NEAR;
   const S = small ? 84 : 128; const CW = Math.round(MW * S), CH = Math.round(MD * S);
   const mk = () => { const c = document.createElement("canvas"); c.width = CW; c.height = CH; return c; };
   const base = mk(), glow = mk(), rough = mk(); const g = base.getContext("2d"), q = glow.getContext("2d"), rq = rough.getContext("2d");
   const X = (x) => (x + MW / 2) * S, Y = (z) => (z - MZ + MD / 2) * S, U = (v) => v * S;
   const LAC = theme.lac;
-  // lacquer: a warm black with a soft pool of light, flecks of gold leaf, red lacquer creeping in on the opponent's side
-  g.fillStyle = LAC; g.fillRect(0, 0, CW, CH); q.fillStyle = "#000"; q.fillRect(0, 0, CW, CH); rq.fillStyle = "#c0c0c0"; rq.fillRect(0, 0, CW, CH); // roughness: lacquer satin, so the hall reflects in it only as a soft glow; gold leaf a little glossier
+  // lacquer: each side of the table is its owner's own mat (like two duel mats laid edge to edge): that colour of lacquer,
+  // washed with the colour toward its own edge, a soft pool of light over both, flecks of gold leaf
+  const yMid = Y(MZ);
+  g.fillStyle = FAR.lac; g.fillRect(0, 0, CW, yMid); g.fillStyle = NEAR.lac; g.fillRect(0, yMid, CW, CH - yMid);
+  q.fillStyle = "#000"; q.fillRect(0, 0, CW, CH); rq.fillStyle = "#c0c0c0"; rq.fillRect(0, 0, CW, CH); // roughness: lacquer satin, so the hall reflects in it only as a soft glow; gold leaf a little glossier
   let gr = g.createRadialGradient(CW / 2, CH * 0.55, CW * 0.05, CW / 2, CH * 0.55, CW * 0.62); gr.addColorStop(0, "rgba(64,38,28,.55)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, 0, CW, CH);
-  gr = g.createLinearGradient(0, 0, 0, CH * 0.42); gr.addColorStop(0, theme.edge + ".30)"); gr.addColorStop(1, theme.edge + "0)"); g.fillStyle = gr; g.fillRect(0, 0, CW, CH * 0.42);
+  gr = g.createLinearGradient(0, 0, 0, CH * 0.42); gr.addColorStop(0, FAR.edge + ".30)"); gr.addColorStop(1, FAR.edge + "0)"); g.fillStyle = gr; g.fillRect(0, 0, CW, CH * 0.42);
+  if (NEAR !== FAR || NEAR.kind) { gr = g.createLinearGradient(0, CH, 0, CH * 0.6); gr.addColorStop(0, NEAR.edge + ".22)"); gr.addColorStop(1, NEAR.edge + "0)"); g.fillStyle = gr; g.fillRect(0, CH * 0.6, CW, CH * 0.4); }
   gr = g.createLinearGradient(0, CH, 0, CH * 0.6); gr.addColorStop(0, "rgba(216,168,74,.10)"); gr.addColorStop(1, "rgba(216,168,74,0)"); g.fillStyle = gr; g.fillRect(0, CH * 0.6, CW, CH * 0.4);
+  // ซากุระราตรี: branches in bloom painted across that side (under the gold line-work; the cards lie on top)
+  for (const [m, near] of [[FAR, false], [NEAR, true]]) if (m.kind === "sakura") paintSakura(g, X, Y, U, near, small);
   for (let k = 0; k < CW * CH / 900; k++) { const v = Math.random(); g.fillStyle = v < 0.5 ? "rgba(255,255,255,.018)" : "rgba(0,0,0,.05)"; g.fillRect(Math.random() * CW, Math.random() * CH, 1 + Math.random() * 2, 1 + Math.random() * 2); }
   for (let k = 0; k < (small ? 260 : 520); k++) { const x = Math.random() * CW, y = Math.random() * CH, r = Math.random() * 1.6 + 0.4, a = Math.random() * 0.22 + 0.04; g.fillStyle = `rgba(232,186,92,${a})`; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); q.fillStyle = `rgba(255,255,255,${a * 0.6})`; q.beginPath(); q.arc(x, y, r, 0, 7); q.fill(); }
   // everything gilded is drawn three times: in gold on the mat, in white on the glow (and metal) map, in grey on the roughness map
@@ -333,16 +491,25 @@ function matTextures(small, theme = MATS.black, Z = ZONES.wide) {
     side(xa, MZ - MD / 2 + i0, xb, MZ - MD / 2 + i0, 0, 1); side(xa, MZ + MD / 2 - i0, xb, MZ + MD / 2 - i0, 0, -1); side(-MW / 2 + i0, za, -MW / 2 + i0, zb, 1, 0); side(MW / 2 - i0, za, MW / 2 - i0, zb, -1, 0);
     // zones, mine near and the opponent's far (their labels face them)
     for (const [zs, flip] of [[1, false], [-1, true]]) {
-      const zc = zs > 0 ? 2.15 : -2.55, zo = zs > 0 ? 4.17 : -4.5;
+      const zc = zs > 0 ? 2.15 : -2.55, zo = zs > 0 ? 4.17 : -4.5; const gnd = ground === LAC ? (zs > 0 ? NEAR.lac : FAR.lac) : ground;
       frame(c, -4.35, zc - 1.18, 4.35, zc + 1.18, 0.16); inLabel(c, "Avatar Zone", -4.35, zc - 1.18, 4.35, zc + 1.18, flip);
-      prajamyam(c, X(0), Y(zc - zs * 1.18), U(0.2), ground); prajamyam(c, X(0), Y(zc + zs * 1.18), U(0.13), ground);
+      prajamyam(c, X(0), Y(zc - zs * 1.18), U(0.2), gnd); prajamyam(c, X(0), Y(zc + zs * 1.18), U(0.13), gnd);
       frame(c, Z.cs[0], zo - 0.76, Z.cs[1], zo + 0.76, 0.11, 0.028); inLabel(c, "Construct Zone", Z.cs[0], zo - 0.76, Z.cs[1], zo + 0.76, flip);
       frame(c, Z.mg[0], zo - 0.76, Z.mg[1], zo + 0.76, 0.11, 0.028); inLabel(c, "Magic Zone", Z.mg[0], zo - 0.76, Z.mg[1], zo + 0.76, flip);
     }
-    // Land Magic Zone, shared in the middle on the left; the centre band of ประจำยาม runs from it
+    // each side's LIFE (laid sideways down its owner's left, like a damage zone) and its Deck, hell and dark zone (its owner's right)
+    if (Z.side) for (const [mine, flip] of [[true, false], [false, true]]) {
+      const m = (x, z) => (mine ? [x, z] : [-x, 2 * MZ - z]); const box = (x0, z0, x1, z1) => { const [ax, az] = m(x0, z0), [bx, bz] = m(x1, z1); return [Math.min(ax, bx), Math.min(az, bz), Math.max(ax, bx), Math.max(az, bz)]; };
+      const Lf = Z.side.life, hw = (CARD.h * Lf.s) / 2 + 0.1, hd = (CARD.w * Lf.s) / 2 + 0.1; const lb = box(Lf.x - hw, Lf.z0 - hd, Lf.x + hw, Lf.z0 + 4 * Lf.dz + hd);
+      frame(c, ...lb, 0.08, 0.022); const [lx, lz] = m(Lf.x, Lf.z0 + 4 * Lf.dz + hd + 0.2); label(c, "LIFE", lx, lz, flip, "center", 0.17);
+      const Pl = Z.side.piles, pw = (CARD.w * Pl.s) / 2 + 0.07, pd = (CARD.h * Pl.s) / 2 + 0.07;
+      for (const [k, name] of [["deck", "Deck"], ["hell", "นรก"], ["dark", "มิติมืด"]]) { const b = box(Pl.x - pw, Pl[k] - pd, Pl.x + pw, Pl[k] + pd); frame(c, ...b, 0.06, 0.02); const [tx, tz] = m(Pl.x, Pl[k]); label(c, name, tx, tz, flip, "center", 0.15); }
+    }
+    // Land Magic Zone, shared: in the middle of the table on a wide screen (its centre band of ประจำยาม runs out to both sides), at the left on an upright phone
     const Ld = Z.land, [b0, b1] = Z.band; frame(c, Ld.x0, MZ - Ld.dz, Ld.x1, MZ + Ld.dz, 0.13, 0.03); label(c, "Land Magic", Ld.lx, Ld.lz, false, Ld.align);
-    c.lineWidth = U(0.022); for (const dz of [-0.24, 0.24]) { c.beginPath(); c.moveTo(X(b0), Y(MZ + dz)); c.lineTo(X(b1), Y(MZ + dz)); c.stroke(); }
-    for (let x = b0 + 0.4; x <= b1 - 0.25; x += 0.9) prajamyam(c, X(x), Y(MZ), U(0.14), ground);
+    const gap = Ld.center ? [Ld.x0 - 0.12, Ld.x1 + 0.12] : null; c.lineWidth = U(0.022);
+    for (const dz of [-0.24, 0.24]) for (const [a, b] of gap ? [[b0, gap[0]], [gap[1], b1]] : [[b0, b1]]) { c.beginPath(); c.moveTo(X(a), Y(MZ + dz)); c.lineTo(X(b), Y(MZ + dz)); c.stroke(); }
+    for (let x = b0 + 0.4; x <= b1 - 0.25; x += 0.9) if (!gap || x < gap[0] - 0.15 || x > gap[1] + 1.4) prajamyam(c, X(x), Y(MZ), U(0.14), ground); // (none under the "Land Magic" label)
     for (const x of [b0, b1]) prajamyam(c, X(x), Y(MZ), U(0.3), ground);
   });
   draw();
@@ -658,6 +825,48 @@ function swapMat() {
   for (const k of ["map", "emissiveMap", "roughnessMap"]) if (M[k] && M[k].dispose) M[k].dispose();
   M.map = mt.base; M.emissiveMap = mt.glow; M.roughnessMap = mt.rough; if (M.metalnessMap) M.metalnessMap = mt.glow; R.matGlow = mt.glow; M.needsUpdate = true;
 }
+// ---------- the side zones of a wide table ----------
+// LIFE lies sideways down its owner's left like a damage zone: face down until it is turned up, then its face shows (tap
+// it to read it); the owner's right has the Deck, the hell and the dark zone as real piles, as high as they are thick, the
+// last card into hell or the dark zone on top. A tap opens what is in a pile (the Deck only tells how many are left).
+const PILE_TH = { deck: "Deck", hell: "นรก", dark: "มิติมืด" };
+function sideSpot(V, p, x, z) { return p === V ? [x, z] : [-x, 2 * MZ - z]; }
+function makePile(key) {
+  const grp = new THREE.Group(), body = new THREE.Mesh(R.geo.edge, [R.capMat, R.pileMat]), top = new THREE.Mesh(R.geo.face, R.backMat);
+  body.castShadow = top.castShadow = true; grp.add(body, top); R.scene.add(grp); body.userData.pile = top.userData.pile = key;
+  const el = h("div", { class: "pilel" }); document.body.append(el);
+  return { key, grp, body, top, el, n: -1, topI: null };
+}
+function makeLife(s, x) {
+  const face = new THREE.Mesh(R.geo.face, faceMat(E.def(s, x))), back = new THREE.Mesh(R.geo.back, R.backMat), edge = new THREE.Mesh(R.geo.edge, [R.capMat, R.edgeMat]);
+  const flip = new THREE.Group(); flip.add(edge, back, face); const grp = new THREE.Group(); grp.add(flip); R.scene.add(grp);
+  face.userData.life = back.userData.life = x.i; edge.userData.life = x.i; return { i: x.i, grp, flip, face, back, edge, up: null };
+}
+function dropMesh(o) { R.scene.remove(o.grp); if (o.face && o.face.material.dispose) o.face.material.dispose(); if (o.top && o.top.material !== R.backMat && o.top.material.dispose) o.top.material.dispose(); if (o.el) o.el.remove(); }
+function syncSide(s, V) {
+  const Z = R.zones && R.zones.side; if (!R.side) R.side = { piles: new Map(), life: new Map(), objs: [] };
+  const S = R.side;
+  if (!Z) { for (const o of [...S.piles.values(), ...S.life.values()]) dropMesh(o); S.piles.clear(); S.life.clear(); S.objs = []; return; } // an upright phone: the HUD shows them
+  const keep = new Set();
+  for (const p of [0, 1]) { const P = s.P[p]; if (!P) continue; const ry = p === V ? 0 : Math.PI;
+    for (const z of ["deck", "hell", "dark"]) { const key = p + ":" + z; let o = S.piles.get(key); if (!o) { o = makePile(key); S.piles.set(key, o); }
+      const list = P[z] || [], n = list.length, [x, zz] = sideSpot(V, p, Z.piles.x, Z.piles[z]), hgt = Math.min(0.34, 0.012 + n * 0.0066);
+      o.grp.position.set(x, 0.02, zz); o.grp.rotation.y = ry; o.grp.scale.setScalar(Z.piles.s); o.grp.visible = n > 0;
+      o.body.scale.y = hgt / CARD.t; o.body.position.y = hgt / 2; o.top.position.y = hgt - CARD.t / 2 + 0.003;
+      const topX = z === "deck" ? null : list[list.length - 1] || null;
+      if (z !== "deck" && topX && topX.i !== o.topI) { if (o.top.material !== R.backMat && o.top.material.dispose) o.top.material.dispose(); const fm = faceMat(E.def(s, topX)); if (z === "dark") fm.color = new THREE.Color(0xb9a6ff); o.top.material = fm; }
+      o.topI = topX ? topX.i : null; o.n = n; o.mine = p === V; o.el.textContent = `${PILE_TH[z]} ${n}`; o.el.className = "pilel" + (p === V ? "" : " opp") + (n ? "" : " none"); }
+    P.life.forEach((x, k) => { keep.add(x.i); let o = S.life.get(x.i); const fresh = !o; if (!o) { o = makeLife(s, x); S.life.set(x.i, o); }
+      const [lx, lz] = sideSpot(V, p, Z.life.x, Z.life.z0 + k * Z.life.dz); o.grp.position.set(lx, 0.03 + k * 0.004, lz); o.grp.rotation.y = Math.PI / 2 + ry; o.grp.scale.setScalar(Z.life.s);
+      const up = !!x.up; if (o.up !== up) { const z0 = up ? 0 : Math.PI;
+        if (fresh || reduce) o.flip.rotation.z = z0; else { gsap.timeline().to(o.flip.position, { y: 0.9, duration: 0.25, ease: "power2.out" }).to(o.flip.rotation, { z: z0, duration: 0.45, ease: "power2.inOut" }, 0.05).to(o.flip.position, { y: 0, duration: 0.3, ease: "power2.in" }); }
+        o.up = up; } });
+  }
+  for (const [i, o] of S.life) if (!keep.has(i)) { dropMesh(o); S.life.delete(i); }
+  S.objs = [...[...S.piles.values()].filter((o) => o.grp.visible).flatMap((o) => [o.body, o.top]), ...[...S.life.values()].flatMap((o) => [o.face, o.back, o.edge])];
+}
+// what a pick on a side zone means: a face-up LIFE is that card (to read it), a face-down one or a pile is a place to open
+function sidePick(obj) { const u = obj.userData; if (u.pile) return "pile:" + u.pile; if (u.life != null) { const o = R.side && R.side.life.get(u.life); return o && o.up ? u.life : "lifes:" + u.life; } return null; }
 function layout(s, V) {
   const out = new Map(); const Z = R.zones || ZONES.wide;
   for (const p of [0, 1]) {
@@ -666,7 +875,7 @@ function layout(s, V) {
     P.cs.forEach((x, k) => out.set(x.i, { x, p, side, zone: "cs", pos: new THREE.Vector3(Z.csX(k), 0.04, zs * 4.15 - (side === "me" ? 0 : 0.35)), scale: Z.csS }));
     P.mg.forEach((x, k) => out.set(x.i, { x, p, side, zone: "mg", pos: new THREE.Vector3(Z.mgX(k), 0.04, zs * 4.15 - (side === "me" ? 0 : 0.35)), scale: Z.mgS }));
   }
-  { const two = !!(s.land && s.land2), Ld = Z.land; for (const l of [s.land, s.land2]) if (l) out.set(l.i, { x: l, p: l.o, side: l.o === V ? "me" : "opp", zone: "land", pos: new THREE.Vector3(Ld.x, 0.04, MZ + (two ? (l.o === V ? Ld.dz2 : -Ld.dz2) : 0)), scale: two ? Ld.s2 : Ld.s }); } // แบ่งแยกดินแดน: one Land per side
+  { const two = !!(s.land && s.land2), Ld = Z.land; for (const l of [s.land, s.land2]) if (l) out.set(l.i, { x: l, p: l.o, side: l.o === V ? "me" : "opp", zone: "land", pos: Ld.center ? new THREE.Vector3(two ? (l.o === V ? -Ld.dx2 : Ld.dx2) : Ld.x, 0.04, MZ) : new THREE.Vector3(Ld.x, 0.04, MZ + (two ? (l.o === V ? Ld.dz2 : -Ld.dz2) : 0)), scale: two ? Ld.s2 : Ld.s }); } // แบ่งแยกดินแดน: one Land per side
   return out;
 }
 function makeMesh(s, L) {
@@ -999,11 +1208,14 @@ function update(s, V, opts = {}) {
   R.queue = R.queue.then(async () => {
     if (!R || (R.token || 0) !== token) return;
     if (opts.reset || R.view !== V) { R.lastEv = s.evc || 0; R.view = V; }
-    R.sig = [0, 1].map((p) => (s.P[p] && SIGILS[s.P[p].sig] ? s.P[p].sig : "lotus")); syncAvatars(s, V); if (opts.reset) for (const p of [0, 1]) avatarDo(p, s.phase === "over" ? (s.winner === p ? "win" : "lose") : "rest");
+    R.sig = [0, 1].map((p) => (s.P[p] && SIGILS[s.P[p].sig] ? s.P[p].sig : "lotus")); syncAvatars(s, V);
+    { const k = R.matKey, near = (s.P[V] && MATS[s.P[V].mat]) || k[1].near, far = (s.P[1 - V] && MATS[s.P[1 - V].mat]) || (k[1].far === k[1].near ? MATS.red : k[1].far);
+      if (near !== k[1].near || far !== k[1].far) { R.matKey = [k[0], { near, far }]; swapMat(); } decor(); } if (opts.reset) for (const p of [0, 1]) avatarDo(p, s.phase === "over" ? (s.winner === p ? "win" : "lose") : "rest");
     const evs = (s.ev || []).filter((e) => e.id > R.lastEv); R.lastEv = s.evc || R.lastEv;
     const drops = new Set(evs.filter((e) => e.k === "summon").map((e) => e.i)), burned = new Set(evs.filter((e) => e.k === "destroy").map((e) => e.i));
     for (const e of evs) if (e.k !== "summon") { try { await animateEvent(e, null, s, V); } catch (err) { console.warn(err); } }
     try { sync(s, V, drops, burned, !!opts.reset); } catch (err) { console.warn(err); } // a drawing problem must never stall the queue the bot waits on
+    try { syncSide(s, V); } catch (err) { console.warn(err); }
     if (drops.size) await sleepMs(reduce ? 200 : 1150); else if (burned.size) await sleepMs(reduce ? 100 : 600);
   }).catch((err) => console.warn(err));
   return R.queue;

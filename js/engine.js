@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112171712";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261112171712";
-import { SCRIPTS } from "./scripts.js?v=20261112171712";
-import { newId, clone } from "./util.js?v=20261112171712";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112180249";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261112180249";
+import { SCRIPTS } from "./scripts.js?v=20261112180249";
+import { newId, clone } from "./util.js?v=20261112180249";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -303,7 +303,7 @@ export const E = {
       winner: null, reason: "", mull: [false, false], mu: [{}, {}], played: [{}, {}], startedAt: Date.now(), P: [] };
     for (let p = 0; p < 2; p++) {
       const pl = players[p];
-      const P = { uid: pl.uid || null, name: pl.name, ava: pl.ava || "", av3: pl.av3 || "", sig: pl.sig || "", bot: !!pl.bot, deckName: decks[p].name || "", deckId: decks[p].id || null, deck: [], hand: [], av: [], mg: [], cs: [], hell: [], dark: [], life: [] };
+      const P = { uid: pl.uid || null, name: pl.name, ava: pl.ava || "", av3: pl.av3 || "", sig: pl.sig || "", mat: pl.mat || "", bot: !!pl.bot, deckName: decks[p].name || "", deckId: decks[p].id || null, deck: [], hand: [], av: [], mg: [], cs: [], hell: [], dark: [], life: [] };
       const mk = (id) => { s.cards[id] = s.cards[id] || E.cardDef(id); return { i: s.nextI++, c: String(id), o: p, a: true }; };
       P.deck = E.shuffle(s, decks[p].main.map(mk));
       P.life = E.shuffle(s, decks[p].life.map(mk)).map((x) => ({ ...x, up: false }));
