@@ -1,11 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112104551";
-import { plain } from "./persona.js?v=20261112104551";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261112104551";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112104551";
-import { modPowerFor } from "./auras.js?v=20261112104551";
-import { Data } from "./fb.js?v=20261112104551";
-import { lsGet, clone } from "./util.js?v=20261112104551";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112121210";
+import { plain } from "./persona.js?v=20261112121210";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261112121210";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112121210";
+import { modPowerFor } from "./auras.js?v=20261112121210";
+import { Data } from "./fb.js?v=20261112121210";
+import { lsGet, clone } from "./util.js?v=20261112121210";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -260,6 +260,7 @@ export const H = {
       if (o.op === "draw") v += o.seat === p ? (s.P[p].hand.length < 7 ? 1.5 : 0.3) * (o.n || 1) : -1.2 * (o.n || 1);
       else if (o.op === "mill") v += o.seat === p ? -0.2 * (o.n || 1) : 0.3 * (o.n || 1);
       else if (o.op === "destroy") { const L = E.locate(s, o.i); v += L ? (L.p === p ? -(2 + E.power(s, L.x) * 0.6 + (E.def(s, L.x).c || 0) * 0.3 - (L.x.tok ? 1 : 0)) : 5 + E.power(s, L.x) * 0.6) : 0; } // ours: a weak one costs less than a strong one
+      else if (o.op === "move" && ["hell", "dark"].includes(o.to)) { const L = E.locate(s, o.i); if (L && ["av", "cs"].includes(L.z)) v += L.p !== p ? 5 + E.power(s, L.x) * 0.6 : -(2 + E.power(s, L.x) * 0.6); } // sent off the table: as good (or bad) as destroying it
       else if (o.op === "move" && o.to === "hand") { const L = E.locate(s, o.i); const field = L && ["av", "cs", "mg"].includes(L.z); // a card from a Deck or hell to its owner's hand, or one bounced off the table
         v += !L ? 0 : L.p !== p ? (field ? 4 : -1.2) : field ? -2 : 1.6; }
       else if (o.op === "power") { const L = E.locate(s, o.i); v += L ? ((L.p === p) === (o.n > 0) ? Math.abs(o.n) * (s.turn > 1 ? 0.8 : 0.3) : -Math.abs(o.n)) : 0; }

@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261112104551";
-import { h } from "./util.js?v=20261112104551";
-import { Data } from "./fb.js?v=20261112104551";
+import { CARD_SOURCE } from "./config.js?v=20261112121210";
+import { h } from "./util.js?v=20261112121210";
+import { Data } from "./fb.js?v=20261112121210";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -195,6 +195,42 @@ export function cardLine(c, max = 160) {
   return `${c.n} [${parts.join(" · ")}]${x ? " : " + (x.length > max ? x.slice(0, max) + "…" : x) : ""}`;
 }
 
+// ----- the official event limits ("การ์ดบาป", bottcg.com/rule) -----
+// Banned cards, cards allowed once or twice (Main Deck and LIFE counted together), pairs that may not share a Deck, and
+// the Decks a few cards ask for. The newest list that has started (Thai date) applies. A Deck outside it still plays
+// here; it is marked as not allowed at official events. Names are compared with spaces collapsed (a few names in the
+// data carry a double space).
+const BANLISTS = [{ name: "การ์ดบาป ส.ค. 2569", from: "2026-08-01",
+  ban: ["ครูแกง สอนเลข", "ไสยเวท ย้อนกลับ", "ช็อตกัน นัยนาวุธ", "ขวานเงิน", "ล้มโต๊ะ"],
+  max: { 1: ["ริกกี้ นักปลอมแปลง", "เจ้ากล้าดียังไง", "กฎร้าน", "แอสการ์ดคือสถานที่ไม่ใช่ผู้คน", "SD Plaza สายเหนือเก่า", "นายนิรยบาล ตัวใหญ่พิเศษ", "น้ำซุปชาบู", "มนุษย์ดัดแปลง", "พญายักษ์ ทศกัณฑ์", "ลุ้นเยี่ยวเหนียว", "ไม้เกาหลัง", "Micro Plaza สะพานพลาสติก"],
+    2: ["ชายจากอนาคต", "ความเจริญ", "ลูกแม่ศรีนวล", "การสละชีพของเทพธิดา", "แมลงปอมีพิษ", "ไอ นีด เมดิก", "กุมภกรรณ ทดน้ำ", "เพื่อชาติ", "อีช่า - สาวน้อยคนเก่ง", "เลือกมันสำหรับพวก จน !!!", "เจค นักฆ่ามือเก๋า", "งี่เง่า และ งอแง", "โคลัมบัส นักท่องเรือ", "อาเธอร์ ราชาแห่งอัศวินโต๊ะกลม", "อุบัติเหตุ!!!", "พระนารายณ์ เทพผู้พิทักษ์", "ไปเลยมอนตี้", "พี่หน่วง พิธีกรผมสวย", "มยุราซัง ไอดอลยุค 80"] },
+  pairs: [["เจ้ากล้าดียังไง", "ริกกี้ นักปลอมแปลง"], ["พี่หน่วง พิธีกรผมสวย", "เลือกมันสำหรับพวก จน !!!"], ["จอมเวทย์ กาลู", "โคกอีสานนูน"], ["หมู่บ้านเห็ด", "คาถา เสกควายเข้าท้อง"]] }];
+const nn = (t) => String(t || "").replace(/\s+/g, " ").trim();
+export function banlist(now = new Date()) { const day = new Date(now.getTime() + 7 * 3600e3).toISOString().slice(0, 10); return BANLISTS.filter((b) => b.from <= day).sort((a, b) => (a.from < b.from ? 1 : -1))[0] || null; }
+// how many copies the list allows of a card (null: no limit from the list)
+export function banMax(c, B = banlist()) { if (!B || !c) return null; const n = nn(c.n); if (B.ban.some((x) => nn(x) === n)) return 0; for (const [m, names] of Object.entries(B.max)) if (names.some((x) => nn(x) === n)) return +m; return null; }
+// the card a forbidden pair puts against c in this Deck (null: none)
+export function banPair(c, d, B = banlist()) {
+  if (!B || !c) return null; const n = nn(c.n), has = (x) => deckEntries(d).some((e) => nn(e.c.n) === nn(x)) || (d.life || []).some((id) => nn((card(id) || {}).n) === nn(x));
+  for (const [a, b] of B.pairs) { if (nn(a) === n && has(b)) return b; if (nn(b) === n && has(a)) return a; }
+  return null;
+}
+export function banIssues(d, B = banlist()) {
+  if (!B) return [];
+  const ents = deckEntries(d), life = (d.life || []).map(card).filter(Boolean), count = {};
+  for (const e of ents) count[nn(e.c.n)] = (count[nn(e.c.n)] || 0) + e.n;
+  for (const c of life) count[nn(c.n)] = (count[nn(c.n)] || 0) + 1;
+  const k = (n) => count[nn(n)] || 0, out = [];
+  for (const n of B.ban) if (k(n)) out.push(`${n} ห้ามใช้`);
+  for (const [m, names] of Object.entries(B.max)) for (const n of names) if (k(n) > +m) out.push(`${n} ใส่ได้ ${m} ใบ (ตอนนี้ ${k(n)})`);
+  for (const [a, b] of B.pairs) if (k(a) && k(b)) out.push(`${a} กับ ${b} ใส่ด้วยกันไม่ได้`);
+  const av = ents.filter((e) => e.c.t === "A").map((e) => e.c), only = ents.find((e) => e.c.o1);
+  if (k("เมียพระอิศวร") && !av.filter((c) => nn(c.n) !== "เมียพระอิศวร").every((c) => nn(c.sy) === "เทพ" || /เทพ/.test(c.x || ""))) out.push("มี เมียพระอิศวร แล้ว Avatar ทุกใบต้องเป็น Symbol เทพ หรือมี เทพ ใน Text Box");
+  if (k("ดาบศักดิ์สิทธิ์ เอกซ์คาลิเบอร์") && !av.every((c) => /อัศวินโต๊ะกลม/.test(c.n) || !c.x || /อัศวินโต๊ะกลม/.test(c.x))) out.push("มี ดาบศักดิ์สิทธิ์ เอกซ์คาลิเบอร์ แล้ว Avatar ทุกใบต้องชื่อหรือมี \"อัศวินโต๊ะกลม\" ใน Text Box");
+  if (k("สัญญาเลือด") && only && nn(only.c.sy) !== "นรก") out.push("มี สัญญาเลือด แล้ว Only #1 ต้องเป็นการ์ด Symbol นรก");
+  return out;
+}
+
 // ----- decks -----
 export const deckCount = (d) => Object.values(d.main || {}).reduce((a, b) => a + b, 0);
 export const deckEntries = (d) => Object.entries(d.main || {}).filter(([, n]) => n > 0).map(([id, n]) => ({ c: card(id), n, id: +id })).filter((e) => e.c);
@@ -206,12 +242,19 @@ export function validateDeck(d) {
   const over = Object.entries(byName).filter(([, v]) => v.n > v.lim);
   out.push({ ok: !over.length, msg: over.length ? "เกินจำนวนต่อชื่อ: " + over.map(([k, v]) => `${k} ${v.n}/${v.lim}`).join(", ") : "ชื่อเดียวกันไม่เกินจำนวนที่กำหนด" });
   const o1 = ents.filter((e) => e.c.o1).reduce((a, e) => a + e.n, 0);
-  out.push({ ok: o1 === 1, msg: o1 === 1 ? "มี Only #1 พอดี 1 ใบ" : `Only #1 ต้องมีพอดี 1 ใบ (ตอนนี้ ${o1})` });
+  // Rule Book: a card that may fill the whole Deck (รัททาทุย, up to 50) lets a Deck of 50 of that one card go without Only #1
+  const one50 = o1 === 0 && total === 50 && ents.length === 1 && limitOf(ents[0].c) >= 50;
+  out.push({ ok: o1 === 1 || one50, msg: o1 === 1 ? "มี Only #1 พอดี 1 ใบ" : one50 ? "ทั้ง Deck เป็นการ์ดใบเดียวกัน 50 ใบ ไม่ต้องมี Only #1" : `Only #1 ต้องมีพอดี 1 ใบ (ตอนนี้ ${o1})` });
   const bad = ents.filter((e) => e.c.t === "L" || e.c.t === "T");
   if (bad.length) out.push({ ok: false, msg: "LIFE/Token ใส่ใน Main Deck ไม่ได้" });
   const life = (d.life || []).map(card).filter(Boolean); const ln = new Set(life.map((c) => c.n));
   out.push({ ok: life.length === 5 && ln.size === 5 && life.every((c) => c.t === "L"), msg: `LIFE ${life.length}/5 ใบ` + (ln.size < life.length ? " (ชื่อซ้ำ)" : "") });
   if (ents.some((e) => e.c.fl === "le")) out.push({ ok: true, warn: true, msg: "มีการ์ดลำเอียง ใช้แข่งงานทางการไม่ได้" });
+  if (ents.some((e) => e.c.fl === "dj")) out.push({ ok: true, warn: true, msg: "มีการ์ดโดนใจ เล่นในเกมได้ แต่ใช้แข่งงานจริงไม่ได้" });
+  // the official limits (การ์ดบาป) are rules of the Deck here: a Deck over them cannot be played, except the official
+  // Starter / box Decks as sold, which play as they are and are marked as not allowed at events
+  const B = banlist(); if (B) { const ban = banIssues(d), sold = !!(d.starter || d.box) && !d.ciel;
+    out.push(!ban.length ? { ok: true, msg: `ผ่าน${B.name}` } : sold ? { ok: true, warn: true, msg: `เด็คจากกล่องไม่ผ่าน${B.name} (เล่นได้ แต่ใช้แข่งงานทางการไม่ได้): ${ban.join(" · ")}` } : { ok: false, msg: `ผิด${B.name}: ${ban.join(" · ")}` }); }
   // "ถ้าใส่การ์ดใบนี้ใน Deck จะต้องใส่ {only} สุวาน ใน Deck อีก 1 ใบ" (พญายม With The Shotgun)
   if (ents.some((e) => e.c.n === "พญายม With The Shotgun")) { const ok = ents.some((e) => e.c.n === "สุวาน" && e.c.o1); out.push({ ok, msg: ok ? "พญายม With The Shotgun มี สุวาน (Only) คู่กันแล้ว" : "ใส่ พญายม With The Shotgun ต้องใส่ สุวาน (Only #1) ด้วย" }); }
   // "จะต้องใส่การ์ด Avatar "เพมมุ" ไว้ใน Deck ด้วยเสมอ" (สไปรท์ ยอดสุนัข)

@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261112104551";
-import { fxText, kwGloss } from "../fxtext.js?v=20261112104551";
-import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261112104551";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261112104551";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261112104551";
-import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261112104551";
-import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261112104551";
-import { themeCounts } from "../boxdecks.js?v=20261112104551";
-import { ladder, ladderReset } from "../ladder.js?v=20261112104551";
-import { notify } from "../notify.js?v=20261112104551";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261112104551";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261112104551";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261112104551";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261112104551";
-import { Music } from "../music.js?v=20261112104551";
-import { Sfx } from "../sfx.js?v=20261112104551";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261112104551";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261112104551";
-import { readAura, traits } from "../auras.js?v=20261112104551";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261112104551";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261112121210";
+import { fxText, kwGloss } from "../fxtext.js?v=20261112121210";
+import { card, deckToList, validateDeck, deckAce, artImg, cardLine, TYPE_TH, SUB_TH, colorOf } from "../cards.js?v=20261112121210";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261112121210";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261112121210";
+import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261112121210";
+import { myFigure, myMat, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261112121210";
+import { themeCounts } from "../boxdecks.js?v=20261112121210";
+import { ladder, ladderReset } from "../ladder.js?v=20261112121210";
+import { notify } from "../notify.js?v=20261112121210";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261112121210";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261112121210";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261112121210";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261112121210";
+import { Music } from "../music.js?v=20261112121210";
+import { Sfx } from "../sfx.js?v=20261112121210";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261112121210";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261112121210";
+import { readAura, traits } from "../auras.js?v=20261112121210";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261112121210";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -25,7 +25,7 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `LIFE เรา ${me.life.filter((x) => !x.up).length}/${me.life.length} · คู่แข่ง ${op.life.filter((x) => !x.up).length}/${op.life.length}`, `มือเรา: ${me.hand.map((x) => E.name(s, x)).join(", ") || "-"}`,
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261112104551";
+import { allDecks, deckById } from "./decks.js?v=20261112121210";
 
 const SAVE = "bot.game";
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -150,8 +150,17 @@ Views.play = {
     Arena.setQuiet(!!(G.watch || G.replay));
     if (gfxSetting() !== "flat") try { Arena.mount(stage, { mat: myMat(), watch: !!G.watch }); } catch (e) { console.warn("3D off", e); } // "แบบเรียบ 2D" in the settings: no 3D at all
     G.flat = Arena.on ? null : h("div", { class: "flatboard", role: "group", "aria-label": "สนาม" }); if (G.flat) stage.append(G.flat); // no 3D here: the flat table
-    Arena.setHover((i) => { if (G.hover === i) return; G.hover = i; drawInspector(); });
-    Arena.setClick(fieldClick);
+    Arena.setHover((i) => { if (G.hover === i) return; G.hover = i; if (G.muteHover != null && i !== G.muteHover) G.muteHover = null; drawInspector(); });
+    Arena.setClick(fieldClick); Arena.setDrag(onDrag);
+    // the flat table (no 3D): the same drag, from one card button to another
+    if (G.flat) {
+      const at = (e) => { const b = document.elementFromPoint(e.clientX, e.clientY); const c = b && b.closest && b.closest(".fcard"); return c ? +c.dataset.i : b && b.closest && b.closest(".fmid .gold") ? "life" : null; };
+      let fd = null; const flat = G.flat; // (an attacker card takes touch drags itself: .fcard.drag in the CSS)
+      flat.addEventListener("pointerdown", (e) => { if (e.button) return; const i = at(e); fd = { x: e.clientX, y: e.clientY, i, moved: false }; onDrag("start", i, e); });
+      flat.addEventListener("pointermove", (e) => { if (!fd) return; if (!fd.moved && Math.hypot(e.clientX - fd.x, e.clientY - fd.y) > 14) { fd.moved = true; try { flat.setPointerCapture(e.pointerId); } catch { /* not capturable */ } } if (fd.moved) onDrag("move", fd.i, e); });
+      flat.addEventListener("pointerup", (e) => { const d = fd; fd = null; if (!d || !d.moved) return; onDrag("drop", d.i, e, at(e)); });
+      flat.addEventListener("pointercancel", () => { fd = null; onDrag("cancel"); });
+    }
     // right-click a card on the table: the whole card in a sheet that scrolls (long effects included)
     stage.addEventListener("contextmenu", (e) => { const L = G && G.s && G.hover != null && E.locate(G.s, G.hover); if (!L) return; e.preventDefault(); G.hover = null; drawInspector(); cardView(L.x); });
     Arena.update(G.s, view(), { reset: true });
@@ -328,7 +337,10 @@ async function doAct(a, p) {
   if (G.rec) G.rec.acts.push([p, copy]);
   if (G.puzzle && mine(p)) G.say = null; // an old hint no longer fits
   if (fromHand) flyFromHand(a.i);
-  G.pick = null; G.att = null; G.host = null; G.payFor = null; G.payVia = null; G.callVia = null; G.helperPick = null; G.castFor = null; persist();
+  // the other side's move (a bot answering our attack) keeps the attacker we are already aiming with, while it can still attack
+  const aim = !mine(p) && G.att != null && E.locate(G.s, G.att), keepAim = !!aim && aim.z === "av" && aim.x.a && aim.p === G.s.active;
+  G.pick = null; G.att = keepAim ? G.att : null; G.host = null; G.payFor = null; G.payVia = null; G.callVia = null; G.helperPick = null; G.castFor = null; persist();
+  if (a.type === "attack") { G.sel = null; Arena.select(null); } // nothing pops open after an attack: the table stays clear for the next one
   if (G.coach && (G.coachLocal || G.s.turn !== G.coachTurn)) G.coach = null; // a hint is for the moment it was asked (Ciel's advice: for that turn)
   Arena.update(G.s, view()); draw(); drive();
   return true;
@@ -389,10 +401,19 @@ async function drive() {
   if (G.watch) return; // watching: nothing here acts for either side
   if (G.puzzle && s.active !== G.V) { if (!G.pzFail) { G.pzFail = true; draw(); } return; } // a puzzle is lost once the turn passes
   const p = whoActs(s); if (p == null) return;
-  if (!isBot(s, p)) { if (s.trig.length && !s.rw && s.trig[0].seat === p && mine(p)) humanTrig(s, p); else autoRespond(s, p); return; } // a React moment comes before any effect
-  G.driving = true;
+  if (!isBot(s, p)) { if (s.trig.length && !s.rw && s.trig[0].seat === p && mine(p)) humanTrig(s, p); else if (!runQueued(s, p)) autoRespond(s, p); return; } // a React moment comes before any effect
+  if (G.qAtt && !myBattle(s)) G.qAtt = null;
+  // this run owns the "driving" mark until it ends: a run started from inside it (its own move leads to another bot
+  // move) takes it over, and a run that finds the table changed while it waited does nothing (no stale second move)
+  G.driving = true; const tok = (G.driveTok = (G.driveTok || 0) + 1), sig = stateSig(s);
+  const fresh = () => !!G && G.driveTok === tok && G.s === s && stateSig(s) === sig;
+  // in our own turn the bot's answers (a pass, letting an attack through, its own effects) come without a pause, so
+  // attacks can follow one another quickly while the table plays the moves in order; a real answer (a React, a shield)
+  // and everything in the bot's own turn wait for the table and come at the usual pace, so they can be seen
+  const quick = G.brain !== "ciel" && s.phase !== "mull" && s.active !== p;
+  const pace = async () => { await Arena.idle(); await sleep((G.brain === "ciel" ? 250 : 650) / animSetting()); return fresh(); };
   try {
-    await Arena.idle(); await sleep((G.brain === "ciel" ? 250 : 650) / animSetting()); if (!G || G.s !== s) return;
+    if (!quick && !(await pace())) return;
     let a = null; const lv = BOT_LEVEL[G.brain]; if (lv) H.look = lv.look;
     if (G.brain === "goldfish" && !s.trig.length && !(s.phase === "end" && s.need)) a = s.phase === "mull" ? { type: "mull", iids: [] } : s.rw ? { type: "pass" } : s.pend ? { type: "respond" } : { type: "end" }; // the dummy keeps its hand and never answers
     else if (s.phase === "mull") a = { type: "mull", iids: G.brain === "easy" ? [] : H.mulligan(s, p) };
@@ -412,10 +433,11 @@ async function drive() {
       if (m && m.say) G.say = m.say;
       a = m ? m.a : s.pend ? { type: "respond" } : { type: "end" };
     }
-    G.thinking = null; if (!G || G.s !== s) return;
+    G.thinking = null; if (!fresh()) return;
+    if (quick && (s.rw || (s.pend && !s.trig.length)) && !(a.type === "pass" || (a.type === "respond" && a.shield == null)) && !(await pace())) return;
     G.driving = false;
     if (!(await doAct(a, p))) { try { E.apply(G.s, { type: "end" }, p); if (G.rec) G.rec.acts.push([p, { type: "end" }]); } catch { E.lose(G.s, p, "บอทติดสถานะ"); if (G.rec) G.rec.acts.push([p, { type: "__lose", reason: "บอทติดสถานะ" }]); } Arena.update(G.s, view()); draw(); }
-  } finally { if (G) G.driving = false; H.look = BOT_LEVEL.basic.look; }
+  } finally { if (G && G.driveTok === tok) G.driving = false; H.look = BOT_LEVEL.basic.look; }
 }
 // the pro bot (and Ciel) look for a win this very turn once the other side is low on LIFE, the same search the puzzles
 // use, on a copy without the other side's hand (no peeking at React cards) and with its own Deck shuffled
@@ -484,7 +506,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261112104551").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261112121210").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", bot: true });
@@ -583,14 +605,56 @@ function openSummary(g) {
 function fieldClick(i) {
   if (!G || !G.s) return; const s = G.s; const p = whoActs(s);
   if (i == null) return closePicked(); // the empty table
-  if (i === "life") { if (G.att) attack(G.att, "life"); return; }
-  const L = E.locate(s, i); if (!L) return; G.sel = i; Arena.select(i); drawInspector();
+  if (i === "life") { if (G.att != null && myBattle(s)) aimAt(G.att, "life"); return; }
+  const L = E.locate(s, i); if (!L) return;
+  if (!G.host && myBattle(s)) {
+    // aiming: a card of the other side is the target. Picking it attacks and opens nothing over the table (a card is
+    // read by pointing at it or with a right-click, as in other digital card games)
+    if (G.att != null && L.p !== s.active && (L.z === "av" || L.z === "cs")) return aimAt(G.att, L.z, i);
+    // an awake Avatar of ours starts an attack, also while the last attack is still being answered. On a phone the
+    // same card tapped again opens it (its abilities), instead of the card opening on the first tap
+    // (a card with an ability usable now opens on the first tap, so the ability is never hidden behind a second one)
+    const hasUse = () => abilityActs(s, L.x, L, true).some((a) => a[1] && !/^โจมตี/.test(a[0]));
+    if (L.p === s.active && L.z === "av" && L.x.a && !(touchy() && (G.att === i || hasUse()))) { G.att = i; G.sel = touchy() ? null : i; Arena.select(i); draw(); return; }
+  }
+  G.sel = i; Arena.select(i); drawInspector();
   const choosingTarget = G.host ? L.z === "av" : G.att && L.p !== p && (L.z === "av" || L.z === "cs");
-  if (touchy() && !choosingTarget) return cardView(L.x);
+  if (touchy() && !choosingTarget) { G.att = null; return cardView(L.x); }
   if (G.host) { if (L.z === "av") { const host = G.host; G.host = null; doAct({ type: "cast", i: host, on: i }, view()); } return; }
-  if (p == null || !mine(p) || s.phase !== "battle" || s.active !== p || s.pend || s.trig.length) return;
-  if (L.p === p && L.z === "av" && L.x.a) { G.att = i; draw(); return; }
-  if (G.att && L.p !== p && (L.z === "av" || L.z === "cs")) attack(G.att, L.z, i);
+}
+// the Battle Phase of a side played on this screen (the other side may still be answering an attack)
+const myBattle = (s) => !!G && !G.replay && !G.watch && s.phase === "battle" && mine(s.active);
+// this side may attack right now: nothing is being answered or resolved
+const freeToAttack = (s) => myBattle(s) && whoActs(s) === s.active && !s.pend && !s.trig.length && !s.rw && !G.lock;
+// an attack picked by the player goes now when it can, otherwise as soon as the attack being answered is over, so
+// attacks can be clicked one after another without waiting for each fight to finish
+function aimAt(att, tk, ti) {
+  const s = G.s; G.sel = null; G.att = null; G.muteHover = ti; Arena.select(null);
+  if (freeToAttack(s)) return attack(att, tk, ti);
+  G.qAtt = (G.qAtt || []).filter((q) => q.att !== att).concat([{ att, tk, ti }]);
+  toast(G.qAtt.length > 1 ? `สั่งโจมตีต่อไว้ ${G.qAtt.length} ครั้ง` : "สั่งโจมตีต่อไว้แล้ว จะตีทันทีที่การต่อสู้นี้จบ"); draw();
+}
+// the attacks clicked while a fight was going on, one after another, each only if it is still allowed then
+function runQueued(s, p) {
+  if (!G.qAtt || !G.qAtt.length) return false;
+  if (!myBattle(s) || p !== s.active) { G.qAtt = null; return false; } // the turn or the phase moved on
+  if (!freeToAttack(s)) return false;
+  const ms = legalMoves(s, p).filter((m) => m.a.type === "attack");
+  while (G.qAtt.length) {
+    const q = G.qAtt.shift();
+    if (ms.some((m) => m.a.i === q.att && m.a.tk === q.tk && (q.ti == null || m.a.ti === q.ti))) { setTimeout(() => { if (G && G.s === s && freeToAttack(s)) attack(q.att, q.tk, q.ti); }, 0); return true; }
+    toast("การโจมตีที่สั่งไว้ทำไม่ได้แล้ว (เป้าหรือผู้โจมตีเปลี่ยนไป)", "bad");
+  }
+  return false;
+}
+// drag to attack: press an awake Avatar of ours, drag, let go on a card of the other side or on the LIFE marker
+function onDrag(kind, from, e, to) {
+  if (!G || !G.s) return; const s = G.s;
+  if (kind === "start") { const L = from != null && from !== "life" && E.locate(s, from); G.dragFrom = L && !G.host && myBattle(s) && L.p === s.active && L.z === "av" && L.x.a ? from : null; return; }
+  if (G.dragFrom == null) return;
+  if (kind === "cancel") { G.dragFrom = null; attackArrow(); return; }
+  if (kind === "move") { if (G.att !== G.dragFrom) { G.att = G.dragFrom; G.sel = null; Arena.select(G.att); draw(); } if (e) { ptr = { x: e.clientX, y: e.clientY }; attackArrow(); } return; }
+  if (kind === "drop") { const f = G.dragFrom; G.dragFrom = null; G.att = f; if (to != null && to !== f) fieldClick(to); else draw(); attackArrow(); }
 }
 function attack(att, tk, ti) {
   const s = G.s, p = s.active, P = s.P[p];
@@ -637,7 +701,7 @@ function draw() {
   const hint0 = G.replay ? `รีเพลย์ · เทิร์น ${s.turn} · ${s.phase === "over" ? "จบเกม" : "ตาของ " + s.P[s.active].name}`
     : G.puzzle && (G.pzFail || s.phase === "over") ? (s.phase === "over" && s.winner === V ? `ไขโจทย์ที่ ${G.puzzle.k + 1} สำเร็จ!` : "หมดเทิร์นแล้วยังไม่ชนะ · ย้อนตาหรือเริ่มโจทย์ใหม่")
     : G.watch ? (s.phase === "over" ? (s.winner == null ? "เสมอ · " : s.P[s.winner].name + " ชนะ · ") + s.reason : "กำลังชม" + (p == null ? "" : ` · รอ ${s.P[p].name}…`)) : s.phase === "over" ? (s.winner === V ? "ชนะ! " : s.winner == null ? "เสมอ · " : "แพ้ · ") + s.reason
-    : G.thinking || (p == null ? "" : !mine(p) ? `รอ ${s.P[p].name}…` : s.phase === "mull" ? "เลือกการ์ดที่จะเปลี่ยน หรือเก็บมือเดิม" : s.trig.length ? "มีเอฟเฟกต์ต้องจัดการ" : s.rw ? "ใช้ React ตอบโต้ หรือกด ไม่ตอบโต้" : s.pend ? "ถูกโจมตี เลือกการตอบโต้" : s.phase === "main" ? "Main Phase · แตะการ์ดบนมือเพื่อเล่น" : s.phase === "battle" ? (G.att ? "เลือกเป้าหมายบนสนาม" : "Battle · เลือก Avatar ที่ตื่นเพื่อโจมตี") : s.phase === "end" && s.need ? `ทิ้งการ์ด ${s.need} ใบ` : "");
+    : G.thinking || (p == null ? "" : !mine(p) ? `รอ ${s.P[p].name}…` : s.phase === "mull" ? "เลือกการ์ดที่จะเปลี่ยน หรือเก็บมือเดิม" : s.trig.length ? "มีเอฟเฟกต์ต้องจัดการ" : s.rw ? "ใช้ React ตอบโต้ หรือกด ไม่ตอบโต้" : s.pend ? "ถูกโจมตี เลือกการตอบโต้" : s.phase === "main" ? "Main Phase · แตะการ์ดบนมือเพื่อเล่น" : s.phase === "battle" ? (G.att != null ? (touchy() ? "แตะเป้าหมาย · แตะใบเดิมอีกครั้งเพื่อดูการ์ด" : "คลิกเป้าหมาย หรือลากไปปล่อยที่เป้า") : "Battle · ลาก Avatar ที่ตื่นไปที่เป้าหมาย หรือแตะทีละใบ") : s.phase === "end" && s.need ? `ทิ้งการ์ด ${s.need} ใบ` : "");
   const hint = G.puzzle && !G.pzFail && s.phase !== "over" && hint0 ? `โจทย์ที่ ${G.puzzle.k + 1} · ` + hint0 : hint0;
   const pile = (P, z, t) => h("button", { onclick: () => openPile(P, z) }, h("b", null, P[z].length), h("span", null, t));
   const ph = ["draw", "main", "battle", "end"];
@@ -765,7 +829,7 @@ function drawFlat(s, V, lit, lifeOk) {
   const me = s.P[V], op = s.P[1 - V], small = compact();
   const fcard = (x, z) => {
     const d = E.def(s, x), c = d.im != null ? card(d.im) : null, fights = z === "av" || z === "cs", host = x.on != null && E.locate(s, x.on);
-    const b = h("button", { class: "fcard" + (z === "av" && !x.a ? " asleep" : "") + (G.att === x.i || G.sel === x.i ? " sel" : "") + (lit.has(x.i) ? " can" : ""), "data-i": x.i, "data-name": d.n,
+    const b = h("button", { class: "fcard" + (z === "av" && !x.a ? " asleep" : "") + (z === "av" && x.a && myBattle(s) && (E.locate(s, x.i) || {}).p === s.active ? " drag" : "") + (G.att === x.i || G.sel === x.i ? " sel" : "") + (lit.has(x.i) ? " can" : ""), "data-i": x.i, "data-name": d.n,
       title: host ? `${d.n} · ติดอยู่กับ ${E.name(s, host.x)}` : d.n, "aria-label": `${d.n}${fights ? ` POWER ${E.power(s, x)}` : ""}${z === "av" && !x.a ? " (นอน)" : ""}`, onclick: () => fieldClick(x.i) },
       c ? artImg(c) : h("span", { class: "fname" }, d.n), fights ? h("span", { class: "fpow num" }, E.power(s, x)) : null, z === "av" && !x.a ? h("span", { class: "fnap" }, "นอน") : null);
     b.addEventListener("contextmenu", (e) => { e.preventDefault(); cardView(x); });
@@ -792,10 +856,10 @@ function drawFlat(s, V, lit, lifeOk) {
 }
 // choosing a target on a computer: an arrow from the attacker follows the mouse and snaps onto a card it may attack
 const SVGNS = "http://www.w3.org/2000/svg"; let ptr = null;
-addEventListener("pointermove", (e) => { if (e.pointerType === "touch") return; ptr = { x: e.clientX, y: e.clientY }; if (G && G.att != null) attackArrow(); }, { passive: true });
+addEventListener("pointermove", (e) => { if (e.pointerType === "touch" && !(G && G.dragFrom != null)) return; ptr = { x: e.clientX, y: e.clientY }; if (G && G.att != null) attackArrow(); }, { passive: true });
 function attackArrow() {
   let svg = document.getElementById("atkarrow"); const s = G && G.s;
-  const from = s && G.att != null && Arena.on && !touchy() && !G.replay && mine(whoActs(s)) ? Arena.screenOf(G.att) : null;
+  const from = s && G.att != null && Arena.on && (!touchy() || G.dragFrom != null) && myBattle(s) ? Arena.screenOf(G.att) : null;
   if (!from || !ptr) { if (svg) svg.remove(); return; }
   if (!svg) {
     svg = document.createElementNS(SVGNS, "svg"); svg.id = "atkarrow"; svg.setAttribute("aria-hidden", "true");
@@ -920,7 +984,7 @@ function undoLast() {
   const k = undoPoint(); if (k < 0 || G.driving) return toast(G && G.driving ? "รอฝั่งตรงข้ามเล่นจบก่อนนะ" : "ยังไม่มีตาที่ย้อนได้");
   const s = recStart(G.rec); for (let j = 0; j < k; j++) { try { replayApply(s, G.rec.acts[j]); } catch (e) { return toast("ย้อนไม่ได้: " + e.message, "bad"); } }
   G.rec.acts.length = k; G.s = s; G.undos = (G.undos || 0) + 1; G.say = null; G.pzFail = false;
-  G.pick = null; G.att = null; G.host = null; G.payFor = null; G.payVia = null; G.callVia = null; G.helperPick = null; G.castFor = null; G.tk = null; G.ask = null;
+  G.pick = null; G.att = null; G.host = null; G.payFor = null; G.payVia = null; G.callVia = null; G.helperPick = null; G.castFor = null; G.tk = null; G.ask = null; G.qAtt = null;
   persist(); Arena.update(s, view(), { reset: true, flush: true }); draw(); drive(); toast("ย้อนตาแล้ว");
 }
 const undoBtn = () => (undoPoint() >= 0 ? h("button", { class: "btn sm", title: "ย้อนตาล่าสุด (Ctrl+Z)", onclick: undoLast }, "↶ ย้อนตา") : null);
@@ -955,7 +1019,9 @@ function turnButtons0(s, p) {
 // desktop: big hover preview (image + readable text side by side); pinned to the selected card otherwise
 function drawInspector() {
   const el = document.getElementById("insp"); if (!el || !G) return; const s = G.s;
-  const hi = G.hoverHand != null ? G.hoverHand : G.hover ?? G.sel; const L = hi != null && E.locate(s, hi);
+  // the card just attacked stays quiet under the pointer (no preview popping up after the attack) until the pointer leaves it
+  const hov = G.hover != null && G.hover === G.muteHover ? null : G.hover;
+  const hi = G.hoverHand != null ? G.hoverHand : hov ?? G.sel; const L = hi != null && E.locate(s, hi);
   // aiming an attack: no big preview over the table at all (it covers the cards being aimed at, even when it shows our own
   // attacker); the arrow and the ring show what is going on, and a right-click still opens a card
   const aiming = G.att != null && G.hoverHand == null;
@@ -1215,7 +1281,7 @@ function promptBox0(s, p) {
     const slim = (Arena.on || G.flat) && !touchy();
     const pickAtt = (x) => { G.att = x.i; Arena.select(x.i); draw(); };
     if (!G.att) return slim
-      ? h("div", { class: "prompt glass slim" }, h("b", null, "คลิก Avatar ที่เรืองแสงเพื่อโจมตี"), ...att.map((x) => h("button", { class: "btn sm", onclick: () => pickAtt(x) }, `${E.name(s, x)} P${E.power(s, x)}`)))
+      ? h("div", { class: "prompt glass slim" }, h("b", null, "ลาก Avatar ที่เรืองแสงไปที่เป้าหมาย หรือคลิก"), ...att.map((x) => h("button", { class: "btn sm", onclick: () => pickAtt(x) }, `${E.name(s, x)} P${E.power(s, x)}`)))
       : box("เลือก Avatar ที่จะโจมตี", h("div", { class: "pick" }, att.map((x) => cardBtn(E.def(s, x).im, { badge: "P" + E.power(s, x), onclick: () => pickAtt(x) }))));
     const a = E.locate(s, G.att); if (!a) { G.att = null; return null; }
     const opts = [...O.av.map((y) => ({ t: `${E.name(s, y)} (P${E.power(s, y)})`, tk: "av", ti: y.i })), ...O.cs.map((y) => ({ t: `Construct ${E.name(s, y)} (P${E.power(s, y)})`, tk: "cs", ti: y.i }))];

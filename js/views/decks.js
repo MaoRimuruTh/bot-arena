@@ -1,17 +1,17 @@
-import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261112104551";
-import { plain, isOwnerNow } from "../persona.js?v=20261112104551";
-import { fxText } from "../fxtext.js?v=20261112104551";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261112104551";
-import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261112104551";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261112104551";
-import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261112104551";
-import { filterBar, filterCards } from "./library.js?v=20261112104551";
-import { openingOdds, simGame } from "./lab.js?v=20261112104551";
-import { freeBuild } from "../builder.js?v=20261112104551";
-import { deckCode, deckText, parseDeck, printCard } from "../deckcode.js?v=20261112104551";
-import { CIEL_DECKS } from "../cieldecks.js?v=20261112104551";
-import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261112104551";
-import { deckLocked, deckLockAch } from "../achieve.js?v=20261112104551";
+import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261112121210";
+import { plain, isOwnerNow } from "../persona.js?v=20261112121210";
+import { fxText } from "../fxtext.js?v=20261112121210";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, banlist, banMax, banPair, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261112121210";
+import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261112121210";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261112121210";
+import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261112121210";
+import { filterBar, filterCards } from "./library.js?v=20261112121210";
+import { openingOdds, simGame } from "./lab.js?v=20261112121210";
+import { freeBuild } from "../builder.js?v=20261112121210";
+import { deckCode, deckText, parseDeck, printCard } from "../deckcode.js?v=20261112121210";
+import { CIEL_DECKS } from "../cieldecks.js?v=20261112121210";
+import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261112121210";
+import { deckLocked, deckLockAch } from "../achieve.js?v=20261112121210";
 
 // Ciel's theme decks: print codes → card ids (resolved once the card data is loaded). They are Ciel's decks for Rimuru,
 // so only the owner's account sees them: other accounts get none (not in the deck list, the duel setup, the lab or the bot's picks)
@@ -32,6 +32,13 @@ export const allDecks = () => [...Data.decks, ...cielDecks(), ...officialStarter
 export const deckById = (id) => (id === "__editing" ? Editing : allDecks().find((d) => d.id === id));
 export function addToDeck(d, id, delta = 1) {
   const c = card(id); if (!c) return;
+  // the official limits (การ์ดบาป): a banned card cannot go in, a limited one only up to its count (Main Deck and LIFE
+  // together), and the two cards of a forbidden pair not together
+  if (delta > 0) { const B = banlist(), mx = banMax(c, B);
+    if (mx === 0) return toast(`${c.n} เป็นการ์ดบาป ห้ามใช้ (${B.name})`);
+    const inDeck = deckEntries(d).filter((e) => e.c.n === c.n).reduce((a, e) => a + e.n, 0) + (d.life || []).filter((x) => (card(x) || {}).n === c.n).length;
+    if (mx != null && inDeck >= mx) return toast(`${c.n} ใส่ได้ ${mx} ใบตาม${B.name}`);
+    const pair = banPair(c, d, B); if (pair) return toast(`${c.n} ใส่คู่กับ ${pair} ไม่ได้ (${B.name})`); }
   if (c.t === "L") {
     if (delta > 0) { if ((d.life || []).length >= 5) return toast("LIFE ครบ 5 ใบแล้ว"); if (d.life.some((x) => card(x).n === c.n)) return toast("LIFE ชื่อซ้ำไม่ได้"); d.life = [...d.life, c.i]; }
     else d.life = d.life.filter((x) => +x !== +id); return;
@@ -111,7 +118,7 @@ function deckTile(d) {
   const body = (tag, attrs) => h(tag, attrs, ace ? artImg(ace, "", "") : null, h("div", { class: "wash" }), h("div", { class: "band", style: "background:" + band }),
     h("div", { class: "in" }, h("span", { class: "eyebrow" }, d.ciel ? "✦ ชิเอลแนะนำ" : d.box ? "คัดสรรเด็ค" : d.starter ? "ทางการ" : d.owner === Me.uid ? "เด็คของฉัน" : "ของ " + (d.ownerName || "เพื่อน")), h("h3", null, d.name),
       h("div", { class: "small muted" }, lock ? lock.short || lock.how : d.theme || (ace ? "เอซ: " + ace.n : "")),
-      h("div", { class: "meta" }, lock ? h("span", { class: "chip lockchip" }, "ล็อคอยู่") : h("span", { class: "chip num" }, deckCount(d) + "/50"), lock ? null : v.ok ? h("span", { class: "chip good" }, "พร้อมเล่น") : h("span", { class: "chip warn" }, "ยังไม่ครบ"), ms.length ? h("span", { class: "chip num" }, `ชนะ ${w}/${ms.length}`) : null)));
+      h("div", { class: "meta" }, lock ? h("span", { class: "chip lockchip" }, "ล็อคอยู่") : h("span", { class: "chip num" }, deckCount(d) + "/50"), lock ? null : v.ok ? h("span", { class: "chip good" }, "พร้อมเล่น") : h("span", { class: "chip warn" }, deckCount(d) === 50 && (d.life || []).length === 5 ? "ผิดกติกา" : "ยังไม่ครบ"), !lock && v.ok && v.items.some((x) => x.warn) ? h("span", { class: "chip", title: v.items.filter((x) => x.warn).map((x) => x.msg).join("\n") }, "แข่งจริงไม่ได้") : null, ms.length ? h("span", { class: "chip num" }, `ชนะ ${w}/${ms.length}`) : null)));
   if (lock) return h("div", { class: "tilewrap" }, body("a", { class: "tile locked", href: "#decks/view/" + d.id, "aria-label": `${d.name} ล็อคอยู่ ${lock.how}` }));
   if (picking) return h("div", { class: "tilewrap" }, body("button", { class: "tile" + (on ? " sel" : ""), type: "button", "aria-pressed": on ? "true" : "false", onclick: () => { on ? Manage.sel.delete(d.id) : Manage.sel.add(d.id); redraw(); } }), h("span", { class: "tilecheck" + (on ? " on" : ""), "aria-hidden": "true" }, on ? "✓" : ""));
   return h("div", { class: "tilewrap" }, body("a", { class: "tile", href: "#decks/view/" + d.id }), mine ? h("button", { class: "tilemenu", type: "button", "aria-label": "จัดการเด็ค " + d.name, title: "เปลี่ยนชื่อ ทำสำเนา หรือลบ", onclick: () => openDeckMenu(d) }, "⋯") : null);
@@ -249,7 +256,7 @@ Views.decks = {
       const act = document.activeElement; const caret = act && act.id === "deck-name" ? [act.selectionStart, act.selectionEnd] : null;
       side.replaceChildren(hov,
         h("div", { class: "panel stack" }, h("input", { type: "text", id: "deck-name", value: d.name, maxlength: "60", "aria-label": "ชื่อเด็ค", style: "font:700 1.15rem var(--f-display)", oninput: (e) => { d.name = e.target.value; }, onchange: () => { if (d.id || hasCards()) queueSave(d); } }),
-          h("div", { class: "valid" }, v.items.map((x) => h("div", { class: x.ok ? "ok" : "no" }, (x.ok ? "✓ " : "✗ ") + x.msg))),
+          h("div", { class: "valid" }, v.items.map((x) => h("div", { class: !x.ok ? "no" : x.warn ? "warn" : "ok" }, (!x.ok ? "✗ " : x.warn ? "⚠ " : "✓ ") + x.msg))),
           h("div", { class: "row small" }, Object.entries(st.colors).map(([k, n]) => h("span", { class: "chip" }, h("span", { class: "dot", style: "background:" + colorOf(k === "ไร้สี" ? "" : k) }), `${k} ${n}`)), h("span", { class: "chip num" }, "GEM " + st.gem)),
           h("div", { class: "row" },
             h("button", { class: "btn gold", onclick: async (e) => { if (!d.id && !hasCards()) { location.hash = "#decks"; return; } e.currentTarget.disabled = true; await flushSave(d); if (!d.id || Save.state === "error") { e.currentTarget.disabled = false; return toast("บันทึกไม่สำเร็จ ลองอีกครั้ง", "bad"); } toast("บันทึกเด็คแล้ว"); location.hash = "#decks/view/" + d.id; } }, "เสร็จ"),

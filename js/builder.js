@@ -1,9 +1,9 @@
 // Ciel's free deck builder (no API key): builds a legal 50 + 5 LIFE deck around a set of core
 // cards (favourites or aces) by picking supporting cards that share their symbols, names and
 // colours, keeping a playable Cost curve and enough GEM.
-import { CARDS, card, baseId, isBase, limitOf, validateDeck } from "./cards.js?v=20261112104551";
-import { SCRIPTS } from "./scripts.js?v=20261112104551";
-import { readable } from "./effects.js?v=20261112104551";
+import { CARDS, card, baseId, isBase, limitOf, banMax, validateDeck } from "./cards.js?v=20261112121210";
+import { SCRIPTS } from "./scripts.js?v=20261112121210";
+import { readable } from "./effects.js?v=20261112121210";
 
 let scripted = null;
 const isScripted = (c) => { if (!scripted || scripted.n !== CARDS.length) { const s = new Set(); for (const p of Object.keys(SCRIPTS)) { const x = CARDS.find((y) => y.p === p); if (x) s.add(baseId(x.i)); } scripted = { n: CARDS.length, s }; } return scripted.s.has(baseId(c.i)); };
@@ -80,7 +80,7 @@ export function freeBuild({ core = [], colors = [], style = "win", name = "" } =
   const pool = CARDS.filter((c) => isBase(c) && !["L", "T"].includes(c.t) && c.fl !== "le" && okColor(c) && !(c.gc && cols.length && !cols.includes(c.gc)));
   const scored = pool.map((c) => ({ c, s: score(c), y: syn(c) })).sort((a, b) => b.s - a.s);
   const main = {}; const byName = {}; let total = 0;
-  const room = (c) => Math.min(limitOf(c) - (byName[c.n] || 0), 50 - total);
+  const room = (c) => Math.min(Math.min(limitOf(c), banMax(c) ?? 99) - (byName[c.n] || 0), 50 - total); // within the official limits (การ์ดบาป) too
   const add = (c, n) => { const k = Math.max(0, Math.min(n, room(c))); if (!k) return 0; main[c.i] = (main[c.i] || 0) + k; byName[c.n] = (byName[c.n] || 0) + k; total += k; return k; };
   // exactly one Only #1: the best one among the core, else the best that fits
   const o1core = keep.filter((c) => c.o1).sort((a, b) => (b.c || 0) - (a.c || 0));

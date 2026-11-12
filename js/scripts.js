@@ -554,7 +554,7 @@ Object.assign(SCRIPTS, {
       return t && T ? { explain: `${c.E.name(c.s, T.x)} POWER +${c.E.power(c.s, t)} จาก ${c.E.name(c.s, t)}`, ops: [{ op: "power", i: T.x.i, n: c.E.power(c.s, t), temp: true }] } : { explain: "ไม่มีเป้าหมาย", ops: [] }; } },
   // ไปเลยมอนตี้
   "BT02-054": { react: { kinds: ["attack"] },
-    cast: (c) => { const on = onTarget(c); const P = c.s.P[c.seat]; const n = 2 * (P.av.length + P.cs.length + P.mg.length + P.hand.length); const L = c.E.locate(c.s, on.att);
+    cast: (c) => { const on = onTarget(c); const P = c.s.P[c.seat]; const n = 2 * (P.av.length + P.cs.length + P.mg.length + c.E.lands(c.s).filter((l) => l.o === c.seat).length + P.hand.length); const L = c.E.locate(c.s, on.att); /* FAQ: "บนสนาม" counts the Land Magic Zone too */
       return L ? { explain: `${c.E.name(c.s, L.x)} POWER -${n}`, ops: [{ op: "power", i: L.x.i, n: -Math.min(20, n), temp: false }] } : { explain: "ผู้โจมตีหายไปแล้ว", ops: [] }; } },
   // กระแสสิริมงคล
   "BT02-049": { react: { kinds: ["attack"] }, cast: (c) => { const n = Math.max(1, c.s.atk && c.s.atk.t === c.s.turn ? (c.s.atk.ids || []).length || c.s.atk.n : 1); return { explain: `จั่ว ${n} ใบ (Avatar ที่โจมตีในเทิร์นนี้ ${n} ใบ)`, ops: [{ op: "draw", seat: c.seat, n }] }; } },
@@ -1334,7 +1334,7 @@ Object.assign(SCRIPTS, {
   // สายฟ้า วัชระ: when the wearer attacks, the Avatar it fights is destroyed
   "BT03-056": { worn: () => 0, modV: (E, s, m, host) => (host && !host.mute ? 3.5 : 0), /* the wearer destroys whatever it fights when it attacks */ hostAttack: (c) => { const { E, s } = c; const T = s.pend && s.pend.tk === "av" ? E.locate(s, s.pend.ti) : null; return T && T.z === "av" ? { explain: `สายฟ้า วัชระ: ทำลาย ${E.name(s, T.x)}`, ops: [{ op: "destroy", i: T.x.i, why: "สายฟ้า วัชระ" }] } : { explain: "ไม่ได้โจมตี Avatar", ops: [] }; } },
   // อาณาจักรของแพง (Land): while the opponent's Avatars total Cost 4 or less, discard 1: the King from our Deck to the hand
-  "BT03-057": { activate: { label: `ทิ้งการ์ด 1 ใบ: นำ${KING}จาก Deck ขึ้นมือ`, can: (E, s, x, L) => L.z === "land" && s.phase === "main" && s.P[1 - L.p].av.reduce((a, y) => a + E.costNow(s, y), 0) <= 4 && s.P[L.p].hand.length > 0 && s.P[L.p].deck.some((y) => E.named(s, y, KING)),
+  "BT03-057": { activate: { label: `ทิ้งการ์ด 1 ใบ: นำ${KING}จาก Deck ขึ้นมือ`, can: (E, s, x, L) => L.z === "land" && s.phase === "main" && s.P[1 - L.p].av.length > 0 && s.P[1 - L.p].av.reduce((a, y) => a + E.costNow(s, y), 0) <= 4 && /* FAQ: no Avatar there is not a total of 0 */ s.P[L.p].hand.length > 0 && s.P[L.p].deck.some((y) => E.named(s, y, KING)),
     run: (c) => { const { E, s, seat: p } = c; const pay = c.choose([...s.P[p].hand].sort(cheapCard(E, s)), 1, "ทิ้งการ์ดบนมือ 1 ใบ", { exact: true })[0]; const k = s.P[p].deck.find((y) => E.named(s, y, KING));
       return pay && k ? { explain: `ทิ้ง ${E.name(s, pay)} · ${E.name(s, k)} จาก Deck ขึ้นมือ แล้วสับ Deck`, ops: [{ op: "discard", seat: p, iids: [pay.i] }, { op: "search", seat: p, take: k.i, to: "hand" }] } : { explain: "ไม่มีการ์ดให้ทิ้งหรือไม่มีราชาใน Deck", ops: [] }; } } },
   // ราชธานีสามัคคี (Land): once per turn, an Avatar gains สามัคคี until end of turn
@@ -1408,7 +1408,7 @@ Object.assign(SCRIPTS, {
   // คนแก่สติเลอะเลือนผู้รู้ความจริง: scouted by a "ผู้รู้ความจริง" Avatar it is summoned (see truthSpill) · once per turn: draw 1
   "BT04-019": { activate: { label: "จั่วการ์ด 1 ใบ", can: (E, s, x, L) => L.z === "av" && s.phase === "main", run: (c) => ({ explain: "จั่ว 1 ใบ", ops: [{ op: "draw", seat: c.seat, n: 1 }] }) } },
   // อู๊ด ประธานผู้รู้ความจริง: จุติ scout 2, back on top or bottom: destroy an opposing Avatar of Cost up to their total Cost
-  "BT04-020": { summon: (c) => { const { E, s, seat: p } = c; const top = s.P[p].deck.slice(0, 2); if (!top.length) return { explain: "Deck หมด", ops: [] }; const sum = top.reduce((a, y) => a + (E.def(s, y).c || 0), 0); const sp = truthSpill(c, top);
+  "BT04-020": { summon: (c) => { const { E, s, seat: p } = c; if (!s.P[1 - p].av.length) return { explain: "ฝ่ายตรงข้ามไม่มี Avatar บน Avatar Zone ความสามารถนี้ใช้ไม่ได้", ops: [] }; /* FAQ */ const top = s.P[p].deck.slice(0, 2); if (!top.length) return { explain: "Deck หมด", ops: [] }; const sum = top.reduce((a, y) => a + (E.def(s, y).c || 0), 0); const sp = truthSpill(c, top);
     const ops = [{ op: "scoutShow", seat: p, ids: top.map((y) => y.i) }, ...sp.ops, ...topOrBottom(c, top.filter((y) => !sp.used.includes(y)), "อู๊ด: วางการ์ดที่สอดแนมไว้บนสุดหรือใต้ Deck")];
     const t = c.choose(s.P[1 - p].av.filter((y) => !E.noAim(s, y) && E.costNow(s, y) <= sum).sort((a, b) => worth(E, s, b) - worth(E, s, a)), 1, `เลือก Avatar ฝ่ายตรงข้าม Cost ไม่เกิน ${sum} ที่จะทำลาย`)[0]; if (t) ops.push({ op: "destroy", i: t.i, why: "อู๊ด ประธานผู้รู้ความจริง" });
     return { explain: [`สอดแนม 2 ใบ (Cost รวม ${sum})`, ...sp.say, t ? `ทำลาย ${E.name(s, t)}` : "ไม่มี Avatar ที่ Cost ไม่เกินนั้น"].join(" · "), ops }; } },
@@ -2100,7 +2100,7 @@ const deadOf = (c) => (c.t.dead != null ? c.E.locate(c.s, c.t.dead) : null);
 const kwAura = (L, src, k) => [{ seat: L.p, test: (x) => x.i === src.i, n: 0, kw: [k] }];
 Object.assign(SCRIPTS, {
   // อีวิลไมเกรน: จุติ mill 5: a weapon from hell to the hand · once per turn when a weapon Modification is used: the opponent's top card, Magic to hell
-  "BT08-001": { summon: (c) => { const { E, s, seat: p } = c; const P = s.P[p]; const t = c.choose(uniq(E, s, [...P.deck.slice(0, 5), ...P.hell].filter((y) => E.named(s, y, "อาวุธหุ่นนักรบผู้กล้า"))), 1, "เลือกอาวุธหุ่นนักรบผู้กล้าในนรก")[0];
+  "BT08-001": { summon: (c) => { const { E, s, seat: p } = c; const P = s.P[p]; if (!P.hell.some((y) => E.named(s, y, "อาวุธหุ่นนักรบผู้กล้า"))) return { explain: "ในนรกไม่มีอาวุธหุ่นนักรบผู้กล้า ความสามารถนี้ไม่ทำงาน", ops: [] }; /* FAQ: no weapon in the hell, no ability (nothing milled) */ const t = c.choose(uniq(E, s, [...P.deck.slice(0, 5), ...P.hell].filter((y) => E.named(s, y, "อาวุธหุ่นนักรบผู้กล้า"))), 1, "เลือกอาวุธหุ่นนักรบผู้กล้าในนรก")[0];
       return { explain: `ธรณีสูบ 5 ใบ${t ? ` · ${E.name(s, t)} ขึ้นมือ` : ""}`, ops: [{ op: "mill", seat: p, n: 5 }, ...(t ? [{ op: "move", i: t.i, to: "hand" }] : [])] }; },
     magicSeen: (c) => (once(c.s, c.seat, "อีวิลไมเกรน") ? { explain: "สอดแนม Deck ฝ่ายตรงข้าม 1 ใบ: ถ้าเป็น Magic ส่งลงนรก", ops: [{ op: "nameOnce", seat: c.seat, name: "อีวิลไมเกรน" }, { op: "topPeek", seat: 1 - c.seat, type: "M" }] } : { explain: "", ops: [] }),
     magicSeenOk: (E, s, y, Ly, d) => Ly.z === "av" && d.st === "D" && String(d.n || "").includes("อาวุธหุ่นนักรบผู้กล้า") && once(s, Ly.p, "อีวิลไมเกรน") },
@@ -2319,7 +2319,9 @@ Object.assign(SCRIPTS, {
       return t ? { explain: `แสดง ${E.name(s, t)} · สับ Deck แล้ววางไว้บนสุด`, ops: [{ op: "shuffle", seat: p }, { op: "move", i: t.i, to: "deckTop" }] } : { explain: "", ops: [] }; } } },
   // โฮคุ โพลีกอน: +1 with any other Avatar · [Link โซน่า] entering: destroy the opponent's strongest · only it can be attacked · counts as {สัตว์}
   "BT09-007": { linkAs: ["โซน่า"], extraSy: "สัตว์", taunt: () => true, aura: (E, s, src, L) => (L.z === "av" && [...s.P[0].av, ...s.P[1].av].some((y) => y.i !== src.i) ? [{ seat: L.p, test: (x) => x.i === src.i, n: 1 }] : []),
-    link: (c) => { const { E, s, seat: p } = c; const t = [...s.P[1 - p].av].filter((y) => !E.noAim(s, y)).sort(strongFirst(E, s))[0]; return t ? { explain: `ทำลาย ${E.name(s, t)} (POWER สูงสุด)`, ops: [{ op: "destroy", i: t.i, why: "โฮคุ โพลีกอน" }] } : { explain: "", ops: [] }; } },
+    link: (c) => { const { E, s, seat: p } = c; const pool = s.P[1 - p].av.filter((y) => !E.noAim(s, y)); const top = Math.max(-1, ...pool.map((y) => E.power(s, y)));
+      // FAQ: two of them tied for the highest POWER: the controller of โฮคุ picks which one
+      const t = c.choose(pool.filter((y) => E.power(s, y) === top).sort((a, b) => worth(E, s, b) - worth(E, s, a)), 1, `เลือก Avatar POWER สูงสุด (${top}) ที่จะทำลาย`, { exact: true })[0]; return t ? { explain: `ทำลาย ${E.name(s, t)} (POWER สูงสุด)`, ops: [{ op: "destroy", i: t.i, why: "โฮคุ โพลีกอน" }] } : { explain: "", ops: [] }; } },
   // เพมมุ ยอดมนุษย์: wears only อาวุธของเพมมุ, +2 while wearing one · once per turn (IKUZO AIBOU!) a weapon from the Deck worn (counts as the Modification)
   "BT09-008": { wearOnly: (E, s, m) => E.named(s, m, "อาวุธของเพมมุ"), aura: (E, s, src, L) => (L.z === "av" && [...s.P[0].mg, ...s.P[1].mg].some((m) => m.on === src.i) ? [{ seat: L.p, test: (x) => x.i === src.i, n: 2 }] : []),
     activate: { label: "IKUZO AIBOU: อาวุธของเพมมุจาก Deck มาสวมใส่", can: (E, s, x, L) => L.z === "av" && s.phase === "main" && !s.mu[L.p].D && s.P[L.p].deck.some((y) => E.named(s, y, "อาวุธของเพมมุ")),
@@ -2704,8 +2706,11 @@ Object.assign(SCRIPTS, {
   // อาวุธของเพมมุ ดาบมารไร้พ่าย: เพมมุ only, +1 · wearer attacks and wins: destroy an opposing Avatar of base POWER ≤ the loser's, then may destroy this and wake a เพมมุ
   "BT10-069": { modOnly: (E, s, h) => { const L = E.locate(s, h.i); return E.named(s, h, "เพมมุ") && !(L && s.P[L.p].mg.some((z) => z.on != null && E.named(s, z, "อาวุธของเพมมุ"))); }, worn: () => 1,
     hostWin: (c) => { const { E, s, seat: p, self: m } = c; const dp = c.t.dp | 0; const t = c.choose(s.P[1 - p].av.filter((y) => !E.noAim(s, y) && (E.def(s, y).pw || 0) <= dp).sort((a, b) => worth(E, s, b) - worth(E, s, a)), 1, `เลือก Avatar POWER ตั้งต้นไม่เกิน ${dp}`, { exact: true })[0];
-      const host = m && m.on != null ? E.locate(s, m.on) : null; const wake = [...(host ? [host.x] : []), ...s.P[p].av].find((y) => !y.a && E.named(s, y, "เพมมุ")); const more = wake && m && c.mode(["ทำลายการ์ดใบนี้: เปลี่ยนสภาพ เพมมุ เป็นสภาพตื่น", "ไม่ทำ"], "ดาบมารไร้พ่าย", 0) === 0;
-      return { explain: `${t ? "ทำลาย " + E.name(s, t) : "ไม่มีเป้าหมาย"}${more ? ` · ทำลายดาบ · ${E.name(s, wake)} ตื่น` : ""}`, ops: [...(t ? [{ op: "destroy", i: t.i, why: "ดาบมารไร้พ่าย" }] : []), ...(more ? [{ op: "move", i: m.i, to: "hell" }, { op: "wake", i: wake.i }] : [])] }; } },
+      // FAQ: "เปลี่ยนสภาพ" says no state, so an awake เพมมุ goes to sleep and a sleeping one wakes (the sleeping one is the useful pick)
+      const pm = s.P[p].av.filter((y) => E.named(s, y, "เพมมุ")).sort((a, b) => (a.a ? 1 : 0) - (b.a ? 1 : 0));
+      const more = pm.length && m && c.mode(["ทำลายการ์ดใบนี้ แล้วเปลี่ยนสภาพ เพมมุ 1 ใบ (ตื่น↔นอน)", "ไม่ทำ"], "ดาบมารไร้พ่าย", 0) === 0;
+      const flip = more ? c.choose(pm, 1, "เลือก เพมมุ ที่จะเปลี่ยนสภาพ", { exact: true })[0] : null;
+      return { explain: `${t ? "ทำลาย " + E.name(s, t) : "ไม่มีเป้าหมาย"}${flip ? ` · ทำลายดาบ · ${E.name(s, flip)} ${flip.a ? "เปลี่ยนเป็นสภาพนอน" : "ตื่น"}` : ""}`, ops: [...(t ? [{ op: "destroy", i: t.i, why: "ดาบมารไร้พ่าย" }] : []), ...(flip ? [{ op: "move", i: m.i, to: "hell" }, { op: "wake", i: flip.i, v: !flip.a }] : [])] }; } },
   // ดินแดนยุติธรรม: with a เพมมุ/สไปรท์ in [Link]: our เพมมุ Avatars cannot be removed by the opponent except by fights
   "BT10-070": { guard: (E, s, y, Ly, x, L) => Ly.z === "land" && L.z === "av" && s.P[L.p].av.some((z) => z.lk && pemmu(E, s, z)) && (E.named(s, x, "เพมมุ") || textHas(E, s, x, "เพมมุ")) },
   // Myth Universe Podcast: once per turn show an Avatar from the hand: up to 2 of ours sharing one of its values +2, then exile the shown card

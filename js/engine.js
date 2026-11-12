@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112104551";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261112104551";
-import { SCRIPTS } from "./scripts.js?v=20261112104551";
-import { newId, clone } from "./util.js?v=20261112104551";
+import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112121210";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261112121210";
+import { SCRIPTS } from "./scripts.js?v=20261112121210";
+import { newId, clone } from "./util.js?v=20261112121210";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };

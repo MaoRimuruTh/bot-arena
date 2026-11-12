@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261112104551";
-import { E } from "./engine.js?v=20261112104551";
-import { h } from "./util.js?v=20261112104551";
-import { Sfx } from "./sfx.js?v=20261112104551";
+import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261112121210";
+import { E } from "./engine.js?v=20261112121210";
+import { h } from "./util.js?v=20261112121210";
+import { Sfx } from "./sfx.js?v=20261112121210";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -20,7 +20,7 @@ export const Arena = {
   // replays can run fast: every animation and pause in the arena speeds up together
   setSpeed: (k) => { const v = k * animSetting(); if (R) R.speed = v; gsap.globalTimeline.timeScale(v); },
   cheer: (p) => R && avatarDo(p, "hop"), // an emote makes the sender's figure hop
-  setHover: (fn) => R && (R.onHover = fn), setClick: (fn) => R && (R.onClick = fn),
+  setHover: (fn) => R && (R.onHover = fn), setClick: (fn) => R && (R.onClick = fn), setDrag: (fn) => R && (R.onDrag = fn),
   highlight, setLifeTarget, banner, flash, shake, popText, mood,
   setQuiet: (v) => { quiet = !!v; },
 };
@@ -142,7 +142,14 @@ function mount(container, opts = {}) {
     const m = R.meshes.get(p); if (m && !m.busy) { gsap.to(m.grp.position, { y: m.restY + 0.32, duration: 0.2 }); gsap.to(m.grp.rotation, { x: 0.22, duration: 0.25, ease: "power2.out" }); sweep(m, 0.75, 0.6); }
     if (R.onHover) R.onHover(p != null && p !== "life" ? p : null);
   });
-  canvas.addEventListener("click", (e) => { const p = pick(e); if (R.onClick) R.onClick(p); }); // null: the empty table (closes what is open)
+  // a press on a card, a move and a release somewhere else is a drag (the attack gesture, as in other card games); the
+  // click the browser sends after it is not a second pick. The table takes touch drags itself (no page pan or zoom on it)
+  canvas.style.touchAction = "none"; let down = null;
+  canvas.addEventListener("pointerdown", (e) => { if (e.button) return; down = { p: pick(e), x: e.clientX, y: e.clientY, moved: false }; if (down.p != null) try { canvas.setPointerCapture(e.pointerId); } catch { /* not capturable */ } if (R.onDrag) R.onDrag("start", down.p, e); });
+  canvas.addEventListener("pointermove", (e) => { if (!down) return; if (!down.moved && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 14) down.moved = true; if (down.moved && R.onDrag) R.onDrag("move", down.p, e); });
+  canvas.addEventListener("pointerup", (e) => { const d = down; down = null; if (!d || !d.moved) return; R.noClick = performance.now(); if (R.onDrag) R.onDrag("drop", d.p, e, pick(e)); });
+  canvas.addEventListener("pointercancel", () => { down = null; if (R.onDrag) R.onDrag("cancel"); });
+  canvas.addEventListener("click", (e) => { if (R.noClick && performance.now() - R.noClick < 600) { R.noClick = 0; return; } const p = pick(e); if (R.onClick) R.onClick(p); }); // null: the empty table (closes what is open)
   const clock = new THREE.Clock();
   // "ประหยัดเครื่อง" in Settings: the table is drawn 30 times a second instead of 60 (half the work for the phone's GPU)
   const cap = Q === "low" ? 1000 / 30 - 3 : 0; let lastDraw = 0;
