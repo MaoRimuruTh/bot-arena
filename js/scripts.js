@@ -197,7 +197,7 @@ Object.assign(SCRIPTS, {
     canCast: (E, s, p) => s.P[p].av.some((x) => story(E, s, x) && !x.a),
     cast: (c) => { const t = c.choose(c.s.P[c.seat].av.filter((x) => story(c.E, c.s, x) && !x.a).sort(strongFirst(c.E, c.s)), 1, "เลือกเรื่องราวที่นอนอยู่ให้ตื่น")[0];
       if (!t) return { explain: "ไม่มีเรื่องราวที่นอนอยู่", ops: [] }; const big = c.E.magicInHell(c.s, c.seat) >= 8;
-      return { explain: `${c.E.name(c.s, t)} ตื่น${big ? " และ POWER +2" : ""}`, ops: [{ op: "wake", i: t.i, v: true }, ...(big ? [{ op: "power", i: t.i, n: 2, temp: true }] : [])] }; },
+      return { explain: `${c.E.name(c.s, t)} ตื่น${big ? " และ POWER +2" : ""}`, ops: [{ op: "wake", i: t.i, v: true }, ...(big ? [{ op: "power", i: t.i, n: 2, temp: "myturn" }] : [])] }; },
   },
   // ไวรัส
   "BT11-020": { virusExile: true, activate: fromDark,
@@ -209,7 +209,7 @@ Object.assign(SCRIPTS, {
     summon: (c) => { const m = virusMill(c, 3); let ops = m.ops, say = m.blocked ? "ธรณีสูบไม่ทำงาน (Overdose ฝ่ายตรงข้าม)" : "ทุกคนธรณีสูบ 3 ใบ";
       if (m.avatars >= 4) { const o = c.choose(c.s.P[1 - c.seat].av.filter((x) => !c.E.noAim(c.s, x)).sort(strongFirst(c.E, c.s)), 1, "เลือก Avatar ฝ่ายตรงข้าม POWER -2", { optional: true })[0];
         const v = c.choose(c.s.P[c.seat].av.filter((x) => virus(c.E, c.s, x)).sort(strongFirst(c.E, c.s)), 1, "เลือกไวรัสฝ่ายเรา POWER +2", { optional: true })[0];
-        if (o) ops.push({ op: "power", i: o.i, n: -2, temp: true }); if (v) ops.push({ op: "power", i: v.i, n: 2, temp: true });
+        if (o) ops.push({ op: "power", i: o.i, n: -2, temp: "myturn" }); if (v) ops.push({ op: "power", i: v.i, n: 2, temp: "myturn" });
         say += ` · ได้ Avatar ${m.avatars} ใบ (ถึง 4)${o ? ` · ${c.E.name(c.s, o)} POWER -2` : ""}${v ? ` · ${c.E.name(c.s, v)} POWER +2` : ""} จนจบเทิร์นเรา`; }
       else say += ` (ได้ Avatar ${m.avatars} ใบ ไม่ถึง 4)`;
       return { explain: say, ops }; } },
@@ -3623,12 +3623,13 @@ Object.assign(SCRIPTS, {
   "BT09-018": { death: (c) => ({ explain: "ตลอดเกมนี้อัญเชิญได้เฉพาะ Avatar {เอเลี่ยน} สีฟ้า · ตัวอะไรสักอย่างบนมือ Cost -2 (ไม่ต่ำกว่า 2)", ops: [{ op: "gameRule", seat: c.seat, lock: "blueAlien", costDown: { name: "ตัวอะไรสักอย่าง", n: 2, min: 2 }, why: "คำสั่งเสีย ตัวอะไรสักอย่างฯ: ตลอดเกมนี้อัญเชิญได้เฉพาะ Avatar {เอเลี่ยน} สีฟ้า" }] }) },
   // Skill : Hypersense: "when the opponent uses an Avatar's ability" — that Avatar loses its abilities this turn (and with 8+ Magic in our hell it may be destroyed)
   "BT09-059": { canCast: (E, s, p) => s.P[p].av.length > 0 && s.P[p].av.every((x) => story(E, s, x)),
-    react: { kinds: ["activate", "summon"], can: (E, s, p, on) => { if (!on || on.by === p) return false; const L = E.locate(s, on.i); return !!L && L.z === "av" && isAv(E, s, L.x) && (on.kind === "activate" || s.trig.some((t) => t.i === on.i && t.when === "summon")); },
+    // FAQ: the ability that was used is cancelled · an ability used from another Zone (hand, hell, Magic Zone) can be answered too: that card stays where it was
+    react: { kinds: ["activate", "summon"], can: (E, s, p, on) => { if (!on || on.by === p) return false; const L = E.locate(s, on.i); return !!L && isAv(E, s, L.x) && (on.kind === "activate" || (L.z === "av" && s.trig.some((t) => t.i === on.i && t.when === "summon"))); },
       botV: (E, s, q, on) => { const L = E.locate(s, on.i); return L ? 2 + (E.def(s, L.x).c || 0) * 0.4 : 0; } },
-    cast: (c) => { const { E, s, seat: p } = c; const on = c.t.on || {}; const L = on.i != null ? E.locate(s, on.i) : null; const t = L && L.z === "av" ? L.x : null;
-      if (!t) return { explain: "Avatar ใบนั้นไม่อยู่บนสนามแล้ว", ops: [] }; const big = E.magicInHell(s, p) >= 8;
-      const kill = big && c.mode([`ทำลาย ${E.name(s, t)} ด้วย`, "ไม่ทำลาย"], "Magic ในนรก 8 ใบขึ้นไป: ทำลาย Avatar ใบนั้นด้วยไหม", 0) === 0;
-      return { explain: `${E.name(s, t)} สูญเสียความสามารถทั้งหมดจนจบเทิร์น${kill ? " และถูกทำลาย" : ""}`, ops: [{ op: "mute", i: t.i, until: "turn" }, ...(kill ? [{ op: "destroy", i: t.i, why: "Skill : Hypersense" }] : [])] }; } },
+    cast: (c) => { const { E, s, seat: p } = c; const on = c.t.on || {}; const L = on.i != null ? E.locate(s, on.i) : null; if (!L) return { explain: "Avatar ใบนั้นไม่อยู่แล้ว", ops: [] }; const t = L.x;
+      if (L.z !== "av") return { explain: `ยกเลิกความสามารถของ ${E.name(s, t)} · การ์ดอยู่ที่เดิม`, ops: [{ op: "cancelTrig", i: t.i }] };
+      const big = E.magicInHell(s, p) >= 8; const kill = big && c.mode([`ทำลาย ${E.name(s, t)} ด้วย`, "ไม่ทำลาย"], "Magic ในนรก 8 ใบขึ้นไป: ทำลาย Avatar ใบนั้นด้วยไหม", 0) === 0;
+      return { explain: `${E.name(s, t)} สูญเสียความสามารถทั้งหมดจนจบเทิร์น${kill ? " และถูกทำลาย" : ""}`, ops: [{ op: "cancelTrig", i: t.i }, { op: "mute", i: t.i, until: "turn" }, ...(kill ? [{ op: "destroy", i: t.i, why: "Skill : Hypersense" }] : [])] }; } },
   // อินาริ โอคามิ แห่งการเก็บเกี่ยว: จุติ moves it into our Magic Zone, where its abilities keep working
   "CC02-016": { summon: (c) => (c.self && (c.E.locate(c.s, c.self.i) || {}).z === "av" ? { explain: "อินาริย้ายไปอยู่ใน Magic Zone", ops: [{ op: "move", i: c.self.i, to: "mg" }] } : { explain: "", ops: [] }),
     aura: (E, s, src, L) => (L.z === "av" || (L.z === "mg" && src.on == null) ? [{ seat: L.p, test: () => true, n: 1 + Math.floor(s.P[L.p].hell.length / 15) }] : []),
