@@ -1,11 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112081942";
-import { plain } from "./persona.js?v=20261112081942";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261112081942";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112081942";
-import { modPowerFor } from "./auras.js?v=20261112081942";
-import { Data } from "./fb.js?v=20261112081942";
-import { lsGet, clone } from "./util.js?v=20261112081942";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112082556";
+import { plain } from "./persona.js?v=20261112082556";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261112082556";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112082556";
+import { modPowerFor } from "./auras.js?v=20261112082556";
+import { Data } from "./fb.js?v=20261112082556";
+import { lsGet, clone } from "./util.js?v=20261112082556";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -240,7 +240,10 @@ export const H = {
     }
     return null;
   },
-  preview(s, t) { try { const r = resolveEffect(s, t); return r && r.ops ? r : null; } catch { return null; } },
+  // what an effect would do, read on a copy whose Deck order is unknown to the bot (shuffled), so scouting / milling
+  // effects are judged on what could come rather than on the real top card (the bot does not peek at its Deck)
+  preview(s, t) { try { const P = s.P && s.P[t.seat]; const u = P && P.deck.length > 1 ? { ...s, P: s.P.map((Q, q) => (q === t.seat ? { ...Q, deck: E.shuffle({ seed: (s.seed ^ 0x2545f491) | 0 }, [...Q.deck]) } : Q)) } : s;
+    const r = resolveEffect(u, t); return r && r.ops ? r : null; } catch { return null; } },
   // value of an auto-read effect for player p (rough, used to decide whether to cast/summon)
   opsScore(s, p, r) {
     if (!r) return -1; let v = 0;
