@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261112210526";
-import { fxText, kwGloss } from "../fxtext.js?v=20261112210526";
-import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf } from "../cards.js?v=20261112210526";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261112210526";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261112210526";
-import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261112210526";
-import { myFigure, myMat, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261112210526";
-import { themeCounts } from "../boxdecks.js?v=20261112210526";
-import { ladder, ladderReset } from "../ladder.js?v=20261112210526";
-import { notify } from "../notify.js?v=20261112210526";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261112210526";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261112210526";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261112210526";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261112210526";
-import { Music } from "../music.js?v=20261112210526";
-import { Sfx } from "../sfx.js?v=20261112210526";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261112210526";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261112210526";
-import { readAura, traits } from "../auras.js?v=20261112210526";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261112210526";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261112215336";
+import { fxText, kwGloss } from "../fxtext.js?v=20261112215336";
+import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261112215336";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261112215336";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261112215336";
+import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261112215336";
+import { myFigure, myMat, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261112215336";
+import { themeCounts } from "../boxdecks.js?v=20261112215336";
+import { ladder, ladderReset } from "../ladder.js?v=20261112215336";
+import { notify } from "../notify.js?v=20261112215336";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261112215336";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261112215336";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261112215336";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261112215336";
+import { Music } from "../music.js?v=20261112215336";
+import { Sfx } from "../sfx.js?v=20261112215336";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261112215336";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261112215336";
+import { readAura, traits } from "../auras.js?v=20261112215336";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261112215336";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -26,10 +26,10 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(s.id ? [`รีเพลย์ในเครื่องนี้: ${s.id}-${V}`] : []), "บันทึก 40 บรรทัดล่าสุด:\n" + s.log.slice(-40).map((l) => "· " + l.m).join("\n"), // so a report can be traced back to its game
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261112210526";
-import { customMat, customSleeve, customFig, setOnReady, onVault } from "../vault.js?v=20261112210526";
+import { allDecks, deckById } from "./decks.js?v=20261112215336";
+import { customMat, customSleeve, customFig, setOnReady, onVault } from "../vault.js?v=20261112215336";
 // the players' own mat picture, card sleeve and figure (vault.js): the table asks for them, and redraws when one loads or changes
-Arena.setCustom({ mat: customMat, sleeve: customSleeve, fig: customFig }); setOnReady((o) => Arena.customReady(o)); onVault(() => Arena.refreshCustom());
+Arena.setCustom({ mat: customMat, sleeve: customSleeve, fig: customFig, skins: (s) => setGameSkins(s && s.P, Me.uid) }); setOnReady((o) => Arena.customReady(o)); onVault(() => Arena.refreshCustom());
 { let sig = ""; Data.listeners.add(() => { const sh = Data.meta && Data.meta.show, now = sh ? Object.entries(sh).map(([k, x]) => k + ":" + (x && x.v) + ":" + (x && x.finish)).join() : ""; if (now !== sig) { sig = now; Arena.refreshCustom(); } }); }
 
 const SAVE = "bot.game";
@@ -215,14 +215,14 @@ function startLocal(mode) {
   // goldfish (ซ้อมมือเดียว): the other side is a training dummy that never plays a card, so the game shows how fast this deck can win
   const fish = mode === "goldfish"; const me = deckById(Setup.deck), op = fish ? me : pickOpp(); if (!me || !op) return toast("เลือกเด็คก่อน");
   const botName = Setup.brain === "ciel" && Ciel.on() ? "ชิเอล" : (BOT_LEVEL[Setup.brain] || BOT_LEVEL.basic).name;
-  const init = { players: [{ uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve() }, fish ? { name: "หุ่นซ้อม", bot: true, mat: botMat() } : mode === "bot" ? { name: botName, bot: true, av3: myFigure() ? "chang" : "", mat: botMat() } : { uid: Me.uid, name: "ฝั่งที่ 2", mat: botMat() }], decks: [pack(me), pack(op)], seed: (Math.random() * 2 ** 31) | 0, first: fish ? 0 : Math.random() < 0.5 ? 0 : 1, mode: fish ? "bot" : mode };
+  const init = { players: [{ uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), skins: skinsFor(me) }, fish ? { name: "หุ่นซ้อม", bot: true, mat: botMat() } : mode === "bot" ? { name: botName, bot: true, av3: myFigure() ? "chang" : "", mat: botMat() } : { uid: Me.uid, name: "ฝั่งที่ 2", mat: botMat(), skins: skinsFor(op) }], decks: [pack(me), pack(op)], seed: (Math.random() * 2 ** 31) | 0, first: fish ? 0 : Math.random() < 0.5 ? 0 : 1, mode: fish ? "bot" : mode };
   const s = E.newGame(init);
   G = { s, V: 0, mode: fish ? "bot" : mode, fish, brain: fish ? "goldfish" : mode !== "bot" ? "basic" : Setup.brain === "ciel" ? (Ciel.on() ? "ciel" : "basic") : BOT_LEVEL[Setup.brain] ? Setup.brain : "basic", id: s.id, saved: false, rec: { init: { ...init, id: s.id }, acts: [] } };
   persist(); go();
 }
 function startLearn() {
   const st = allDecks().filter((d) => d.starter && !d.box); const me = st.find((d) => d.id === "starter-sd01") || st[0], op = st.find((d) => d.id === "starter-sd02") || st[1]; if (!me || !op) return toast("ไม่พบ Starter Deck");
-  const init = { players: [{ uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve() }, { name: "บอท", bot: true, av3: myFigure() ? "chang" : "", mat: botMat() }], decks: [pack(me), pack(op)], seed: 20261111, first: 0, mode: "bot" };
+  const init = { players: [{ uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), skins: skinsFor(me) }, { name: "บอท", bot: true, av3: myFigure() ? "chang" : "", mat: botMat() }], decks: [pack(me), pack(op)], seed: 20261111, first: 0, mode: "bot" };
   const s = E.newGame(init);
   G = { s, V: 0, mode: "bot", brain: "basic", id: s.id, saved: false, learn: { seen: {} }, rec: { init: { ...init, id: s.id }, acts: [] } };
   persist(); go();
@@ -241,13 +241,13 @@ function persist() { if (!G || G.replay || G.watch) return; if (G.mode === "frie
 function stopGame(clear) {
   if (!G) return; if (G.unsub) G.unsub(); if (clear) { if (!G.watch) lsDel(SAVE); } else persist(); // a watcher never touches their own saved game
   if (G.mode === "friend" && !G.watch && G.s && G.s.phase === "over") trimGame(G.id, G.s);
-  clearInterval(G.idleTick); clearInterval(G.dog); Arena.unmount(); Music.stop(); document.body.classList.remove("arena-on"); document.querySelectorAll(".banner,.dmg,.emo,.showcase,.flatfx,.fxcuts,.dragghost,#atkarrow").forEach((e) => e.remove()); G = null;
+  clearInterval(G.idleTick); clearInterval(G.dog); Arena.unmount(); Music.stop(); setGameSkins(null); document.body.classList.remove("arena-on"); document.querySelectorAll(".banner,.dmg,.emo,.showcase,.flatfx,.fxcuts,.dragghost,#atkarrow").forEach((e) => e.remove()); G = null;
 }
 // ---------- friends ----------
 async function createRoom(extra = {}) { // extra: a tournament match ({ tour, vs, vsName }) only that friend may join
   const me = deckById(Setup.deck); if (!me) return;
   const id = newGameId();
-  await F.setDoc(gameRef(id), { status: "waiting", host: Me.uid, hostName: myName(), hostAva: myAvatar(), hostAv3: myFigure(), hostSig: mySigil(), hostMat: myMat(), hostSleeve: mySleeve(), hostDeck: pack(me), seats: [Me.uid], createdAt: Date.now(), updatedAt: Date.now(), ...extra });
+  await F.setDoc(gameRef(id), { status: "waiting", host: Me.uid, hostName: myName(), hostAva: myAvatar(), hostAv3: myFigure(), hostSig: mySigil(), hostMat: myMat(), hostSleeve: mySleeve(), hostSkins: skinsFor(me), hostDeck: pack(me), seats: [Me.uid], createdAt: Date.now(), updatedAt: Date.now(), ...extra });
   toast("สร้างห้องแล้ว รอเพื่อนเข้าร่วม"); openOnline(id, 0);
 }
 async function joinRoom(r) {
@@ -255,7 +255,7 @@ async function joinRoom(r) {
   try {
     await F.runTransaction(db, async (tx) => {
       const snap = await tx.get(gameRef(r.id)); const g = snap.data(); if (!g || g.status !== "waiting") throw new Error("ห้องนี้เริ่มไปแล้ว"); if (g.vs && g.vs !== Me.uid) throw new Error("ห้องนี้เป็นแมตช์ทัวร์ของเพื่อนคนอื่น");
-      const s = E.newGame({ players: [{ uid: g.host, name: g.hostName, ava: g.hostAva || "", av3: g.hostAv3 || "", sig: g.hostSig || "", mat: g.hostMat || "", sleeve: g.hostSleeve || "" }, { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve() }], decks: [g.hostDeck, pack(me)], seed: (Math.random() * 2 ** 31) | 0, first: Math.random() < 0.5 ? 0 : 1, mode: "friend", id: r.id });
+      const s = E.newGame({ players: [{ uid: g.host, name: g.hostName, ava: g.hostAva || "", av3: g.hostAv3 || "", sig: g.hostSig || "", mat: g.hostMat || "", sleeve: g.hostSleeve || "", skins: g.hostSkins || null }, { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), skins: skinsFor(me) }], decks: [g.hostDeck, pack(me)], seed: (Math.random() * 2 ** 31) | 0, first: Math.random() < 0.5 ? 0 : 1, mode: "friend", id: r.id });
       tx.update(gameRef(r.id), { status: "playing", guest: Me.uid, guestName: myName(), seats: [g.host, Me.uid], state: JSON.stringify(s), updatedAt: Date.now() });
     });
     openOnline(r.id, 1);
@@ -265,7 +265,7 @@ async function joinRoom(r) {
 async function friendRematch() {
   const g = G, s = g.s, V = g.V, opp = s.P[1 - V]; const deck = deckById(s.P[V].deckId) || deckById(Setup.deck); if (!deck) return toast("เลือกเด็คก่อน");
   const id = newGameId();
-  try { await F.setDoc(gameRef(id), { status: "waiting", host: Me.uid, hostName: myName(), hostAva: myAvatar(), hostAv3: myFigure(), hostSig: mySigil(), hostMat: myMat(), hostSleeve: mySleeve(), hostDeck: pack(deck), seats: [Me.uid], createdAt: Date.now(), updatedAt: Date.now(), vs: opp.uid, vsName: opp.name });
+  try { await F.setDoc(gameRef(id), { status: "waiting", host: Me.uid, hostName: myName(), hostAva: myAvatar(), hostAv3: myFigure(), hostSig: mySigil(), hostMat: myMat(), hostSleeve: mySleeve(), hostSkins: skinsFor(deck), hostDeck: pack(deck), seats: [Me.uid], createdAt: Date.now(), updatedAt: Date.now(), vs: opp.uid, vsName: opp.name });
     await F.updateDoc(gameRef(g.id), { rematch: { id, by: V } }); } catch { return toast("เปิดห้องไม่ได้", "bad"); }
   stopGame(true); openOnline(id, 0); toast(`เปิดห้องแล้ว รอ ${opp.name} รับคำท้า`);
 }
@@ -540,7 +540,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261112210526").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261112215336").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", mat: botMat(), bot: true });
@@ -746,11 +746,11 @@ function crystals(P, opp, prevKey) {
 function openLife(P) {
   const s = G && G.s; if (!s) return; const up = P.life.filter((x) => x.up);
   openSheet((api) => [h("div", { class: "small muted" }, `หงายแล้ว ${up.length} ใบ · คว่ำอยู่ ${P.life.length - up.length} ใบ${E.critical(P) ? " · สถานะสาหัส (LIFE หงายหมด)" : ""}`),
-    up.length ? h("div", { class: "pick" }, up.map((x) => cardBtn(E.def(s, x).im, { onclick: () => { api.close(); cardView(x); } }))) : h("div", { class: "empty" }, "ยังไม่มี LIFE ที่หงาย")],
+    up.length ? h("div", { class: "pick" }, up.map((x) => cardBtn(E.def(s, x).im, { seat: x.o, onclick: () => { api.close(); cardView(x); } }))) : h("div", { class: "empty" }, "ยังไม่มี LIFE ที่หงาย")],
   { title: `LIFE (การ์ดบ้าน) · ${P.name}`, sub: "แตะการ์ดเพื่ออ่านความสามารถ" });
 }
 function draw() {
-  if (!G || !G.hud || !G.s) return; if (G.hoverHand != null && !G.s.P[view()].hand.some((x) => x.i === G.hoverHand)) G.hoverHand = null; const s = G.s; const V = view(); const me = s.P[V], op = s.P[1 - V]; const p = whoActs(s);
+  if (!G || !G.hud || !G.s) return; setGameSkins(G.s.P, Me.uid); if (G.hoverHand != null && !G.s.P[view()].hand.some((x) => x.i === G.hoverHand)) G.hoverHand = null; const s = G.s; const V = view(); const me = s.P[V], op = s.P[1 - V]; const p = whoActs(s);
   const myTurn = p != null && mine(p);
   const hint0 = G.replay ? `รีเพลย์ · เทิร์น ${s.turn} · ${s.phase === "over" ? "จบเกม" : "ตาของ " + s.P[s.active].name}`
     : G.puzzle && (G.pzFail || s.phase === "over") ? (s.phase === "over" && s.winner === V ? `ไขโจทย์ที่ ${G.puzzle.k + 1} สำเร็จ!` : "หมดเทิร์นแล้วยังไม่ชนะ · ย้อนตาหรือเริ่มโจทย์ใหม่")
@@ -885,7 +885,7 @@ function drawFlat(s, V, lit, lifeOk) {
     const d = E.def(s, x), c = d.im != null ? card(d.im) : null, fights = z === "av" || z === "cs", host = x.on != null && E.locate(s, x.on);
     const b = h("button", { class: "fcard" + (z === "av" && !x.a ? " asleep" : "") + (z === "av" && x.a && myBattle(s) && (E.locate(s, x.i) || {}).p === s.active ? " drag" : "") + (G.att === x.i || G.sel === x.i ? " sel" : "") + (lit.has(x.i) ? " can" : ""), "data-i": x.i, "data-name": d.n,
       title: host ? `${d.n} · ติดอยู่กับ ${E.name(s, host.x)}` : d.n, "aria-label": `${d.n}${fights ? ` POWER ${E.power(s, x)}` : ""}${z === "av" && !x.a ? " (นอน)" : ""}`, onclick: () => fieldClick(x.i) },
-      c ? artImg(c) : h("span", { class: "fname" }, d.n), fights ? h("span", { class: "fpow num" }, E.power(s, x)) : null, z === "av" && !x.a ? h("span", { class: "fnap" }, "นอน") : null);
+      c ? artImg(c, undefined, undefined, x.o) : h("span", { class: "fname" }, d.n), fights ? h("span", { class: "fpow num" }, E.power(s, x)) : null, z === "av" && !x.a ? h("span", { class: "fnap" }, "นอน") : null);
     b.addEventListener("contextmenu", (e) => { e.preventDefault(); cardView(x); });
     b.addEventListener("mouseenter", () => { G.hover = x.i; drawInspector(); });
     b.addEventListener("mouseleave", () => { if (G.hover === x.i) { G.hover = null; drawInspector(); } });
@@ -1020,7 +1020,7 @@ function cardView(x) {
   { const tr = !sc && traits(d); const rules = tr ? [tr.taunt && "ฝ่ายตรงข้ามต้องโจมตีใบนี้เท่านั้น", tr.noControl && "ถูกเปลี่ยนการควบคุมไม่ได้", tr.noAttack && (tr.noAttack(E, s, x) ? "ตอนนี้โจมตีไม่ได้ตามเงื่อนไขบนการ์ด" : "โจมตีได้ (ครบเงื่อนไขบนการ์ด)")].filter(Boolean) : [];
     if (rules.length && (L.z === "av" || L.z === "cs")) acts.push(["กติกาบนการ์ด (คิดให้อัตโนมัติ): " + rules.join(" · "), null, "note"]); }
   { const ra = !(sc && sc.aura) && readAura(d); if ((sc && sc.aura) || ra) acts.push([ra ? "ต่อเนื่อง (คิดให้อัตโนมัติ): " + ra.desc : "ความสามารถต่อเนื่อง คิดให้อัตโนมัติ", null, "note"]); }
-  const api = openSheet(() => h("div", { class: "cview" }, c ? holo(h("div", { class: "ccard big", style: "cursor:default" }, artImg(c))) : h("div", { class: "fx" }, "Token " + d.n),
+  const api = openSheet(() => h("div", { class: "cview" }, c ? holo(h("div", { class: "ccard big", style: "cursor:default" }, artImg(c, undefined, undefined, x.o))) : h("div", { class: "fx" }, "Token " + d.n),
     h("div", { class: "stack", style: "gap:8px;min-width:0" }, h("div", { class: "row", style: "gap:6px" }, stat.map((t) => h("span", { class: "chip" + (/^POWER/.test(t) ? " gold" : "") }, t)), (x.kw || []).map((k) => h("span", { class: "chip good" }, k))),
       acts.some((a) => a[1]) ? h("div", { class: "row acts" }, acts.filter((a) => a[1]).map(([t, fn, cls]) => h("button", { class: "btn " + (cls || ""), onclick: go(fn) }, t))) : null,
       ...acts.filter((a) => !a[1]).map(([t]) => h("div", { class: "cvnote" }, t)), // what the game already applies by itself
@@ -1090,7 +1090,7 @@ function drawInspector() {
   // what this card can do now: "คลิกการ์ดเพื่อสั่งใช้" while hovered, the buttons themselves once clicked (above the card), or why not
   const acts = L.z !== "hand" && !G.replay ? abilityActs(s, x, L, false) : [];
   const can = acts.filter((a) => a[1]).map(([t]) => t);
-  el.replaceChildren(c ? artImg(c) : h("div", { class: "tok" }, "Token"),
+  el.replaceChildren(c ? artImg(c, undefined, undefined, x.o) : h("div", { class: "tok" }, "Token"),
     h("div", { class: "txt" }, h("b", null, d.n), h("div", { class: "row", style: "gap:5px" }, stat.map((t) => h("span", { class: "chip" + (/^POWER/.test(t) ? " gold" : "") }, t)), (x.kw || []).map((k) => h("span", { class: "chip good" }, k))),
       can.length ? h("div", { class: "cvnote canuse" }, (pinned ? "สั่งใช้ได้ (ปุ่มอยู่ที่การ์ด): " : "สั่งใช้ได้ คลิกที่การ์ด: ") + can.join(" · ")) : null,
       ...acts.filter((a) => !a[1]).map(([t]) => h("div", { class: "cvnote" }, t)),
@@ -1146,7 +1146,7 @@ function handZone(s, V, p) {
     const half = Math.max(1, (n - 1) / 2), f = off / half, dip = f * f * Math.min(26, 2.2 * half * half), turn = f * Math.min(16, 3.2 * half);
     const ok = can && can.has(x.c);
     const b = h("button", { class: "hcard" + (sel.includes(x.i) ? " sel" : "") + (fresh ? " fresh" : "") + (ok ? " can" : ""), "data-i": x.i, "data-name": d.n, "aria-label": `${d.n} ${TYPE_TH[d.t]} GEM ${d.g || 0}${ok ? " · เล่นได้ตอนนี้" : ""}`, style: (row ? "" : `width:${cw}px;left:${w / 2 - cw / 2 + off * gap}px;transform:translateY(${dip + (sel.includes(x.i) ? -26 : 0)}px) rotate(${turn}deg);z-index:${k};`) + (fresh ? `animation-delay:${Math.round(-age)}ms` : "") },
-      c ? artImg(c) : null, h("span", { class: "gem" }, (d.t === "M" ? SUB_TH[d.st][0] : "C" + (d.c ?? 0)) + " · G" + (d.g || 0)),
+      c ? artImg(c, undefined, undefined, x.o) : null, h("span", { class: "gem" }, (d.t === "M" ? SUB_TH[d.st][0] : "C" + (d.c ?? 0)) + " · G" + (d.g || 0)),
       touchy() ? h("span", { class: "zoom", role: "button", "aria-label": "ดูการ์ด " + d.n, onclick: (e) => { e.stopPropagation(); cardView(x); } }, "⤢") : null);
     b.addEventListener("mouseenter", () => { G.hover = null; G.hoverEl = b; showHandInspect(x); });
     b.addEventListener("mouseleave", () => { G.hoverHand = null; drawInspector(); });
@@ -1251,7 +1251,7 @@ function promptBox0(s, p) {
   if (G.callVia != null) {
     const via = P.hand.find((y) => y.i === G.callVia); const drs = P.hand.filter((y) => y.i !== G.callVia && E.def(s, y).t === "A" && String(E.def(s, y).sy || "").includes("มังกร"));
     if (!via || !drs.length || !(s.phase === "main" && s.active === p)) { G.callVia = null; } else
-      return box("ซาร์อึก: เลือกมังกรบนมือที่จะอัญเชิญ (Cost -6)", h("div", { class: "pick" }, drs.map((y) => cardBtn(E.def(s, y).im, { badge: "C" + Math.max(0, E.costOf(s, p, y) - 6), onclick: () => { const c = Math.max(0, E.costOf(s, p, y) - 6); G.payFor = y.i; G.payVia = via.i; G.callVia = null; G.pick = E.autoPay(s, p, y.i, c, [via.i]) || []; draw(); } }))),
+      return box("ซาร์อึก: เลือกมังกรบนมือที่จะอัญเชิญ (Cost -6)", h("div", { class: "pick" }, drs.map((y) => cardBtn(E.def(s, y).im, { seat: y.o, info: () => cardView(y), badge: "C" + Math.max(0, E.costOf(s, p, y) - 6), onclick: () => { const c = Math.max(0, E.costOf(s, p, y) - 6); G.payFor = y.i; G.payVia = via.i; G.callVia = null; G.pick = E.autoPay(s, p, y.i, c, [via.i]) || []; draw(); } }))),
         h("div", { class: "row" }, h("button", { class: "btn sm", onclick: () => { G.callVia = null; draw(); } }, "ยกเลิก")));
   }
   if (G.castFor) {
@@ -1280,13 +1280,13 @@ function promptBox0(s, p) {
   if (G.host) {
     const x = P.hand.find((y) => y.i === G.host); if (!x) { G.host = null; return null; }
     const avs = [...s.P[p].av, ...s.P[1 - p].av];
-    return box(`สวมใส่ ${E.name(s, x)} ให้ Avatar`, h("div", { class: "pick" }, avs.map((y) => cardBtn(E.def(s, y).im, { badge: (y.o === p ? "เรา " : "") + "P" + E.power(s, y), onclick: () => { G.host = null; doAct({ type: "cast", i: x.i, on: y.i }, p); } }))),
+    return box(`สวมใส่ ${E.name(s, x)} ให้ Avatar`, h("div", { class: "pick" }, avs.map((y) => cardBtn(E.def(s, y).im, { seat: y.o, info: () => cardView(y), badge: (y.o === p ? "เรา " : "") + "P" + E.power(s, y), onclick: () => { G.host = null; doAct({ type: "cast", i: x.i, on: y.i }, p); } }))),
       h("div", { class: "row" }, h("button", { class: "btn sm", onclick: () => { G.host = null; draw(); } }, "ยกเลิก")));
   }
   if (G.helperPick) {
     const hp = G.helperPick; const ax = P.av.find((y) => y.i === hp.att); const helpers = ax ? P.av.map((y) => ({ y, hq: E.helpOf(s, p, ax, y) })).filter((z) => z.hq) : [];
     const risky = helpers.some((z) => z.hq.risky && hp.sup.includes(z.y.i));
-    return box("เลือกผู้ช่วยโจมตี (สามัคคี / แทงหลัง)", h("div", { class: "pick" }, helpers.map(({ y, hq }) => { const b = cardBtn(E.def(s, y).im, { badge: "+" + hq.n + (hq.risky ? " ⚠" : ""), cls: hp.sup.includes(y.i) ? "sel" : "", onclick: () => { hp.sup = hp.sup.includes(y.i) ? hp.sup.filter((i) => i !== y.i) : [...hp.sup, y.i]; draw(); } }); if (hq.risky) b.title = "แทงหลังสีต่างกับผู้โจมตี: ผู้โจมตีจะถูกทำลายเมื่อจบการต่อสู้"; return b; })),
+    return box("เลือกผู้ช่วยโจมตี (สามัคคี / แทงหลัง)", h("div", { class: "pick" }, helpers.map(({ y, hq }) => { const b = cardBtn(E.def(s, y).im, { seat: y.o, info: () => cardView(y), badge: "+" + hq.n + (hq.risky ? " ⚠" : ""), cls: hp.sup.includes(y.i) ? "sel" : "", onclick: () => { hp.sup = hp.sup.includes(y.i) ? hp.sup.filter((i) => i !== y.i) : [...hp.sup, y.i]; draw(); } }); if (hq.risky) b.title = "แทงหลังสีต่างกับผู้โจมตี: ผู้โจมตีจะถูกทำลายเมื่อจบการต่อสู้"; return b; })),
       risky ? h("div", { class: "tiny", style: "color:#ffb4a8" }, "⚠ ผู้ช่วยแทงหลังสีต่างกับผู้โจมตี: ผู้โจมตีจะถูกทำลายเมื่อจบการต่อสู้") : null,
       h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => { G.helperPick = null; doAct({ type: "attack", i: hp.att, tk: hp.tk, ti: hp.ti, sup: hp.sup }, p); } }, "โจมตี"), h("button", { class: "btn", onclick: () => { G.helperPick = null; draw(); } }, "ยกเลิก")));
   }
@@ -1312,7 +1312,7 @@ function promptBox0(s, p) {
     const okN = a.optional ? sel.length <= need : sel.length === need;
     return box(`${d.n}: ${a.prompt}`, h("div", { class: "tiny muted" }, Array.isArray(a.reveal) ? "การ์ดที่เปิดดู (ใบที่เลือกไม่ได้จะจางไว้)" : `เลือก ${need} ใบ${a.optional ? " หรือไม่เลือกก็ได้" : ""}`),
       h("div", { class: "pick" }, show.map((i) => { const L = E.locate(s, i); if (!L) return null; const dd = E.def(s, L.x); const can = a.options.includes(i);
-        return cardBtn(dd.im, { cls: (sel.includes(i) ? "sel" : "") + (can ? "" : " dim"), badge: L.z === "av" || L.z === "cs" ? "P" + E.power(s, L.x) : ZONE_TH[L.z], note: !can && a.why ? a.why[i] : null, onclick: () => { if (!can) return cardView(L.x); G.askSel = sel.includes(i) ? sel.filter((y) => y !== i) : need === 1 ? [i] : sel.length < need ? [...sel, i] : sel; draw(); } }); })),
+        return cardBtn(dd.im, { seat: L.x.o, info: () => cardView(L.x), cls: (sel.includes(i) ? "sel" : "") + (can ? "" : " dim"), badge: L.z === "av" || L.z === "cs" ? "P" + E.power(s, L.x) : ZONE_TH[L.z], note: !can && a.why ? a.why[i] : null, onclick: () => { if (!can) return cardView(L.x); G.askSel = sel.includes(i) ? sel.filter((y) => y !== i) : need === 1 ? [i] : sel.length < need ? [...sel, i] : sel; draw(); } }); })),
       h("div", { class: "row" }, h("button", { class: "btn gold", disabled: !okN, onclick: () => { G.tpicks[a.idx] = G.askSel || []; G.ask = null; G.askSel = []; humanTrig(G.s, p); } }, "ยืนยัน"),
         a.optional ? h("button", { class: "btn", onclick: () => { G.tpicks[a.idx] = []; G.ask = null; G.askSel = []; humanTrig(G.s, p); } }, "ไม่เลือก") : null));
   }
@@ -1340,7 +1340,7 @@ function promptBox0(s, p) {
     const pickAtt = (x) => { G.att = x.i; Arena.select(x.i); draw(); };
     if (!G.att) return slim
       ? h("div", { class: "prompt glass slim" }, h("b", null, touchy() ? "แตะหรือลาก Avatar ที่เรืองแสง" : "ลาก Avatar ที่เรืองแสงไปที่เป้าหมาย หรือคลิก"), ...att.map((x) => h("button", { class: "btn sm", onclick: () => pickAtt(x) }, `${E.name(s, x)} P${E.power(s, x)}`)))
-      : box("เลือก Avatar ที่จะโจมตี", h("div", { class: "pick" }, att.map((x) => cardBtn(E.def(s, x).im, { badge: "P" + E.power(s, x), onclick: () => pickAtt(x) }))));
+      : box("เลือก Avatar ที่จะโจมตี", h("div", { class: "pick" }, att.map((x) => cardBtn(E.def(s, x).im, { seat: x.o, info: () => cardView(x), badge: "P" + E.power(s, x), onclick: () => pickAtt(x) }))));
     const a = E.locate(s, G.att); if (!a) { G.att = null; return null; }
     const opts = [...O.av.map((y) => ({ t: `${E.name(s, y)} (P${E.power(s, y)})`, tk: "av", ti: y.i })), ...O.cs.map((y) => ({ t: `Construct ${E.name(s, y)} (P${E.power(s, y)})`, tk: "cs", ti: y.i }))];
     if ((E.lifeOpen(s, p, a.x) || E.kw(s, a.x, "เตะไข่")) && !E.noLife(s, a.x)) opts.push({ t: "LIFE ฝ่ายตรงข้าม (ตีบ้าน)", tk: "life" });
@@ -1376,6 +1376,21 @@ function localHint() {
   } catch (e) { console.warn(e); return "ตอนนี้คิดคำแนะนำไม่ออกค่ะ"; }
 }
 function openPile(P, z) {
-  const s = G.s; const list = z === "deck" ? [] : P[z];
-  openSheet(() => z === "deck" ? h("div", { class: "muted" }, `เหลือ ${P.deck.length} ใบ (ดูลำดับไม่ได้)`) : list.length ? h("div", { class: "pick" }, list.map((x) => cardBtn(E.def(s, x).im, { onclick: () => (G && G.s === s && !G.replay ? cardView(x) : showCard(E.def(s, x).im)) }))) : h("div", { class: "empty" }, "ว่าง"), { title: `${ZONE_TH[z]} · ${P.name}`, wide: true });
+  const s = G.s; const list = z === "deck" ? [] : P[z]; const live = G && G.s === s && !G.replay;
+  const look = (x) => (live ? cardView(x) : showCard(E.def(s, x).im));
+  if (z === "deck") {
+    // our own Deck: the cards still in it, one of each with how many are left, in a fixed order (by type and Cost),
+    // never in the order they lie in; someone else's Deck: only how many are left
+    const ours = !G.watch && (P === s.P[G.V] || (!!P.uid && P.uid === Me.uid && G.mode !== "friend"));
+    return openSheet(() => ours ? [h("div", { class: "small muted" }, `เหลือ ${P.deck.length} ใบ · เรียงตามประเภทและ Cost ไม่ใช่ลำดับในกอง`), h("div", { class: "pick" }, deckLeft(s, P).map(({ x, n }) => cardBtn(E.def(s, x).im, { seat: x.o, badge: "×" + n, onclick: () => look(x) })))]
+      : h("div", { class: "muted" }, `เหลือ ${P.deck.length} ใบ (การ์ดในกองของอีกฝ่ายดูไม่ได้)`), { title: `${ZONE_TH.deck} · ${P.name}`, wide: true });
+  }
+  openSheet(() => list.length ? h("div", { class: "pick" }, list.map((x) => cardBtn(E.def(s, x).im, { seat: x.o, onclick: () => look(x) }))) : h("div", { class: "empty" }, "ว่าง"), { title: `${ZONE_TH[z]} · ${P.name}`, wide: true });
+}
+const TYPE_ORD = { A: 0, T: 0, C: 1, M: 2 };
+function deckLeft(s, P) {
+  // one entry per card: printings of the same card (same name, type and POWER) count together
+  const by = new Map(); for (const x of P.deck) { const d = E.def(s, x), k = `${d.t}|${d.n}|${d.pw || 0}`; const g = by.get(k); if (g) g.n++; else by.set(k, { x, n: 1 }); }
+  const cost = (d) => (d.t === "M" ? d.g : d.c) ?? 0;
+  return [...by.values()].sort((a, b) => { const da = E.def(s, a.x), db = E.def(s, b.x); return (TYPE_ORD[da.t] ?? 3) - (TYPE_ORD[db.t] ?? 3) || cost(da) - cost(db) || String(da.n).localeCompare(String(db.n), "th"); });
 }

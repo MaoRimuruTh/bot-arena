@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261112210526";
-import { h } from "./util.js?v=20261112210526";
-import { Data } from "./fb.js?v=20261112210526";
+import { CARD_SOURCE } from "./config.js?v=20261112215336";
+import { h } from "./util.js?v=20261112215336";
+import { Data } from "./fb.js?v=20261112215336";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -175,7 +175,27 @@ export function artBases(b) {
   const c = CARDS[b]; return (artIdx && c && artIdx.get(artKey(c))) || [b];
 }
 const baseOf = (x) => (x.b != null ? x.b : x.i);
-export function skinOf(c) { if (!c || c.b != null || !SkinCtx.on) return c; const v = Data.skins && Data.skins[String(c.i)]; const s = v != null ? CARDS[+v] : null; return s && artBases(c.i).includes(baseOf(s)) ? s : c; }
+// In a game each side's cards show their owner's skins: the choices travel with the game (by print code), so the
+// opponent's cards show the opponent's arts and ours show ours. GameSkins.maps holds them, one map per seat, while a
+// game is on screen (null otherwise: then our own skins show, on the deck pages).
+export const GameSkins = { maps: null, sig: "" };
+export function setGameSkins(players, meUid) {
+  if (!players) { GameSkins.maps = null; GameSkins.sig = ""; return; }
+  const sig = JSON.stringify(players.map((P) => [P.skins || null, P.uid === meUid && P.skins == null])) + (Data.skinCodec && Data.skinCodec.ready() ? "+" : "");
+  if (sig === GameSkins.sig) return; GameSkins.sig = sig;
+  // (a game saved before skins travelled with it: our own side shows our skins, the other side the plain arts)
+  GameSkins.maps = players.map((P) => (P.skins ? (Data.skinCodec && Data.skinCodec.ready() ? Data.skinCodec.decode(P.skins) : {}) : P.uid && P.uid === meUid ? Data.skins || {} : {}));
+}
+const skinIn = (c, map) => { const v = map && map[String(c.i)]; const s = v != null ? CARDS[+v] : null; return s && artBases(c.i).includes(baseOf(s)) ? s : c; };
+// the art a card shows: `seat` is the owner of that card in the game on screen (in a game, a card of no known owner
+// shows its plain art)
+export function skinOf(c, seat) { if (!c || c.b != null || !SkinCtx.on) return c; if (GameSkins.maps) return seat != null ? skinIn(c, GameSkins.maps[seat]) : c; return skinIn(c, Data.skins); }
+// the skins we have chosen for the cards of a deck, by print code, to carry into a game
+export function skinsFor(d) {
+  const L = deckToList(d), ids = new Set([...L.main, ...L.life].map((i) => String(baseId(i)))), sub = {};
+  for (const [b, v] of Object.entries(Data.skins || {})) if (ids.has(b)) sub[b] = v;
+  return Object.keys(sub).length && Data.skinCodec && Data.skinCodec.ready() ? Data.skinCodec.encode(sub) : null;
+}
 // every print of this card: its own first, then those of the same card worded differently
 export const variantsOf = (c) => { const b = baseOf(c), bs = artBases(b); return [...CARDS.filter((x) => baseOf(x) === b), ...CARDS.filter((x) => baseOf(x) !== b && bs.includes(baseOf(x)))]; };
 export const favKey = (c) => c.p + "-" + c.r;
@@ -188,15 +208,15 @@ export const favCards = () => Object.keys((Data && Data.favs) || {}).map((k) => 
 export const isSpecialArt = (c) => c.b != null || ["SCR", "CBR", "USEC"].includes(c.r);
 const goodUrl = new Map();
 export function artUrl(c) { return goodUrl.get(c.i) || imgUrls(c)[0]; }
-export function artImg(c, cls = "cimg", alt) {
-  c = skinOf(c); const urls = imgUrls(c); let k = urls.indexOf(goodUrl.get(c.i)); if (k < 0) k = 0;
+export function artImg(c, cls = "cimg", alt, seat) {
+  c = skinOf(c, seat); const urls = imgUrls(c); let k = urls.indexOf(goodUrl.get(c.i)); if (k < 0) k = 0;
   const img = h("img", { class: cls, src: urls[k], alt: alt ?? c.n, loading: "lazy", decoding: "async", draggable: "false" });
   img.addEventListener("load", () => goodUrl.set(c.i, img.src));
   img.addEventListener("error", () => { k++; if (k < urls.length) img.src = urls[k]; });
   return img;
 }
-export function resolveArt(c) {
-  c = skinOf(c);
+export function resolveArt(c, seat) {
+  c = skinOf(c, seat);
   if (goodUrl.has(c.i)) return Promise.resolve(goodUrl.get(c.i));
   const urls = imgUrls(c);
   return new Promise((res) => {

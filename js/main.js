@@ -1,20 +1,20 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261112210526";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261112210526";
-import { AVATARS, MATS, SIGILS, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261112210526";
-import { myFigure, myMat, mySleeve, mySigil, unlocked, needFor } from "./achieve.js?v=20261112210526";
-import { Vault, startVault } from "./vault.js?v=20261112210526";
-import { vaultSection } from "./vaultui.js?v=20261112210526";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261112210526";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261112210526";
-import { loadCards, CARDS, isBase, SkinCtx } from "./cards.js?v=20261112210526";
-import { Views, avatarEl } from "./ui.js?v=20261112210526";
-import { Ciel } from "./ai.js?v=20261112210526";
-import "./views/library.js?v=20261112210526";
-import "./views/decks.js?v=20261112210526";
-import "./views/lab.js?v=20261112210526";
-import "./views/history.js?v=20261112210526";
-import { openReport } from "./views/ask.js?v=20261112210526";
-import "./views/play.js?v=20261112210526";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261112215336";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261112215336";
+import { AVATARS, MATS, SIGILS, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261112215336";
+import { myFigure, myMat, mySleeve, mySigil, unlocked, needFor } from "./achieve.js?v=20261112215336";
+import { Vault, startVault } from "./vault.js?v=20261112215336";
+import { vaultSection } from "./vaultui.js?v=20261112215336";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261112215336";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261112215336";
+import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261112215336";
+import { Views, avatarEl } from "./ui.js?v=20261112215336";
+import { Ciel } from "./ai.js?v=20261112215336";
+import "./views/library.js?v=20261112215336";
+import "./views/decks.js?v=20261112215336";
+import "./views/lab.js?v=20261112215336";
+import "./views/history.js?v=20261112215336";
+import { openReport } from "./views/ask.js?v=20261112215336";
+import "./views/play.js?v=20261112215336";
 
 const root = $("#view");
 let current = null, cardsReady = false;
@@ -165,7 +165,7 @@ function route() {
   if (!cardsReady) return;
   const { tab, parts } = parse();
   if (current && current !== tab && Views[current].leave) Views[current].leave();
-  current = tab; SkinCtx.on = tab === "decks" || tab === "play";
+  current = tab; SkinCtx.on = tab === "decks" || tab === "play"; if (tab !== "play") setGameSkins(null); // (a game's skins are only for its table)
   document.querySelectorAll("#nav a").forEach((a) => (a.dataset.tab === tab ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
   { const cur = document.querySelector('#nav a[aria-current="page"]'); if (cur && cur.scrollIntoView && innerWidth <= 700) cur.scrollIntoView({ block: "nearest", inline: "nearest" }); }
   try { Views[tab].render(root, parts); } catch (e) { console.error(e); root.replaceChildren(h("div", { class: "empty" }, "หน้านี้มีปัญหา: " + e.message)); }

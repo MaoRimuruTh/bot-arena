@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261112210526";
-import { E } from "./engine.js?v=20261112210526";
-import { h } from "./util.js?v=20261112210526";
-import { Sfx } from "./sfx.js?v=20261112210526";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261112215336";
+import { E } from "./engine.js?v=20261112215336";
+import { h } from "./util.js?v=20261112215336";
+import { Sfx } from "./sfx.js?v=20261112215336";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -865,13 +865,14 @@ function tokenTexture(d) {
   g.font = "700 64px sans-serif"; g.fillStyle = "#ffd986"; g.fillText(String(d.pw || 0), 128, 290);
   const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return t;
 }
-function faceMat(d) {
+function faceMat(d, seat) {
   // card faces are unlit so the official art keeps its real colours (no light/bloom wash-out); FACE_HOOK adds the sheen and the burn
-  const token = d.im == null, c = token ? null : card(d.im); // (a Token with a printed card of its own shows that card; any other is drawn here)
+  // (seat: the card's owner, whose skin it shows; a Token with a printed card of its own shows that card, any other is drawn here)
+  const token = d.im == null, c = token ? null : skinOf(card(d.im), seat);
   const u = { uBurn: { value: 0 }, uSweep: { value: -2 }, uSheen: { value: 0 }, uFoil: { value: (c && FOIL[c.r]) || 0 }, uFlash: { value: 0 }, uEdge: { value: new THREE.Color(0xff8a2a) }, uTint: { value: new THREE.Color(d.co ? colorHex(d.co) : 0xffd9a0) } };
-  const mat = new THREE.MeshBasicMaterial({ map: token ? tokenTexture(d) : R.texCache.get(d.im) || R.backTex, color: 0xdedede, toneMapped: false });
+  const mat = new THREE.MeshBasicMaterial({ map: token ? tokenTexture(d) : R.texCache.get(c.i) || R.backTex, color: 0xdedede, toneMapped: false });
   mat.userData.u = u; mat.userData.own = token; mat.onBeforeCompile = FACE_HOOK;
-  if (!token && mat.map === R.backTex) resolveArt(c).then((url) => { if (!url || !R) return; R.loader.load(corsUrl(url), (t) => { if (!R) return t.dispose(); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; R.texCache.set(d.im, t); mat.map = t; mat.needsUpdate = true; }); });
+  if (!token && mat.map === R.backTex) resolveArt(c).then((url) => { if (!url || !R) return; R.loader.load(corsUrl(url), (t) => { if (!R) return t.dispose(); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; R.texCache.set(c.i, t); mat.map = t; mat.needsUpdate = true; }); });
   return mat;
 }
 const toScreen = (v) => { const p = v.clone().project(R.camera); const r = R.canvas.getBoundingClientRect(); return { x: r.left + (p.x * 0.5 + 0.5) * r.width, y: r.top + (-p.y * 0.5 + 0.5) * r.height }; };
@@ -940,7 +941,7 @@ export function colorFx(pos, co, big = 1) {
 // the other side's Magic, shown big for a moment as it is played (as card games show a played spell), then the effect
 function showcase(s, ev) {
   const L = E.locate(s, ev.i), d = L && s.cards[L.x.c], c = d && d.im != null ? card(d.im) : null; if (!c) return Promise.resolve();
-  const el = h("div", { class: "showcase", "aria-hidden": "true" }, artImg(c, "scimg"), h("b", null, `${(s.P[ev.p] || {}).name || "ฝ่ายตรงข้าม"} ใช้ ${d.n}`));
+  const el = h("div", { class: "showcase", "aria-hidden": "true" }, artImg(c, "scimg", undefined, L.x.o), h("b", null, `${(s.P[ev.p] || {}).name || "ฝ่ายตรงข้าม"} ใช้ ${d.n}`));
   document.querySelectorAll(".showcase").forEach((x) => x.remove()); /* one at a time (fast replays) */ document.body.append(el); const k = 1 / ((R && R.speed) || 1);
   gsap.set(el, { xPercent: -50, yPercent: -50 });
   gsap.fromTo(el, { opacity: 0, scale: reduce ? 1 : 0.8 }, { opacity: 1, scale: 1, duration: 0.22 * k, ease: "back.out(1.6)" });
@@ -951,7 +952,8 @@ function showcase(s, ev) {
 function fxCut(s, ev, mine) {
   const d = s.cards[ev.c]; if (!d) return; const c = d.im != null ? card(d.im) : null;
   let box = document.querySelector(".fxcuts"); if (!box) { box = h("div", { class: "fxcuts", "aria-live": "polite" }); document.body.append(box); }
-  const el = h("div", { class: "fxcut glass" + (mine ? " mine" : " opp") }, c ? artImg(c, "fxart") : h("div", { class: "fxart tok" }, "✦"),
+  const own = ev.i != null && E.locate(s, ev.i) ? E.locate(s, ev.i).x.o : ev.p; // (the card's owner: their skin)
+  const el = h("div", { class: "fxcut glass" + (mine ? " mine" : " opp") }, c ? artImg(c, "fxart", undefined, own) : h("div", { class: "fxart tok" }, "✦"),
     h("div", { class: "fxtx" }, h("b", null, (mine ? "" : (s.P[ev.p] ? s.P[ev.p].name + " · " : "")) + d.n), h("span", null, ev.t || "")));
   box.prepend(el); while (box.children.length > 3) box.lastChild.remove();
   const k = Math.max(0.25, 1 / ((R && R.speed) || 1)); if (!reduce) gsap.fromTo(el, { opacity: 0, y: -8 }, { opacity: 1, y: 0, duration: 0.25 });
@@ -1041,7 +1043,7 @@ function makePile(key) {
   return { key, grp, body, top, el, n: -1, topI: null };
 }
 function makeLife(s, x, p) {
-  const face = new THREE.Mesh(R.geo.face, faceMat(E.def(s, x))), back = new THREE.Mesh(R.geo.back, backFor(s, p)), edge = new THREE.Mesh(R.geo.edge, [R.capMat, R.edgeMat]);
+  const face = new THREE.Mesh(R.geo.face, faceMat(E.def(s, x), x.o)), back = new THREE.Mesh(R.geo.back, backFor(s, x.o != null ? x.o : p)), edge = new THREE.Mesh(R.geo.edge, [R.capMat, R.edgeMat]);
   const flip = new THREE.Group(); flip.add(edge, back, face); const grp = new THREE.Group(); grp.add(flip); R.scene.add(grp);
   face.userData.life = back.userData.life = x.i; edge.userData.life = x.i; return { i: x.i, p, grp, flip, face, back, edge, up: null };
 }
@@ -1055,7 +1057,7 @@ function backFor(s, p) {
   return o.mat;
 }
 function syncBacks(s) {
-  for (const m of R.meshes.values()) if (m.p != null) m.back.material = backFor(s, m.p);
+  for (const m of R.meshes.values()) if (m.p != null) m.back.material = backFor(s, m.own != null ? m.own : m.p);
   if (R.side) { for (const o of R.side.life.values()) o.back.material = backFor(s, o.p); for (const [key, o] of R.side.piles) if (key.endsWith(":deck")) o.top.material = backFor(s, +key[0]); }
 }
 function syncSide(s, V) {
@@ -1070,7 +1072,7 @@ function syncSide(s, V) {
       o.body.scale.y = hgt / CARD.t; o.body.position.y = hgt / 2; o.top.position.y = hgt - CARD.t / 2 + 0.003;
       const topX = z === "deck" ? null : list[list.length - 1] || null;
       if (z === "deck") o.top.material = backFor(s, p);
-      if (z !== "deck" && topX && topX.i !== o.topI) { if (o.top.material !== R.backMat && !o.top.material.userData.keep && o.top.material.dispose) o.top.material.dispose(); const fm = faceMat(E.def(s, topX)); if (z === "dark") fm.color = new THREE.Color(0xb9a6ff); o.top.material = fm; }
+      if (z !== "deck" && topX && topX.i !== o.topI) { if (o.top.material !== R.backMat && !o.top.material.userData.keep && o.top.material.dispose) o.top.material.dispose(); const fm = faceMat(E.def(s, topX), topX.o); if (z === "dark") fm.color = new THREE.Color(0xb9a6ff); o.top.material = fm; }
       o.topI = topX ? topX.i : null; o.n = n; o.mine = p === V; o.el.textContent = `${PILE_TH[z]} ${n}`; o.el.className = "pilel" + (p === V ? "" : " opp") + (n ? "" : " none"); }
     P.life.forEach((x, k) => { keep.add(x.i); let o = S.life.get(x.i); const fresh = !o; if (!o) { o = makeLife(s, x, p); S.life.set(x.i, o); }
       const [lx, lz] = sideSpot(V, p, Z.life.x, Z.life.z0 + k * Z.life.dz); o.grp.position.set(lx, 0.03 + k * 0.004, lz); o.grp.rotation.y = Math.PI / 2 + ry; o.grp.scale.setScalar(Z.life.s);
@@ -1095,8 +1097,8 @@ function layout(s, V) {
   return out;
 }
 function makeMesh(s, L) {
-  const d = E.def(s, L.x), fm = faceMat(d);
-  const face = new THREE.Mesh(R.geo.face, fm), back = new THREE.Mesh(R.geo.back, backFor(s, L.p)), edge = new THREE.Mesh(R.geo.edge, [R.capMat, R.edgeMat]);
+  const d = E.def(s, L.x), own = L.x.o != null ? L.x.o : L.p, fm = faceMat(d, own); // (a card taken over keeps its owner's art and sleeve)
+  const face = new THREE.Mesh(R.geo.face, fm), back = new THREE.Mesh(R.geo.back, backFor(s, own)), edge = new THREE.Mesh(R.geo.edge, [R.capMat, R.edgeMat]);
   for (const o of [face, back, edge]) o.castShadow = true;
   const glow = new THREE.Mesh(R.geo.halo, new THREE.MeshBasicMaterial({ map: R.rimTex, color: L.zone === "land" ? 0x8fb0ff : L.side === "me" ? 0xffc35a : 0xff4a52, transparent: true, opacity: GLOW.rest, blending: THREE.AdditiveBlending, depthWrite: false }));
   glow.position.y = -0.012;
@@ -1104,7 +1106,7 @@ function makeMesh(s, L) {
   const shadow = new THREE.Mesh(R.geo.halo, new THREE.MeshBasicMaterial({ color: 0x000000, alphaMap: R.shadowTex, transparent: true, opacity: 0, depthWrite: false })); shadow.renderOrder = -1; R.scene.add(shadow);
   const grp = new THREE.Group(); grp.add(glow, edge, back, face); R.scene.add(grp);
   face.userData.i = L.x.i;
-  return { i: L.x.i, p: L.p, grp, mesh: face, face, back, edge, glow, shadow, shOp: 0.6, u: fm.userData.u, co: d.co, side: L.side, zone: L.zone, scale: L.scale, restY: 0.04, sel: false, pulse: false, busy: false, nextSweep: (R.t || 0) + 3 + Math.random() * 8 };
+  return { i: L.x.i, p: L.p, own, grp, mesh: face, face, back, edge, glow, shadow, shOp: 0.6, u: fm.userData.u, co: d.co, side: L.side, zone: L.zone, scale: L.scale, restY: 0.04, sel: false, pulse: false, busy: false, nextSweep: (R.t || 0) + 3 + Math.random() * 8 };
 }
 function placeShadow(m) {
   const p = m.grp.position, r = m.grp.rotation, hgt = Math.max(0, p.y - m.restY), k = m.grp.scale.x * (1 + hgt * 0.22);
@@ -1378,6 +1380,7 @@ async function animateEvent(ev, prev, s, V) {
     const mine = mineSide(ev.p), at = new THREE.Vector3(0, 1, mine ? 5.2 : -4.7); Sfx.play("heal");
     popText(at.clone().setY(1.2), "LIFE +1", "#5ef0a0"); pillar(at.clone().setY(0), 0x6dffb0, 0.75); ripple(at.clone().setY(0), 0x7dffb8, 3.4);
     burst(at, { n: 18, map: R.FX.star_06, color: 0xa8ffd0, size: 0.34, spread: 1.3, up: 2.8, dur: 1.2 }); await sleepMs(450);
+  } else if (ev.k === "mill") { await millFx(s, ev, V);
   } else if (ev.k === "roll") { await rollFx(ev, mineSide(ev.p));
   } else if (ev.k === "rps") { await rpsFx(s, ev, V);
   } else if (ev.k === "fx") { // a card's effect resolves: its picture, its name and what it did, for a moment over the table
@@ -1397,6 +1400,33 @@ async function animateEvent(ev, prev, s, V) {
   }
 }
 const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms / ((R && R.speed) || 1)));
+// ธรณีสูบ: the cards leave the top of that side's Deck one after another, turn face up in the air (so the table sees what
+// went) and land on its hell pile (a ไวรัส exiled by it, on the dark zone pile), under a "ธรณีสูบ N" label
+async function millFx(s, ev, V) {
+  const Z = R.zones && R.zones.side, n = (ev.ids || []).length; if (!n) return;
+  const deckAt = Z ? new THREE.Vector3(...((a) => [a[0], 0.22, a[1]])(sideSpot(V, ev.p, Z.piles.x, Z.piles.deck))) : new THREE.Vector3(ev.p === V ? 5.6 : -5.6, 0.22, ev.p === V ? 3.2 : -3.6);
+  popText(deckAt.clone().setY(1.5), `ธรณีสูบ ${n}`, "#c9a2ff");
+  if (!Z || reduce) { await sleepMs(450); return; } // an upright phone draws no piles on the table: the label (and the HUD's counts) tell it
+  const spot = (z) => { const [x, zz] = sideSpot(V, ev.p, Z.piles.x, Z.piles[z]); return new THREE.Vector3(x, 0.22, zz); };
+  const show = Math.min(n, 6), gap = n > 3 ? 0.12 : 0.2;
+  await Promise.all(ev.ids.slice(0, show).map((i, k) => {
+    const d = s.cards[ev.cs[k]] || {}, face = new THREE.Mesh(R.geo.face, faceMat(d, ev.p)), back = new THREE.Mesh(R.geo.back, backFor(s, ev.p)), edge = new THREE.Mesh(R.geo.edge, [R.capMat, R.edgeMat]);
+    const flip = new THREE.Group(); flip.add(edge, back, face); flip.rotation.z = Math.PI; // face down, as it leaves the Deck
+    const grp = new THREE.Group(); grp.add(flip); grp.position.copy(deckAt); grp.rotation.y = ev.p === V ? 0 : Math.PI; grp.scale.setScalar(Z.piles.s); R.scene.add(grp);
+    // up and in toward the middle of the table, turning face up and growing to the size of a card in play, a beat in
+    // the air so it can be read, then down onto its pile
+    const to = spot((ev.dark || []).includes(i) ? "dark" : "hell"), lift = 1.9 + k * 0.1, midX = deckAt.x + (ev.p === V ? -1.5 : 1.5) - k * (ev.p === V ? 0.35 : -0.35), big = Z.piles.s * 2.1;
+    return new Promise((res) => gsap.timeline({ delay: k * gap, onComplete: () => { if (R) R.scene.remove(grp); face.material.dispose(); res(); } })
+      .add(() => Sfx.play("fly"))
+      .to(grp.position, { y: lift, x: midX, z: (deckAt.z + to.z) / 2, duration: 0.32, ease: "power2.out" })
+      .to(flip.rotation, { z: 0, duration: 0.36, ease: "power2.inOut" }, 0.05)
+      .to(grp.scale, { x: big, y: big, z: big, duration: 0.32, ease: "power2.out" }, 0.05)
+      .to(grp.position, { y: lift + 0.08, duration: 0.2, ease: "sine.inOut" }, 0.34)
+      .to(grp.position, { x: to.x, z: to.z, duration: 0.38, ease: "power2.inOut" }, 0.56)
+      .to(grp.scale, { x: Z.piles.s, y: Z.piles.s, z: Z.piles.s, duration: 0.34, ease: "power2.in" }, 0.6)
+      .to(grp.position, { y: to.y, duration: 0.3, ease: "power2.in" }, 0.64));
+  }));
+}
 // without WebGL there is no table to throw a die on: the result still shows, as a note in the middle of the screen
 let flatLast = 0, flatView = null;
 function flatEvents(s, V, opts) {
@@ -1404,6 +1434,7 @@ function flatEvents(s, V, opts) {
   for (const e of (s.ev || []).filter((x) => x.id > flatLast)) {
     if (e.k === "roll") flatNote(`${e.sides === 2 ? "ทอยเหรียญ" : "ทอยลูกเต๋า"}${e.why ? " (" + e.why + ")" : ""}: ${e.sides === 2 ? (e.r === 1 ? "ออกหัว" : "ออกก้อย") : "ได้ " + (e.r2 != null ? `${e.r} และ ${e.r2}` : e.r)}`);
     else if (e.k === "heal") flatNote(`${e.p === V ? "LIFE เรา" : "LIFE " + ((s.P[e.p] || {}).name || "ฝ่ายตรงข้าม")} +1`);
+    else if (e.k === "mill") flatNote(`${e.p === V ? "เรา" : (s.P[e.p] || {}).name || "ฝ่ายตรงข้าม"} ธรณีสูบ ${(e.ids || []).length} ใบ: ${(e.cs || []).map((c) => (s.cards[c] || {}).n).filter(Boolean).slice(0, 6).join(", ")}`);
     else if (e.k === "rps") rpsFx(s, e, V).catch(() => {});
     else if (e.k === "fx") fxCut(s, e, e.p === V); // an effect resolves: the same strip as over the 3D table
     else if (e.k === "cast" && e.p !== V) showcase(s, e);
@@ -1423,6 +1454,7 @@ function applyMats(s, V) {
   if (near !== k[1].near || far !== k[1].far) { R.matKey = [k[0], { near, far }]; swapMat(); } decor();
 }
 function update(s, V, opts = {}) {
+  if (custom.skins) custom.skins(s); // each side's cards in their owner's skins (cards.js GameSkins)
   if (!R) { try { flatEvents(s, V, opts); } catch (e) { console.warn(e); } return Promise.resolve(); } R.last = { s, V };
   // flush: a jump (a replay seek) drops the animations still waiting in the queue, and the banner they raised
   if (opts.flush) { R.token = (R.token || 0) + 1; const band = document.querySelector(".banner .band"); if (band) { gsap.killTweensOf(band); gsap.set(band, { opacity: 0 }); } }

@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112210526";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261112210526";
-import { SCRIPTS } from "./scripts.js?v=20261112210526";
-import { newId, clone } from "./util.js?v=20261112210526";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261112215336";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261112215336";
+import { SCRIPTS } from "./scripts.js?v=20261112215336";
+import { newId, clone } from "./util.js?v=20261112215336";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -309,7 +309,7 @@ export const E = {
       winner: null, reason: "", mull: [false, false], mu: [{}, {}], played: [{}, {}], startedAt: Date.now(), P: [] };
     for (let p = 0; p < 2; p++) {
       const pl = players[p];
-      const P = { uid: pl.uid || null, name: pl.name, ava: pl.ava || "", av3: pl.av3 || "", sig: pl.sig || "", mat: pl.mat || "", sleeve: pl.sleeve || "", bot: !!pl.bot, deckName: decks[p].name || "", deckId: decks[p].id || null, deck: [], hand: [], av: [], mg: [], cs: [], hell: [], dark: [], life: [] };
+      const P = { uid: pl.uid || null, name: pl.name, ava: pl.ava || "", av3: pl.av3 || "", sig: pl.sig || "", mat: pl.mat || "", sleeve: pl.sleeve || "", skins: pl.skins || null, bot: !!pl.bot, deckName: decks[p].name || "", deckId: decks[p].id || null, deck: [], hand: [], av: [], mg: [], cs: [], hell: [], dark: [], life: [] };
       const mk = (id) => { s.cards[id] = s.cards[id] || E.cardDef(id); return { i: s.nextI++, c: String(id), o: p, a: true }; };
       P.deck = E.shuffle(s, decks[p].main.map(mk));
       P.life = E.shuffle(s, decks[p].life.map(mk)).map((x) => ({ ...x, up: false }));
@@ -903,6 +903,7 @@ export const E = {
         let more = 0; if (!o.plain) for (const { x: y, L: Ly } of fieldCards(s)) { const sy = y.mute ? null : scriptOf(s, y); if (sy && sy.millMore) more += sy.millMore(E, s, y, Ly, { seat, by, src: s.cards[o.src || s.cur] || null }) || 0; }
         const P = s.P[seat]; const k = Math.min(n + more, P.deck.length); const got = P.deck.splice(0, k);
         for (const x of got) { const sc = o.virus && scriptOf(s, x); if (sc && sc.virusExile) P.dark.push(x); else { P.hell.push(x); x.mil = s.turn || 1; E.anyHell(s, [x]); } } // x.mil: sent to hell by ธรณีสูบ (หอกแหลมแทงทุกวัน ทุกวัน)
+        if (k > 0) E.ev(s, { k: "mill", p: seat, ids: got.map((x) => x.i), cs: got.map((x) => x.c), dark: got.filter((x) => P.dark.includes(x)).map((x) => x.i) }); // (the table shows them going)
         { // cards that react to being milled: millBy "any", or "god" = by a purple {เทพ} Avatar or a Magic card
           const src = s.cards[o.src || s.cur] || null; const srcX = !o.src && s.curI != null ? (E.locate(s, s.curI) || {}).x : null;
           const byGod = !!src && (src.t === "M" || (["A", "T"].includes(src.t) && (srcX ? E.hasSy(s, srcX, "เทพ") : String(src.sy || "").includes("เทพ")) && src.co === "ม่วง"));

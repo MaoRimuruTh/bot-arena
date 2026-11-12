@@ -1,14 +1,27 @@
-import { h, openSheet, holo, toast, fmtDate } from "./util.js?v=20261112210526";
-import { fxText, kwGloss } from "./fxtext.js?v=20261112210526";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt, priceOf, setCode } from "./cards.js?v=20261112210526";
-import { Data, saveOwned, saveSkins, saveFavs, savePrices } from "./fb.js?v=20261112210526";
-import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261112210526";
-import { loadFaq, faqFor } from "./faq.js?v=20261112210526";
-import { CARD_SOURCE } from "./config.js?v=20261112210526";
+import { h, openSheet, holo, toast, fmtDate } from "./util.js?v=20261112215336";
+import { fxText, kwGloss } from "./fxtext.js?v=20261112215336";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt, priceOf, setCode } from "./cards.js?v=20261112215336";
+import { Data, saveOwned, saveSkins, saveFavs, savePrices } from "./fb.js?v=20261112215336";
+import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261112215336";
+import { loadFaq, faqFor } from "./faq.js?v=20261112215336";
+import { CARD_SOURCE } from "./config.js?v=20261112215336";
 
+// opts.seat: in a game, the card's owner (their skin shows) · opts.info: a way to read the card first (right-click or hold
+// it, or the magnifier in its corner) without choosing it
 export function cardBtn(id, opts = {}) {
-  const c = card(id); const b = h("button", { class: "ccard" + (opts.cls ? " " + opts.cls : "") + (opts.note ? " noted" : ""), type: "button", "aria-label": c ? c.n + (opts.note ? " · " + opts.note : "") : "การ์ด", title: c ? c.n : "", onclick: opts.onclick });
-  if (c) b.append(artImg(c));
+  const c = card(id); const b = h("button", { class: "ccard" + (opts.cls ? " " + opts.cls : "") + (opts.note ? " noted" : ""), type: "button", "aria-label": c ? c.n + (opts.note ? " · " + opts.note : "") : "การ์ด", title: c ? c.n + (opts.info ? " · คลิกขวาหรือกดค้างเพื่อดูรายละเอียด" : "") : "", onclick: opts.onclick });
+  if (c) b.append(artImg(c, undefined, undefined, opts.seat));
+  if (opts.info) {
+    // a touch held on the card opens it (its timer, then `swallow` so the lift that follows does not also choose it);
+    // right-click, the menu key or Shift+F10 open it through contextmenu, and so does a long-press on Android
+    let timer = null, swallow = false; const stop = () => { clearTimeout(timer); timer = null; };
+    b.addEventListener("pointerdown", (e) => { swallow = false; stop(); if (e.pointerType !== "mouse") timer = setTimeout(() => { timer = null; swallow = true; opts.info(); }, 520); });
+    for (const ev of ["pointerup", "pointercancel", "pointerleave"]) b.addEventListener(ev, stop);
+    b.addEventListener("contextmenu", (e) => { e.preventDefault(); e.stopPropagation(); if (swallow) return; if (timer) { stop(); swallow = true; } opts.info(); });
+    b.addEventListener("click", (e) => { if (swallow) { swallow = false; e.preventDefault(); e.stopImmediatePropagation(); } }, true);
+    // the magnifier is for the mouse and the finger; the keyboard has the menu key (a control inside a button would be invalid)
+    b.append(h("span", { class: "look", "aria-hidden": "true", title: "ดูรายละเอียด", onclick: (e) => { e.preventDefault(); e.stopPropagation(); opts.info(); } }, "🔍"));
+  }
   if (opts.note) b.append(h("span", { class: "why" }, opts.note)); // why this card cannot be chosen
   if (opts.badge) b.append(h("span", { class: "badge" }, opts.badge));
   if (opts.own) b.append(h("span", { class: "own" }, opts.own));

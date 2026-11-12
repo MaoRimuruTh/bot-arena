@@ -687,6 +687,11 @@ table.t th{white-space:nowrap}
 .figview:active{cursor:grabbing}
 .figload{position:absolute;inset:0;display:grid;place-items:center}
 .figmoves button{min-width:4.5em}
+/* reading a card before choosing it: the magnifier in the corner of a choice */
+.ccard .look{position:absolute;top:4px;right:4px;z-index:3;display:grid;place-items:center;width:26px;height:26px;border-radius:50%;font-size:.78rem;line-height:1;
+  background:rgba(14,9,8,.78);border:1px solid rgba(216,168,74,.55);cursor:zoom-in;-webkit-touch-callout:none}
+.ccard .look:hover{background:rgba(216,168,74,.9)}
+.ccard{-webkit-touch-callout:none}
 .figbubble{position:absolute;left:0;top:0;width:clamp(72px,17%,120px);height:auto;pointer-events:none;transform-origin:92% 100%}
 .vprev{display:block;width:100%;max-width:100%;height:auto;border-radius:10px;border:1px solid rgba(216,168,74,.4);touch-action:none;cursor:grab;background:#0d0b12}
 .vprev:active{cursor:grabbing}
