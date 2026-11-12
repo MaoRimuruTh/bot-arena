@@ -1,11 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112083622";
-import { plain } from "./persona.js?v=20261112083622";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261112083622";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112083622";
-import { modPowerFor } from "./auras.js?v=20261112083622";
-import { Data } from "./fb.js?v=20261112083622";
-import { lsGet, clone } from "./util.js?v=20261112083622";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112083847";
+import { plain } from "./persona.js?v=20261112083847";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261112083847";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112083847";
+import { modPowerFor } from "./auras.js?v=20261112083847";
+import { Data } from "./fb.js?v=20261112083847";
+import { lsGet, clone } from "./util.js?v=20261112083847";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -205,7 +205,7 @@ export const H = {
         const payLoss = (a.pay || []).reduce((t, i) => t + H.value(s, P.hand.find((y) => y.i === i)), 0);
         let sc = -99;
         let bias = 0; { const sx = scriptOf(s, x); if (sx && sx.botHold) bias = sx.botHold(E, s, x, p) || 0; } // a card that is better kept in hand for now
-        if (a.type === "summon") { const fx = d.x && /จุติ/.test(d.x) ? H.opsScore(s, p, H.preview(s, { i: x.i, c: x.c, when: "summon", seat: p, exact: true })) : 0; sc = (d.pw || 0) + 2 + Math.max(0, fx) - payLoss * 0.45 + (P.av.length < 2 ? 3 : 0) + bias; }
+        if (a.type === "summon") { const fx = d.x && /จุติ/.test(d.x) ? H.opsScore(s, p, H.preview(s, { i: x.i, c: x.c, when: "summon", seat: p, exact: true })) : 0; sc = (d.pw || 0) + 2 + Math.max(0, fx) + csBonus(d) - payLoss * 0.45 + (P.av.length < 2 ? 3 : 0) + bias; } // csBonus: a lasting buff for every Avatar of ours
         else if (a.type === "build") sc = 3 + csBonus(d) - payLoss * 0.3;
         else if (a.type === "cast" && d.st === "L") sc = E.lands(s).some((l) => l.o === p) ? -1 : E.lands(s).length && !E.landSc(s, "splitLand") ? 3 : 2.5; // ours replaces theirs: their Land goes too
         else if (a.type === "cast" && d.st === "D") { const host = P.av.find((y) => y.i === a.on); const sm = scriptOf(s, x); const b = sm && sm.modV ? sm.modV(E, s, x, host) : modBonus(d.x) || (host ? modPowerFor(E, s, x, host) : 0) || gearV(d.x); sc = b > 0 && host ? b + (host.a ? 1.5 : 0) + E.power(s, host) * 0.1 : -1; }
@@ -260,7 +260,8 @@ export const H = {
       if (o.op === "draw") v += o.seat === p ? (s.P[p].hand.length < 7 ? 1.5 : 0.3) * (o.n || 1) : -1.2 * (o.n || 1);
       else if (o.op === "mill") v += o.seat === p ? -0.2 * (o.n || 1) : 0.3 * (o.n || 1);
       else if (o.op === "destroy") { const L = E.locate(s, o.i); v += L ? (L.p === p ? -(2 + E.power(s, L.x) * 0.6 + (E.def(s, L.x).c || 0) * 0.3 - (L.x.tok ? 1 : 0)) : 5 + E.power(s, L.x) * 0.6) : 0; } // ours: a weak one costs less than a strong one
-      else if (o.op === "move" && o.to === "hand") { const L = E.locate(s, o.i); v += L && L.p !== p ? 4 : -2; }
+      else if (o.op === "move" && o.to === "hand") { const L = E.locate(s, o.i); const field = L && ["av", "cs", "mg"].includes(L.z); // a card from a Deck or hell to its owner's hand, or one bounced off the table
+        v += !L ? 0 : L.p !== p ? (field ? 4 : -1.2) : field ? -2 : 1.6; }
       else if (o.op === "power") { const L = E.locate(s, o.i); v += L ? ((L.p === p) === (o.n > 0) ? Math.abs(o.n) * (s.turn > 1 ? 0.8 : 0.3) : -Math.abs(o.n)) : 0; }
       else if (o.op === "wake") { const L = E.locate(s, o.i); const mine = L && L.p === p; v += !L ? 0 : o.v === false ? (mine ? -2 : 2) : mine ? (L.x.a ? 0 : 2) : -2; }
       else if (["search", "scout", "fromHell"].includes(o.op)) v += 2.5;
