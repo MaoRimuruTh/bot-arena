@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261112062602";
-import { E } from "./engine.js?v=20261112062602";
-import { h } from "./util.js?v=20261112062602";
-import { Sfx } from "./sfx.js?v=20261112062602";
+import { card, resolveArt, colorHex, corsUrl, artImg } from "./cards.js?v=20261112072349";
+import { E } from "./engine.js?v=20261112072349";
+import { h } from "./util.js?v=20261112072349";
+import { Sfx } from "./sfx.js?v=20261112072349";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -935,7 +935,7 @@ async function animateEvent(ev, prev, s, V) {
   } else if (ev.k === "destroy") {
     Sfx.play("destroy"); const p = pos(ev.i); if (p) { popText(p.clone().setY(1), "BREAK", "#ff4d55"); burst(p.clone().setY(0.6), { n: 16, color: 0xff8a3a, size: 0.2, spread: 2.4 }); }
   } else if (ev.k === "cast") {
-    const d = s.cards[(E.locate(s, ev.i) || { x: { c: "" } }).x.c]; const mco = d && d.co; const mpos = new THREE.Vector3(0, 0, mineSide(ev.p) ? 3.9 : -4.4);
+    const d = s.cards[(E.locate(s, ev.i) || { x: { c: "" } }).x.c]; const mco = d && d.co; const hp = ev.on != null ? pos(ev.on) : null; /* a Modification rises where it is worn */ const mpos = hp ? hp.clone().setY(0) : new THREE.Vector3(0, 0, mineSide(ev.p) ? 3.9 : -4.4);
     Sfx.play(ev.st === "L" ? "land" : "cast", { color: mco });
     pillar(mpos, mco ? colorHex(mco) : ev.st === "L" ? 0x8fb0ff : 0xc9a2ff); burst(new THREE.Vector3(0, 0.6, -0.2), { n: 16, map: R.FX.star_06, color: 0xbfd0ff, spread: 3 });
     if (ev.st === "L") decal(R.FX.magic_02, new THREE.Vector3(0, 0, -0.2), mco ? colorHex(mco) : 0x8fb0ff, 9, 1.8, 1.2); else if (mco) colorFx(mpos, mco, 0.8);

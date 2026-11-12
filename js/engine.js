@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261112062602";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261112062602";
-import { SCRIPTS } from "./scripts.js?v=20261112062602";
-import { newId, clone } from "./util.js?v=20261112062602";
+import { card, kwHas, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, colorIs } from "./cards.js?v=20261112072349";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261112072349";
+import { SCRIPTS } from "./scripts.js?v=20261112072349";
+import { newId, clone } from "./util.js?v=20261112072349";
 export const ZONES = ["deck", "hand", "av", "mg", "cs", "hell", "dark", "life"];
 export const ZONE_TH = { deck: "Deck", hand: "มือ", av: "Avatar Zone", mg: "Magic Zone", cs: "Construct Zone", hell: "นรก", dark: "มิติมืด", life: "LIFE", land: "Land Magic" };
 export const PHASE_TH = { mull: "เปลี่ยนมือ", draw: "Draw", main: "Main", battle: "Battle", end: "End", over: "จบเกม" };
@@ -427,12 +427,19 @@ export const E = {
     const P = s.P[p]; const tgt = P.hand.find((x) => x.i === i); if (!tgt) return null;
     const td = E.def(s, tgt); const cost = costOverride != null ? costOverride : E.costOf(s, p, tgt); if (cost === 0) return [];
     const el = P.hand.filter((x) => x.i !== i && !exclude.includes(x.i)).filter((x) => { const d = E.def(s, x); const sc = hk(s, x); return E.gemOf(s, p, x, td) > 0 && !(x.borrow && false) && !(s.ban && s.ban[p].includes(d.n)) && !(d.gc && td.co && d.gc !== td.co && !(traits(td) || {}).anyColor) && !(sc && sc.payOnly && !sc.payOnly(td)); }).slice(0, 12);
-    const val = (x) => { const d = E.def(s, x); return d.t === "A" ? (d.pw || 0) + (d.c || 0) * 0.6 + (d.o1 ? 20 : 0) : d.t === "C" ? 4 : 2.2; };
+    // what each card is worth keeping: Avatars by POWER and Cost, a React held for the other side's turn a little more
+    // than a plain Magic, and a Modification one of our Avatars can wear now more again (more still when its card's
+    // script says what it is worth there, e.g. หยินหยางทอร์นาโด on ตั๊กแตนหยิน), so combo pieces are not paid away first
+    const val = (x) => { const d = E.def(s, x); if (d.t === "A") return (d.pw || 0) + (d.c || 0) * 0.6 + (d.o1 ? 20 : 0); if (d.t === "C") return 4;
+      if (d.st === "R") return 2.8;
+      if (d.st === "D") { let b = 0; try { const sc = scriptOf(s, x); for (const h of P.av) if (E.modOk(s, x, h)) b = Math.max(b, 1.2 + (sc && sc.modV ? Math.max(0, Math.min(4, sc.modV(E, s, x, h) || 0)) : 0)); } catch { b = 0; } return 2.2 + b; }
+      return 2.2; };
+    const V = new Map(el.map((x) => [x.i, val(x)]));
     let best = null;
     for (let m = 1; m < 1 << el.length; m++) {
       const pick = el.filter((_, k) => m & (1 << k)); const r = E.canPay(s, p, td, pick.map((x) => x.i), cost);
       if (!r.ok) continue;
-      const score = pick.reduce((a, x) => a + val(x), 0) + pick.length * 0.4;
+      const score = pick.reduce((a, x) => a + V.get(x.i), 0) + pick.length * 0.4;
       if (!best || score < best.score) best = { score, pay: pick.map((x) => x.i) };
     }
     return best ? best.pay : null;
@@ -554,11 +561,11 @@ export const E = {
         for (const { x: y, L: Ly } of fieldCards(s)) { if (y.mute) continue; const sy = scriptOf(s, y); if (sy && sy.magicSeen && (!sy.magicSeenOk || sy.magicSeenOk(E, s, y, Ly, d, p))) s.trig.push({ id: tid(s), seat: Ly.p, i: y.i, c: y.c, when: "magicSeen", by: p, mi: x.i }); }
         for (const y of s.P[1 - p].hand) { const sh = scriptOf(s, y); if (sh && sh.handMagic && (!sh.handMagicOk || sh.handMagicOk(E, s, y, d))) s.trig.push({ id: tid(s), seat: 1 - p, i: y.i, c: y.c, when: "handMagic", optional: true }); }
         if (s.neko) for (const q of [0, 1]) { const nk = s.neko[q]; if (nk && nk.until >= s.turn && nk.st === st) E.op(s, { op: "draw", seat: q, n: 1 }, q); }
-        if (st === "D" && act.on == null && (scriptOf(s, x) || {}).castFree) { P.mg.push(x); E.log(s, p, `ใช้ Modification Magic ${d.n}`); E.addTrig(s, p, x, "cast", { toHell: true }); }
+        if (st === "D" && act.on == null && (scriptOf(s, x) || {}).castFree) { P.mg.push(x); E.log(s, p, `ใช้ Modification Magic ${d.n}`); E.ev(s, { k: "cast", i: x.i, p, st: "D" }); E.addTrig(s, p, x, "cast", { toHell: true }); }
         else if (st === "D") {
           const host = E.locate(s, act.on); need(host && host.z === "av", "ต้องเลือก Avatar บนสนามเพื่อสวมใส่");
           need(E.modOk(s, x, host.x), "สวมใส่ให้ Avatar ใบนี้ไม่ได้ (ไม่ตรงเงื่อนไขของการ์ด)");
-          x.on = act.on; P.mg.push(x); E.log(s, p, `สวมใส่ ${d.n} ให้ ${E.name(s, host.x)}`);
+          x.on = act.on; P.mg.push(x); E.log(s, p, `สวมใส่ ${d.n} ให้ ${E.name(s, host.x)}`); E.ev(s, { k: "cast", i: x.i, p, st: "D", on: act.on });
           { const sc = scriptOf(s, x); if (sc ? !!sc.cast : !E.ext.modCast || E.ext.modCast(d.x)) E.addTrig(s, p, x, "cast", { on: act.on }); }
           E.gotMod(s, host.x, x);
         } else if (st === "L") { need(!E.landSc(s, "noLand"), "ใช้ Land Magic ไม่ได้ (Land Magic บนสนาม)"); need(!(s.landLock && s.landLock[p] >= s.turn), "ใช้ Land Magic ไม่ได้ในตอนนี้ (ความสามารถของฝ่ายตรงข้าม)"); need(!fieldCards(s).some(({ x: y, L: Ly }) => Ly.p !== p && !y.mute && (scriptOf(s, y) || {}).landBlock && scriptOf(s, y).landBlock(E, s, y, Ly)), "ใช้ Land Magic ไม่ได้ (ความสามารถของฝ่ายตรงข้าม)");
