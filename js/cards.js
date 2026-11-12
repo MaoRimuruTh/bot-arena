@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261112123626";
-import { h } from "./util.js?v=20261112123626";
-import { Data } from "./fb.js?v=20261112123626";
+import { CARD_SOURCE } from "./config.js?v=20261112124046";
+import { h } from "./util.js?v=20261112124046";
+import { Data } from "./fb.js?v=20261112124046";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -250,7 +250,7 @@ export function validateDeck(d) {
   const life = (d.life || []).map(card).filter(Boolean); const ln = new Set(life.map((c) => c.n));
   out.push({ ok: life.length === 5 && ln.size === 5 && life.every((c) => c.t === "L"), msg: `LIFE ${life.length}/5 ใบ` + (ln.size < life.length ? " (ชื่อซ้ำ)" : "") });
   if (ents.some((e) => e.c.fl === "le")) out.push({ ok: true, warn: true, msg: "มีการ์ดลำเอียง ใช้แข่งงานทางการไม่ได้" });
-  if (ents.some((e) => e.c.fl === "dj")) out.push({ ok: true, warn: true, msg: "มีการ์ดโดนใจ เล่นในเกมได้ แต่ใช้แข่งงานจริงไม่ได้" });
+  // Rule Book 3.2: "โดนใจ" (a collaboration card) goes in a Deck and plays at events as usual, so it carries no mark
   // the official limits (การ์ดบาป) are rules of the Deck here: a Deck over them cannot be played, except the official
   // Starter / box Decks as sold, which play as they are and are marked as not allowed at events
   const B = banlist(); if (B) { const ban = banIssues(d), sold = !!(d.starter || d.box) && !d.ciel;
