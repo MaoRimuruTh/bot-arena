@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261112140652";
-import { h } from "./util.js?v=20261112140652";
-import { Data } from "./fb.js?v=20261112140652";
+import { CARD_SOURCE } from "./config.js?v=20261112144714";
+import { h } from "./util.js?v=20261112144714";
+import { Data } from "./fb.js?v=20261112144714";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -22,10 +22,12 @@ const KW_TRIG = new Set(["จุติ", "คำสั่งเสีย"]);
 // is position i inside a {red …} block? Those hold reminder text or an ability granted to something else, never the card's own
 const redClose = (t, a) => { let d = 0; for (let j = a; j < t.length; j++) { if (t[j] === "{") d++; else if (t[j] === "}" && --d === 0) return j; } return t.length; };
 export const inRed = (t, i) => { for (let a = t.lastIndexOf("{red", i); a >= 0; a = a > 0 ? t.lastIndexOf("{red", a - 1) : -1) if (redClose(t, a) > i) return true; return false; };
+// "[Link ชื่อ]" opens the abilities a card only has while it is in Link (สถานะคู่หู): everything after it up to the "#" rules
+const LINK_OPEN = /\[\s*Link\s+[^\]]+\]/;
 function ownKw(t, i, k, depth) {
   if (inRed(t, i)) return false;
   const p = t.slice(0, i); const tail = (p.match(/[\s"“”'#\-•*·]*$/) || [""])[0]; let core = p.slice(0, p.length - tail.length);
-  if (!core) return true;
+  if (!core || /\[\s*Link\s+[^\]]+\]$/.test(core)) return true;
   if (tail.includes("\n") && !KW_REF.test(core)) return true;
   // the keyword before it (skipping that keyword's reminder text) decides
   const bare = core.replace(/\{red\s*\([^{}]*\)\s*\}$/, "").replace(/\([^()]*\)$/, "").replace(/[\s"“”']+$/, "");
@@ -34,6 +36,12 @@ function ownKw(t, i, k, depth) {
   return KW_TRIG.has(k) && !KW_REF.test(core) && /^\s*(?:[:：(]|\{red\s*\()/.test(t.slice(i + k.length));
 }
 export function kwHas(t, k) { t = String(t || ""); for (let i = t.indexOf(k); i >= 0; i = t.indexOf(k, i + 1)) if (ownKw(t, i, k, 0)) return true; return false; }
+// 0: the card does not have the keyword · 1: it always has it · 2: only while it is in Link (it stands in the "[Link …]" part)
+export function kwWhere(t, k) {
+  t = String(t || ""); const m = LINK_OPEN.exec(t); const a = m ? m.index : -1; const b = a < 0 ? -1 : t.indexOf("#", a); let link = false;
+  for (let i = t.indexOf(k); i >= 0; i = t.indexOf(k, i + 1)) if (ownKw(t, i, k, 0)) { if (a < 0 || i < a || (b >= 0 && i > b)) return 1; link = true; }
+  return link ? 2 : 0;
+}
 
 const TYPE = { Avatar: "A", Magic: "M", Construct: "C", Life: "L", Token: "T" };
 const SUB = { Normal: "N", Modification: "D", React: "R", Land: "L" };
@@ -228,7 +236,7 @@ export function banIssues(d, B = banlist()) {
   if (k("เมียพระอิศวร") && !av.filter((c) => nn(c.n) !== "เมียพระอิศวร").every((c) => nn(c.sy) === "เทพ" || /เทพ/.test(c.x || ""))) out.push("มี เมียพระอิศวร แล้ว Avatar ทุกใบต้องเป็น Symbol เทพ หรือมี เทพ ใน Text Box");
   if (k("ดาบศักดิ์สิทธิ์ เอกซ์คาลิเบอร์") && !av.every((c) => /อัศวินโต๊ะกลม/.test(c.n) || !c.x || /อัศวินโต๊ะกลม/.test(c.x))) out.push("มี ดาบศักดิ์สิทธิ์ เอกซ์คาลิเบอร์ แล้ว Avatar ทุกใบต้องชื่อหรือมี \"อัศวินโต๊ะกลม\" ใน Text Box");
   if (k("สัญญาเลือด") && only && nn(only.c.sy) !== "นรก") out.push("มี สัญญาเลือด แล้ว Only #1 ต้องเป็นการ์ด Symbol นรก");
-  return out;
+  return [...new Set(out)]; // a name listed twice (two spellings in the official list) is reported once
 }
 
 // ----- decks -----

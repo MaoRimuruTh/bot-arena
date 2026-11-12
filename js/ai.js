@@ -1,11 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112140652";
-import { plain } from "./persona.js?v=20261112140652";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261112140652";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112140652";
-import { modPowerFor } from "./auras.js?v=20261112140652";
-import { Data } from "./fb.js?v=20261112140652";
-import { lsGet, clone } from "./util.js?v=20261112140652";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261112144714";
+import { plain } from "./persona.js?v=20261112144714";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261112144714";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261112144714";
+import { modPowerFor } from "./auras.js?v=20261112144714";
+import { Data } from "./fb.js?v=20261112144714";
+import { lsGet, clone } from "./util.js?v=20261112144714";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -61,6 +61,7 @@ export const RULES = `กติกา Battle of Talingchan (สรุปจา�
 - โจมตี LIFE สำเร็จหงาย 1 ใบจากบนสุด ความสามารถ LIFE ทำงาน. หงายครบ 5 = สาหัส; ถูกโจมตี LIFE อีกครั้งขณะสาหัส = แพ้. การ์ดใน Deck เหลือ 0 ใบเมื่อไร = แพ้ทันที (หมดพร้อมกันทั้งสองฝ่าย = เสมอ).
 - ใช้ผลของการ์ดต้องทำได้ครบทุกส่วน: ถ้าส่วนที่ไม่ใช่ "สามารถ" ไม่มีเป้าหมายหรือทำไม่ได้ (เช่น บีมตอนอีกฝ่ายไม่มี Avatar) จะใช้ความสามารถนั้นไม่ได้เลยและไม่ต้องจ่าย Cost.
 - คีย์เวิร์ด: จุติ (ทำงานเมื่ออัญเชิญแบบจ่าย Cost), คำสั่งเสีย (ทำงานเมื่อถูกทำลายลงนรก), เซ่นไหว้ (ทำลายการ์ดฝ่ายเราเป็นค่าใช้จ่าย), พอดี (จ่าย GEM พอดีกับ Cost), สอดแนม (ดูการ์ดบนสุดของ Deck), ธรณีสูบ (ส่งการ์ดบนสุดของ Deck ลงนรก), สามัคคี (ให้ Avatar ที่ตื่นนอนแล้วบวก POWER ให้ผู้โจมตี), แทงหลัง (+1), โล่มนุษย์ (รับการโจมตีแทน), เตะไข่ (ตีLIFEได้แม้มี Avatar), เนรเทศ (ไปมิติมืด), เทิร์นละครั้ง, ต่อเนื่อง, สั่งใช้.
+- สถานะคู่หู [Link X]: เมื่อบน Avatar Zone เรามี X อยู่ด้วย ผู้เล่นสั่งให้ทั้งสองใบเข้า Link ได้เทิร์นละ 1 คู่ (ใบหนึ่งอยู่ได้คู่เดียว) ความสามารถหลัง [Link X] ใช้ได้เฉพาะตอนอยู่ใน Link · ใบใดออกจาก Avatar Zone อีกใบออกจาก Link · Avatar ใน Link ถูกเปลี่ยนการควบคุมไม่ได้.
 - เครื่องหมาย "...." ในชื่อหมายถึงการ์ดที่มีคำนั้นในชื่อ. {Symbol X} หมายถึง Avatar ที่มี Symbol X. หารปัดลง.`;
 
 export function stateText(s, view, opts = {}) {
@@ -69,7 +70,7 @@ export function stateText(s, view, opts = {}) {
   L.push(`เทิร์น ${s.turn} · เฟส ${PHASE_TH[s.phase]} · ตาเดินของ ${s.P[s.active].name}${s.active === view ? " (ฝ่ายคุณ)" : " (ฝ่ายตรงข้าม)"}`);
   const zone = (P, z) => P[z].map((x) => {
     const d = E.def(s, x); let t = `#${x.i} ${d.n}`;
-    if (z === "av") t += ` [POWER ${E.power(s, x)}${(x.pm || x.tm) ? ` ฐาน${d.pw || 0}` : ""}, ${x.a ? "ตื่น" : "นอน"}${d.sy ? ", " + d.sy : ""}${d.co ? ", สี" + d.co : ""}${x.tok ? ", Token" : ""}${(x.kw || []).length ? ", ได้รับ " + x.kw.join("/") : ""}]`;
+    if (z === "av") t += ` [POWER ${E.power(s, x)}${(x.pm || x.tm) ? ` ฐาน${d.pw || 0}` : ""}, ${x.a ? "ตื่น" : "นอน"}${d.sy ? ", " + d.sy : ""}${d.co ? ", สี" + d.co : ""}${x.tok ? ", Token" : ""}${(x.kw || []).length ? ", ได้รับ " + x.kw.join("/") : ""}${x.lk ? ", Link กับ #" + x.lkp : ""}]`;
     else if (z === "cs") t += ` [Construct POWER ${E.power(s, x)}]`;
     else if (z === "mg") t += x.on ? ` [สวมใส่ #${x.on}]` : "";
     else if (z === "hand") t += ` [${TYPE_TH[d.t]}${d.st ? "/" + SUB_TH[d.st] : ""}${d.c != null && d.t !== "M" ? " C" + d.c : ""} G${d.g || 0}${d.gc ? "(" + d.gc + ")" : ""}${d.pw != null ? " P" + d.pw : ""}${d.co ? " " + d.co : ""}]`;
@@ -190,7 +191,7 @@ export const H = {
       const sh = moves.filter((m) => m.a.shield).map((m) => ({ m, p: E.power(s, E.locate(s, m.a.shield).x), v: H.value(s, E.locate(s, m.a.shield).x) })).sort((a, b) => b.p - a.p)[0];
       // a forced โล่มนุษย์ (ลิโป้): one that wins the fight, otherwise the cheapest one
       if (!moves.some((m) => m.a.type === "respond" && !m.a.shield)) { const all = moves.filter((m) => m.a.shield).map((m) => { const y = E.locate(s, m.a.shield).x; return { m, p: E.power(s, y), v: H.value(s, y) }; }); const w = all.filter((z) => z.p > ap).sort((a, b) => a.v - b.v)[0] || all.sort((a, b) => a.v - b.v)[0]; if (w) return w.m; }
-      if (sh && (s.pend.tk === "life" ? sh.p >= ap - 1 : sh.p > ap)) return sh.m;
+      if (sh && (s.pend.tk === "life" ? sh.p >= ap - 1 || E.critical(P) : sh.p > ap)) return sh.m; // a LIFE hit that would end the game: any shield
       // abilities that answer an attack (นักรบ ฮอล, อาจารย์หลี): their scripts say when it is worth it
       for (const m of moves.filter((m) => m.a.type === "answer")) { const L = E.locate(s, m.a.i); const sc = L && scriptOf(s, L.x); if (sc && sc.answer.botOk && sc.answer.botOk(E, s, L.x, L, ap)) return m; }
       return moves[0];
@@ -211,6 +212,8 @@ export const H = {
         else if (a.type === "cast" && d.st === "L") sc = E.lands(s).some((l) => l.o === p) ? -1 : E.lands(s).length && !E.landSc(s, "splitLand") ? 3 : 2.5; // ours replaces theirs: their Land goes too
         else if (a.type === "cast" && d.st === "D") { const host = P.av.find((y) => y.i === a.on); const sm = scriptOf(s, x); const b = sm && sm.modV ? sm.modV(E, s, x, host) : modBonus(d.x) || (host ? modPowerFor(E, s, x, host) : 0) || gearV(d.x); sc = b > 0 && host ? b + (host.a ? 1.5 : 0) + E.power(s, host) * 0.1 : -1; }
         else if (a.type === "cast" && d.st === "N") sc = H.opsScore(s, p, H.preview(s, { i: x.i, c: x.c, when: "cast", seat: p }));
+        else if (a.type === "cast" && d.st === "R") { const sr = scriptOf(s, x); let v = -99; // a React that names no moment, played in our own turn
+          if (sr && sr.react && sr.react.anytime && sr.react.botV) { try { v = sr.react.botV(E, s, p, null); } catch { v = -99; } } sc = v >= 3 ? v : -99; }
         if (a.via != null) sc += 4; // ซาร์อึก: a dragon for almost nothing
         cand.push({ m, sc, bias });
       }
@@ -229,18 +232,25 @@ export const H = {
     }
     if (s.phase === "battle") {
       const tr = moves.find((m) => m.a.type === "activate" && /แปลงร่าง|โจมตีได้/.test(m.d)); if (tr) return tr; // transform / unlock attacks before attacking
+      // their awake โล่มนุษย์ can take any attack (a LIFE attack too): the strongest one they could put in the way
+      const shieldP = (x, ti) => (x.nsh === s.turn ? -1 : Math.max(-1, ...O.av.filter((y) => y.a && y.i !== ti && E.kw(s, y, "โล่มนุษย์")).map((y) => E.power(s, y))));
       const atk = moves.filter((m) => m.a.type === "attack").map((m) => {
         const x = E.locate(s, m.a.i).x; const ap = E.power(s, x);
-        if (m.a.tk === "life") return { m, score: 50 + (E.critical(O) ? 100 : 0) };
+        if (m.a.tk === "life") { const sp = shieldP(x, null); // they block when the shield holds (or when the hit would end the game)
+          if (sp >= 0 && (sp >= ap - 1 || E.critical(O))) return { m, score: ap > sp ? 20 + sp : ap === sp ? 4 : -8 };
+          return { m, score: 50 + (E.critical(O) ? 100 : 0) }; }
         const t = E.locate(s, m.a.ti).x; const tp = E.power(s, t);
         if (m.a.tk === "cs") return { m, score: ap > tp ? 8 : -5 };
+        if (m.a.tk === "av" && shieldP(x, t.i) > ap) return { m, score: -10 }; // a stronger shield steps in and our attacker loses
         if (ap > tp) return { m, score: 20 + tp };
         if (m.a.tk === "av") { // can สามัคคี / แทงหลัง helpers turn this into a win?
           const helpers = P.av.map((y) => ({ y, hq: E.helpOf(s, p, x, y) })).filter((z) => z.hq && !z.hq.risky).map((z) => ({ i: z.y.i, b: z.hq.n })).sort((a, b) => a.b - b.b);
           let bonus = 0; const sup = []; for (const hlp of helpers) { if (ap + bonus > tp) break; bonus += hlp.b; sup.push(hlp.i); }
           if (ap + bonus > tp) return { m: { ...m, a: { ...m.a, sup } }, score: 14 + tp - sup.length * 2 };
         }
-        if (ap === tp) return { m, score: tp >= ap && E.def(s, t).c >= E.def(s, x).c ? 5 : -2 };
+        if (ap === tp) { const mine = E.kw(s, x, "ลูกฮึด"), theirs = E.kw(s, t, "ลูกฮึด"); // ลูกฮึด wins a tie against one without it
+          if (mine && !theirs) return { m, score: 20 + tp }; if (theirs && !mine) return { m, score: -10 };
+          return { m, score: tp >= ap && E.def(s, t).c >= E.def(s, x).c ? 5 : -2 }; }
         return { m, score: -10 };
       }).filter((z) => z.score > 0).sort((a, b) => b.score - a.score);
       if (H.look && H.lookAtk && atk.length) { const top = atk.slice(0, H.look + 1).map((z) => ({ ...z, lv: H.lookahead(s, p, z.m.a) })).filter((z) => z.lv != null);
