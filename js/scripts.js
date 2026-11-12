@@ -2728,7 +2728,7 @@ Object.assign(SCRIPTS, {
     // for the bots (it was never played in 104 test games): worth it on หยิน/หยาง while our face-up LIFE cards have something to use
     modV: (E, s, m, host) => { if (!host || !(E.named(s, host, "ตั๊กแตนหยิน") || E.named(s, host, "ตั๊กแตนหยาง"))) return 0; const up = s.P[host.o].life.filter((y) => y.up).length; return up ? 2 + Math.min(3, up) * 0.8 : 0.4; } },
   // อาวุธของเพมมุ ดาบมารไร้พ่าย: เพมมุ only, +1 · wearer attacks and wins: destroy an opposing Avatar of base POWER ≤ the loser's, then may destroy this and wake a เพมมุ
-  "BT10-069": { modOnly: (E, s, h) => { const L = E.locate(s, h.i); return E.named(s, h, "เพมมุ") && !(L && s.P[L.p].mg.some((z) => z.on != null && E.named(s, z, "อาวุธของเพมมุ"))); }, worn: () => 1,
+  "BT10-069": { modOnly: (E, s, h, m, stay) => { const L = E.locate(s, h.i); return E.named(s, h, "เพมมุ") && (stay || !(L && s.P[L.p].mg.some((z) => z.on != null && z !== m && E.named(s, z, "อาวุธของเพมมุ")))); }, worn: () => 1,
     hostWin: (c) => { const { E, s, seat: p, self: m } = c; const dp = c.t.dp | 0; const t = c.choose(s.P[1 - p].av.filter((y) => !E.noAim(s, y) && (E.def(s, y).pw || 0) <= dp).sort((a, b) => worth(E, s, b) - worth(E, s, a)), 1, `เลือก Avatar POWER ตั้งต้นไม่เกิน ${dp}`, { exact: true })[0];
       // FAQ: "เปลี่ยนสภาพ" says no state, so an awake เพมมุ goes to sleep and a sleeping one wakes (the sleeping one is the useful pick)
       const pm = s.P[p].av.filter((y) => E.named(s, y, "เพมมุ")).sort((a, b) => (a.a ? 1 : 0) - (b.a ? 1 : 0));
@@ -3171,13 +3171,13 @@ Object.assign(SCRIPTS, {
   // มือเปรี๊ยะ: they take a card from the Deck (not the Draw Phase draw): exile a random card from their hand
   "BT12-067": { react: { kinds: ["handed"], can: (E, s, p, on) => on.by === 1 - p && s.P[1 - p].hand.length > 0, botV: () => 3 }, cast: (c) => ({ explain: "สุ่มเนรเทศการ์ดบนมือฝ่ายตรงข้าม 1 ใบ", ops: [{ op: "exileRandom", seat: 1 - c.seat, n: 1 }] }) },
   // สมบัติศักดิ์สิทธิ์ แอสคาลอน: on ฮิมไลน์: +2 fighting {นรก} and unaffected by {นรก} cards · back to the Deck instead of going to hell with its wearer · up to 2 on our Magic Zone
-  "BT12-068": { modOnly: (E, s, h) => { const L = E.locate(s, h.i); return !(L && s.P[L.p].mg.filter((z) => z.on != null && E.named(s, z, "สมบัติศักดิ์สิทธิ์")).length >= 2); }, fallTo: "deck",
+  "BT12-068": { modOnly: (E, s, h, m, stay) => { const L = E.locate(s, h.i); return !!stay || !(L && s.P[L.p].mg.filter((z) => z.on != null && z !== m && E.named(s, z, "สมบัติศักดิ์สิทธิ์")).length >= 2); }, fallTo: "deck",
     hostFight: (c) => { const { E, s, self: m } = c; const H = m && m.on != null ? E.locate(s, m.on) : null; const F = c.t.foe != null ? E.locate(s, c.t.foe) : null; return H && F && E.named(s, H.x, "ฮิมไลน์") && sy(E, s, F.x, "นรก") ? { explain: `${E.name(s, H.x)} POWER +2 จนจบการต่อสู้`, ops: [{ op: "power", i: H.x.i, n: 2, temp: "fight" }] } : { explain: "", ops: [] }; },
     proofFrom: (E, s, m, host, src) => E.named(s, host, "ฮิมไลน์") && String(src.sy || "").includes("นรก") },
   // ชิป Tank Ranger A.I.: only on a {หุ่นยนต์} รถถัง, +2 · pays only for รถถัง {หุ่นยนต์} or Tank Ranger
   "BT12-069": { modOnly: (E, s, h) => E.named(s, h, "รถถัง") && sy(E, s, h, "หุ่นยนต์"), worn: () => 2, payOnly: (td) => td.t === "A" && ((String(td.n || "").includes("รถถัง") && String(td.sy || "").includes("หุ่นยนต์")) || String(td.n || "").includes("Tank Ranger")) },
   // อาวุธของเพมมุ มาโกะชิลด์: เพมมุ only (one อาวุธของเพมมุ) · destroyed instead of its wearer · start of our Main Phase: flip our top LIFE or this goes to hell
-  "BT12-070": { modOnly: (E, s, h) => { const L = E.locate(s, h.i); return E.named(s, h, "เพมมุ") && !(L && s.P[L.p].mg.some((z) => z.on != null && E.named(s, z, "อาวุธของเพมมุ"))); }, shield: true,
+  "BT12-070": { modOnly: (E, s, h, m, stay) => { const L = E.locate(s, h.i); return E.named(s, h, "เพมมุ") && (stay || !(L && s.P[L.p].mg.some((z) => z.on != null && z !== m && E.named(s, z, "อาวุธของเพมมุ")))); }, shield: true,
     mainStart: (c) => { const { E, s, seat: p, self: m } = c; if (!m || m.on == null) return { explain: "", ops: [] }; const best = E.critical(s.P[p]) || s.P[p].life.filter((y) => !y.up).length <= 2 ? 1 : 0; return c.mode(["หงาย LIFE ใบบนสุดของเรา 1 ใบ", "ส่งการ์ดใบนี้ลงนรก"], E.name(s, m), best) === 0 ? { explain: "หงาย LIFE ใบบนสุด 1 ใบ", ops: [{ op: "lifeFlip", seat: p }] } : { explain: `${E.name(s, m)} ลงนรก`, ops: [{ op: "move", i: m.i, to: "hell" }] }; } },
   // โลกระหว่างความเป็นและความตาย: {ผี} +1, {คน} -1
   "BT12-071": { aura: (E, s, src, L) => (L.z === "land" ? [0, 1].flatMap((q) => [{ seat: q, test: (y) => ghost(E, s, y), n: 1 }, { seat: q, test: (y) => sy(E, s, y, "คน"), n: -1 }]) : []) },
@@ -3623,7 +3623,7 @@ Object.assign(SCRIPTS, {
   "BT07-063": { modOnly: (E, s, h) => E.named(s, h, "จอมเวท"), magicSeenOk: (E, s, y, Ly, d) => y.on != null && /คาถา/.test(String((d && d.n) || "")),
     magicSeen: (c) => { const H = c.self && c.self.on != null ? c.E.locate(c.s, c.self.on) : null; return H && H.z === "av" ? { explain: `${c.E.name(c.s, H.x)} POWER +1 (ไม้กายสิทธิ์)`, ops: [{ op: "power", i: H.x.i, n: 1, temp: false }] } : { explain: "", ops: [] }; } },
   // อาวุธของเพมมุ ปืนพกรุ่น 19: worn by เพมมุ (one อาวุธของเพมมุ at a time); its wearer destroys an Avatar in a fight with 2+ POWER to spare → the opponent's top LIFE is flipped
-  "BT09-067": { modOnly: (E, s, h) => { const L = E.locate(s, h.i); return E.named(s, h, "เพมมุ") && !(L && s.P[L.p].mg.some((z) => z.on != null && E.named(s, z, "อาวุธของเพมมุ"))); },
+  "BT09-067": { modOnly: (E, s, h, m, stay) => { const L = E.locate(s, h.i); return E.named(s, h, "เพมมุ") && (stay || !(L && s.P[L.p].mg.some((z) => z.on != null && z !== m && E.named(s, z, "อาวุธของเพมมุ")))); },
     hostWin: (c) => { const H = c.self && c.self.on != null ? c.E.locate(c.s, c.self.on) : null; const hp = c.t.ap != null ? c.t.ap : H ? c.E.power(c.s, H.x) : 0;
       return hp - (c.t.dp || 0) >= 2 ? { explain: "หงาย LIFE ใบบนสุดของฝ่ายตรงข้าม 1 ใบ", ops: [{ op: "lifeFlip", seat: 1 - c.seat }] } : { explain: "POWER ต่างกันไม่ถึง 2", ops: [] }; } },
   // เยี่ยวรดศาล: only with an Avatar {มนุษย์} of Cost 3+ on our zone: a {ผี} Avatar of Cost 4 or less from the Deck, summoned as จุติ
