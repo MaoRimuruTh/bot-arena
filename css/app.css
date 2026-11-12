@@ -625,7 +625,7 @@ table.t th{white-space:nowrap}
 .ach{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 10px;border-radius:11px;background:var(--panel);border:1px solid var(--line-2);opacity:.78}
 .ach.done{opacity:1;border-color:rgba(232,186,92,.45)} .ach .ico{color:var(--gold);font-size:1.1rem;text-align:center} .ach b{font-weight:600}
 .ach .trk{height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden} .ach .trk i{display:block;height:100%;background:var(--gold)}
-.achpop{position:fixed;left:50%;top:calc(84px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:60;display:grid;gap:2px;justify-items:center;padding:12px 22px;border-radius:16px;border:1px solid rgba(232,186,92,.6);text-align:center;max-width:calc(100vw - 32px)}
+.achpop{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:60;display:grid;gap:2px;justify-items:center;padding:12px 22px;border-radius:16px;border:1px solid rgba(232,186,92,.6);text-align:center;max-width:calc(100vw - 32px)}
 .achpop b{font:700 1.15rem var(--f-display);color:var(--gold)}
 .seg.wrap{flex-wrap:wrap}
 /* watching a friend's game: the viewed player's hand as backs; two faces side by side in the lobby */

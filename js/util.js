@@ -38,7 +38,7 @@ export function openSheet(content, opts = {}) {
   const body = h("div", { class: "stack" }); sheet.append(body);
   const scrim = h("div", { class: "scrim", onclick: (e) => { if (e.target === scrim && !opts.noClose) close(); } }, sheet);
   document.body.append(scrim); stack.push(scrim);
-  const api = { close, body, set(c) { body.replaceChildren(...[].concat(c)); } };
+  const api = { close, body, set(c) { body.replaceChildren(...[].concat(c).filter((x) => x != null && x !== false)); } }; // (an optional line left out is null: nothing, not the word)
   api.set(typeof content === "function" ? content(api) : content);
   return api;
 }
