@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113232215";
-import { E } from "./engine.js?v=20261113232215";
-import { h } from "./util.js?v=20261113232215";
-import { Sfx } from "./sfx.js?v=20261113232215";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113234522";
+import { E } from "./engine.js?v=20261113234522";
+import { h } from "./util.js?v=20261113234522";
+import { Sfx } from "./sfx.js?v=20261113234522";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -233,12 +233,13 @@ export const MATS = { black: { name: "รักดำ", lac: "#120b09", edge: "r
 export const WINFX = { gold: { name: "ทองคำเปลวโปรย" }, lotus: { name: "กลีบบัวโปรย" }, lantern: { name: "โคมลอย" }, fireworks: { name: "พลุฉลอง" } };
 // the scene (สนาม, the map) round the table — not the cloth on it (ผ้าปู, the playmat above). Each viewer sees the one they chose.
 export const SCENES = { hall: { name: "โถงไม้แสงเทียน" }, pond: { name: "สวนสระบัว" }, market: { name: "ตลาดน้ำยามค่ำ" }, hell: { name: "นรกภูมิ" }, forest: { name: "ป่าหิมพานต์" }, deep: { name: "เมืองบาดาล" }, sakura: { name: "ซากุระราตรี" },
-  astral: { name: "หอดาราผลึก" }, azure: { name: "ลานเปลวคราม", owner: true } }; // owner: the owner's own (achieve.js opens it to him alone)
+  astral: { name: "หอดาราผลึก" }, studio: { name: "สตูดิโอกราไฟต์" }, azure: { name: "ลานเปลวคราม", owner: true } }; // owner: the owner's own (achieve.js opens it to him alone)
 // a scene that brings its own ground: how to build it, and the air round it (fog colour and thickness, sky and ground light, how strong)
 const GROUND = { pond: { build: () => buildPond(), air: [0x0f2a26, 0.019, 0xf2f6ff, 0x1c3320, 0.62] }, market: { build: () => buildMarket(), air: [0x04080f, 0.015, 0xaab8ff, 0x0a0a14, 0.4] },
   hell: { build: () => buildHell(), air: [0x140403, 0.02, 0xffa070, 0x2a0805, 0.5], noMotes: true },
   forest: { build: () => buildForest(), air: [0x0b1f1a, 0.02, 0xbfe8d8, 0x10241a, 0.5], noMotes: true },
   deep: { build: () => buildDeep(), air: [0x062636, 0.022, 0x9fdcff, 0x062030, 0.55], noMotes: true }, astral: { build: () => buildAstral(), air: [0x040918, 0.016, 0xb4d2ff, 0x070b20, 0.5], noMotes: true },
+  studio: { build: () => buildStudio(), air: [0x0b0d12, 0.02, 0xdfe6ff, 0x101318, 0.55], noMotes: true },
   azure: { build: () => buildAzure(), air: [0x030818, 0.017, 0x9fc4ff, 0x060a1c, 0.46], noMotes: true } };
 const avCache = new Map();
 const loadAvatar = (key, f) => {
@@ -1317,6 +1318,44 @@ function stepAstral(S, dt, t) {
   S.drops.forEach((d, i) => { o.position.set(d.x, d.y + Math.sin(t * d.sp + d.ph) * 0.18, d.z); o.rotation.set(0, t * 0.3 + d.ph, Math.sin(t * d.sp * 0.7 + d.ph) * 0.08); o.scale.set(d.s, d.s, d.s); o.updateMatrix(); S.dm.setMatrixAt(i, o.matrix); }); S.dm.instanceMatrix.needsUpdate = true;
   for (const f of S.steps) f(dt, t);
 }
+// ---------- สตูดิโอกราไฟต์: a quiet broadcast studio for the graphite mat ----------
+// A matt graphite floor with a faint grid that fades into the dark, a cool pool of light under the table, the table on a low
+// dark riser with a thin strip of blue light round its foot, and four slim pillars at the corners, each with a lit edge.
+// Nothing moves but the light breathing a little. Five batches, no lamps.
+const STUDIO = { wide: [[-10.2, -7.4], [10.2, -7.4], [-10.2, 6.0], [10.2, 6.0]], tall: [[-5.8, -8.8], [5.8, -8.8], [-5.8, 8.4], [5.8, 8.4]] };
+function studioFloorTexture() {
+  const n = 256, c = document.createElement("canvas"); c.width = c.height = n; const g = c.getContext("2d"), r = lcg(59);
+  g.fillStyle = "#24272e"; g.fillRect(0, 0, n, n);
+  for (let k = 0; k < 2600; k++) { g.fillStyle = r() < 0.5 ? "rgba(255,255,255,.025)" : "rgba(0,0,0,.06)"; g.fillRect(r() * n, r() * n, 1 + r() * 2, 1 + r() * 2); } // a fine matt grain
+  g.fillStyle = "rgba(150,170,220,.16)"; g.fillRect(0, 0, n, 2); g.fillRect(0, 0, 2, n); // one grid line on two edges: a square grid once repeated
+  g.fillStyle = "rgba(150,170,220,.07)"; g.fillRect(0, n / 2, n, 1); g.fillRect(n / 2, 0, 1, n);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(14, 10); t.anisotropy = 8; return t;
+}
+// the strip of light round the riser's foot: a soft rounded-rectangle glow on a transparent canvas
+function stripTexture(w, h) {
+  const S = 40, c = document.createElement("canvas"); c.width = Math.round(w * S); c.height = Math.round(h * S); const g = c.getContext("2d");
+  g.shadowColor = "#fff"; g.shadowBlur = 14; g.strokeStyle = "#fff"; g.lineWidth = 4; roundRect(g, 0.55 * S, 0.55 * S, c.width - 0.55 * S, c.height - 0.55 * S, 0.3 * S); g.stroke(); g.stroke();
+  return new THREE.CanvasTexture(c);
+}
+function buildStudio() {
+  const Q = R.Q, P = STUDIO[R.zones === ZONES.tall ? "tall" : "wide"], G = -0.335, grp = new THREE.Group(); grp.name = "studio"; R.scene.add(grp);
+  const S = { grp, zk: R.zones, o: new THREE.Object3D(), tex: [], step: stepStudio }, o = S.o, T = (t) => { S.tex.push(t); return t; };
+  const flat = (geo, mat, y, order = 0) => { const m = new THREE.Mesh(geo, mat); m.rotation.x = -Math.PI / 2; m.position.y = y; m.renderOrder = order; grp.add(m); return m; };
+  // the floor: lit round the table, falling away into the dark (the light painted into the vertex colours)
+  { const fg = new THREE.PlaneGeometry(70, 50, 28, 20), fp = fg.attributes.position, fc = new Float32Array(fp.count * 3);
+    for (let i = 0; i < fp.count; i++) { const x = fp.getX(i), z = -fp.getY(i) - 2 - MZ, d2 = x * x * 0.6 + z * z, v = 0.16 + 0.84 * Math.exp(-d2 / 110); fc[i * 3] = v * 0.95; fc[i * 3 + 1] = v * 0.97; fc[i * 3 + 2] = v; }
+    fg.setAttribute("color", new THREE.BufferAttribute(fc, 3)); flat(fg, new THREE.MeshBasicMaterial({ map: T(studioFloorTexture()), vertexColors: true }), G).position.z = -2; }
+  S.pool = new THREE.MeshBasicMaterial({ map: R.FX.dot, color: 0x5d7bff, transparent: true, opacity: 0.14, blending: THREE.AdditiveBlending, depthWrite: false }); flat(new THREE.PlaneGeometry(MW + 12, MD + 12), S.pool, G + 0.004, 1).position.z = MZ;
+  flat(new THREE.PlaneGeometry(MW + 1.7, MD + 1.7), new THREE.MeshBasicMaterial({ color: 0x15171c }), G + 0.008, 2).position.z = MZ; // the riser's top, round the table
+  S.strip = new THREE.MeshBasicMaterial({ map: T(stripTexture(MW + 2.9, MD + 2.9)), color: 0x4f7dff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false });
+  flat(new THREE.PlaneGeometry(MW + 2.9, MD + 2.9), S.strip, G + 0.012, 3).position.z = MZ;
+  // the pillars (one batch) and their lit edges (one batch)
+  const pm = new THREE.InstancedMesh(new THREE.BoxGeometry(0.55, 3.2, 0.55), new THREE.MeshStandardMaterial({ color: 0x1d2027, roughness: 0.55, metalness: 0.3 }), P.length);
+  S.edge = new THREE.MeshBasicMaterial({ color: 0x7d9cff, toneMapped: false }); const em = new THREE.InstancedMesh(new THREE.BoxGeometry(0.06, 2.6, 0.06), S.edge, P.length);
+  P.forEach(([x, z], i) => { o.position.set(x, G + 1.6, z); o.rotation.set(0, Math.atan2(-x, MZ - z), 0); o.updateMatrix(); pm.setMatrixAt(i, o.matrix); o.translateZ(0.3); o.updateMatrix(); em.setMatrixAt(i, o.matrix); }); grp.add(pm, em);
+  return S;
+}
+function stepStudio(S, dt, t) { S.pool.opacity = 0.13 + 0.025 * Math.sin(t * 0.5); S.strip.opacity = 0.72 + 0.12 * Math.sin(t * 0.8); }
 // the table's surroundings are the scene the viewer chose (สนาม), whatever cloth lies on the table
 function decor() {
   if (!R) return; const want = R.sceneKey;
@@ -1418,8 +1457,8 @@ function geoNode(c, cx, cy, r, ground) {
 }
 // a circle of light (an original design: rings, a scale, a band of small plain marks, two squares crossed in an eight-point star,
 // a hexagon with its spokes and six small circles on its corners). col: the stroke; a fixed seed, so it is the same every time
-function lightCircle(c, cx, cy, R0, col) {
-  const r = lcg(811), lw = Math.max(1, R0 * 0.006), ring = (k, w = 1) => { c.lineWidth = lw * w; c.beginPath(); c.arc(cx, cy, R0 * k, 0, 7); c.stroke(); };
+function lightCircle(c, cx, cy, R0, col, wk = 1) { // wk: line weight, ×1 on a mat
+  const r = lcg(811), lw = Math.max(1, R0 * 0.006 * wk), ring = (k, w = 1) => { c.lineWidth = lw * w; c.beginPath(); c.arc(cx, cy, R0 * k, 0, 7); c.stroke(); };
   const P = (a, k) => [cx + Math.cos(a) * R0 * k, cy + Math.sin(a) * R0 * k];
   c.save(); c.strokeStyle = c.fillStyle = col; c.lineCap = "round";
   ring(1, 1.6); ring(0.955); ring(0.74, 1.2); ring(0.7); ring(0.46, 1.1); ring(0.2);
@@ -1629,6 +1668,16 @@ function sigilTexture(kind = "lotus") {
     const path = () => { g.beginPath(); g.moveTo(...P(d0, -w * 0.5)); g.bezierCurveTo(...P(d0 + L * 0.3, -w * 1.1), ...P(d0 + L * 0.78, -w * 0.62), ...P(d1, 0)); g.bezierCurveTo(...P(d0 + L * 0.78, w * 0.62), ...P(d0 + L * 0.3, w * 1.1), ...P(d0, w * 0.5)); g.closePath(); };
     g.save(); g.shadowBlur = 0; if (edge) { path(); g.strokeStyle = "#000"; g.lineWidth = 5; g.stroke(); } g.restore(); path(); g.fill();
     g.save(); g.shadowBlur = 0; g.fillStyle = "#000"; g.beginPath(); g.moveTo(...P(d0 + L * 0.18, 0)); g.quadraticCurveTo(...P(d0 + L * 0.48, w * 0.3), ...P(d0 + L * 0.8, 0)); g.quadraticCurveTo(...P(d0 + L * 0.48, -w * 0.3), ...P(d0 + L * 0.18, 0)); g.fill(); g.restore(); };
+  // the geometric looks' own circles (chosen by lookOf, never in the settings list): a circle of light (กระจกดารา), or a lock-on ring
+  // with a scale, a hexagon and four chevrons pointing in (กราไฟต์)
+  if (kind === "g_glass") { lightCircle(g, C, C, 238, "#fff", 2.4); return new THREE.CanvasTexture(c); }
+  if (kind === "g_pro") {
+    ring(238, 3); g.lineWidth = 12; for (let k = 0; k < 4; k++) { const a = (k * Math.PI) / 2 + 0.22; g.beginPath(); g.arc(C, C, 214, a, a + Math.PI / 2 - 0.44); g.stroke(); }
+    g.lineWidth = 3; for (let k = 0; k < 60; k++) { const a = (k / 60) * Math.PI * 2; g.beginPath(); g.moveTo(...at(a, 194)); g.lineTo(...at(a, k % 5 ? 184 : 172)); g.stroke(); }
+    ring(158, 2.5); g.lineWidth = 6; g.beginPath(); for (let k = 0; k < 6; k++) g[k ? "lineTo" : "moveTo"](...at((k * Math.PI) / 3 + Math.PI / 6, 118)); g.closePath(); g.stroke();
+    g.lineWidth = 5; for (let k = 0; k < 4; k++) { const a = (k * Math.PI) / 2; g.beginPath(); g.moveTo(...at(a - 0.13, 150)); g.lineTo(...at(a, 130)); g.lineTo(...at(a + 0.13, 150)); g.stroke(); }
+    ring(54, 2); g.beginPath(); g.arc(C, C, 24, 0, 7); g.fill(); return new THREE.CanvasTexture(c);
+  }
   ring(238, 7); ring(222, 2);
   if (kind === "azure") { // เปลวคราม: twelve tongues of flame leaning the same way round a drop at the heart, sparks between the rings
     ring(150, 4); ring(64, 3);
@@ -1673,7 +1722,7 @@ function sigilTexture(kind = "lotus") {
   }
   return new THREE.CanvasTexture(c);
 }
-const sigilTex = (kind) => (R.sigilTexs[kind] = R.sigilTexs[kind] || sigilTexture(SIGILS[kind] ? kind : "lotus"));
+const sigilTex = (kind) => (R.sigilTexs[kind] = R.sigilTexs[kind] || sigilTexture(SIGILS[kind] || kind === "g_glass" || kind === "g_pro" ? kind : "lotus"));
 // a card face: the official art drawn unlit, plus a light that sweeps across the laminate, holo foil on rare prints,
 // a white hit flash, and the burn that eats the card from its edges when it is destroyed
 const FACE_HOOK = function (sh) {
@@ -1699,7 +1748,42 @@ vec3 hue(float x) { return clamp(abs(mod(x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3
   gl_FragColor = vec4( col, diffuseColor.a );`);
 };
 const FOIL = { SR: 0.3, PR: 0.45, UR: 0.55, CBR: 0.6, SCR: 0.8, USEC: 1 };
-function backTexture() {
+// the look of a player's things on the table (card back, summon circle): their mat's, when it is a geometric one; otherwise, for
+// the player at this screen, their page theme (ui-glass / ui-pro); otherwise null, and the Thai ones are used
+function lookOf(s, p) {
+  const m = s && s.P && matOf(s.P[p]); if (m && GEO[m.kind]) return m.kind;
+  if (R && p === R.view) { const cl = document.documentElement.classList; if (cl.contains("ui-glass")) return "glass"; if (cl.contains("ui-pro")) return "pro"; }
+  return null;
+}
+// one material per look, made the first time it is wanted and kept for the whole table (never disposed with a card)
+const backLook = (k) => { if (!k) return R.backMat; R.backMats = R.backMats || {}; if (!R.backMats[k]) { const m = new THREE.MeshBasicMaterial({ map: backTexture(k), color: 0xcccccc, toneMapped: false }); m.userData.keep = true; R.backMats[k] = m; } return R.backMats[k]; };
+// a geometric card back. กระจกดารา: night glass, stars, a chamfered ice-blue frame and a circle of light at the heart.
+// กราไฟต์: a carbon weave, a white chamfered frame, an accent band across the middle and a hexagon round the mark.
+function geoBack(look) {
+  const W = 256, H = 348, c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d"), r = lcg(look === "glass" ? 97 : 131);
+  if (look === "glass") {
+    let gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, "#081230"); gr.addColorStop(1, "#122a5e"); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    gr = g.createRadialGradient(W / 2, H * 0.46, 0, W / 2, H * 0.46, W * 0.7); gr.addColorStop(0, "rgba(70,140,255,.32)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    for (let k = 0; k < 90; k++) { g.fillStyle = `rgba(225,240,255,${0.15 + r() * 0.6})`; g.beginPath(); g.arc(r() * W, r() * H, 0.5 + r() * 1.1, 0, 7); g.fill(); }
+    g.strokeStyle = g.fillStyle = "#b4e4ff"; g.lineWidth = 4; chamfer(g, 12, 12, W - 12, H - 12, 18); g.stroke(); g.globalAlpha = 0.55; g.lineWidth = 1.5; chamfer(g, 22, 22, W - 22, H - 22, 14); g.stroke(); g.globalAlpha = 1;
+    g.save(); g.shadowColor = "#7cc4ff"; g.shadowBlur = 6; lightCircle(g, W / 2, H * 0.46, 76, "#cfeaff", 2.2); g.restore();
+    for (const y of [44, H - 76]) geoNode(g, W / 2, y, 11, "#0b1838");
+    g.font = '700 26px "Bai Jamjuree", "Chakra Petch", sans-serif'; g.textAlign = "center"; g.fillStyle = "#d6eeff"; g.fillText("BoT", W / 2, H - 34);
+  } else {
+    g.fillStyle = "#15181e"; g.fillRect(0, 0, W, H);
+    const s = 7, t = document.createElement("canvas"); t.width = t.height = s * 2; const tc = t.getContext("2d");
+    for (const [i, j] of [[0, 0], [1, 1], [1, 0], [0, 1]]) { const across = (i + j) % 2 === 0, gg = tc.createLinearGradient(i * s, j * s, across ? i * s : i * s + s, across ? j * s + s : j * s); gg.addColorStop(0, "rgba(0,0,0,.2)"); gg.addColorStop(0.5, "rgba(255,255,255,.08)"); gg.addColorStop(1, "rgba(0,0,0,.2)"); tc.fillStyle = gg; tc.fillRect(i * s, j * s, s, s); }
+    g.fillStyle = g.createPattern(t, "repeat"); g.fillRect(0, 0, W, H);
+    g.save(); g.translate(W / 2, H / 2); g.rotate(-0.42); g.fillStyle = "rgba(79,125,255,.85)"; g.fillRect(-W, -15, W * 2, 30); g.fillStyle = "rgba(169,191,255,.9)"; g.fillRect(-W, 19, W * 2, 3); g.fillRect(-W, -22, W * 2, 3); g.restore();
+    g.strokeStyle = "#e9edf5"; g.lineWidth = 4; chamfer(g, 12, 12, W - 12, H - 12, 18); g.stroke(); g.globalAlpha = 0.4; g.lineWidth = 1.5; chamfer(g, 22, 22, W - 22, H - 22, 14); g.stroke(); g.globalAlpha = 1;
+    const hex = (rad) => { g.beginPath(); for (let k = 0; k < 6; k++) { const a = (k * Math.PI) / 3 - Math.PI / 2; g[k ? "lineTo" : "moveTo"](W / 2 + Math.cos(a) * rad, H / 2 + Math.sin(a) * rad); } g.closePath(); };
+    hex(58); g.fillStyle = "#15181e"; g.fill(); g.lineWidth = 5; g.strokeStyle = "#e9edf5"; g.stroke(); hex(46); g.lineWidth = 1.5; g.strokeStyle = "rgba(233,237,245,.5)"; g.stroke();
+    g.font = '600 30px "Kanit", "Chakra Petch", sans-serif'; g.textAlign = "center"; g.textBaseline = "middle"; g.fillStyle = "#ffffff"; g.fillText("BoT", W / 2, H / 2 + 1);
+  }
+  const tx = new THREE.CanvasTexture(c); tx.encoding = THREE.sRGBEncoding; return tx;
+}
+function backTexture(look) {
+  if (look) return geoBack(look); // a geometric look has its own back (the Thai one below is the gold-leaf look's)
   const c = document.createElement("canvas"); c.width = 256; c.height = 348; const g = c.getContext("2d");
   const gr = g.createLinearGradient(0, 0, 256, 348); gr.addColorStop(0, "#4a120d"); gr.addColorStop(1, "#7a2018"); g.fillStyle = gr; g.fillRect(0, 0, 256, 348);
   g.strokeStyle = g.fillStyle = GOLD; g.lineWidth = 6; stepPath(g, 12, 12, 244, 336, 14); g.stroke(); g.lineWidth = 2; stepPath(g, 24, 24, 232, 324, 14); g.stroke();
@@ -1917,7 +2001,7 @@ function dropMesh(o) { R.scene.remove(o.grp); if (o.face && o.face.material.disp
 // a player's card sleeve: their own picture (vault.js) once it has loaded, otherwise the Thai-pattern back
 function backFor(s, p) {
   const P = s && s.P && s.P[p], o = P && P.sleeve === "own" && custom.sleeve ? custom.sleeve(P) : null;
-  if (!o || !o.img) return R.backMat;
+  if (!o || !o.img) return backLook(lookOf(s, p)); // no picture of their own: the back that goes with their look
   if (!o.mat) { o.mat = new THREE.MeshBasicMaterial({ map: sleeveTexture(o.img), color: 0xd6d6d6, toneMapped: false }); o.mat.userData.keep = true; }
   return o.mat;
 }
@@ -2401,7 +2485,7 @@ function update(s, V, opts = {}) {
   R.queue = R.queue.then(async () => {
     if (!R || (R.token || 0) !== token) return;
     if (opts.reset || R.view !== V) { R.lastEv = s.evc || 0; R.view = V; }
-    R.sig = [0, 1].map((p) => (s.P[p] && SIGILS[s.P[p].sig] ? s.P[p].sig : "lotus")); syncAvatars(s, V);
+    R.sig = [0, 1].map((p) => { const k = s.P[p] && SIGILS[s.P[p].sig] ? s.P[p].sig : "lotus", lk = SIGILS[k].owner ? null : lookOf(s, p); return lk ? "g_" + lk : k; }); // a geometric look summons in its own circle (the owner's own one stays) syncAvatars(s, V);
     applyMats(s, V); if (opts.reset) for (const p of [0, 1]) avatarDo(p, s.phase === "over" ? (s.winner === p ? "win" : "lose") : "rest");
     const evs = (s.ev || []).filter((e) => e.id > R.lastEv); R.lastEv = s.evc || R.lastEv;
     const drops = new Set(evs.filter((e) => e.k === "summon").map((e) => e.i)), burned = new Set(evs.filter((e) => e.k === "destroy").map((e) => e.i));

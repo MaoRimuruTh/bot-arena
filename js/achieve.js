@@ -1,13 +1,13 @@
 // Achievements: earned only by playing (nothing here can be bought), each one unlocking something for the table:
 // a 3D figure to stand by your side, a colour of lacquer for the mat, the circle that opens when you summon, or one of the
 // official box decks (คัดสรรเด็ค) that plays stronger than the Starter Decks. Worked out from your own match history.
-import { Data } from "./fb.js?v=20261113232215";
-import { lsGet } from "./util.js?v=20261113232215";
-import { stars } from "./quests.js?v=20261113232215";
-import { AVATARS, MATS, SIGILS, SCENES, WINFX } from "./arena3d.js?v=20261113232215";
-import { BOX_LISTS, themeCounts, officialStarters } from "./boxdecks.js?v=20261113232215";
-import { Vault } from "./vault.js?v=20261113232215";
-import { isOwnerNow } from "./persona.js?v=20261113232215";
+import { Data } from "./fb.js?v=20261113234522";
+import { lsGet } from "./util.js?v=20261113234522";
+import { stars } from "./quests.js?v=20261113234522";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX } from "./arena3d.js?v=20261113234522";
+import { BOX_LISTS, themeCounts, officialStarters } from "./boxdecks.js?v=20261113234522";
+import { Vault } from "./vault.js?v=20261113234522";
+import { isOwnerNow } from "./persona.js?v=20261113234522";
 
 const real = (ms) => ms.filter((m) => m.mode !== "goldfish");
 const wins = (ms) => real(ms).filter((m) => m.result === "win").length;
@@ -67,7 +67,7 @@ export const myMat = () => { const k = pick("bot.mat"); return k === "own" && Va
 export const sceneOpen = (k) => !!SCENES[k] && (k !== "sakura" || unlocked("mat", "sakura")) && (!SCENES[k].owner || isOwnerNow());
 export const sigilOpen = (k) => !!SIGILS[k] && unlocked("sig", k) && (!SIGILS[k].owner || isOwnerNow()); // the owner's own summon circle is his alone
 export const myWinFx = () => { const k = pick("bot.winfx"); return WINFX[k] && unlocked("win", k) ? k : "gold"; };
-export const myScene = () => { const k = pick("bot.scene"); return sceneOpen(k) ? k : !k && pick("bot.mat") === "sakura" && sceneOpen("sakura") ? "sakura" : "hall"; };
+export const myScene = () => { const k = pick("bot.scene"), s0 = sceneOpen(k) ? k : !k && pick("bot.mat") === "sakura" && sceneOpen("sakura") ? "sakura" : "hall"; return s0 === "hall" && myMat() === "pro" ? "studio" : s0; }; // the graphite mat never sits in the teak hall: it gets its studio
 export const mySleeve = () => (pick("bot.sleeve") === "own" && Vault.has("sleeve") ? "own" : "");
 export const mySigil = () => { const k = pick("bot.sig"); return sigilOpen(k) ? k : "lotus"; };
 const boxName = (id) => { const k = String(id).replace(/^box-/, "").toUpperCase(); return BOX_LISTS[k] ? `${k} ${BOX_LISTS[k].name}` : id; };
