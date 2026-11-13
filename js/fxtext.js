@@ -1,6 +1,6 @@
 // Card text made readable: one block per ability, the ability type and keywords as coloured tags,
 // reminder text dimmed, and the data's markup ({symbol X}, {only}, {red …}) drawn instead of printed.
-import { h } from "./util.js?v=20261113195449";
+import { h } from "./util.js?v=20261113200502";
 
 // what each keyword means (from the reminder text printed on the cards / Rule Book 3.2)
 export const KW_HELP = {
@@ -91,5 +91,5 @@ function blocks(text, parent) {
 // cls: extra classes for the box (e.g. "small"); style: inline style such as a max-height
 export function fxText(text, cls = "", style = "") {
   let kids; try { kids = blocks(text); } catch (e) { console.warn(e); kids = [String(text || "")]; }
-  return h("div", { class: "fx fxl" + (cls ? " " + cls : ""), style }, kids);
+  return h("div", { class: "fx fxl" + (cls ? " " + cls : ""), style, ...(/overflow\s*:\s*auto/.test(style) ? { tabindex: "0", role: "region", "aria-label": "ข้อความการ์ด" } : {}) }, kids);
 }

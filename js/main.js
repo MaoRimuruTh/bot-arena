@@ -1,20 +1,20 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261113195449";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261113195449";
-import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261113195449";
-import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261113195449";
-import { Vault, startVault } from "./vault.js?v=20261113195449";
-import { vaultSection } from "./vaultui.js?v=20261113195449";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261113195449";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261113195449";
-import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261113195449";
-import { Views, avatarEl } from "./ui.js?v=20261113195449";
-import { Ciel } from "./ai.js?v=20261113195449";
-import "./views/library.js?v=20261113195449";
-import "./views/decks.js?v=20261113195449";
-import "./views/lab.js?v=20261113195449";
-import "./views/history.js?v=20261113195449";
-import { openReport } from "./views/ask.js?v=20261113195449";
-import "./views/play.js?v=20261113195449";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261113200502";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261113200502";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261113200502";
+import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261113200502";
+import { Vault, startVault } from "./vault.js?v=20261113200502";
+import { vaultSection } from "./vaultui.js?v=20261113200502";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261113200502";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261113200502";
+import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261113200502";
+import { Views, avatarEl } from "./ui.js?v=20261113200502";
+import { Ciel } from "./ai.js?v=20261113200502";
+import "./views/library.js?v=20261113200502";
+import "./views/decks.js?v=20261113200502";
+import "./views/lab.js?v=20261113200502";
+import "./views/history.js?v=20261113200502";
+import { openReport } from "./views/ask.js?v=20261113200502";
+import "./views/play.js?v=20261113200502";
 
 const root = $("#view");
 // text size for the whole app (everything is sized in rem), kept per browser; Hearthstone and LoR offer the same for small screens
@@ -71,7 +71,7 @@ function pendingScreen() {
 function meArea() {
   const p = Me.profile || {}; const pending = Data.users.filter((u) => u.status === "pending").length;
   const na = document.getElementById("nav-ask"); if (na) na.hidden = p.role !== "owner";
-  $("#me").replaceChildren(h("button", { class: "btn sm", onclick: settings, "aria-label": "ตั้งค่า" }, avatarEl(myAvatar(), myName(), "hd"), h("span", null, myName()), pending && p.role === "owner" ? h("span", { class: "chip warn" }, pending + " รออนุมัติ") : null, Ciel.on() ? h("span", { class: "chip gold" }, "✦ ชิเอล") : null));
+  $("#me").replaceChildren(h("button", { class: "btn sm", onclick: settings, "aria-label": `${myName()} · ตั้งค่า` }, avatarEl(myAvatar(), myName(), "hd"), h("span", null, myName()), pending && p.role === "owner" ? h("span", { class: "chip warn" }, pending + " รออนุมัติ") : null, Ciel.on() ? h("span", { class: "chip gold" }, "✦ ชิเอล") : null));
 }
 // the little 3D figure by your side of the table, and the colour of the mat's lacquer: some are opened by achievements (kept per browser)
 function avatarSection() {
