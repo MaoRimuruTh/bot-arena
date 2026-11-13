@@ -1,11 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261113074623";
-import { plain } from "./persona.js?v=20261113074623";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261113074623";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261113074623";
-import { modPowerFor } from "./auras.js?v=20261113074623";
-import { Data } from "./fb.js?v=20261113074623";
-import { lsGet, clone } from "./util.js?v=20261113074623";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261113080748";
+import { plain } from "./persona.js?v=20261113080748";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261113080748";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261113080748";
+import { modPowerFor } from "./auras.js?v=20261113080748";
+import { Data } from "./fb.js?v=20261113080748";
+import { lsGet, clone } from "./util.js?v=20261113080748";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -177,6 +177,8 @@ export const H = {
       return H.evalBoard(t, p);
     } catch { return null; } finally { H.look = look; }
   },
+  // what a card in hand is worth when it is paid away as GEM: its script's word (keepV) when it has one
+  keep(s, p, x) { const sk = x && scriptOf(s, x); if (sk && sk.keepV) { const v = sk.keepV(E, s, x, p); if (v != null) return v; } return H.value(s, x); },
   value(s, x) { const d = E.def(s, x); if ((scriptOf(s, x) || {}).anyHell) return 8; return d.t === "A" ? (d.pw || 0) + (d.c || 0) * 0.5 + (d.o1 ? 10 : 0) : d.t === "C" ? 3 : 2; },
   mulligan(s, p) {
     const P = s.P[p]; const cheap = P.hand.filter((x) => { const d = E.def(s, x); return d.t === "A" && (d.c || 0) <= 3; });
@@ -204,7 +206,7 @@ export const H = {
         if (a.type === "activate") { const L = E.locate(s, a.i); const nm = L ? E.name(s, L.x) : ""; const fx = L ? H.opsScore(s, p, H.preview(s, { i: L.x.i, c: L.x.c, when: "activate", seat: p, ...(a.k != null ? { k: a.k } : {}) })) : 0;
           cand.push({ m, sc: /นักท่องเรื่องราว/.test(nm) ? 7 : /มิติมืด/.test(m.d) ? 5 : fx < 0 ? fx : 1.5 + Math.min(6, fx) }); continue; }
         const x = P.hand.find((y) => y.i === a.i) || (a.from === "hell" ? P.hell.find((y) => y.i === a.i) : null); if (!x) continue; const d = E.def(s, x);
-        const payLoss = (a.pay || []).reduce((t, i) => t + H.value(s, P.hand.find((y) => y.i === i)), 0);
+        const payLoss = (a.pay || []).reduce((t, i) => t + H.keep(s, p, P.hand.find((y) => y.i === i)), 0);
         let sc = -99;
         let bias = 0; { const sx = scriptOf(s, x); if (sx && sx.botHold) bias = sx.botHold(E, s, x, p) || 0; } // a card that is better kept in hand for now
         if (a.type === "summon") { const fx = d.x && /จุติ/.test(d.x) ? H.opsScore(s, p, H.preview(s, { i: x.i, c: x.c, when: "summon", seat: p, exact: true })) : 0; sc = (d.pw || 0) + 2 + Math.max(0, fx) + csBonus(d) - payLoss * 0.45 + (P.av.length < 2 ? 3 : 0) + bias; } // csBonus: a lasting buff for every Avatar of ours

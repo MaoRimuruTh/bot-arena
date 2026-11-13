@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113074623";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261113074623";
-import { SCRIPTS } from "./scripts.js?v=20261113074623";
-import { newId, clone } from "./util.js?v=20261113074623";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113080748";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261113080748";
+import { SCRIPTS } from "./scripts.js?v=20261113080748";
+import { newId, clone } from "./util.js?v=20261113080748";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -515,7 +515,7 @@ export const E = {
     // what each card is worth keeping: Avatars by POWER and Cost, a React held for the other side's turn a little more
     // than a plain Magic, and a Modification one of our Avatars can wear now more again (more still when its card's
     // script says what it is worth there, e.g. หยินหยางทอร์นาโด on ตั๊กแตนหยิน), so combo pieces are not paid away first
-    const val = (x) => { const d = E.def(s, x); if ((scriptOf(s, x) || {}).anyHell) return 9; /* ตีพ่อ / ตีแม่: into the hell they turn up our LIFE */ if (d.t === "A") return (d.pw || 0) + (d.c || 0) * 0.6 + (d.o1 ? 20 : 0); if (d.t === "C") return 4;
+    const val = (x) => { const d = E.def(s, x); { const sk = scriptOf(s, x); if (sk && sk.keepV) { const v = sk.keepV(E, s, x, p); if (v != null) return v; } } /* a card whose script says what it is worth in hand right now (the จอมเวทย์ kit) */ if ((scriptOf(s, x) || {}).anyHell) return 9; /* ตีพ่อ / ตีแม่: into the hell they turn up our LIFE */ if (d.t === "A") return (d.pw || 0) + (d.c || 0) * 0.6 + (d.o1 ? 20 : 0); if (d.t === "C") return 4;
       if (d.st === "R") return 2.8;
       if (d.st === "D") { let b = 0; try { const sc = scriptOf(s, x); for (const h of P.av) if (E.modOk(s, x, h)) b = Math.max(b, 1.2 + (sc && sc.modV ? Math.max(0, Math.min(4, sc.modV(E, s, x, h) || 0)) : 0)); } catch { b = 0; } return 2.2 + b; }
       return 2.2; };
