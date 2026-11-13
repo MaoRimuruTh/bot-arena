@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113160539";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261113160539";
-import { SCRIPTS } from "./scripts.js?v=20261113160539";
-import { newId, clone } from "./util.js?v=20261113160539";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113161704";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261113161704";
+import { SCRIPTS } from "./scripts.js?v=20261113161704";
+import { newId, clone } from "./util.js?v=20261113161704";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -179,7 +179,12 @@ export const E = {
   actBlocked(s, p, x) { if (E.nameLocked(s, p, x)) return true; return ["A", "T"].includes(E.def(s, x).t) && !E.named(s, x, "Overdose") && (E.locate(s, x.i) || {}).z === "av" && E.odLock(s, p); },
   odMuted(s, t) { const d = s.cards[t.c]; if (!d || !["A", "T"].includes(d.t) || String(d.n || "").includes("Overdose") || t.held || t.when === "trim") return false;
     const L = E.locate(s, t.i); if (!(L && L.z === "av" && L.p === t.seat) && !(t.when === "death" && t.z === "av")) return false; return E.odLock(s, t.seat); },
-  odPrune(s) { if (!s.trig.length || s.phase === "over") return; for (let k = s.trig.length - 1; k >= 0; k--) { const t = s.trig[k]; if (!E.odMuted(s, t)) continue; s.trig.splice(k, 1); E.log(s, t.seat, `${s.cards[t.c].n}: ความสามารถไม่ทำงาน (Avatar ฝ่ายเราใช้ความสามารถไม่ได้ ยกเว้น Overdose)`); } },
+  // โรงบาล: this turn the cards of that name cannot use their abilities, either player's (FAQ). By the Overdose ruling "cannot use abilities" stops every
+  // kind of ability but the continuous ones, so the automatic ones (จุติ, อัตโนมัติ, คำสั่งเสีย) of such a card are dropped here as they come up.
+  nameShut(s, p, n) { const t = s.tlock && s.tlock[p], h = s.hosp && s.hosp[p]; return !!((t && t.t === s.turn && t.names && t.names.includes(n)) || (h && h.t === s.turn && h.names.includes(n))); },
+  odPrune(s) { if (!s.trig.length || s.phase === "over") return;
+    if ((s.tlock && s.tlock.some((q) => q && q.t === s.turn && q.names)) || (s.hosp && s.hosp.some((q) => q && q.t === s.turn))) for (let k = s.trig.length - 1; k >= 0; k--) { const t = s.trig[k], d = s.cards[t.c]; if (!d || d.t !== "A" || t.held || t.when === "trim" || !E.nameShut(s, t.seat, d.n)) continue; s.trig.splice(k, 1); E.log(s, t.seat, `${d.n}: ความสามารถไม่ทำงาน (เทิร์นนี้ใช้ความสามารถของการ์ดชื่อนี้ไม่ได้)`); }
+    for (let k = s.trig.length - 1; k >= 0; k--) { const t = s.trig[k]; if (!E.odMuted(s, t)) continue; s.trig.splice(k, 1); E.log(s, t.seat, `${s.cards[t.c].n}: ความสามารถไม่ทำงาน (Avatar ฝ่ายเราใช้ความสามารถไม่ได้ ยกเว้น Overdose)`); } },
   wornNoAtk(s, x) { return [...s.P[0].mg, ...s.P[1].mg].some((m) => m.on === x.i && !m.mute && (scriptOf(s, m) || {}).hostNoAttack); },
   mgActive(s, x, L) { return L.z === "mg" && x.on == null && fieldCards(s).some(({ x: y, L: Ly }) => Ly.p === L.p && Ly.z === "av" && !y.mute && (scriptOf(s, y) || {}).mgAbilities && scriptOf(s, y).mgAbilities(E, s, y, x)); },
   colors(s, x) { const pd = s.pend; if (pd && pd.tk === "av" && (pd.att === x.i || pd.ti === x.i)) { const foe = pd.att === x.i ? pd.ti : pd.att; if (foe != null && [...s.P[0].mg, ...s.P[1].mg].some((m) => m.on === foe && !m.mute && (scriptOf(s, m) || {}).foeColor)) { const m = [...s.P[0].mg, ...s.P[1].mg].find((z) => z.on === foe && !z.mute && (scriptOf(s, z) || {}).foeColor); return [scriptOf(s, m).foeColor]; } } // มีมมิ: "Avatar ที่ต่อสู้กับ … จะถูกเปลี่ยนเป็น Avatar สีม่วง"
@@ -1178,7 +1183,7 @@ export const E = {
       case "setCost": { const L = E.locate(s, o.i); if (!L) throw new RuleError("ไม่พบการ์ด"); L.x.cst = { v: Math.max(0, o.v | 0), t: s.turn }; E.log(s, by, `Cost ของ ${E.name(s, L.x)} เป็น ${L.x.cst.v} จนจบเทิร์น`); return; }
       case "reSummon": { const L = E.locate(s, o.i); if (!L || L.z !== "av") return; s.trig.push({ id: tid(s), seat: L.p, i: L.x.i, c: L.x.c, when: "summon", ...(o.exact ? { exact: true } : {}) }); E.log(s, by, `ความสามารถจุติของ ${E.name(s, L.x)} ทำงานอีกครั้ง`); return; }
       case "stateSet": { // turn-scoped player flags: K-BO, เนโกะเมะ, 1 - 2 - 2
-        if (o.k === "hosp") { (s.hosp = s.hosp || [null, null])[seat] = { t: s.turn, names: [String(o.name || "")] }; } else if (o.k === "noReact") { s.noR = { t: s.turn, p: o.self ? seat : 1 - seat }; } else if (o.k === "landLock") { (s.landLock = s.landLock || [0, 0])[1 - seat] = s.turn + 1; } else if (o.k === "kbo") s.kbo = { t: s.turn, p: seat }; else if (o.k === "neko") { (s.neko = s.neko || [null, null])[seat] = { st: o.st, until: s.turn + 1 }; } else if (o.k === "oneTwoTwo") { (s.noSearch = s.noSearch || [0, 0])[seat] = s.turn + 2; (s.skipDraw = s.skipDraw || [0, 0])[seat] = s.turn + 2; }
+        if (o.k === "hosp") { s.hosp = s.hosp || [null, null]; for (const q of [0, 1]) { const cur = s.hosp[q] && s.hosp[q].t === s.turn ? s.hosp[q].names : []; s.hosp[q] = { t: s.turn, names: [...cur, String(o.name || "")] }; } } // FAQ โรงบาล: the name is shut for both players else if (o.k === "noReact") { s.noR = { t: s.turn, p: o.self ? seat : 1 - seat }; } else if (o.k === "landLock") { (s.landLock = s.landLock || [0, 0])[1 - seat] = s.turn + 1; } else if (o.k === "kbo") s.kbo = { t: s.turn, p: seat }; else if (o.k === "neko") { (s.neko = s.neko || [null, null])[seat] = { st: o.st, until: s.turn + 1 }; } else if (o.k === "oneTwoTwo") { (s.noSearch = s.noSearch || [0, 0])[seat] = s.turn + 2; (s.skipDraw = s.skipDraw || [0, 0])[seat] = s.turn + 2; }
         E.log(s, by, String(o.why || "")); return; }
       case "bloody": { const P = s.P[seat]; const a = 1 + Math.floor(E.rnd(s) * 6), b = 1 + Math.floor(E.rnd(s) * 6); E.log(s, by, `ทอยลูกเต๋าได้ ${a} และ ${b}`); E.ev(s, { k: "roll", p: by, sides: 6, r: a, r2: b, why: "บลัดดี้แมรี่" }); if (a % 2 || b % 2) return;
         const x = P.hell.find((y) => E.named(s, y, "วิญญาณร้าย")); if (!x) return; E.moveTo(s, x.i, "dark"); s.bm = s.bm || [0, 0]; s.bm[seat]++; E.log(s, by, `เนรเทศ ${E.name(s, x)} (${s.bm[seat]}/3)`); if (s.bm[seat] >= 3) E.lose(s, 1 - seat, "วิญญาณร้ายครบ 3 ใบในมิติมืด (บลัดดี้แมรี่)"); return; }
