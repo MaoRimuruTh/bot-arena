@@ -273,6 +273,10 @@ body.arena-on main{padding:0;max-width:none}
 .flatfx{position:fixed;left:0;right:0;margin-inline:auto;width:max-content;max-width:86vw;top:38%;z-index:27;padding:10px 18px;font:700 1.05rem var(--f-display);color:var(--gold-hi);text-align:center;pointer-events:none}
 /* the attack arrow (computer): over the table, under the HUD panels, never takes the mouse */
 #atkarrow{position:fixed;inset:0;width:100vw;height:100vh;z-index:3;pointer-events:none;overflow:visible} /* above the table and its vignette (1, 2), below the HUD (5) */
+#foearrow{position:fixed;inset:0;width:100vw;height:100vh;z-index:3;pointer-events:none;overflow:visible} /* the attack being answered: attacker to target */
+#foearrow .shaft{fill:none;stroke:#ff4a4a;stroke-width:6;stroke-linecap:round;stroke-dasharray:14 9;animation:atkdash .6s linear infinite}
+#foearrow .glow{fill:none;stroke:rgba(255,80,80,.38);stroke-width:15;stroke-linecap:round;filter:blur(3px)}
+#foearrow .ret{fill:rgba(255,70,70,.12);stroke:#ff6a6a;stroke-width:4}
 #atkarrow .shaft{fill:none;stroke:#ff6a4a;stroke-width:7;stroke-linecap:round;stroke-dasharray:16 10;animation:atkdash .6s linear infinite}
 #atkarrow .glow{fill:none;stroke:rgba(255,140,90,.35);stroke-width:16;stroke-linecap:round;filter:blur(3px)}
 #atkarrow .ret{fill:none;stroke:#ffd27a;stroke-width:4;stroke-dasharray:10 7;animation:atkdash 1.2s linear infinite}
@@ -300,7 +304,7 @@ body.arena-on main{padding:0;max-width:none}
   .oppbar{padding:6px 10px;gap:8px} .oppbar .backs{display:none}
   .prompt{bottom:calc(140px + env(safe-area-inset-bottom,0px))}
   /* a pick among cards on the table sits low, over the hand (not needed for that pick), so our Avatars and their POWER stay in view */
-  .prompt.slim.low{bottom:calc(72px + env(safe-area-inset-bottom,0px));z-index:6}
+  .prompt.low{bottom:calc(72px + env(safe-area-inset-bottom,0px));z-index:6}
   .prompt.slim.low .tiny{display:none}
 }
 @media (prefers-reduced-motion:reduce){*,*::after,*::before{animation:none!important;transition:none!important}}
@@ -393,6 +397,8 @@ body.arena-on main{padding:0;max-width:none}
   .mbar .cry{width:11px;height:16px} .mbar .crys{gap:3px} .mbar .btn.sm{padding:0 10px;flex:none;white-space:nowrap}
   .mbar .mstat{display:flex;align-items:center;gap:8px;min-width:0} .mbar .mturn b{white-space:nowrap}
   body.arena-on .prompt{bottom:calc(200px + env(safe-area-inset-bottom,0px));max-height:min(60vh,calc(100vh - 290px));overflow:auto;overscroll-behavior:contain;padding:12px}
+  /* answering an attack, or picking a card on the table: the box sits low, over the hand, so our Avatars and their POWER stay in view */
+  body.arena-on .prompt.low{bottom:calc(72px + env(safe-area-inset-bottom,0px));max-height:min(46vh,calc(100vh - 380px));z-index:6}
   /* one scroll area per box (no box-in-a-box scrolling) and the confirm buttons always in sight at its foot */
   body.arena-on .prompt .pick,body.arena-on .prompt .opts{max-height:none;overflow:visible}
   body.arena-on .prompt>.row:last-child{position:sticky;bottom:-12px;z-index:2;margin:0 -12px -12px;padding:10px 12px;background:var(--panel-solid,#1d110d);border-top:1px solid var(--line)}

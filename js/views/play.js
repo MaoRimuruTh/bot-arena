@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261113102213";
-import { fxText, kwGloss } from "../fxtext.js?v=20261113102213";
-import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261113102213";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261113102213";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261113102213";
-import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261113102213";
-import { myFigure, myMat, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261113102213";
-import { themeCounts } from "../boxdecks.js?v=20261113102213";
-import { ladder, ladderReset } from "../ladder.js?v=20261113102213";
-import { notify } from "../notify.js?v=20261113102213";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261113102213";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261113102213";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261113102213";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261113102213";
-import { Music } from "../music.js?v=20261113102213";
-import { Sfx } from "../sfx.js?v=20261113102213";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261113102213";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261113102213";
-import { readAura, traits } from "../auras.js?v=20261113102213";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261113102213";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261113115141";
+import { fxText, kwGloss } from "../fxtext.js?v=20261113115141";
+import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261113115141";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261113115141";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261113115141";
+import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261113115141";
+import { myFigure, myMat, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261113115141";
+import { themeCounts } from "../boxdecks.js?v=20261113115141";
+import { ladder, ladderReset } from "../ladder.js?v=20261113115141";
+import { notify } from "../notify.js?v=20261113115141";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261113115141";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261113115141";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261113115141";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261113115141";
+import { Music } from "../music.js?v=20261113115141";
+import { Sfx } from "../sfx.js?v=20261113115141";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261113115141";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261113115141";
+import { readAura, traits } from "../auras.js?v=20261113115141";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261113115141";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -26,8 +26,8 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(s.id ? [`รีเพลย์ในเครื่องนี้: ${s.id}-${V}`] : []), "บันทึก 40 บรรทัดล่าสุด:\n" + s.log.slice(-40).map((l) => "· " + l.m).join("\n"), // so a report can be traced back to its game
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261113102213";
-import { customMat, customSleeve, customFig, setOnReady, onVault } from "../vault.js?v=20261113102213";
+import { allDecks, deckById } from "./decks.js?v=20261113115141";
+import { customMat, customSleeve, customFig, setOnReady, onVault } from "../vault.js?v=20261113115141";
 // the players' own mat picture, card sleeve and figure (vault.js): the table asks for them, and redraws when one loads or changes
 Arena.setCustom({ mat: customMat, sleeve: customSleeve, fig: customFig, skins: (s) => setGameSkins(s && s.P, Me.uid) }); setOnReady((o) => Arena.customReady(o)); onVault(() => Arena.refreshCustom());
 { let sig = ""; Data.listeners.add(() => { const sh = Data.meta && Data.meta.show, now = sh ? Object.entries(sh).map(([k, x]) => k + ":" + (x && x.v) + ":" + (x && x.finish)).join() : ""; if (now !== sig) { sig = now; Arena.refreshCustom(); } }); }
@@ -248,7 +248,7 @@ function persist() { if (!G || G.replay || G.watch) return; if (G.mode === "frie
 function stopGame(clear) {
   if (!G) return; if (G.unsub) G.unsub(); if (clear) { if (!G.watch) lsDel(SAVE); } else persist(); // a watcher never touches their own saved game
   if (G.mode === "friend" && !G.watch && G.s && G.s.phase === "over") trimGame(G.id, G.s);
-  clearInterval(G.idleTick); clearInterval(G.dog); Arena.unmount(); Music.stop(); setGameSkins(null); document.body.classList.remove("arena-on"); document.querySelectorAll(".banner,.dmg,.emo,.showcase,.flatfx,.fxcuts,.dragghost,#atkarrow").forEach((e) => e.remove()); G = null;
+  clearInterval(G.idleTick); clearInterval(G.dog); Arena.unmount(); Music.stop(); setGameSkins(null); document.body.classList.remove("arena-on"); document.querySelectorAll(".banner,.dmg,.emo,.showcase,.flatfx,.fxcuts,.dragghost,#atkarrow,#foearrow").forEach((e) => e.remove()); G = null;
 }
 // ---------- friends ----------
 async function createRoom(extra = {}) { // extra: a tournament match ({ tour, vs, vsName }) only that friend may join
@@ -558,7 +558,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261113102213").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261113115141").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", mat: botMat(), bot: true });
@@ -688,6 +688,29 @@ function askToggle(i) { const a = G.ask; if (!a || !Array.isArray(a.options) || 
   G.askSel = sel.includes(i) ? sel.filter((y) => y !== i) : need === 1 ? [i] : sel.length < need ? [...sel, i] : sel; const L = E.locate(G.s, i); if (L && (L.z === "av" || L.z === "cs")) Arena.select(G.askSel.includes(i) ? i : null); draw(); }
 const askOnTable = (s) => { const a = G && G.ask; if (!a || a.order || a.modes || !Array.isArray(a.options) || !s.trig.length || G.tk !== s.trig[0].id) return null; const show = Array.isArray(a.reveal) ? a.reveal : a.options; return show.length && show.every((i) => { const L = E.locate(s, i); return L && (L.z === "av" || L.z === "cs"); }) ? a : null; };
 function pointAt(btn, i) { if (!btn) return btn; const on = () => { const L = E.locate(G.s, i); if (L && (L.z === "av" || L.z === "cs")) Arena.select(i); }; btn.addEventListener("mouseenter", on); btn.addEventListener("focus", on); return btn; }
+// the attack being answered: who hits whom with what POWER, and who would be destroyed if nothing is played
+function fightForecast(s) { const pd = s.pend; if (!pd) return null; const A = E.locate(s, pd.att); if (!A) return null; if (pd.tk === "life") return { A, T: null, ap: Math.max(0, E.power(s, A.x) + (pd.bonus || 0)), tp: 0, dead: "" };
+  const T = E.locate(s, pd.ti); if (!T) return null; const av = pd.tk === "av";
+  const ap = Math.max(0, E.power(s, A.x) + (pd.bonus || 0) + (av ? E.battleMod(s, A.x, T.x) : 0)), tp = Math.max(0, E.power(s, T.x) + (av ? E.battleMod(s, T.x, A.x) : 0));
+  let dead = ""; if (!av) dead = ap > tp ? "T" : ""; else if (ap > tp) dead = "T"; else if (tp > ap) dead = "A"; else if (ap > 0) { const ah = E.kw(s, A.x, "ลูกฮึด"), dh = E.kw(s, T.x, "ลูกฮึด"); dead = ah && !dh ? "T" : dh && !ah ? "A" : "AT"; }
+  return { A, T, ap, tp, dead }; }
+// a card on the table by name, with "#2" when the same side has another of that name in the zone
+const tagName = (s, L) => { if (!L) return "?"; const all = (s.P[L.p][L.z] || []).map((y) => y.i); const tg = L.z === "av" || L.z === "cs" ? copyTag(s, L.x.i, all).trim() : ""; return E.name(s, L.x) + (tg ? " " + tg : ""); };
+// an arrow on the table from the attacker to what it attacks while the attack is being answered (also through the
+// "about to be destroyed" question), so the target is seen and not only read
+function foeArrow() {
+  let svg = document.getElementById("foearrow"); const s = G && G.s; const pd = s && s.pend;
+  const from = pd && Arena.on && !G.replay ? Arena.screenOf(pd.att) : null; const def = pd ? 1 - pd.by : 0;
+  const lifeCard = pd && pd.tk === "life" ? (s.P[def].life.find((l) => !l.up) || s.P[def].life[0]) : null;
+  const to = !from ? null : pd.tk === "life" ? (lifeCard ? Arena.screenOf(lifeCard.i) : null) : Arena.screenOf(pd.ti);
+  if (!from || !to) { if (svg) svg.remove(); return; }
+  if (!svg) { svg = document.createElementNS(SVGNS, "svg"); svg.id = "foearrow"; svg.setAttribute("aria-hidden", "true");
+    svg.innerHTML = '<defs><marker id="foehead" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ff4a4a"/></marker></defs><path class="glow"/><path class="shaft" marker-end="url(#foehead)"/><circle class="ret" r="26"/>'; document.body.append(svg); }
+  const sx = from.x, sy = from.y, ex = to.x, ey = to.y, dx = ex - sx, dy = ey - sy, len = Math.hypot(dx, dy); if (len < 24) { svg.style.display = "none"; return; } svg.style.display = "";
+  const cx = (sx + ex) / 2 - dy * 0.12, cy = (sy + ey) / 2 - Math.min(90, len * 0.2); const d = `M${sx.toFixed(1)},${sy.toFixed(1)} Q${cx.toFixed(1)},${cy.toFixed(1)} ${ex.toFixed(1)},${ey.toFixed(1)}`;
+  svg.querySelector(".shaft").setAttribute("d", d); svg.querySelector(".glow").setAttribute("d", d);
+  const ret = svg.querySelector(".ret"); ret.setAttribute("cx", ex); ret.setAttribute("cy", ey); ret.setAttribute("r", Math.max(18, Math.min(to.w, to.h) * 0.5));
+}
 // the Battle Phase of a side played on this screen (the other side may still be answering an attack)
 const myBattle = (s) => !!G && !G.replay && !G.watch && s.phase === "battle" && mine(s.active);
 // this side may attack right now: nothing is being answered or resolved
@@ -903,9 +926,10 @@ function afterDraw(s, V, op, myTurn) {
     for (const m of legalMoves(s, V)) if (m.a.type === "activate") { const L = E.locate(s, m.a.i); if (L && ["av", "cs", "mg", "land"].includes(L.z)) targets.push(m.a.i); }
   if (G.host) targets.push(...s.P[0].av.map((x) => x.i), ...s.P[1].av.map((x) => x.i));
   if (askOnTable(s)) { targets.length = 0; targets.push(...G.ask.options); }
+  if (s.rw && s.rw.kind === "doom" && mine(s.rw.p) && (s.rw.ids || []).length) { targets.length = 0; targets.push(...s.rw.ids); } // the card about to be destroyed glows
   Arena.highlight(targets); const AL = G.att && E.locate(s, G.att); const lifeOk = !!AL && (E.lifeOpen(s, AL.p, AL.x) || E.kw(s, AL.x, "เตะไข่")) && !E.noLife(s, AL.x); Arena.setLifeTarget(lifeOk);
   if (G.flat) drawFlat(s, V, new Set(targets), lifeOk);
-  attackArrow();
+  attackArrow(); foeArrow(); Arena.idle().then(() => foeArrow()); setTimeout(foeArrow, 450);
 }
 // no 3D (WebGL off or missing on this device): the table drawn flat, each side's zones as rows of cards, pressed the way
 // the 3D cards are (choose an attacker, its target, an ability), right-click or the card view to read one
@@ -1266,6 +1290,8 @@ function promptBox(s, p) {
 function promptBox0(s, p) {
   if (p == null || !mine(p)) return null; const P = s.P[p];
   const box = (title, ...kids) => h("div", { class: "prompt glass" }, h("b", { style: "font-family:var(--f-display)" }, title), ...kids);
+  // the same box set low on a phone (over the hand): for answers to an attack, where our Avatars and their POWER must stay in view
+  const boxLow = (title, ...kids) => { const b = box(title, ...kids); b.classList.add("low"); return b; };
   if (G.payFor && !(s.phase === "main" && s.active === p && !s.pend && !s.trig.length)) { G.payFor = null; G.pick = null; }
   if (G.payFor) {
     const x = P.hand.find((y) => y.i === G.payFor); if (!x) { G.payFor = null; return null; }
@@ -1333,13 +1359,14 @@ function promptBox0(s, p) {
   if (s.rw && s.rw.by !== p) {
     const L = E.locate(s, s.rw.i); const what = s.rw.kind === "battle" ? "เข้าสู่ Battle Phase" : s.rw.kind === "phase" ? `กำลังจะจบ ${s.rw.ph === "battle" ? "Battle" : "Main"} Phase (เข้าสู่ End Phase)` : s.rw.kind === "handed" ? (s.rw.pre ? "กำลังจะนำการ์ดจาก Deck ขึ้นมือ (ตอบโต้ได้ก่อนการ์ดออกจาก Deck)" : "นำการ์ดจาก Deck ขึ้นมือ") : L ? `${s.rw.kind === "summon" ? "อัญเชิญ" : s.rw.kind === "activate" ? "ใช้ความสามารถของ" : s.rw.kind === "react" ? "ใช้ React" : "ใช้ Magic"} ${E.name(s, L.x)}` : "เล่นการ์ด";
     const rs = E.reactsFor(s, p, s.rw);
-    const doomNames = s.rw.kind === "doom" ? (s.rw.ids || []).map((i) => E.locate(s, i)).filter(Boolean).map((D) => E.name(s, D.x)).join(", ") : "";
+    const fcd = s.rw.kind === "doom" && s.rw.fight ? fightForecast(s) : null; // the fight this destruction comes from: who hit whom
+    const doomNames = s.rw.kind === "doom" ? (fcd && fcd.T ? `${fcd.A.p === p ? "ของคุณ " : ""}${tagName(s, fcd.A)} (P${fcd.ap}) ตี → ${fcd.T.p === p ? "ของคุณ " : ""}${tagName(s, fcd.T)} (P${fcd.tp}) · ` : "") + (s.rw.ids || []).map((i) => E.locate(s, i)).filter(Boolean).map((D) => `${tagName(s, D)} (P${E.power(s, D.x)})`).join(", ") : "";
     const hs = s.rw.hand && s.rw.src != null ? E.locate(s, s.rw.src) : null;
     if (s.rw.own) { const A = E.locate(s, s.rw.att), T = s.rw.ti != null ? E.locate(s, s.rw.ti) : null; // our own attack: a React about our fighting Avatar
       return box(`${A ? E.name(s, A.x) : "Avatar"} ของคุณกำลังต่อสู้${T ? "กับ " + E.name(s, T.x) : ""} · จะใช้ React ก่อนตัดสินผลไหม?`,
         h("div", { class: "opts" }, rs.map((x) => h("button", { class: "btn sm gold", onclick: () => doAct({ type: "cast", i: x.i }, p) }, "ใช้ " + E.name(s, x)))),
         h("div", { class: "row" }, h("button", { class: "btn", onclick: () => doAct({ type: "pass" }, p) }, "ไม่ใช้ สู้เลย"))); }
-    return box(s.rw.hand ? `${s.P[s.rw.by].name} โจมตี: ความสามารถของ ${hs ? E.name(s, hs.x) : "การ์ด"} กำลังจะทำงานกับการ์ดบนมือคุณ · จะใช้ React ตอบโต้ก่อนไหม?` : s.rw.kind === "destroyed" ? `${L ? E.name(s, L.x) : "Avatar"} ของคุณถูกทำลาย · จะใช้ React ไหม?` : s.rw.kind === "doom" ? `${doomNames} ของคุณ${s.rw.fight ? "แพ้การต่อสู้ และ" : ""}กำลังจะ${s.rw.kill.length || s.rw.killCs.length ? "ถูกทำลาย" : "ออกจากสนาม"} · จะใช้ React ไหม?` : s.rw.kind === "left" ? `${L ? E.name(s, L.x) : "Avatar"} ของคุณออกจาก Avatar Zone · จะใช้ React ไหม?` : `${s.P[s.rw.by].name} ${what} · จะใช้ React ตอบโต้ไหม?`, L ? h("div", { class: "row small" }, h("button", { class: "btn sm", onclick: () => cardView(L.x) }, "ดูการ์ดนั้น")) : null,
+    return boxLow(s.rw.hand ? `${s.P[s.rw.by].name} โจมตี: ความสามารถของ ${hs ? E.name(s, hs.x) : "การ์ด"} กำลังจะทำงานกับการ์ดบนมือคุณ · จะใช้ React ตอบโต้ก่อนไหม?` : s.rw.kind === "destroyed" ? `${L ? E.name(s, L.x) : "Avatar"} ของคุณถูกทำลาย · จะใช้ React ไหม?` : s.rw.kind === "doom" ? `${doomNames} ของคุณ${s.rw.fight ? "แพ้การต่อสู้ และ" : ""}กำลังจะ${s.rw.kill.length || s.rw.killCs.length ? "ถูกทำลาย" : "ออกจากสนาม"} · จะใช้ React ไหม?`.replace(/^(.*) · (.*?) ของคุณแพ้การต่อสู้ และ/, (m, f, d) => `${f}: ${d} ของคุณแพ้การต่อสู้ `) : s.rw.kind === "left" ? `${L ? E.name(s, L.x) : "Avatar"} ของคุณออกจาก Avatar Zone · จะใช้ React ไหม?` : `${s.P[s.rw.by].name} ${what} · จะใช้ React ตอบโต้ไหม?`, L ? h("div", { class: "row small" }, h("button", { class: "btn sm", onclick: () => cardView(L.x) }, "ดูการ์ดนั้น")) : null,
       h("div", { class: "opts" }, rs.map((x) => h("button", { class: "btn sm gold", onclick: () => doAct({ type: "cast", i: x.i }, p) }, "ใช้ " + E.name(s, x)))),
       h("div", { class: "row" }, h("button", { class: "btn", onclick: () => doAct({ type: "pass" }, p) }, "ไม่ตอบโต้")));
   }
@@ -1369,7 +1396,11 @@ function promptBox0(s, p) {
     const moves = legalMoves(s, p); const reacts = P.hand.filter((x) => { const d = E.def(s, x); return d.t === "M" && d.st === "R" && !s.mu[p].R; });
     const att = E.locate(s, s.pend.att); const tgt = s.pend.tk === "life" ? "LIFE" : (E.locate(s, s.pend.ti) || { x: null }).x ? E.name(s, E.locate(s, s.pend.ti).x) : "?";
     const rs = E.reactsFor(s, p, { kind: "attack", by: s.pend.by, att: s.pend.att, tk: s.pend.tk, ti: s.pend.ti }); const held = heldReacts(s, p);
-    return box(`ถูกโจมตี: ${att ? E.name(s, att.x) : "?"} (POWER ${att ? E.power(s, att.x) + (s.pend.bonus || 0) : 0}) → ${tgt}`,
+    const fc = fightForecast(s); const tN = fc && fc.T ? tagName(s, fc.T) : tgt; const lifeLeft = P.life.filter((l) => !l.up).length;
+    const line = !fc ? "" : s.pend.tk === "life" ? `ตี LIFE ของคุณ (ยังคว่ำอยู่ ${lifeLeft} ใบ)` : fc.dead === "T" ? `ถ้าไม่ตอบโต้: ${tN} ของคุณจะถูกทำลาย` : fc.dead === "A" ? `ถ้าไม่ตอบโต้: ${tN} ของคุณชนะ (${tagName(s, fc.A)} ถูกทำลาย)` : fc.dead === "AT" ? `ถ้าไม่ตอบโต้: เสมอ ${tN} ของคุณกับ ${tagName(s, fc.A)} ถูกทำลายทั้งคู่` : "ถ้าไม่ตอบโต้: ไม่มีใครถูกทำลาย";
+    { const key = [s.turn, s.pend.att, s.pend.tk, s.pend.ti].join(":"); if (G.annKey !== key && fc) { G.annKey = key; toast(`${s.P[s.pend.by].name}: ${tagName(s, fc.A)} (P${fc.ap}) ตี → ${s.pend.tk === "life" ? "LIFE ของคุณ" : `${tN} (P${fc.tp}) ของคุณ`}`); } }
+    return boxLow(`ถูกโจมตี: ${fc ? tagName(s, fc.A) : "?"} (POWER ${fc ? fc.ap : 0}) ตี → ${s.pend.tk === "life" ? "LIFE ของคุณ" : `${tN} (POWER ${fc ? fc.tp : 0}) ของคุณ`}`,
+      line ? h("div", { class: "small", style: `font-weight:700;color:${fc.dead === "T" || fc.dead === "AT" || s.pend.tk === "life" ? "var(--warn)" : "#8ee3b2"}` }, line) : null,
       !rs.length && moves.length <= 1 ? h("div", { class: "tiny muted" }, "ไม่มี โล่มนุษย์ ที่ตื่นอยู่ และไม่มี React ที่ใช้ได้ตอนนี้ · รับการโจมตีให้อัตโนมัติ") : null,
       held.later.length ? h("div", { class: "tiny", style: "color:#8ee3b2" }, `${held.later.join(", ")}: ยังไม่ใช่จังหวะตอนประกาศโจมตี ถ้า Avatar ของคุณกำลังจะถูกทำลายจากการต่อสู้นี้ เกมจะถามให้ใช้ก่อนถูกทำลาย`) : null,
       held.used.length ? h("div", { class: "tiny", style: "color:var(--warn)" }, `เทิร์นนี้คุณใช้ React ไปแล้ว 1 ใบ จึงใช้ ${held.used.join(", ")} ไม่ได้ (React ใช้ได้เทิร์นละ 1 ใบ)`) : null,
