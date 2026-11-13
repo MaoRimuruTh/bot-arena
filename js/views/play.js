@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261113175832";
-import { fxText, kwGloss } from "../fxtext.js?v=20261113175832";
-import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261113175832";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261113175832";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261113175832";
-import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261113175832";
-import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261113175832";
-import { themeCounts } from "../boxdecks.js?v=20261113175832";
-import { ladder, ladderReset } from "../ladder.js?v=20261113175832";
-import { notify } from "../notify.js?v=20261113175832";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261113175832";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261113175832";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261113175832";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261113175832";
-import { Music } from "../music.js?v=20261113175832";
-import { Sfx } from "../sfx.js?v=20261113175832";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261113175832";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261113175832";
-import { readAura, traits } from "../auras.js?v=20261113175832";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261113175832";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261113180120";
+import { fxText, kwGloss } from "../fxtext.js?v=20261113180120";
+import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261113180120";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261113180120";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261113180120";
+import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261113180120";
+import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261113180120";
+import { themeCounts } from "../boxdecks.js?v=20261113180120";
+import { ladder, ladderReset } from "../ladder.js?v=20261113180120";
+import { notify } from "../notify.js?v=20261113180120";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261113180120";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261113180120";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261113180120";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261113180120";
+import { Music } from "../music.js?v=20261113180120";
+import { Sfx } from "../sfx.js?v=20261113180120";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261113180120";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261113180120";
+import { readAura, traits } from "../auras.js?v=20261113180120";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261113180120";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -26,8 +26,8 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(s.id ? [`รีเพลย์ในเครื่องนี้: ${s.id}-${V}`] : []), "บันทึก 40 บรรทัดล่าสุด:\n" + s.log.slice(-40).map((l) => "· " + l.m).join("\n"), // so a report can be traced back to its game
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261113175832";
-import { customMat, customSleeve, customFig, setOnReady, onVault } from "../vault.js?v=20261113175832";
+import { allDecks, deckById } from "./decks.js?v=20261113180120";
+import { customMat, customSleeve, customFig, setOnReady, onVault } from "../vault.js?v=20261113180120";
 // the players' own mat picture, card sleeve and figure (vault.js): the table asks for them, and redraws when one loads or changes
 Arena.setCustom({ mat: customMat, sleeve: customSleeve, fig: customFig, skins: (s) => setGameSkins(s && s.P, Me.uid) }); setOnReady((o) => Arena.customReady(o)); onVault(() => Arena.refreshCustom());
 { let sig = ""; Data.listeners.add(() => { const sh = Data.meta && Data.meta.show, now = sh ? Object.entries(sh).map(([k, x]) => k + ":" + (x && x.v) + ":" + (x && x.finish)).join() : ""; if (now !== sig) { sig = now; Arena.refreshCustom(); } }); }
@@ -560,7 +560,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261113175832").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261113180120").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", mat: botMat(), bot: true });
@@ -1334,9 +1334,15 @@ function tossBox(s) {
   }
   return h("div", { class: "prompt glass toss" }, h("b", { style: "font-family:var(--f-display)" }, "ใครได้เลือกเริ่มก่อน?"), ...kids);
 }
+// the abilities waiting their turn (Master Duel shows its chain, MTG Arena its stack): which runs now, whose each is, in order
+function trigQueue(s) {
+  const who = (q) => (q === G.V ? "คุณ" : s.P[q].name); const list = s.trig.slice(0, 5);
+  return h("div", { class: "tiny muted", style: "line-height:1.5", "aria-label": "ลำดับเอฟเฟกต์ที่รอทำงาน" }, "ลำดับเอฟเฟกต์: ",
+    ...list.flatMap((t, k) => [k ? " → " : "", h(k ? "span" : "b", { style: k ? "" : "color:var(--gold-hi)" }, `${k + 1}) ${(s.cards[t.c] || {}).n || "เอฟเฟกต์"} (${who(t.seat)})`)]), s.trig.length > 5 ? ` → อีก ${s.trig.length - 5}` : "");
+}
 function promptBox(s, p) {
   if (s.phase === "toss" && s.toss) return tossBox(s);
-  try { return promptBox0(s, p); } catch (e) {
+  try { const el = promptBox0(s, p); if (el && s.trig.length >= 2 && !s.rw) el.append(trigQueue(s)); return el; } catch (e) {
     console.warn(e); const t = s.trig[0]; if (!t || !mine(p)) return null; const d = s.cards[t.c] || {};
     return h("div", { class: "prompt glass" }, h("b", { style: "font-family:var(--f-display)" }, `${d.n || "เอฟเฟกต์"}: แสดงตัวเลือกไม่ได้`),
       ...trigEscape(s, t, p, "ระบบเลือกให้แบบอัตโนมัติได้ หรือข้ามเอฟเฟกต์นี้ แจ้งปัญหาได้จากเมนู ☰"));

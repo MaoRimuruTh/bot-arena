@@ -1,10 +1,10 @@
-import { h, openSheet, fmtDate, busy } from "../util.js?v=20261113175832";
-import { Data, Me } from "../fb.js?v=20261113175832";
-import { Views, avatarEl } from "../ui.js?v=20261113175832";
-import { ladder, ladderNow, ladderFresh } from "../ladder.js?v=20261113175832";
-import { stars } from "../quests.js?v=20261113175832";
-import { hasReplay, openReplay } from "./play.js?v=20261113175832";
-import { ACH, progress, rewardName } from "../achieve.js?v=20261113175832";
+import { h, openSheet, fmtDate, busy } from "../util.js?v=20261113180120";
+import { Data, Me } from "../fb.js?v=20261113180120";
+import { Views, avatarEl } from "../ui.js?v=20261113180120";
+import { ladder, ladderNow, ladderFresh } from "../ladder.js?v=20261113180120";
+import { stars } from "../quests.js?v=20261113180120";
+import { hasReplay, openReplay } from "./play.js?v=20261113180120";
+import { ACH, progress, rewardName } from "../achieve.js?v=20261113180120";
 
 const MODE_TH = { bot: "บอท", friend: "เพื่อน", solo: "สองฝั่ง", goldfish: "ซ้อมมือเดียว" };
 Views.history = {
@@ -26,10 +26,22 @@ Views.history = {
           h("span", { class: "chip " + (m.mode === "goldfish" ? "gold" : m.result === "win" ? "good" : m.result === "loss" ? "bad" : "") }, m.mode === "goldfish" ? (m.result === "win" ? "ซ้อม T" + m.turns : "ซ้อม") : m.result === "win" ? "ชนะ" : m.result === "loss" ? "แพ้" : "เสมอ"),
           h("div", { class: "grow", style: "min-width:0" }, h("b", null, m.mode === "goldfish" ? `${m.deckName} · ซ้อมมือเดียว` : `${m.deckName} vs ${m.oppDeck || m.opp}`), h("div", { class: "tiny muted" }, `${m.opp} · ${MODE_TH[m.mode] || ""} · ${m.turns} เทิร์น${m.undo ? ` · ย้อนตา ${m.undo} ครั้ง` : ""} · ${m.reason || ""}`)),
           h("span", { class: "tiny muted" }, fmtDate(m.at))))),
-        h("div", { class: "stack" }, ladderPanel(), achPanel(all), fishPanel(fish), h("div", { class: "panel stack" }, h("div", { class: "eyebrow" }, "อัตราชนะแยกเด็ค"), h("div", { class: "bars" }, Object.entries(byDeck).sort((a, b) => b[1].n - a[1].n).map(([k, v]) => h("div", { class: "bar" }, h("span", null, `${k} (${v.n})`), h("div", { class: "trk" }, h("i", { style: `width:${(v.w / v.n) * 100}%` })), h("span", { class: "num small" }, Math.round((v.w / v.n) * 100) + "%"))))))));
+        h("div", { class: "stack" }, ladderPanel(), splitPanel(ms), achPanel(all), fishPanel(fish), h("div", { class: "panel stack" }, h("div", { class: "eyebrow" }, "อัตราชนะแยกเด็ค"), h("div", { class: "bars" }, Object.entries(byDeck).sort((a, b) => b[1].n - a[1].n).map(([k, v]) => h("div", { class: "bar" }, h("span", null, `${k} (${v.n})`), h("div", { class: "trk" }, h("i", { style: `width:${(v.w / v.n) * 100}%` })), h("span", { class: "num small" }, Math.round((v.w / v.n) * 100) + "%"))))))));
   },
   refresh(root) { this.render(root); },
 };
+// win rates split the way the trackers of other games split them: going first or second, who the opponent was, and the
+// opponent decks met most (each row: games, win %), from the games kept in this history (practice against the dummy left out)
+const BRAIN_TH = { easy: "บอทมือใหม่", basic: "บอท", hard: "บอทมือโปร", ciel: "ชิเอล" };
+function splitPanel(ms) {
+  if (ms.length < 3) return null; const rate = (l) => `${l.length} เกม · ชนะ ${Math.round((l.filter((m) => m.result === "win").length / l.length) * 100)}%`;
+  const group = (key) => { const by = {}; for (const m of ms) { const k = key(m); if (k) (by[k] = by[k] || []).push(m); } return Object.entries(by).sort((a, b) => b[1].length - a[1].length); };
+  const row = ([k, l]) => h("div", { class: "row", style: "justify-content:space-between;gap:10px" }, h("span", { class: "small", style: "min-width:0;overflow-wrap:anywhere" }, k), h("span", { class: "num small", style: "white-space:nowrap" }, rate(l)));
+  return h("div", { class: "panel stack", style: "gap:6px" }, h("div", { class: "eyebrow" }, "อัตราชนะแยกตามสถานการณ์"),
+    ...group((m) => (m.first ? "เล่นก่อน" : "เล่นหลัง")).map(row),
+    h("div", { class: "eyebrow", style: "margin-top:6px" }, "แยกตามคู่แข่ง"), ...group((m) => (m.mode === "friend" ? "เพื่อน" : m.mode === "bot" ? BRAIN_TH[m.brain] || "บอท" : MODE_TH[m.mode] || m.mode)).map(row),
+    h("div", { class: "eyebrow", style: "margin-top:6px" }, "เด็คคู่แข่งที่เจอบ่อย"), ...group((m) => m.oppDeck || null).slice(0, 6).map(row));
+}
 // practice against the dummy: how soon each deck wins, counted in the game's turns (both players' turns together)
 function fishPanel(fish) {
   if (!fish.length) return null; const by = {};
