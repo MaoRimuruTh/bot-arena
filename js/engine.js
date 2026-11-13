@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113065942";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261113065942";
-import { SCRIPTS } from "./scripts.js?v=20261113065942";
-import { newId, clone } from "./util.js?v=20261113065942";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113070936";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261113070936";
+import { SCRIPTS } from "./scripts.js?v=20261113070936";
+import { newId, clone } from "./util.js?v=20261113070936";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -945,7 +945,7 @@ export const E = {
         E.moveTo(s, o.i, to, o.seat != null ? seat : null); if (L.z === "hell" && (to === "deckBottom" || to === "deckTop")) { s.back = s.back && s.back.t === s.turn ? s.back : { t: s.turn, n: [0, 0] }; s.back.n[L.p]++; }
         E.log(s, by, built ? `ก่อสร้าง ${name} จาก${ZONE_TH[L.z] || L.z}` : `${name}: ${ZONE_TH[L.z] || L.z} → ${ZONE_TH[to] || to}`);
         if (wasAv && to !== "av" && !s.rw && s.phase !== "over") { const on = { kind: "left", by: 1 - L.p, i: L.x.i, p: L.p, to }; if (E.reactsFor(s, L.p, on).length) s.rw = on; }
-        if (wasAv && to === "hell" && had) E.addTrig(s, L.x.o, L.x, "death");
+        // (an Avatar sent to hell is not destroyed: no คำสั่งเสีย — printed "คำสั่งเสีย (เมื่อ Avatar ใบนี้ถูกทำลาย)", FAQ เจ้ากล้าดียังไง and เลอติ๊ก)
         if (built && fires(s, L.x, "build")) E.addTrig(s, L.x.o, L.x, "build"); // "เมื่อการ์ดใบนี้ก่อสร้าง" also fires when an effect builds it
         if (to === "hand" && (L.z === "deck" || L.z === "hell")) E.handed(s, L.x);
         if (to === "hand" && L.z === "deck" && s.cur != null && !s.rw && s.phase !== "over") E.openWindow(s, L.p, "handed", L.x.i);

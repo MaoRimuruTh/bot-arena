@@ -1,6 +1,6 @@
 // Official card rulings: the FAQ on bottcg.com (questions players sent in, answered by the game's team). Read live from
 // the official CDN the first time a card is opened, kept in memory only; the answers are shown with a link to the page.
-import { CARD_SOURCE } from "./config.js?v=20261113065942";
+import { CARD_SOURCE } from "./config.js?v=20261113070936";
 let cache = null, loading = null;
 const norm = (t) => String(t || "").replace(/\s+/g, " ").trim();
 export function loadFaq() {

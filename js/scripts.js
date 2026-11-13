@@ -959,7 +959,7 @@ Object.assign(SCRIPTS, {
     if (m !== 0) { const t = c.choose(deckPool, 1, "เลือก Avatar Cost 5 หรือต่ำกว่าจาก Deck ขึ้นมือ")[0]; if (t) { ops.push({ op: "search", seat: p, take: t.i, to: "hand" }); say.push(`${E.name(s, t)} จาก Deck ขึ้นมือ`); } else say.push("ไม่มี Avatar ใน Deck ที่ตรงเงื่อนไข"); ops.push({ op: "shuffle", seat: p }); }
     return { explain: say.join(" · "), ops }; } },
   // แพร่พันธ์ุทันใจ: discard any number of รัททาทุย Avatars from the hand, then summon a รัททาทุย Avatar from the Deck whose Cost is at most the total Cost discarded
-  "SD08-014": { canCast: (E, s, p) => freeAv(E, s, p) > 0 && s.P[p].deck.some((y) => rat(E, s, y)),
+  "SD08-014": { canCast: (E, s, p) => freeAv(E, s, p) > 0 && s.P[p].deck.some((y) => rat(E, s, y)) && s.P[p].hand.some((y) => rat(E, s, y)), // (FAQ: with nothing discarded there is no Cost to summon for)
     cast: (c) => { const { E, s, seat: p } = c; const P = s.P[p]; const cost = (y) => E.def(s, y).c || 0;
       const hand = P.hand.filter((y) => y.i !== c.t.i && rat(E, s, y)); const deck = uniq(E, s, P.deck.filter((y) => rat(E, s, y)));
       // bots: the best Avatar whose Cost the least valuable discards can cover
@@ -3658,6 +3658,15 @@ Object.assign(SCRIPTS, {
     endPhase: (E, s, x, L) => ((L.z === "av" || (L.z === "mg" && x.on == null)) && mineEnd(s, L) ? [{ op: "draw", seat: L.p, n: 1 + Math.floor(s.P[L.p].hell.length / 15) }] : []) },
 });
 // Skill : Dacknova has no moment written on it: usable whenever a React can be (our own turn too)
+// บึงทมิฬ People - คุณเงือกมาวิน (จุติ): another {ปลา} of ours under the Deck : scout 5 and summon two {ปลา} from them, the rest under the Deck
+// FAQ: it must be two — with fewer than two {ปลา} among the five (or no room for two) nothing is summoned
+SCRIPTS["BT05-020"] = { summon: (c) => { const { E, s, seat: p, self: x } = c; const P = s.P[p]; const isFish = (y) => isAv(E, s, y) && sy(E, s, y, "ปลา");
+  const others = P.av.filter((y) => (!x || y.i !== x.i) && isFish(y)); if (!others.length) return { explain: "ไม่มี Avatar {ปลา} ใบอื่นให้นำกลับเข้าใต้ Deck ความสามารถไม่ทำงาน", ops: [] };
+  const back = c.choose([...others].sort((a, b) => (b.tok ? 1 : 0) - (a.tok ? 1 : 0) || cheapCard(E, s)(a, b)), 1, "ค่าใช้จ่าย: เลือก Avatar {ปลา} ใบอื่น 1 ใบ นำกลับเข้าใต้ Deck", { exact: true })[0]; if (!back) return { explain: "", ops: [] };
+  const top = P.deck.slice(0, 5); const fish = top.filter(isFish); const room = 4 - (E.avatars(P) - (back.tok ? 0 : 1)) >= 2 && 6 - (P.av.length - 1) >= 2; const head = [{ op: "move", i: back.i, to: "deckBottom" }, { op: "scoutShow", seat: p, ids: top.map((y) => y.i) }];
+  if (fish.length < 2 || !room) return { explain: `${E.name(s, back)} กลับเข้าใต้ Deck · สอดแนม ${top.length} ใบ · ${fish.length < 2 ? "มี Avatar {ปลา} ไม่ถึง 2 ใบ" : "Avatar Zone ไม่มีที่ว่างพอสำหรับ 2 ใบ"} จึงอัญเชิญไม่ได้ · ที่เหลือไว้ใต้ Deck`, ops: [...head, ...top.map((y) => ({ op: "move", i: y.i, to: "deckBottom" }))] };
+  const got = c.choose([...fish].sort((a, b) => worth(E, s, b) - worth(E, s, a)), 2, "เลือก Avatar {ปลา} 2 ใบ จากที่สอดแนม เพื่ออัญเชิญ", { exact: true, reveal: top.map((y) => y.i) });
+  return { explain: `${E.name(s, back)} กลับเข้าใต้ Deck · สอดแนม ${top.length} ใบ · อัญเชิญ ${got.map((y) => E.name(s, y)).join(" และ ")} · ที่เหลือไว้ใต้ Deck`, ops: [...head, ...got.map((y) => ({ op: "put", i: y.i })), ...top.filter((y) => !got.includes(y)).map((y) => ({ op: "move", i: y.i, to: "deckBottom" }))] }; } };
 SCRIPTS["BT12-064"].react = { kinds: ["attack", "summon", "cast", "activate", "destroyed", "doom", "battle", "handed", "react"], anytime: true, botV: (E, s, q) => (s.active === q ? 2 : -1) };
 // ขวัญตา เรื่องราว ตำนานอมตะ (only when it came from นักท่องเรื่องราว): once a turn, after it is attacked and survives, one Avatar on either side cannot be chosen as an attack target until the end of our turn
 SCRIPTS["BT12-048"].survived = (c) => { const { E, s, seat: p, self: x } = c; if (!x || !x.story) return { explain: "", ops: [] }; const key = "ขวัญตาตำนานอมตะ:" + x.i; if (!once(s, p, key)) return { explain: "ใช้ไปแล้วในเทิร์นนี้", ops: [] };
