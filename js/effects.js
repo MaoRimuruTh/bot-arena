@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261113180931";
-import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261113180931";
-import { E, scriptOf } from "./engine.js?v=20261113180931";
+import { readAura } from "./auras.js?v=20261113182200";
+import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261113182200";
+import { E, scriptOf } from "./engine.js?v=20261113182200";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -59,6 +59,7 @@ function filterOf(t) {
   if (/ใบอื่น|ตัวอื่น/.test(t)) f.other = true;
   const sys = [...t.matchAll(/\{\s*[Ss]ymbol\s+([^}]+?)\s*\}/g)].map((m) => m[1].trim()); if (sys.length === 1) f.symbol = sys[0]; else if (sys.length > 1) { f.symbols = sys; t = t.replace(/\}\s*(?:,|หรือ)\s*\{/g, "} {"); }
   if (!sys.length) { const us = t.match(/Symbol\s*:?\s*(?:ชาว)?([^\s\d{}:,]+)/); if (us) { f.symbol = us[1]; t = t.replace(us[0], " "); } }
+  { const syN = (y) => String(y).replace(/ฤๅษี|ฤาษี/g, "ฤษี"); if (f.symbol) f.symbol = syN(f.symbol); if (f.symbols) f.symbols = f.symbols.map(syN); } // the card data spells the Symbol ฤษี (ฤๅษีพระเจ้าตา)
   const xg = t.match(/GEM\s*(\d+)\s*หรือ\s*มากกว่า/i); if (xg) { f.minGem = +xg[1]; t = t.replace(xg[0], " "); }
   const names = [...t.matchAll(/["“]([^"”]{1,30})["”]/g)].map((m) => m[1].trim());
   if (names.length > 1) f.names = names; else if (names.length) f.name = names[0];
@@ -424,7 +425,8 @@ function sentence(s, t, p, self, ctx) {
     else if (self && (/ใบนี้|ตัวนี้/.test(t) || (!/เลือก|ฝ่าย|ทุกใบ|Avatar|\{/.test(t.split("POWER")[0]) && v > 0))) tgt = [self];
     else {
       const opp = OPP.test(t) || (v < 0 && !/ฝ่ายเรา|ของเรา|Zone\s*เรา/.test(t));
-      const cands = (opp ? O.av.filter((x) => !E.noAim(s, x)) : P.av).filter((x) => typed(x, f)).sort(opp ? (a, b) => (v < 0 ? val(s, b) - val(s, a) : val(s, a) - val(s, b)) : (a, b) => (b.a ? 1 : 0) - (a.a ? 1 : 0) || E.power(s, b) - E.power(s, a));
+      const csOnly = /Construct/.test(t.split("POWER")[0]) && !/Avatar/.test(t.split("POWER")[0]); // "Construct ทุกใบ บน Construct Zone … POWER+1" (ไม่นะ ทองเหม็น!)
+      const cands = (csOnly ? (opp ? O.cs : P.cs) : opp ? O.av.filter((x) => !E.noAim(s, x)) : P.av).filter((x) => csOnly || typed(x, f)).sort(opp ? (a, b) => (v < 0 ? val(s, b) - val(s, a) : val(s, a) - val(s, b)) : (a, b) => (b.a ? 1 : 0) - (a.a ? 1 : 0) || E.power(s, b) - E.power(s, a));
       tgt = /ทุกใบ|ทั้งหมด/.test(t) ? cands : ctx.choose(cands, 1, `เลือก Avatar ${opp ? "ฝ่ายตรงข้าม" : "ฝ่ายเรา"} ที่จะ POWER ${v > 0 ? "+" : ""}${v}`);
     }
     if (!tgt.length) { missed(ctx); say.push("ไม่มีเป้าหมาย POWER"); }

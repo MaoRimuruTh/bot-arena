@@ -2,7 +2,7 @@
 // Kudsan Deck boxes (คัดสรรเด็ค KD01–KD04). Only card numbers and how many of each the box holds, from each box's
 // published card list. KD02 and KD03 as published add up to 49 and 48 cards; the missing ones are marked `topUp`
 // (a best guess, until the real box is checked).
-import { CARDS, baseId, validateDeck, starterDecks, deckEntries } from "./cards.js?v=20261113180931";
+import { CARDS, baseId, validateDeck, starterDecks, deckEntries } from "./cards.js?v=20261113182200";
 
 const list = (pre, counts) => counts.map((n, k) => [`${pre}-${String(k + 1).padStart(3, "0")}`, n]);
 const life = (pre) => [21, 22, 23, 24, 25].map((k) => `${pre}-0${k}`);

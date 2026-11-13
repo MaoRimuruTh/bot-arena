@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113180931";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261113180931";
-import { SCRIPTS } from "./scripts.js?v=20261113180931";
-import { newId, clone } from "./util.js?v=20261113180931";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113182200";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261113182200";
+import { SCRIPTS } from "./scripts.js?v=20261113182200";
+import { newId, clone } from "./util.js?v=20261113182200";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -453,7 +453,7 @@ export const E = {
   atkBy(s, x, att) { const sc = x.mute ? null : scriptOf(s, x); return !!(sc && sc.noAtkBy && sc.noAtkBy(E, s, x, att)); },
   atkSafe(s, x) { if (E.untargetable(s, x)) return true; if (x.ntg != null && x.ntg >= s.turn) return true; { const Lx = E.locate(s, x.i); if (Lx && fieldCards(s).some(({ x: y, L: Ly }) => Ly.p === Lx.p && !y.mute && y.i !== x.i && (scriptOf(s, y) || {}).guardOthers && scriptOf(s, y).guardOthers(E, s, y, x))) return true; } const L = E.locate(s, x.i); const sc = L && !x.mute ? scriptOf(s, x) : null; return !!(sc && sc.noAtk && sc.noAtk(E, s, x, L)); },
   destroy(s, i, cause, opt = {}) {
-    const L = E.locate(s, i); if (!L) return;
+    const L = E.locate(s, i); if (!L || !["av", "cs", "mg", "land"].includes(L.z)) return; // only a card on the table can be destroyed (a held destroy must not follow a card already sent to the hand)
     // cards of the same owner that stop or take this destruction instead (พันเรือง, อาจารย์ธรรมโชติ …): saveOther returns { why, ops } or null
     if (!opt.noSave && (s.saving || 0) < 3) { const fight = /^(?:แพ้|เสมอ|พลังเท่ากัน)/.test(String(cause || "")); const P = s.P[L.p];
       for (const [z, list] of [["av", P.av], ["cs", P.cs], ["mg", P.mg], ["hand", P.hand], ["land", E.lands(s).filter((l) => l.o === L.p)]]) for (const y of list) {
@@ -1183,7 +1183,7 @@ export const E = {
       case "setCost": { const L = E.locate(s, o.i); if (!L) throw new RuleError("ไม่พบการ์ด"); L.x.cst = { v: Math.max(0, o.v | 0), t: s.turn }; E.log(s, by, `Cost ของ ${E.name(s, L.x)} เป็น ${L.x.cst.v} จนจบเทิร์น`); return; }
       case "reSummon": { const L = E.locate(s, o.i); if (!L || L.z !== "av") return; s.trig.push({ id: tid(s), seat: L.p, i: L.x.i, c: L.x.c, when: "summon", ...(o.exact ? { exact: true } : {}) }); E.log(s, by, `ความสามารถจุติของ ${E.name(s, L.x)} ทำงานอีกครั้ง`); return; }
       case "stateSet": { // turn-scoped player flags: K-BO, เนโกะเมะ, 1 - 2 - 2
-        if (o.k === "hosp") { s.hosp = s.hosp || [null, null]; for (const q of [0, 1]) { const cur = s.hosp[q] && s.hosp[q].t === s.turn ? s.hosp[q].names : []; s.hosp[q] = { t: s.turn, names: [...cur, String(o.name || "")] }; } } // FAQ โรงบาล: the name is shut for both players else if (o.k === "noReact") { s.noR = { t: s.turn, p: o.self ? seat : 1 - seat }; } else if (o.k === "landLock") { (s.landLock = s.landLock || [0, 0])[1 - seat] = s.turn + 1; } else if (o.k === "kbo") s.kbo = { t: s.turn, p: seat }; else if (o.k === "neko") { (s.neko = s.neko || [null, null])[seat] = { st: o.st, until: s.turn + 1 }; } else if (o.k === "oneTwoTwo") { (s.noSearch = s.noSearch || [0, 0])[seat] = s.turn + 2; (s.skipDraw = s.skipDraw || [0, 0])[seat] = s.turn + 2; }
+        if (o.k === "hosp") { s.hosp = s.hosp || [null, null]; for (const q of [0, 1]) { const cur = s.hosp[q] && s.hosp[q].t === s.turn ? s.hosp[q].names : []; s.hosp[q] = { t: s.turn, names: [...cur, String(o.name || "")] }; } } /* FAQ โรงบาล: the name is shut for both players */ else if (o.k === "noReact") { s.noR = { t: s.turn, p: o.self ? seat : 1 - seat }; } else if (o.k === "landLock") { (s.landLock = s.landLock || [0, 0])[1 - seat] = s.turn + 1; } else if (o.k === "kbo") s.kbo = { t: s.turn, p: seat }; else if (o.k === "neko") { (s.neko = s.neko || [null, null])[seat] = { st: o.st, until: s.turn + 1 }; } else if (o.k === "oneTwoTwo") { (s.noSearch = s.noSearch || [0, 0])[seat] = s.turn + 2; (s.skipDraw = s.skipDraw || [0, 0])[seat] = s.turn + 2; }
         E.log(s, by, String(o.why || "")); return; }
       case "bloody": { const P = s.P[seat]; const a = 1 + Math.floor(E.rnd(s) * 6), b = 1 + Math.floor(E.rnd(s) * 6); E.log(s, by, `ทอยลูกเต๋าได้ ${a} และ ${b}`); E.ev(s, { k: "roll", p: by, sides: 6, r: a, r2: b, why: "บลัดดี้แมรี่" }); if (a % 2 || b % 2) return;
         const x = P.hell.find((y) => E.named(s, y, "วิญญาณร้าย")); if (!x) return; E.moveTo(s, x.i, "dark"); s.bm = s.bm || [0, 0]; s.bm[seat]++; E.log(s, by, `เนรเทศ ${E.name(s, x)} (${s.bm[seat]}/3)`); if (s.bm[seat] >= 3) E.lose(s, 1 - seat, "วิญญาณร้ายครบ 3 ใบในมิติมืด (บลัดดี้แมรี่)"); return; }
