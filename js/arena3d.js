@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113144215";
-import { E } from "./engine.js?v=20261113144215";
-import { h } from "./util.js?v=20261113144215";
-import { Sfx } from "./sfx.js?v=20261113144215";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113154648";
+import { E } from "./engine.js?v=20261113154648";
+import { h } from "./util.js?v=20261113154648";
+import { Sfx } from "./sfx.js?v=20261113154648";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -220,10 +220,12 @@ export const MATS = { black: { name: "รักดำ", lac: "#120b09", edge: "r
   // ซากุระราตรี: night-lacquer with sakura painted in the corners (maki-e style) — and sakura trees by the table, petals drifting over it
   sakura: { name: "ซากุระราตรี", lac: "#160d22", edge: "rgba(236,140,178,", kind: "sakura" } };
 // the scene (สนาม, the map) round the table — not the cloth on it (ผ้าปู, the playmat above). Each viewer sees the one they chose.
-export const SCENES = { hall: { name: "โถงไม้แสงเทียน" }, pond: { name: "สวนสระบัว" }, market: { name: "ตลาดน้ำยามค่ำ" }, hell: { name: "นรกภูมิ" }, sakura: { name: "ซากุระราตรี" } };
+export const SCENES = { hall: { name: "โถงไม้แสงเทียน" }, pond: { name: "สวนสระบัว" }, market: { name: "ตลาดน้ำยามค่ำ" }, hell: { name: "นรกภูมิ" }, forest: { name: "ป่าหิมพานต์" }, sakura: { name: "ซากุระราตรี" },
+  azure: { name: "ลานเปลวคราม", owner: true } }; // owner: the owner's own (achieve.js opens it to him alone)
 // a scene that brings its own ground: how to build it, and the air round it (fog colour and thickness, sky and ground light, how strong)
 const GROUND = { pond: { build: () => buildPond(), air: [0x0f2a26, 0.019, 0xf2f6ff, 0x1c3320, 0.62] }, market: { build: () => buildMarket(), air: [0x04080f, 0.015, 0xaab8ff, 0x0a0a14, 0.4] },
-  hell: { build: () => buildHell(), air: [0x140403, 0.02, 0xffa070, 0x2a0805, 0.5], noMotes: true } };
+  hell: { build: () => buildHell(), air: [0x140403, 0.02, 0xffa070, 0x2a0805, 0.5], noMotes: true },
+  forest: { build: () => buildForest(), air: [0x0b1f1a, 0.02, 0xbfe8d8, 0x10241a, 0.5], noMotes: true }, azure: { build: () => buildAzure(), air: [0x030818, 0.017, 0x9fc4ff, 0x060a1c, 0.46], noMotes: true } };
 const avCache = new Map();
 const loadAvatar = (key, f) => {
   if (f) { if (!avCache.has(f.key)) avCache.set(f.key, f.url.then((u) => (u && THREE.GLTFLoader ? new Promise((res) => new THREE.GLTFLoader().load(u, res, undefined, () => res(null))) : null))); return avCache.get(f.key); }
@@ -744,6 +746,29 @@ function makeBird(M) {
   for (const s of [-1, 1]) { const eye = new THREE.Mesh(M.sph, M.dark); eye.scale.setScalar(0.013); eye.position.set(s * 0.058, 0.052, 0.062); neck.add(eye); }
   return { grp, neck, t: 1 + Math.random() * 3, yaw: 0, hop: 0, turn: 0, y0: 0 };
 }
+// water whose light runs over it in a net of bright lines (the pond; other scenes give it their own colours)
+// wave: 0 = still light on water; 1 = the light runs outward from the table in rings (the owner's scene)
+function cellWater(low, deep, shal, hi, fogD, gain = 0.55, wave = 0) {
+  return new THREE.ShaderMaterial({ uniforms: { uT: { value: 0 }, uDeep: { value: new THREE.Color(deep) }, uShal: { value: new THREE.Color(shal) }, uHi: { value: new THREE.Color(hi) }, uGain: { value: gain }, uWave: { value: wave }, uFogC: { value: R.scene.fog.color }, uFogD: { value: fogD } },
+    vertexShader: "varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }",
+    fragmentShader: `${low ? "#define LOW\n" : ""}uniform float uT; uniform float uGain; uniform float uWave; uniform vec3 uDeep; uniform vec3 uShal; uniform vec3 uHi; uniform vec3 uFogC; uniform float uFogD; varying vec3 vW;
+      vec2 h2(vec2 p){ p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3))); return fract(sin(p) * 43758.5453); }
+      float cell(vec2 p){ vec2 i = floor(p), f = fract(p); float d1 = 8.0, d2 = 8.0;
+        for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) { vec2 g = vec2(float(x), float(y)); vec2 o = 0.5 + 0.42 * sin(uT * 0.8 + 6.2831 * h2(i + g)); float d = length(g + o - f); if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d; }
+        return d2 - d1; }
+      void main(){ vec2 p = vW.xz; float line = smoothstep(0.1, 0.02, cell(p * 0.62 + vec2(uT * 0.035, 0.0)));
+        #ifndef LOW
+        line = line * 0.85 + 0.4 * smoothstep(0.08, 0.015, cell(p * 1.27 + vec2(3.7, -uT * 0.05)));
+        #endif
+        line *= mix(1.0, 0.16 + 0.84 * pow(0.5 + 0.5 * sin(length(p - vec2(0.0, -0.2)) * 0.85 - uT * 1.25), 3.0), uWave);
+        float depth = 0.5 + 0.5 * sin(p.x * 0.33 + sin(p.y * 0.41) * 1.3 + uT * 0.07);
+        vec3 col = mix(uDeep, uShal, 0.18 + 0.6 * depth) + uHi * line * uGain;
+        float d = length(cameraPosition - vW); col = mix(col, uFogC, 1.0 - exp(-uFogD * uFogD * d * d));
+        gl_FragColor = vec4(col, 1.0);
+        #include <tonemapping_fragment>
+        #include <encodings_fragment>
+      }` });
+}
 function buildPond() {
   const Q = R.Q, low = Q === "low", C = POND[R.zones === ZONES.tall ? "tall" : "wide"], G = -0.335, grp = new THREE.Group(); grp.name = "pond"; R.scene.add(grp);
   const S = { grp, zk: R.zones, o: new THREE.Object3D(), tex: [], koi: [], rings: [], flies: [], birds: [], step: stepPond }, o = S.o, rnd = lcg(71), T = (t) => { S.tex.push(t); return t; };
@@ -761,24 +786,7 @@ function buildPond() {
   const cx = out.reduce((a, p) => a + p[0], 0) / out.length, cz = out.reduce((a, p) => a + p[1], 0) / out.length;
   const shape = (grow) => new THREE.ShapeGeometry(new THREE.Shape(out.map(([x, z]) => { const dx = x - cx, dz = z - cz, d = Math.hypot(dx, dz) || 1; return new THREE.Vector2(x + (dx / d) * grow, -(z + (dz / d) * grow)); })));
   flat(shape(0.34), new THREE.MeshBasicMaterial({ color: 0x9a8f6e }), G + 0.003, 1); flat(shape(0.12), new THREE.MeshBasicMaterial({ color: 0x4a6f5c }), G + 0.0045, 2);
-  const water = new THREE.ShaderMaterial({ uniforms: { uT: { value: 0 }, uDeep: { value: new THREE.Color(0x0c6d86) }, uShal: { value: new THREE.Color(0x35c9c4) }, uHi: { value: new THREE.Color(0xc8fff2) }, uFogC: { value: R.scene.fog.color }, uFogD: { value: 0.019 } },
-    vertexShader: "varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }",
-    fragmentShader: `${low ? "#define LOW\n" : ""}uniform float uT; uniform vec3 uDeep; uniform vec3 uShal; uniform vec3 uHi; uniform vec3 uFogC; uniform float uFogD; varying vec3 vW;
-      vec2 h2(vec2 p){ p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3))); return fract(sin(p) * 43758.5453); }
-      float cell(vec2 p){ vec2 i = floor(p), f = fract(p); float d1 = 8.0, d2 = 8.0;
-        for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) { vec2 g = vec2(float(x), float(y)); vec2 o = 0.5 + 0.42 * sin(uT * 0.8 + 6.2831 * h2(i + g)); float d = length(g + o - f); if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d; }
-        return d2 - d1; }
-      void main(){ vec2 p = vW.xz; float line = smoothstep(0.1, 0.02, cell(p * 0.62 + vec2(uT * 0.035, 0.0)));
-        #ifndef LOW
-        line = line * 0.85 + 0.4 * smoothstep(0.08, 0.015, cell(p * 1.27 + vec2(3.7, -uT * 0.05)));
-        #endif
-        float depth = 0.5 + 0.5 * sin(p.x * 0.33 + sin(p.y * 0.41) * 1.3 + uT * 0.07);
-        vec3 col = mix(uDeep, uShal, 0.18 + 0.6 * depth) + uHi * line * 0.55;
-        float d = length(cameraPosition - vW); col = mix(col, uFogC, 1.0 - exp(-uFogD * uFogD * d * d));
-        gl_FragColor = vec4(col, 1.0);
-        #include <tonemapping_fragment>
-        #include <encodings_fragment>
-      }` });
+  const water = cellWater(low, 0x0c6d86, 0x35c9c4, 0xc8fff2, 0.019);
   flat(shape(0), water, G + 0.006, 3); S.water = water;
   const wet = (x, z, pad = 0) => inPoly(x, z, out) && (!pad || [[pad, 0], [-pad, 0], [0, pad], [0, -pad]].every(([a, b]) => inPoly(x + a, z + b, out)));
   const [bx0, bx1, bz] = C.bridge, onIslet = (x, z, k = 1) => C.isles.some(([ix, iz, irx, irz]) => ((x - ix) / (irx * k)) ** 2 + ((z - iz) / (irz * k)) ** 2 < 1);
@@ -1058,6 +1066,139 @@ function stepHell(S, dt, t) {
   if (S.emb) { const E2 = S.emb; for (let i = 0; i < E2.st.length; i++) { const e = E2.st[i]; e.y += e.v * dt; if (e.y > 7) { e.y = 0; e.x = -13 + Math.random() * 26; e.z = -12 + Math.random() * 20; } E2.fp[i * 3] = e.x + Math.sin(t * 0.8 + e.ph) * 0.3; E2.fp[i * 3 + 1] = e.y; E2.fp[i * 3 + 2] = e.z + Math.cos(t * 0.6 + e.ph) * 0.2; }
     E2.pts.geometry.attributes.position.needsUpdate = true; E2.pts.material.opacity = 0.8 + 0.15 * Math.sin(t * 9); }
 }
+// ---------- ป่าหิมพานต์: the Himmapan forest at dusk ----------
+// Moss underfoot, great trunks with buttress roots at the sides and their leaves hanging into view, a spring fed by a small
+// waterfall, ferns, mushrooms and flowers that glow, shafts of light through the canopy, fireflies and drifting spores.
+const FOREST = {
+  wide: { trunks: [[-10.7, -5.3, 0.8, 11], [9.9, -7.7, 0.8, 13]], pool: [[-9.2, -7.35], [-7, -7.15], [-4.5, -7.2], [-3.3, -7.7], [-4, -8.3], [-6.5, -8.5], [-8.8, -8.45], [-9.7, -7.9]], fall: [-9.3, -8.05], fh: 0.5,
+    beds: [[-13, -8.8, -7.0, 4.8], [8.8, 13, -7.0, 4.8], [-3, 9, -7.5, -6.95]], shafts: [[-9.6, -3.6], [-5.6, -7.9], [7.4, -7.6], [10.4, -1.2]], flies: [[-10.5, -3], [6, -8], [10.5, -4]] },
+  tall: { trunks: [[-5.3, -9.0, 0.7, 11], [5.5, -9.1, 0.7, 13]], fh: 1, pool: [[-3.6, -7.7], [-1, -7.45], [1.6, -7.6], [2.6, -8.3], [1.8, -9.1], [-1, -9.4], [-3.4, -9.2], [-4.4, -8.4]], fall: [-0.9, -9.25],
+    beds: [[-7.5, 7.5, -7.5, -6.95], [-7.5, 7.5, 6.7, 9.6]], shafts: [[-4, -7.9], [3.6, -8.1], [0.5, 7.6]], flies: [[-4, -8], [4, -8], [0, 8]] } };
+function fallTexture() { return canvasTex(128, (g, S) => { g.fillStyle = "#000"; g.fillRect(0, 0, S, S); const rnd = lcg(61); for (let k = 0; k < 70; k++) { const x = rnd() * S, y = rnd() * S, l = 20 + rnd() * 60; const gr = g.createLinearGradient(0, y, 0, y + l); gr.addColorStop(0, "rgba(255,255,255,0)"); gr.addColorStop(0.5, `rgba(255,255,255,${0.3 + rnd() * 0.6})`); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; for (const dy of [-S, 0]) g.fillRect(x, y + dy, 1.5 + rnd() * 3, l); }
+    const ed = g.createLinearGradient(0, 0, S, 0); ed.addColorStop(0, "rgba(0,0,0,1)"); ed.addColorStop(0.25, "rgba(0,0,0,0)"); ed.addColorStop(0.75, "rgba(0,0,0,0)"); ed.addColorStop(1, "rgba(0,0,0,1)"); g.fillStyle = ed; g.fillRect(0, 0, S, S); }); }
+function shaftTexture() { return canvasTex(64, (g, S) => { const v = g.createLinearGradient(0, 0, 0, S); v.addColorStop(0, "rgba(255,255,255,0)"); v.addColorStop(0.45, "rgba(255,255,255,.45)"); v.addColorStop(0.85, "rgba(255,255,255,.95)"); v.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = v; g.fillRect(0, 0, S, S); g.globalCompositeOperation = "destination-in"; const hgr = g.createLinearGradient(0, 0, S, 0); hgr.addColorStop(0, "rgba(0,0,0,0)"); hgr.addColorStop(0.5, "rgba(0,0,0,1)"); hgr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = hgr; g.fillRect(0, 0, S, S); }); }
+// points of light that wander (fireflies) or rise (spores, embers): [object, stepper]
+function lightPoints(grp, n, color, size, rise, spots) {
+  const fp = new Float32Array(n * 3), fg = new THREE.BufferGeometry(); fg.setAttribute("position", new THREE.BufferAttribute(fp, 3));
+  const pts = new THREE.Points(fg, new THREE.PointsMaterial({ map: R.FX.dot, color, size, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })); pts.frustumCulled = false; grp.add(pts);
+  const st = Array.from({ length: n }, (_, i) => { const c = spots ? spots[i % spots.length] : null; return { x: c ? c[0] + (Math.random() - 0.5) * 4 : -13 + Math.random() * 26, z: c ? c[1] + (Math.random() - 0.5) * 3 : -12 + Math.random() * 21, y: Math.random() * 6, v: rise * (0.5 + Math.random()), ph: Math.random() * 6.28, f: 0.25 + Math.random() * 0.4 }; });
+  return (dt, t) => { for (let i = 0; i < n; i++) { const e = st[i];
+      if (rise) { e.y += e.v * dt; if (e.y > 7) { e.y = 0; e.x = -13 + Math.random() * 26; e.z = -12 + Math.random() * 21; } fp[i * 3] = e.x + Math.sin(t * 0.8 + e.ph) * 0.3; fp[i * 3 + 1] = e.y; fp[i * 3 + 2] = e.z + Math.cos(t * 0.6 + e.ph) * 0.2; }
+      else { fp[i * 3] = e.x + Math.sin(t * e.f + e.ph) * 1.6 + Math.sin(t * e.f * 2.3 + e.ph) * 0.4; fp[i * 3 + 1] = 0.65 + Math.sin(t * e.f * 1.7 + e.ph * 2) * 0.3; fp[i * 3 + 2] = e.z + Math.cos(t * e.f * 0.8 + e.ph) * 1.3; } }
+    fg.attributes.position.needsUpdate = true; pts.material.opacity = rise ? 0.8 + 0.15 * Math.sin(t * 9) : 0.55 + 0.4 * Math.abs(Math.sin(t * 1.3)); };
+}
+// a brazier bowl on a foot at each spot, a flame and its glow over it: returns what flickers
+const blueFlame = () => R.flameB || (R.flameB = flameTexture(true)); // made once, the first time the owner's fire is wanted
+function braziers(grp, spots, G, mat, flameCol, glowCol, o, tex = R.flameTex) {
+  const bm = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.34, 0.2, 0.26, 8), mat, spots.length), lm = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.1, 0.16, 0.5, 6), mat, spots.length), col = new THREE.Color(1, 0.94, 0.92), out = [];
+  spots.forEach(([x, z], i) => { o.rotation.set(0, 0, 0); o.scale.set(1, 1, 1); o.position.set(x, G + 0.63, z); o.updateMatrix(); bm.setMatrixAt(i, o.matrix); o.position.y = G + 0.25; o.updateMatrix(); lm.setMatrixAt(i, o.matrix); bm.setColorAt(i, col); lm.setColorAt(i, col);
+    const f = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: flameCol, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); f.position.set(x, G + 1.15, z); f.scale.set(0.55, 1.0, 1); grp.add(f);
+    out.push({ f, hl: sprite(R.FX.dot, glowCol, 2.6, new THREE.Vector3(x, G + 1.0, z), 0.4, grp), ph: i * 2.7 }); }); grp.add(bm, lm); return out;
+}
+const flicker = (list, t) => { for (const b of list) { const f = 1 + 0.1 * Math.sin(t * 12 + b.ph) + 0.07 * Math.sin(t * 7.1 + b.ph * 2) + Math.random() * 0.04; b.f.scale.set(0.55 * (2 - f), 1.0 * f, 1); b.hl.material.opacity = 0.36 * f; } };
+function buildForest() {
+  const Q = R.Q, low = Q === "low", C = FOREST[R.zones === ZONES.tall ? "tall" : "wide"], G = -0.335, grp = new THREE.Group(); grp.name = "forest"; R.scene.add(grp);
+  const S = { grp, zk: R.zones, o: new THREE.Object3D(), tex: [], rings: [], steps: [], step: stepForest }, o = S.o, rnd = lcg(211), T = (t) => { S.tex.push(t); return t; }, col = new THREE.Color();
+  const flat = (geo, mat, y, order = 0) => { const m = new THREE.Mesh(geo, mat); m.rotation.x = -Math.PI / 2; m.position.y = y; m.renderOrder = order; grp.add(m); return m; };
+  // moss as far as the eye goes, a mossy stone platform under the table
+  { const gt = T(grassTexture()); gt.wrapS = gt.wrapT = THREE.RepeatWrapping; gt.repeat.set(7, 5); gt.anisotropy = 8; const tg = new THREE.PlaneGeometry(70, 50, 28, 20), tp = tg.attributes.position, tc = new Float32Array(tp.count * 3);
+    for (let k = 0; k < tp.count; k++) { const d = Math.hypot(tp.getX(k) / 1.3, tp.getY(k) + 1.5), v = 0.11 + 0.27 * Math.exp(-(Math.max(0, d - 7) ** 2) / 120); tc[k * 3] = v * 0.55; tc[k * 3 + 1] = v; tc[k * 3 + 2] = v * 0.86; }
+    tg.setAttribute("color", new THREE.BufferAttribute(tc, 3)); flat(tg, new THREE.MeshBasicMaterial({ map: gt, vertexColors: true }), G).position.z = -2;
+    const pt = T(paverTexture()); pt.wrapS = pt.wrapT = THREE.RepeatWrapping; pt.repeat.set(7, 5.5); flat(new THREE.PlaneGeometry(MW + 1.7, MD + 1.7), new THREE.MeshBasicMaterial({ map: pt, color: 0x4f6f62 }), G + 0.006, 1).position.z = MZ;
+    flat(new THREE.PlaneGeometry(MW + 3.2, MD + 3.2), new THREE.MeshBasicMaterial({ map: R.shade.material.map, transparent: true, opacity: 0.55, depthWrite: false }), G + 0.004, 1).position.z = MZ; }
+  // the spring and the fall that feeds it, rocks behind
+  const out = new THREE.CatmullRomCurve3(C.pool.map(([x, z]) => new THREE.Vector3(x, 0, z)), true, "centripetal").getPoints(48).map((p) => [p.x, p.z]); S.poly = out;
+  const cx = out.reduce((a, p) => a + p[0], 0) / out.length, cz = out.reduce((a, p) => a + p[1], 0) / out.length;
+  const shape = (grow) => new THREE.ShapeGeometry(new THREE.Shape(out.map(([x, z]) => { const dx = x - cx, dz = z - cz, d = Math.hypot(dx, dz) || 1; return new THREE.Vector2(x + (dx / d) * grow, -(z + (dz / d) * grow)); })));
+  flat(shape(0.2), new THREE.MeshBasicMaterial({ color: 0x2c4a3a }), G + 0.003, 1); S.water = cellWater(low, 0x08463f, 0x22b092, 0xc8ffe8, 0.02, 0.45); flat(shape(0), S.water, G + 0.006, 3);
+  const stone = new THREE.MeshStandardMaterial({ color: 0x3c4a44, roughness: 0.95, metalness: 0, flatShading: true }), [fx, fz] = C.fall, fh = C.fh;
+  { const spots = [[-1.5, -0.2, 0.9, 1.9], [-0.5, -0.45, 1.0, 2.6], [0.6, -0.4, 0.95, 2.3], [1.6, -0.15, 0.8, 1.6], [-2.4, 0.1, 0.6, 1.0], [2.5, 0.2, 0.55, 0.9]].map(([x, z, s, hh]) => [fx + x * fh, fz + z * fh, s * fh, hh * fh]);
+    for (const b of C.beds) for (let k = 0; k < (low ? 1 : 3); k++) { const x = b[0] + rnd() * (b[1] - b[0]), z = b[2] + rnd() * (b[3] - b[2]); if (!inPoly(x, z, out)) spots.push([x, z, 0.3 + rnd() * 0.35, 0.25 + rnd() * 0.3]); }
+    const rk = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), stone, spots.length); spots.forEach(([x, z, s, hh], i) => { o.position.set(x, G + hh * 0.45, z); o.rotation.set(rnd() * 0.4, rnd() * 6.28, rnd() * 0.4); o.scale.set(s, hh, s * 0.8); o.updateMatrix(); rk.setMatrixAt(i, o.matrix); const v = 0.75 + rnd() * 0.4; rk.setColorAt(i, col.setRGB(v * 0.9, v, v * 0.92)); });
+    o.rotation.set(0, 0, 0); grp.add(rk);
+    const ft = T(fallTexture()); ft.wrapS = ft.wrapT = THREE.RepeatWrapping; ft.repeat.set(1, 1.6); S.fall = ft;
+    const fm = new THREE.Mesh(new THREE.PlaneGeometry(1.15 * fh, 3.6 * fh), new THREE.MeshBasicMaterial({ map: ft, color: 0xbff4ff, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false })); fm.position.set(fx, G + 1.8 * fh, fz + 0.62 * fh); fm.rotation.x = -0.12; grp.add(fm);
+    S.mist = sprite(R.FX.dot, 0xbfeee6, 2.4 * fh, new THREE.Vector3(fx, G + 0.3 * fh, fz + 0.9 * fh), 0.32, grp); S.mistS = fh;
+    const rt = T(ringTexture()); for (let i = 0; i < (low ? 1 : 3); i++) { const m = flat(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: rt, color: 0xdffff4, transparent: true, opacity: 0, depthWrite: false }), G + 0.012, 5); m.position.set(fx + (i - 1) * 0.25 * fh, G + 0.012, fz + 1.0 * fh); S.rings.push({ m, age: i * 0.6, dur: 1.8 }); } }
+  // the great trees: a trunk that goes up out of sight, buttress roots, and leaves hanging down into view
+  { const bt = T(barkTexture()); bt.wrapS = bt.wrapT = THREE.RepeatWrapping; const bark = new THREE.MeshStandardMaterial({ map: bt, color: 0xa89878, roughness: 0.95, metalness: 0 }), V = (x, y, z) => new THREE.Vector3(x, y, z);
+    const lt = T(leafTexture()), hang = [];
+    for (const [tx, tz, k, seed] of C.trunks.slice(0, low ? 2 : 9)) { const r2 = lcg(seed * 7919), P = [], UV = [], I = []; let nv = 0; const add = (L) => { P.push(...L.pos); UV.push(...L.uv); for (const i of L.idx) I.push(i + nv); nv += L.pos.length / 3; };
+      add(limbGeometry([V(0, -0.3, 0), V(0.05, 2.2, 0.05), V(-0.1, 4.6, -0.05), V(0.15, 7.5, 0.1)], 0.8, 0.55, 12, 8, 0.45));
+      for (let j = 0; j < 6; j++) { const a = (j / 6) * 6.2832 + r2() * 0.7, c = Math.cos(a), s = Math.sin(a), L = 1.9 + r2() * 1.2; add(limbGeometry([V(c * 0.3, 1.3 + r2() * 0.5, s * 0.3), V(c * 0.8, 0.6, s * 0.8), V(c * L * 0.7, 0.14, s * L * 0.7), V(c * L, -0.22, s * L)], 0.3, 0.07, 6, 6)); }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute("uv", new THREE.Float32BufferAttribute(UV, 2)); geo.setIndex(I); geo.computeVertexNormals();
+      const m = new THREE.Mesh(geo, bark); m.position.set(tx, G, tz); m.scale.setScalar(k); grp.add(m);
+      const sh = flat(new THREE.PlaneGeometry(7 * k, 7 * k), new THREE.MeshBasicMaterial({ map: R.shade.material.map, transparent: true, opacity: 0.55, depthWrite: false }), G + 0.005, 1); sh.position.set(tx, G + 0.005, tz);
+      for (let j = 0; j < (low ? 5 : 11); j++) { const a = r2() * 6.2832, r = 1.0 + r2() * 2.4; hang.push([tx + Math.cos(a) * r * k, G + 2.3 + r2() * 1.7, tz + Math.sin(a) * r * k + 0.6, 1.5 + r2() * 1.1]); } }
+    const hg = new THREE.PlaneGeometry(1, 1); hg.translate(0, 0.5, 0); const hm = new THREE.InstancedMesh(hg, new THREE.MeshBasicMaterial({ map: lt, alphaTest: 0.45, side: THREE.DoubleSide }), hang.length);
+    hang.forEach(([x, y, z, s], i) => { o.position.set(x, y, z); o.rotation.set(0.25, (rnd() - 0.5) * 1.2, Math.PI + (rnd() - 0.5) * 0.7); o.scale.setScalar(s); o.updateMatrix(); hm.setMatrixAt(i, o.matrix); const v = 0.2 + rnd() * 0.22; hm.setColorAt(i, col.setRGB(v * 0.6, v, v * 0.8)); }); o.rotation.set(0, 0, 0); hm.frustumCulled = false; grp.add(hm);
+    // ferns, and flowers and mushrooms that give their own light
+    const dry = (x, z) => !inPoly(x, z, out) && !(Math.abs(x) < MW / 2 + 0.95 && Math.abs(z - MZ) < MD / 2 + 0.95), place = (n) => { const r = []; for (let t = 0; t < n * 6 && r.length < n; t++) { const b = C.beds[Math.floor(rnd() * C.beds.length)], x = b[0] + rnd() * (b[1] - b[0]), z = b[2] + rnd() * (b[3] - b[2]); if (dry(x, z)) r.push([x, z]); } return r; };
+    const geo = new THREE.PlaneGeometry(1, 1); geo.translate(0, 0.5, 0); const cardsOf = (tex, spots, s0, s1, tint, bright) => { const m = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ map: tex, alphaTest: 0.45, side: THREE.DoubleSide, toneMapped: !bright }), spots.length);
+      spots.forEach(([x, z], i) => { o.position.set(x, G, z); o.rotation.set(-0.5, (rnd() - 0.5) * 0.7, 0); o.scale.setScalar(s0 + rnd() * (s1 - s0)); o.updateMatrix(); m.setMatrixAt(i, o.matrix); m.setColorAt(i, tint(col)); }); o.rotation.set(0, 0, 0); m.frustumCulled = false; grp.add(m); };
+    cardsOf(lt, place(low ? 18 : Q === "mid" ? 36 : 56), 0.75, 1.3, (c) => { const v = 0.26 + rnd() * 0.26; return c.setRGB(v * 0.62, v, v * 0.82); }, false);
+    const GC = [[0.2, 0.95, 0.9], [0.72, 0.38, 1], [0.45, 1, 0.32]], fl = place(low ? 12 : Q === "mid" ? 22 : 36); cardsOf(T(daisyTexture()), fl, 0.4, 0.62, (c) => { const k = GC[Math.floor(rnd() * 3)]; return c.setRGB(k[0], k[1], k[2]); }, true);
+    const ms = place(low ? 8 : Q === "mid" ? 16 : 26), stem = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.035, 0.05, 0.22, 6), new THREE.MeshBasicMaterial({ color: 0x8ea596 }), ms.length), cap = new THREE.InstancedMesh(new THREE.SphereGeometry(0.13, 8, 5, 0, 6.2832, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }), ms.length);
+    const gp = new Float32Array((ms.length + fl.length) * 3), gc = new Float32Array((ms.length + fl.length) * 3);
+    ms.forEach(([x, z], i) => { const s = 0.8 + rnd() * 0.9, k = GC[Math.floor(rnd() * 3)]; o.position.set(x, G + 0.11 * s, z); o.scale.setScalar(s); o.updateMatrix(); stem.setMatrixAt(i, o.matrix); o.position.y = G + 0.2 * s; o.updateMatrix(); cap.setMatrixAt(i, o.matrix); cap.setColorAt(i, col.setRGB(k[0], k[1], k[2])); gp.set([x, G + 0.26 * s, z], i * 3); gc.set(k, i * 3); });
+    fl.forEach(([x, z], i) => { gp.set([x, G + 0.3, z], (ms.length + i) * 3); gc.set([0.3, 0.6, 0.55], (ms.length + i) * 3); }); o.scale.set(1, 1, 1); grp.add(stem, cap);
+    const gg = new THREE.BufferGeometry(); gg.setAttribute("position", new THREE.BufferAttribute(gp, 3)); gg.setAttribute("color", new THREE.BufferAttribute(gc, 3));
+    S.glow = new THREE.Points(gg, new THREE.PointsMaterial({ map: R.FX.dot, size: 0.95, vertexColors: true, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, depthWrite: false })); S.glow.frustumCulled = false; grp.add(S.glow); }
+  // shafts of light through the canopy
+  { const st = T(shaftTexture()); S.shaft = new THREE.MeshBasicMaterial({ map: st, color: 0xd8ffe2, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    S.spot = new THREE.MeshBasicMaterial({ map: R.FX.dot, color: 0xc8ffd6, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false });
+    for (const [x, z] of C.shafts.slice(0, low ? 2 : 9)) { const m = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 5.2), S.shaft); m.position.set(x + 0.75, G + 2.5, z); m.rotation.z = 0.3; m.renderOrder = 6; grp.add(m);
+      flat(new THREE.PlaneGeometry(3, 3), S.spot, G + 0.014, 4).position.set(x, G + 0.014, z); } }
+  if (!reduce) { S.steps.push(lightPoints(grp, low ? 8 : 26, 0xd8ff7a, 0.26, 0, C.flies)); if (!low) S.steps.push(lightPoints(grp, Q === "mid" ? 24 : 50, 0xaaffee, 0.11, 0.14, null)); }
+  return S;
+}
+function stepForest(S, dt, t) {
+  S.water.uniforms.uT.value = t; S.fall.offset.y = (t * 0.55) % 1; S.mist.material.opacity = 0.28 + 0.06 * Math.sin(t * 2.1); S.mist.scale.setScalar((2.3 + 0.25 * Math.sin(t * 1.3)) * S.mistS);
+  for (const r of S.rings) { r.age += dt; if (r.age > r.dur) r.age = 0; const u = r.age / r.dur; r.m.scale.setScalar((0.3 + u * 1.5) * S.mistS); r.m.material.opacity = (1 - u) * 0.5; }
+  S.glow.material.opacity = 0.4 + 0.14 * Math.sin(t * 1.4); S.shaft.opacity = 0.2 + 0.05 * Math.sin(t * 0.5) + 0.02 * Math.sin(t * 1.7); S.spot.opacity = S.shaft.opacity * 0.9; for (const f of S.steps) f(dt, t);
+}
+// ---------- ลานเปลวคราม: the owner's own scene ----------
+// A terrace on still dark water that light runs across in blue lines, braziers of blue fire at its corners, clusters of
+// crystal that glow, will-o'-the-wisps drifting round the table and blue sparks rising. Open to the owner only (see achieve.js).
+const AZURE = {
+  wide: { braz: [[-8.2, -6.5], [8.2, -6.5], [-8.2, 6.1], [8.2, 6.1]], beds: [[-13, -8.9, -7.0, 4.8], [8.9, 13, -7.0, 4.8], [-12, 12, -9.2, -7.3]], wisps: [[-10.4, -2.5], [-9.6, -7.5], [-5, -8.0], [5.6, -7.9], [10.3, -3]] },
+  tall: { braz: [[-4.7, -7.7], [4.7, -7.7], [-4.7, 7.4], [4.7, 7.4]], beds: [[-7.6, 7.6, -9.5, -7.2], [-7.6, 7.6, 6.7, 9.6]], wisps: [[-5, -8.1], [0, -8.7], [5, -8.1], [-3, 7.8], [3.5, 8.2]] } };
+function buildAzure() {
+  const Q = R.Q, low = Q === "low", C = AZURE[R.zones === ZONES.tall ? "tall" : "wide"], G = -0.335, grp = new THREE.Group(); grp.name = "azure"; R.scene.add(grp);
+  const S = { grp, zk: R.zones, o: new THREE.Object3D(), tex: [], wisps: [], steps: [], step: stepAzure }, o = S.o, rnd = lcg(307), T = (t) => { S.tex.push(t); return t; }, col = new THREE.Color();
+  const flat = (geo, mat, y, order = 0) => { const m = new THREE.Mesh(geo, mat); m.rotation.x = -Math.PI / 2; m.position.y = y; m.renderOrder = order; grp.add(m); return m; };
+  S.water = cellWater(Q !== "high", new THREE.Color(0.001, 0.004, 0.02), new THREE.Color(0.003, 0.02, 0.075), new THREE.Color(0.16, 0.5, 1.0), 0.017, 0.9, 1); flat(new THREE.PlaneGeometry(70, 50), S.water, G).position.z = -2;
+  { const pt = T(paverTexture()); pt.wrapS = pt.wrapT = THREE.RepeatWrapping; pt.repeat.set(7, 5.5); flat(new THREE.PlaneGeometry(MW + 1.7, MD + 1.7), new THREE.MeshBasicMaterial({ map: pt, color: 0x3a4764 }), G + 0.008, 2).position.z = MZ;
+    S.halo = new THREE.MeshBasicMaterial({ map: R.FX.dot, color: 0x2a8cff, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false }); flat(new THREE.PlaneGeometry(MW + 9, MD + 9), S.halo, G + 0.004, 1).position.z = MZ; }
+  // crystal: three shards to a cluster, lit from inside
+  { const spots = []; const n = low ? 6 : Q === "mid" ? 11 : 18; for (let t = 0; t < n * 8 && spots.length < n; t++) { const b = C.beds[Math.floor(rnd() * C.beds.length)], x = b[0] + rnd() * (b[1] - b[0]), z = b[2] + rnd() * (b[3] - b[2]); if (!(Math.abs(x) < MW / 2 + 1.0 && Math.abs(z - MZ) < MD / 2 + 1.0)) spots.push([x, z]); }
+    S.crystal = new THREE.MeshStandardMaterial({ color: 0x0a1e5a, emissive: 0x1450e0, emissiveIntensity: 0.8, roughness: 0.4, metalness: 0, flatShading: true });
+    const cm = new THREE.InstancedMesh(new THREE.OctahedronGeometry(1, 0), S.crystal, spots.length * 3); let k = 0;
+    for (const [x, z] of spots) for (let j = 0; j < 3; j++) { const hh = (j ? 0.35 : 0.7) + rnd() * 0.5, r = 0.11 + rnd() * 0.08; o.position.set(x + (j ? (j === 1 ? 0.24 : -0.2) : 0), G + hh * 0.42, z + (j ? (rnd() - 0.5) * 0.3 : 0)); o.rotation.set((rnd() - 0.5) * 0.5, rnd() * 6.28, (j ? (j === 1 ? -0.45 : 0.4) : 0) + (rnd() - 0.5) * 0.2); o.scale.set(r, hh, r); o.updateMatrix(); cm.setMatrixAt(k++, o.matrix); }
+    o.rotation.set(0, 0, 0); o.scale.set(1, 1, 1); grp.add(cm);
+    const gl = new THREE.MeshBasicMaterial({ map: R.FX.dot, color: 0x2f9cff, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false }), gm = new THREE.InstancedMesh(new THREE.PlaneGeometry(2.4, 2.4), gl, spots.length);
+    spots.forEach(([x, z], i) => { o.position.set(x, G + 0.012, z); o.rotation.set(-Math.PI / 2, 0, 0); o.updateMatrix(); gm.setMatrixAt(i, o.matrix); }); o.rotation.set(0, 0, 0); gm.renderOrder = 3; grp.add(gm); }
+  S.flames = braziers(grp, C.braz, G, new THREE.MeshStandardMaterial({ color: 0x2a3348, roughness: 0.8, metalness: 0.2, flatShading: true }), 0xffffff, 0x1a5cff, o, blueFlame());
+  // will-o'-the-wisps: a small blue flame each, going round its own spot
+  for (const [x, z] of C.wisps.slice(0, low || reduce ? 2 : 9)) { const f = new THREE.Sprite(new THREE.SpriteMaterial({ map: blueFlame(), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); f.scale.set(0.36, 0.66, 1); grp.add(f);
+    S.wisps.push({ f, hl: sprite(R.FX.dot, 0x3aa0ff, 1.5, new THREE.Vector3(x, 1, z), 0.45, grp), x, z, ph: rnd() * 6.28, r: 0.5 + rnd() * 0.6, w: (0.35 + rnd() * 0.3) * (rnd() < 0.5 ? -1 : 1) }); }
+  if (!reduce) S.steps.push(lightPoints(grp, low ? 16 : Q === "mid" ? 40 : 80, 0x5ab8ff, 0.17, 0.4, null));
+  return S;
+}
+function stepAzure(S, dt, t) {
+  S.water.uniforms.uT.value = t; flicker(S.flames, t); S.crystal.emissiveIntensity = 0.75 + 0.3 * Math.sin(t * 1.3); S.halo.opacity = 0.27 + 0.05 * Math.sin(t * 0.9);
+  for (const w of S.wisps) { const a = t * w.w + w.ph, x = w.x + Math.cos(a) * w.r, z = w.z + Math.sin(a * 1.3) * w.r * 0.6, y = 0.55 + Math.sin(t * 1.7 + w.ph) * 0.22; w.f.position.set(x, y, z); w.hl.position.set(x, y - 0.05, z); const f = 1 + 0.12 * Math.sin(t * 11 + w.ph); w.f.scale.set(0.36 * (2 - f), 0.66 * f, 1); }
+  for (const f of S.steps) f(dt, t);
+}
+// the owner's own summon: tongues of blue fire run round the circle and close in on the card as it lands
+function azureFx(P, s) {
+  if (!R || reduce) return; const n = R.Q === "low" ? 6 : 10;
+  for (let i = 0; i < n; i++) { const f = new THREE.Sprite(new THREE.SpriteMaterial({ map: blueFlame(), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })); const st = { a: (i / n) * 6.2832, r: 1.5 * s, y: 0.32 * s }; f.scale.set(0.5 * s, 0.95 * s, 1); R.scene.add(f);
+    const place = () => f.position.set(P.x + Math.cos(st.a) * st.r, st.y, P.z + Math.sin(st.a) * st.r); place();
+    gsap.to(st, { a: st.a + 3.4, duration: 0.95, ease: "power1.in", onUpdate: place }); gsap.to(st, { r: 0.55 * s, y: 0.8 * s, duration: 0.3, delay: 0.62, ease: "power2.in" });
+    gsap.to(f.material, { opacity: 1, duration: 0.2, delay: i * 0.015 }); gsap.to(f.material, { opacity: 0, duration: 0.22, delay: 0.82, onComplete: () => { if (R) R.scene.remove(f); f.material.dispose(); } }); }
+  for (let k = 0; k < 2; k++) ripple(P, 0x0a4ad8, 4.4 * s, 0.1 + k * 0.3);
+}
 // the table's surroundings are the scene the viewer chose (สนาม), whatever cloth lies on the table
 function decor() {
   if (!R) return; const want = R.sceneKey;
@@ -1183,10 +1324,10 @@ function woodTexture(small) {
   g.putImageData(img, 0, 0);
   const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(5, 4); t.anisotropy = 8; return t;
 }
-function flameTexture() {
-  const c = document.createElement("canvas"); c.width = 64; c.height = 128; const g = c.getContext("2d");
-  let gr = g.createRadialGradient(32, 84, 2, 32, 76, 46); gr.addColorStop(0, "rgba(255,190,90,.9)"); gr.addColorStop(1, "rgba(255,90,20,0)"); g.fillStyle = gr; g.fillRect(0, 0, 64, 128);
-  g.beginPath(); g.moveTo(32, 14); g.bezierCurveTo(46, 52, 46, 82, 32, 100); g.bezierCurveTo(18, 82, 18, 52, 32, 14); gr = g.createLinearGradient(0, 14, 0, 100); gr.addColorStop(0, "rgba(255,170,60,.0)"); gr.addColorStop(0.45, "rgba(255,214,120,.95)"); gr.addColorStop(1, "rgba(255,250,230,1)"); g.fillStyle = gr; g.fill();
+function flameTexture(blue) { // blue: the owner's own fire (a warm flame only tinted blue comes out grey)
+  const c = document.createElement("canvas"); c.width = 64; c.height = 128; const g = c.getContext("2d"), K = blue ? ["40,120,255,.9", "10,40,255,0", "40,110,255,.0", "90,180,255,.95", "225,246,255,1"] : ["255,190,90,.9", "255,90,20,0", "255,170,60,.0", "255,214,120,.95", "255,250,230,1"];
+  let gr = g.createRadialGradient(32, 84, 2, 32, 76, 46); gr.addColorStop(0, `rgba(${K[0]})`); gr.addColorStop(1, `rgba(${K[1]})`); g.fillStyle = gr; g.fillRect(0, 0, 64, 128);
+  g.beginPath(); g.moveTo(32, 14); g.bezierCurveTo(46, 52, 46, 82, 32, 100); g.bezierCurveTo(18, 82, 18, 52, 32, 14); gr = g.createLinearGradient(0, 14, 0, 100); gr.addColorStop(0, `rgba(${K[2]})`); gr.addColorStop(0.45, `rgba(${K[3]})`); gr.addColorStop(1, `rgba(${K[4]})`); g.fillStyle = gr; g.fill();
   return new THREE.CanvasTexture(c);
 }
 function candle(x, z) { // no real light: a lamp per candle would make every lit surface on the table slower to draw
@@ -1232,14 +1373,21 @@ function haloTexture(blur, stroke) {
 }
 // the summoning circle: rings of lotus petals (กลีบบัว) round a ประจำยาม, in the gold-leaf manner of the mat
 // summoning circles, one per player (chosen in settings, opened by playing): drawn white, tinted by the card's colour
-export const SIGILS = { lotus: { name: "บัวประจำยาม" }, sun: { name: "สุริยะดาวเพดาน" }, naga: { name: "เกล็ดนาค" }, yant: { name: "ตารางยันต์" }, pikul: { name: "ดอกพิกุล" } };
+export const SIGILS = { lotus: { name: "บัวประจำยาม" }, sun: { name: "สุริยะดาวเพดาน" }, naga: { name: "เกล็ดนาค" }, yant: { name: "ตารางยันต์" }, pikul: { name: "ดอกพิกุล" },
+  azure: { name: "เปลวคราม", owner: true } }; // the owner's own: always blue, and blue fire spirals up round the card (azureFx)
 function sigilTexture(kind = "lotus") {
   const c = document.createElement("canvas"); c.width = c.height = 512; const g = c.getContext("2d"), C = 256;
   g.fillStyle = "#000"; g.fillRect(0, 0, 512, 512); g.strokeStyle = g.fillStyle = "#fff"; g.shadowColor = "#fff"; g.shadowBlur = 10;
   const ring = (r, w) => { g.lineWidth = w; g.beginPath(); g.arc(C, C, r, 0, Math.PI * 2); g.stroke(); };
   const at = (a, d) => [C + Math.cos(a) * d, C + Math.sin(a) * d];
   ring(238, 7); ring(222, 2);
-  if (kind === "sun") { // สุริยะ: long and short rays round an eight-point ceiling star (ดาวเพดาน)
+  if (kind === "azure") { // เปลวคราม: twelve tongues of flame leaning the same way round a drop at the heart, sparks between the rings
+    ring(150, 4); ring(64, 3);
+    for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2, P = (d, da) => at(a + da, d); g.beginPath(); g.moveTo(...P(156, -0.1)); g.bezierCurveTo(...P(176, -0.16), ...P(200, -0.02), ...P(216, 0.2)); g.bezierCurveTo(...P(196, 0.16), ...P(180, 0.2), ...P(156, 0.14)); g.closePath(); g.fill(); }
+    for (let k = 0; k < 24; k++) { g.beginPath(); g.arc(...at((k / 24) * Math.PI * 2 + 0.13, k % 2 ? 108 : 124), k % 2 ? 3 : 5, 0, 7); g.fill(); }
+    for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2; g.lineWidth = 2.5; g.beginPath(); g.moveTo(...at(a, 70)); g.quadraticCurveTo(...at(a + 0.35, 88), ...at(a + 0.5, 100)); g.stroke(); }
+    g.beginPath(); g.moveTo(C, C - 44); g.bezierCurveTo(C + 34, C - 4, C + 30, C + 34, C, C + 36); g.bezierCurveTo(C - 30, C + 34, C - 34, C - 4, C, C - 44); g.fill();
+  } else if (kind === "sun") { // สุริยะ: long and short rays round an eight-point ceiling star (ดาวเพดาน)
     ring(140, 4);
     for (let k = 0; k < 32; k++) { const a = (k / 32) * Math.PI * 2, L = k % 2 ? 182 : 214, w = k % 2 ? 0.05 : 0.07; g.beginPath(); g.moveTo(...at(a - w, 150)); g.lineTo(...at(a, L)); g.lineTo(...at(a + w, 150)); g.closePath(); g.fill(); }
     g.lineWidth = 4; for (const r0 of [0, Math.PI / 4]) { g.beginPath(); for (let k = 0; k < 4; k++) { const p = at(r0 + (k * Math.PI) / 2, 118); k ? g.lineTo(...p) : g.moveTo(...p); } g.closePath(); g.stroke(); }
@@ -1620,7 +1768,7 @@ function summonIn(m, L, co, cHex) {
   const mine = L.side === "me", P = L.pos, s = L.scale, g = m.grp, hy = mine ? 3 : 2.1, hz = P.z + (mine ? 1.5 : 1.9); // the hover point stays in view from either seat
   g.position.set(P.x * 0.45, 1.4, mine ? 6.6 : -7.8); g.rotation.set(Math.PI / 2 - 0.3, 0, Math.PI); g.scale.setScalar(s * 0.8);
   m.busy = true; m.shOp = 0; m.glow.material.opacity = 0;
-  const ring = sigil(P, cHex, s, R.sig[L.p]); Sfx.play("rise"); trail(m, cHex, 0.95);
+  const azure = R.sig[L.p] === "azure", aHex = azure ? 0x0a4ad8 : cHex, ring = sigil(P, aHex, s, R.sig[L.p]); Sfx.play("rise"); trail(m, aHex, 0.95);
   gsap.timeline({ onComplete: () => done(m) })
     .to(g.position, { x: P.x, y: hy, z: hz, duration: 0.5, ease: "power2.out" }, 0)
     .to(g.rotation, { x: Math.PI / 2 - 0.12, z: 0, duration: 0.55, ease: "power2.inOut" }, 0.02)
@@ -1631,7 +1779,8 @@ function summonIn(m, L, co, cHex) {
     .to(g.position, { x: P.x, y: P.y, z: P.z, duration: 0.22, ease: "power4.in" }, 0.76)
     .to(g.rotation, { x: 0, y: m.want.rotY, duration: 0.22, ease: "power3.in" }, 0.76)
     .to(g.scale, { x: s, y: s, z: s, duration: 0.22, ease: "power3.in" }, 0.76)
-    .add(() => { if (!R) return; landFx(P, s, co, cHex); ringOut(ring, s); Sfx.play("summon", { color: co }); m.glow.material.opacity = 1; }, 0.98)
+    .add(() => { if (R && azure) azureFx(P, s); }, 0.06)
+    .add(() => { if (!R) return; landFx(P, s, co, aHex); ringOut(ring, s); Sfx.play("summon", { color: co }); m.glow.material.opacity = 1; }, 0.98)
     .to(g.position, { y: P.y + 0.12, duration: 0.08, ease: "power2.out" }, 0.98)
     .to(g.position, { y: P.y, duration: 0.3, ease: "bounce.out" }, 1.06);
 }
