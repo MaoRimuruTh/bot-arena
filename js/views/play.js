@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261113080748";
-import { fxText, kwGloss } from "../fxtext.js?v=20261113080748";
-import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261113080748";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261113080748";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261113080748";
-import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261113080748";
-import { myFigure, myMat, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261113080748";
-import { themeCounts } from "../boxdecks.js?v=20261113080748";
-import { ladder, ladderReset } from "../ladder.js?v=20261113080748";
-import { notify } from "../notify.js?v=20261113080748";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261113080748";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261113080748";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261113080748";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261113080748";
-import { Music } from "../music.js?v=20261113080748";
-import { Sfx } from "../sfx.js?v=20261113080748";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261113080748";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261113080748";
-import { readAura, traits } from "../auras.js?v=20261113080748";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261113080748";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261113085439";
+import { fxText, kwGloss } from "../fxtext.js?v=20261113085439";
+import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261113085439";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261113085439";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261113085439";
+import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261113085439";
+import { myFigure, myMat, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261113085439";
+import { themeCounts } from "../boxdecks.js?v=20261113085439";
+import { ladder, ladderReset } from "../ladder.js?v=20261113085439";
+import { notify } from "../notify.js?v=20261113085439";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261113085439";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261113085439";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261113085439";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261113085439";
+import { Music } from "../music.js?v=20261113085439";
+import { Sfx } from "../sfx.js?v=20261113085439";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261113085439";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261113085439";
+import { readAura, traits } from "../auras.js?v=20261113085439";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261113085439";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -26,8 +26,8 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(s.id ? [`รีเพลย์ในเครื่องนี้: ${s.id}-${V}`] : []), "บันทึก 40 บรรทัดล่าสุด:\n" + s.log.slice(-40).map((l) => "· " + l.m).join("\n"), // so a report can be traced back to its game
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261113080748";
-import { customMat, customSleeve, customFig, setOnReady, onVault } from "../vault.js?v=20261113080748";
+import { allDecks, deckById } from "./decks.js?v=20261113085439";
+import { customMat, customSleeve, customFig, setOnReady, onVault } from "../vault.js?v=20261113085439";
 // the players' own mat picture, card sleeve and figure (vault.js): the table asks for them, and redraws when one loads or changes
 Arena.setCustom({ mat: customMat, sleeve: customSleeve, fig: customFig, skins: (s) => setGameSkins(s && s.P, Me.uid) }); setOnReady((o) => Arena.customReady(o)); onVault(() => Arena.refreshCustom());
 { let sig = ""; Data.listeners.add(() => { const sh = Data.meta && Data.meta.show, now = sh ? Object.entries(sh).map(([k, x]) => k + ":" + (x && x.v) + ":" + (x && x.finish)).join() : ""; if (now !== sig) { sig = now; Arena.refreshCustom(); } }); }
@@ -417,11 +417,22 @@ function flyFromHand(i) {
   document.body.append(c);
   window.gsap.to(c, { y: -Math.min(240, r.top * 0.45), scale: 0.72, opacity: 0, duration: 0.4, ease: "power2.in", onComplete: () => c.remove() });
 }
+// the React cards in hand that do not answer an attack itself: "later" are asked about by the game when their own moment
+// comes in this fight (หมอมาแล้ว: an Avatar about to be destroyed, losing the fight included); "used" cannot be played
+// at all because a React was already used this turn
+const rk0 = (sc, d) => (sc && sc.react ? sc.react.kinds || [] : (reactTiming(d.x) || {}).kinds || []);
+function heldReacts(s, p) {
+  const hand = s.P[p].hand.filter((x) => { const d = E.def(s, x); return d.t === "M" && d.st === "R"; }); const nm = (l) => [...new Set(l.map((x) => E.name(s, x)))];
+  const kinds = (x) => { const sc = scriptOf(s, x); return sc && sc.react ? sc.react.kinds || [] : (reactTiming(E.def(s, x).x) || {}).kinds || []; };
+  if (s.mu[p].R) return { later: [], used: nm(hand.filter((x) => { const sc = scriptOf(s, x); return !(sc && sc.react && sc.react.ignoreLimit && !s.mu[p].R2); })) };
+  return { later: nm(hand.filter((x) => kinds(x).some((k) => k === "doom" || k === "destroyed"))), used: [] };
+}
 // attacked with nothing to answer with (no awake โล่มนุษย์, no React that fits): take the attack without asking
 function nothingToAnswer(s, p) { return !!s.pend && s.pend.by !== p && !s.trig.length && !s.rw && legalMoves(s, p).length <= 1 && !E.reactsFor(s, p, { kind: "attack", by: s.pend.by, att: s.pend.att, tk: s.pend.tk, ti: s.pend.ti }).length; }
 function autoRespond(s, p) {
   if (!mine(p) || !nothingToAnswer(s, p) || G.castFor) return;
   const key = [s.turn, s.pend.att, s.pend.tk, s.pend.ti, s.log.length].join(":"); if (G.autoKey === key) return; G.autoKey = key;
+  { const held = heldReacts(s, p); if (held.used.length) toast(`เทิร์นนี้คุณใช้ React ไปแล้ว 1 ใบ จึงใช้ ${held.used.join(", ")} ไม่ได้ (React ใช้ได้เทิร์นละ 1 ใบ)`); }
   setTimeout(() => { const n = G && G.s; if (!n || !n.pend || G.castFor || [n.turn, n.pend.att, n.pend.tk, n.pend.ti, n.log.length].join(":") !== key || !nothingToAnswer(n, p)) return; doAct((legalMoves(n, p)[0] || {}).a || { type: "respond" }, p); }, 900);
 }
 // bot levels: how many promising moves it plays out on a copy before choosing, how often the easy one just does something
@@ -547,7 +558,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261113080748").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261113085439").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", mat: botMat(), bot: true });
@@ -1263,17 +1274,20 @@ function promptBox0(s, p) {
   }
   if (G.castFor) {
     const x = P.hand.find((y) => y.i === G.castFor); const d = x && E.def(s, x);
-    const ok = x && (d.st === "R" ? !s.mu[p].R && !(s.trig.length && !s.rw) : s.phase === "main" && s.active === p && !s.trig.length && !s.pend && !s.mu[p][d.st]); // an effect's own choice comes first
+    const usedR = !!x && d.st === "R" && !!s.mu[p].R && !((scriptOf(s, x) || {}).react && scriptOf(s, x).react.ignoreLimit && !s.mu[p].R2); // a React already used this turn: say so
+    const ok = x && (d.st === "R" ? (usedR || !s.mu[p].R) && !(s.trig.length && !s.rw) : s.phase === "main" && s.active === p && !s.trig.length && !s.pend && !s.mu[p][d.st]); // an effect's own choice comes first
     if (!ok) { G.castFor = null; } else {
       const on = s.rw && s.rw.by !== p ? s.rw : s.pend && s.pend.by !== p ? { kind: "attack", by: s.pend.by, att: s.pend.att, tk: s.pend.tk, ti: s.pend.ti } : null;
       let fx = null, asks = null; try { const r = resolveEffect(s, { i: x.i, c: x.c, when: "cast", seat: p, ...(d.st === "R" && on ? { on } : {}) }, [], true); if (r && r.ask) asks = r.ask.prompt; else fx = r; } catch (e) { console.warn(e); } const empty = !s.P[p].av.length && /Avatar[^:]*(ฝ่ายเรา|ของเรา|Zone\s*เรา)|เลือก\s*Avatar/.test(d.x || "");
       // React: only inside a matching window; scripted canCast: only when its condition holds
       const scx = scriptOf(s, x);
-      const KIND_TH = { attack: "ตอนฝ่ายตรงข้ามประกาศโจมตี", summon: "ตอนฝ่ายตรงข้ามอัญเชิญ Avatar", cast: "ตอนฝ่ายตรงข้ามใช้ Magic", phase: "ก่อนฝ่ายตรงข้ามจบ Phase", own: "ในเทิร์นของคุณเอง" };
+      const KIND_TH = { attack: "ตอนฝ่ายตรงข้ามประกาศโจมตี", summon: "ตอนฝ่ายตรงข้ามอัญเชิญ Avatar", cast: "ตอนฝ่ายตรงข้ามใช้ Magic", phase: "ก่อนฝ่ายตรงข้ามจบ Phase", own: "ในเทิร์นของคุณเอง",
+        doom: "ตอน Avatar ของคุณกำลังจะถูกทำลาย (แพ้การต่อสู้ก็นับ)", destroyed: "ตอน Avatar ของคุณถูกทำลาย", left: "ตอน Avatar ของคุณออกจากสนาม", death: "ตอน Avatar ของคุณถูกทำลาย", react: "ตอนฝ่ายตรงข้ามใช้ React", activate: "ตอนฝ่ายตรงข้ามใช้ความสามารถของการ์ด", battle: "ตอนฝ่ายตรงข้ามเข้าสู่ Battle Phase", handed: "ตอนฝ่ายตรงข้ามนำการ์ดจาก Deck ขึ้นมือ" };
+      const fightHint = d.st === "R" && rk0(scx, d).some((k) => k === "doom" || k === "destroyed") && s.pend && s.pend.by !== p && !s.rw ? " · ตอนนี้กด “ไม่ตอบโต้ ปล่อยให้โจมตี” ได้เลย ถ้า Avatar ของคุณแพ้ เกมจะถามให้ใช้การ์ดใบนี้ก่อนถูกทำลาย" : "";
       // a React goes off only in a moment the game checks against its text (the button shows up by itself then)
       const rk = scx && scx.react ? [...scx.react.kinds, ...(scx.react.anytime ? ["phase", "own"] : [])] : (reactTiming(d.x) || {}).kinds;
       const anytime = d.st === "R" && !on && scx && scx.react && scx.react.anytime && legalMoves(s, p).some((m) => m.a.type === "cast" && m.a.i === x.i); // no moment written on it: usable in our own turn too
-      const block = d.st === "R" && !anytime ? (!on || !E.reactsFor(s, p, on).includes(x) ? `React ใช้ได้${rk && rk.length ? rk.map((k) => KIND_TH[k] || "ตอนฝ่ายตรงข้ามทำบางอย่าง").join(" หรือ ") : "ตอนฝ่ายตรงข้ามทำบางอย่าง"} (และตรงเงื่อนไขบนการ์ด) ตอนนั้นจะมีปุ่มขึ้นให้เอง` : null)
+      const block = usedR ? "เทิร์นนี้คุณใช้ React ไปแล้ว 1 ใบ จึงใช้ใบนี้ไม่ได้ (React ใช้ได้เทิร์นละ 1 ใบ)" : d.st === "R" && !anytime ? (!on || !E.reactsFor(s, p, on).includes(x) ? `React ใช้ได้${rk && rk.length ? [...new Set(rk.map((k) => KIND_TH[k] || "ตอนฝ่ายตรงข้ามทำบางอย่าง"))].join(" หรือ ") : "ตอนฝ่ายตรงข้ามทำบางอย่าง"} (และตรงเงื่อนไขบนการ์ด) ตอนนั้นจะมีปุ่มขึ้นให้เอง${fightHint}` : null)
         : scx && scx.canCast && !scx.canCast(E, s, p) ? "ยังไม่ตรงเงื่อนไขการใช้การ์ดใบนี้" : (!scx && fx && fx.fail && fx.explain) || (!scx && E.ext.castFail && E.ext.castFail(s, x, p)) || null;
       if (block) return box(`${d.n}`, fxText(d.x || "", "small", "max-height:150px;overflow:auto"), h("div", { class: "small", style: "color:var(--warn)" }, block),
         h("div", { class: "row" }, h("button", { class: "btn", onclick: () => { G.castFor = null; draw(); } }, "ปิด")));
@@ -1332,9 +1346,11 @@ function promptBox0(s, p) {
   if (s.pend) {
     const moves = legalMoves(s, p); const reacts = P.hand.filter((x) => { const d = E.def(s, x); return d.t === "M" && d.st === "R" && !s.mu[p].R; });
     const att = E.locate(s, s.pend.att); const tgt = s.pend.tk === "life" ? "LIFE" : (E.locate(s, s.pend.ti) || { x: null }).x ? E.name(s, E.locate(s, s.pend.ti).x) : "?";
-    const rs = E.reactsFor(s, p, { kind: "attack", by: s.pend.by, att: s.pend.att, tk: s.pend.tk, ti: s.pend.ti });
+    const rs = E.reactsFor(s, p, { kind: "attack", by: s.pend.by, att: s.pend.att, tk: s.pend.tk, ti: s.pend.ti }); const held = heldReacts(s, p);
     return box(`ถูกโจมตี: ${att ? E.name(s, att.x) : "?"} (POWER ${att ? E.power(s, att.x) + (s.pend.bonus || 0) : 0}) → ${tgt}`,
       !rs.length && moves.length <= 1 ? h("div", { class: "tiny muted" }, "ไม่มี โล่มนุษย์ ที่ตื่นอยู่ และไม่มี React ที่ใช้ได้ตอนนี้ · รับการโจมตีให้อัตโนมัติ") : null,
+      held.later.length ? h("div", { class: "tiny", style: "color:#8ee3b2" }, `${held.later.join(", ")}: ยังไม่ใช่จังหวะตอนประกาศโจมตี ถ้า Avatar ของคุณกำลังจะถูกทำลายจากการต่อสู้นี้ เกมจะถามให้ใช้ก่อนถูกทำลาย`) : null,
+      held.used.length ? h("div", { class: "tiny", style: "color:var(--warn)" }, `เทิร์นนี้คุณใช้ React ไปแล้ว 1 ใบ จึงใช้ ${held.used.join(", ")} ไม่ได้ (React ใช้ได้เทิร์นละ 1 ใบ)`) : null,
       rs.length ? h("div", { class: "opts" }, rs.map((x) => h("button", { class: "btn sm ciel", onclick: () => doAct({ type: "cast", i: x.i }, p) }, "React: " + E.name(s, x)))) : null,
       h("div", { class: "opts" }, moves.map((m) => h("button", { class: "btn sm" + (m.a.shield ? " gold" : ""), onclick: () => doAct(m.a, p) }, m.d))));
   }
