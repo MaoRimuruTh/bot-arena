@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261113133136";
-import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261113133136";
-import { E, scriptOf } from "./engine.js?v=20261113133136";
+import { readAura } from "./auras.js?v=20261113134242";
+import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261113134242";
+import { E, scriptOf } from "./engine.js?v=20261113134242";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -693,6 +693,8 @@ export function makeCtx(s, t, picks = [], interactive = false) {
   const ctx = { s, E, seat: t.seat, t, self: null, picks, interactive, deferred: false,
     choose(cands, n, prompt, o = {}) {
       // nothing to pick for a step the card does not make optional: the effect cannot be carried out (Rule Book: it cannot be used)
+      // FAQ รับซื้อของโจร: the card taken from the other side's hand pays for a summon only — an effect can never pick it (discard cost, reveal …)
+      if (cands.some((x) => x && x.borrow)) cands = cands.filter((x) => !(x && x.borrow));
       const idx = k++; if (!cands.length) { if (n > 0 && !o.optional && !o.reveal) ctx.miss = (ctx.miss || 0) + 1; return []; }
       if (picks[idx] !== undefined) return picks[idx].map((i) => cands.find((x) => x.i === i)).filter(Boolean);
       if (!interactive || (!o.optional && !o.reveal && cands.length <= n)) return cands.slice(0, n);

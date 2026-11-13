@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113133136";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261113133136";
-import { SCRIPTS } from "./scripts.js?v=20261113133136";
-import { newId, clone } from "./util.js?v=20261113133136";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113134242";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261113134242";
+import { SCRIPTS } from "./scripts.js?v=20261113134242";
+import { newId, clone } from "./util.js?v=20261113134242";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -174,7 +174,9 @@ export const E = {
   // "#Avatar ทุกใบในสนามฝ่ายเราจะไม่สามารถใช้ความสามารถได้ยกเว้น Avatar "Overdose"": also from the Magic Zone, and every kind of ability but the
   // continuous ones stops (FAQ เซตาม่อน Overdose): no สั่งใช้ here, no จุติ / อัตโนมัติ / คำสั่งเสีย in odPrune
   odLock(s, p) { return [...s.P[p].av, ...s.P[p].mg].some((y) => !y.mute && !y.fd && OD_LOCK.test(E.def(s, y).x || "")); },
-  actBlocked(s, p, x) { return ["A", "T"].includes(E.def(s, x).t) && !E.named(s, x, "Overdose") && (E.locate(s, x.i) || {}).z === "av" && E.odLock(s, p); },
+  // โรงบาล: the card brought back, and every card of that name, cannot be summoned or use its ability this turn
+  nameLocked(s, p, x) { const t = s.tlock && s.tlock[p]; return !!(t && t.t === s.turn && t.names && t.names.includes(E.def(s, x).n)); },
+  actBlocked(s, p, x) { if (E.nameLocked(s, p, x)) return true; return ["A", "T"].includes(E.def(s, x).t) && !E.named(s, x, "Overdose") && (E.locate(s, x.i) || {}).z === "av" && E.odLock(s, p); },
   odMuted(s, t) { const d = s.cards[t.c]; if (!d || !["A", "T"].includes(d.t) || String(d.n || "").includes("Overdose") || t.held || t.when === "trim") return false;
     const L = E.locate(s, t.i); if (!(L && L.z === "av" && L.p === t.seat) && !(t.when === "death" && t.z === "av")) return false; return E.odLock(s, t.seat); },
   odPrune(s) { if (!s.trig.length || s.phase === "over") return; for (let k = s.trig.length - 1; k >= 0; k--) { const t = s.trig[k]; if (!E.odMuted(s, t)) continue; s.trig.splice(k, 1); E.log(s, t.seat, `${s.cards[t.c].n}: ความสามารถไม่ทำงาน (Avatar ฝ่ายเราใช้ความสามารถไม่ได้ ยกเว้น Overdose)`); } },
@@ -1163,7 +1165,7 @@ export const E = {
         // (o.home: back to the player who put it on the field — ปลอกคอซื่อสัตย์ worn after it was taken, FAQ)
         if (!o.home && (E.noControl(s, L.x) || E.noSteal(s, L) || [...s.P[0].mg, ...s.P[1].mg].some((m) => m.on === L.x.i && !m.mute && (scriptOf(s, m) || {}).keepControl))) { E.log(s, by, `${E.name(s, L.x)} ไม่สามารถถูกเปลี่ยนการควบคุมได้`); return; } const t = o.seat === 0 || o.seat === 1 ? o.seat : 1 - L.p; const P = s.P[t]; if (E.ctlBlocked(s, L.x, t)) { E.log(s, by, `ควบคุม ${E.def(s, L.x).n} บน Avatar Zone ได้เพียง 1 ใบ: เปลี่ยนการควบคุมไม่ได้`); return; } if (E.avatars(P) >= 4 || P.av.length >= 6) throw new RuleError("Avatar Zone เต็ม"); s.P[L.p].av.splice(L.idx, 1); if (o.until === "turn") L.x.back = L.p; if (o.until === "ownerDraw") L.x.backDraw = L.p; if (o.asleep) L.x.a = false; if (o.wake) L.x.a = true; if (o.noLife) L.x.nlt = s.turn; L.x.ctlx = (L.x.ctlx || 0) + 1; if (L.x.home == null) L.x.home = L.p; if (L.x.home === t) delete L.x.home; /* home: who controlled it when it came onto the field */ P.av.push(L.x); E.log(s, by, `${s.P[t].name} ได้ควบคุม ${E.name(s, L.x)}${o.until === "turn" ? " จนจบเทิร์น" : ""}${o.wake ? " ในสภาพตื่น" : ""}${o.noLife ? " (โจมตี LIFE ไม่ได้)" : ""}`); return; }
       case "turnLock": { s.tlock = s.tlock || [null, null]; const cur = s.tlock[seat] && s.tlock[seat].t === s.turn ? s.tlock[seat] : { t: s.turn };
-        if (o.sy) cur.sy = o.sy; if (o.atkSy) cur.atkSy = o.atkSy; if (o.only) cur.only = o.only; if (o.name) cur.names = [...(cur.names || []), o.name]; s.tlock[seat] = cur;
+        if (o.sy) cur.sy = o.sy; if (o.atkSy) cur.atkSy = o.atkSy; if (o.only) cur.only = o.only; if (o.name) cur.names = [...(cur.names || []), o.name]; s.tlock[seat] = cur; if (o.both && o.name) { const q = 1 - seat; const c2 = s.tlock[q] && s.tlock[q].t === s.turn ? s.tlock[q] : { t: s.turn }; c2.names = [...(c2.names || []), o.name]; s.tlock[q] = c2; } // FAQ โรงบาล: the name is shut for both players
         E.log(s, by, o.sy ? `เทิร์นนี้อัญเชิญได้เฉพาะ Avatar {${o.sy}}` : o.atkSy ? `เทิร์นนี้สั่งโจมตีได้เฉพาะ Avatar {${o.atkSy}}` : o.only ? `เทิร์นนี้อัญเชิญได้เฉพาะ Avatar "${o.only}"` : `เทิร์นนี้อัญเชิญหรือใช้ความสามารถของ ${o.name} ไม่ได้`); return; }
       case "turnBuff": { s.tbuff = s.tbuff || [null, null]; s.tbuff[seat] = { t: s.turn, sy: o.sy, imm: !!o.imm, kw: o.kw || null, noShield: !!o.noShield, noLose: !!o.noLose }; E.log(s, by, o.why || "ในเทิร์นนี้ Avatar ที่อัญเชิญจะได้รับความสามารถ"); return; }
       case "ind": { const L = E.locate(s, o.i); if (L) { L.x.ind = s.turn; E.log(s, by, `${E.name(s, L.x)} จะไม่ถูกทำลายในเทิร์นนี้`); } return; }

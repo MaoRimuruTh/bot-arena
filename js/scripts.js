@@ -1140,7 +1140,7 @@ Object.assign(SCRIPTS, {
   "BT01-050": { activate: { label: "ทิ้งการ์ดบนมือ 1 ใบ: นำ Avatar Cost 3 หรือต่ำกว่าจากนรกขึ้นมือ", can: (E, s, x, L) => L.z === "land" && s.phase === "main" && s.P[L.p].hand.length > 0 && s.P[L.p].hell.some((y) => isAv(E, s, y) && (E.def(s, y).c || 0) <= 3),
     run: (c) => { const { E, s, seat: p } = c; const P = s.P[p]; const t = c.choose(uniq(E, s, [...P.hell].reverse().filter((y) => isAv(E, s, y) && (E.def(s, y).c || 0) <= 3)).sort(strongFirst(E, s)), 1, "เลือก Avatar Cost 3 หรือต่ำกว่าในนรกที่จะขึ้นมือ", { exact: true })[0];
       const pay = t ? c.choose([...P.hand].sort(cheapCard(E, s)), 1, "ค่าใช้จ่าย: ทิ้งการ์ดบนมือ 1 ใบ", { exact: true })[0] : null; if (!t || !pay) return { explain: "ไม่มีการ์ดให้เลือก", ops: [] };
-      return { explain: `ทิ้ง ${E.name(s, pay)} · ${E.name(s, t)} จากนรกขึ้นมือ (เทิร์นนี้อัญเชิญหรือใช้ความสามารถชื่อนี้ไม่ได้)`, ops: [{ op: "discard", seat: p, iids: [pay.i] }, { op: "move", i: t.i, to: "hand" }, { op: "turnLock", seat: p, name: E.name(s, t) }] }; } } },
+      return { explain: `ทิ้ง ${E.name(s, pay)} · ${E.name(s, t)} จากนรกขึ้นมือ (เทิร์นนี้อัญเชิญหรือใช้ความสามารถชื่อนี้ไม่ได้)`, ops: [{ op: "discard", seat: p, iids: [pay.i] }, { op: "move", i: t.i, to: "hand" }, { op: "turnLock", seat: p, name: E.name(s, t), both: true }] }; } } },
 });
 
 // ---------- BT02 ----------
@@ -1622,7 +1622,9 @@ Object.assign(SCRIPTS, {
     return pay ? { explain: `ทิ้ง ${E.name(s, pay)} · สุ่มการ์ดจาก Deck เรา 1 ใบ`, ops: [{ op: "discard", seat: p, iids: [pay.i] }, { op: "randomDeck", seat: p, maxCost: 5 }] } : { explain: "ไม่มีการ์ดให้ทิ้ง", ops: [] }; } },
   // เครื่องบิน Super Air: only if we summoned nothing this turn (or only "Super Air"): it becomes a {หุ่นยนต์} Avatar Cost 5 GEM 0 POWER 5; after that only "Super Air" Avatars may be summoned this turn
   "BT05-054": { canCast: (E, s, p) => E.summonedNow(s, p).every((n) => n.includes("Super Air")) && E.avatars(s.P[p]) < 4 && s.P[p].av.length < 6,
-    cast: (c) => ({ explain: "เครื่องบิน Super Air กลายเป็น Avatar {หุ่นยนต์} Cost 5 POWER 5 · เทิร์นนี้อัญเชิญได้แค่ Avatar Super Air", ops: [{ op: "becomeAvatar", seat: c.seat, i: c.t.i, ov: { t: "A", sy: "หุ่นยนต์", c: 5, g: 0, pw: 5 } }, { op: "turnLock", seat: c.seat, only: "Super Air" }] }) },
+    // FAQ ลูเซเน่: used out of hell by ลูเซเน่ the card is exiled first — a card in the dark dimension cannot be summoned (the rest of its text still holds)
+    cast: (c) => { const L = c.E.locate(c.s, c.t.i); const lock = { op: "turnLock", seat: c.seat, only: "Super Air" }; return L && L.z === "dark" ? { explain: "เครื่องบิน Super Air อยู่ในมิติมืดแล้ว จึงอัญเชิญลงสนามไม่ได้ · เทิร์นนี้อัญเชิญได้แค่ Avatar Super Air", ops: [lock] }
+      : { explain: "เครื่องบิน Super Air กลายเป็น Avatar {หุ่นยนต์} Cost 5 POWER 5 · เทิร์นนี้อัญเชิญได้แค่ Avatar Super Air", ops: [{ op: "becomeAvatar", seat: c.seat, i: c.t.i, ov: { t: "A", sy: "หุ่นยนต์", c: 5, g: 0, pw: 5 } }, lock] }; } },
   // ตั๋วยืน: with the plane on our Avatar Zone, discard 1: up to 2 "ผู้โดยสาร Super Air" from the Deck, shuffle
   "BT05-055": { canCast: (E, s, p) => plane(E, s, p) && s.P[p].hand.length >= 2, cast: (c) => { const { E, s, seat: p } = c; const pay = c.choose(s.P[p].hand.filter((y) => y.i !== c.t.i).sort(cheapCard(E, s)), 1, "ทิ้งการ์ดบนมือ 1 ใบ", { exact: true })[0];
     const pool = s.P[p].deck.filter((y) => E.named(s, y, "ผู้โดยสาร Super Air")); const n = Math.min(2, pool.length, freeAv(E, s, p)); const got = pool.slice(0, n);
