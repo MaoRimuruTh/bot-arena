@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113142952";
-import { E } from "./engine.js?v=20261113142952";
-import { h } from "./util.js?v=20261113142952";
-import { Sfx } from "./sfx.js?v=20261113142952";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113144215";
+import { E } from "./engine.js?v=20261113144215";
+import { h } from "./util.js?v=20261113144215";
+import { Sfx } from "./sfx.js?v=20261113144215";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -220,9 +220,10 @@ export const MATS = { black: { name: "รักดำ", lac: "#120b09", edge: "r
   // ซากุระราตรี: night-lacquer with sakura painted in the corners (maki-e style) — and sakura trees by the table, petals drifting over it
   sakura: { name: "ซากุระราตรี", lac: "#160d22", edge: "rgba(236,140,178,", kind: "sakura" } };
 // the scene (สนาม, the map) round the table — not the cloth on it (ผ้าปู, the playmat above). Each viewer sees the one they chose.
-export const SCENES = { hall: { name: "โถงไม้แสงเทียน" }, pond: { name: "สวนสระบัว" }, market: { name: "ตลาดน้ำยามค่ำ" }, sakura: { name: "ซากุระราตรี" } };
+export const SCENES = { hall: { name: "โถงไม้แสงเทียน" }, pond: { name: "สวนสระบัว" }, market: { name: "ตลาดน้ำยามค่ำ" }, hell: { name: "นรกภูมิ" }, sakura: { name: "ซากุระราตรี" } };
 // a scene that brings its own ground: how to build it, and the air round it (fog colour and thickness, sky and ground light, how strong)
-const GROUND = { pond: { build: () => buildPond(), air: [0x0f2a26, 0.019, 0xf2f6ff, 0x1c3320, 0.62] }, market: { build: () => buildMarket(), air: [0x04080f, 0.015, 0xaab8ff, 0x0a0a14, 0.4] } };
+const GROUND = { pond: { build: () => buildPond(), air: [0x0f2a26, 0.019, 0xf2f6ff, 0x1c3320, 0.62] }, market: { build: () => buildMarket(), air: [0x04080f, 0.015, 0xaab8ff, 0x0a0a14, 0.4] },
+  hell: { build: () => buildHell(), air: [0x140403, 0.02, 0xffa070, 0x2a0805, 0.5], noMotes: true } };
 const avCache = new Map();
 const loadAvatar = (key, f) => {
   if (f) { if (!avCache.has(f.key)) avCache.set(f.key, f.url.then((u) => (u && THREE.GLTFLoader ? new Promise((res) => new THREE.GLTFLoader().load(u, res, undefined, () => res(null))) : null))); return avCache.get(f.key); }
@@ -974,6 +975,89 @@ function stepMarket(S, dt, t) {
   if (S.fly) { const F = S.fly; F.st.forEach((f, i) => { F.fp[i * 3] = f.cx + Math.sin(t * f.f + f.ph) * 1.6 + Math.sin(t * f.f * 2.3 + f.ph) * 0.4; F.fp[i * 3 + 1] = 0.35 + Math.sin(t * f.f * 1.7 + f.ph * 2) * 0.3 + 0.3; F.fp[i * 3 + 2] = f.cz + Math.cos(t * f.f * 0.8 + f.ph) * 1.3; });
     F.pts.geometry.attributes.position.needsUpdate = true; F.pts.material.opacity = 0.55 + 0.4 * Math.abs(Math.sin(t * 1.3)); }
 }
+// ---------- นรกภูมิ: the hell realm ----------
+// Black basalt split by cracks of lava that brighten and dim, a river of lava behind the table, rock spires along its bank
+// and out in the margins, a ruined gate standing in the lava with chains that sway, braziers burning at the corners of the
+// stone the table lies on, bubbles bursting on the river and embers rising everywhere. The ground and the river each read
+// one small texture made here; every repeated thing is one batch and nothing has a lamp of its own.
+const HELL = {
+  wide: { river: [[-15, -7.9], [-10, -7.4], [-5, -7.3], [0, -7.35], [5, -7.3], [10, -7.4], [15, -7.9], [15.6, -10.5], [13, -12], [8, -12.4], [0, -12.6], [-8, -12.4], [-14, -12], [-15.6, -10.2]],
+    gate: [-8.0, -4.4, -8.05], beds: [[-13, -8.9, -7.0, 4.8], [8.9, 13, -7.0, 4.8]], braz: [[-8.2, -6.5], [8.2, -6.5], [-8.2, 6.1], [8.2, 6.1]], bub: [-11, 9.4, -8.6, -7.7] },
+  tall: { river: [[-10, -8.2], [-5, -7.6], [0, -7.5], [5, -7.6], [10, -8.2], [11, -10.5], [8, -12.5], [0, -13], [-8, -12.5], [-11, -10.5]],
+    gate: [-3.2, 0.4, -8.4], beds: [[-8, 8, 6.7, 9.6]], braz: [[-7.3, -6.5], [7.3, -6.5], [-7.3, 6.1], [7.3, 6.1]], bub: [-7.4, 7.4, -9.2, -7.9] } };
+// basalt cells: R = how near a crack, G = the cell's own beat, B = how light its rock is (plain numbers, not a picture's colours)
+function crackTexture() {
+  const S = 256, N = 7, c = document.createElement("canvas"); c.width = c.height = S; const g = c.getContext("2d"), img = g.createImageData(S, S), d = img.data, rnd = lcg(131), pts = [];
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) pts.push([(i + 0.12 + rnd() * 0.76) / N, (j + 0.12 + rnd() * 0.76) / N, rnd(), 0.5 + rnd() * 0.5]);
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { const u = x / S, v = y / S, ci = Math.floor(u * N), cj = Math.floor(v * N); let d1 = 9, d2 = 9, id = 0;
+    for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) { const q = ((cj + b + N) % N) * N + ((ci + a + N) % N), p = pts[q]; let dx = p[0] - u, dy = p[1] - v; dx -= Math.round(dx); dy -= Math.round(dy); const dd = Math.hypot(dx, dy); if (dd < d1) { d2 = d1; d1 = dd; id = q; } else if (dd < d2) d2 = dd; }
+    const e = (d2 - d1) * N, edge = Math.max(0, 1 - e / 0.17), k = (y * S + x) * 4; d[k] = 255 * edge * edge; d[k + 1] = 255 * pts[id][2]; d[k + 2] = 255 * pts[id][3] * (0.7 + 0.3 * Math.min(1, e * 2.2)); d[k + 3] = 255; }
+  g.putImageData(img, 0, 0); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; return t;
+}
+function buildHell() {
+  const Q = R.Q, low = Q === "low", C = HELL[R.zones === ZONES.tall ? "tall" : "wide"], G = -0.335, grp = new THREE.Group(); grp.name = "hell"; R.scene.add(grp);
+  const S = { grp, zk: R.zones, o: new THREE.Object3D(), tex: [], flames: [], rings: [], chains: [], step: stepHell }, o = S.o, rnd = lcg(151), T = (t) => { S.tex.push(t); return t; }, col = new THREE.Color();
+  const flat = (geo, mat, y, order = 0) => { const m = new THREE.Mesh(geo, mat); m.rotation.x = -Math.PI / 2; m.position.y = y; m.renderOrder = order; grp.add(m); return m; };
+  const VS = "varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }", FOG = "float d = length(cameraPosition - vW); col = mix(col, uFogC, 1.0 - exp(-uFogD * uFogD * d * d)); gl_FragColor = vec4(col, 1.0);\n#include <tonemapping_fragment>\n#include <encodings_fragment>\n";
+  const fogU = { uT: { value: 0 }, uFogC: { value: R.scene.fog.color }, uFogD: { value: 0.02 } };
+  // the ground: every crack glows to its own slow beat
+  S.ground = new THREE.ShaderMaterial({ uniforms: { ...fogU, uMap: { value: T(crackTexture()) } }, vertexShader: VS,
+    fragmentShader: `uniform float uT; uniform sampler2D uMap; uniform vec3 uFogC; uniform float uFogD; varying vec3 vW;
+      void main(){ vec3 m = texture2D(uMap, vW.xz * 0.105).rgb; float beat = 0.3 + 0.7 * (0.5 + 0.5 * sin(uT * 0.9 + m.g * 6.2831 + vW.x * 0.25)); float glow = m.r * beat;
+        vec3 col = vec3(0.016, 0.012, 0.014) * (0.5 + m.b) + vec3(1.0, 0.16, 0.012) * glow * 1.25 + vec3(1.0, 0.7, 0.2) * glow * glow * glow * 1.4 + vec3(0.2, 0.02, 0.0) * smoothstep(0.0, 0.5, m.r) * 0.25;
+        ${FOG} }` });
+  flat(new THREE.PlaneGeometry(70, 50), S.ground, G).position.z = -2;
+  // the dark stone the table lies on, lit along its far edge by the river
+  { const pt = T(paverTexture()); pt.wrapS = pt.wrapT = THREE.RepeatWrapping; pt.repeat.set(7, 5.5); flat(new THREE.PlaneGeometry(MW + 1.7, MD + 1.7), new THREE.MeshBasicMaterial({ map: pt, color: 0x5c4444 }), G + 0.006, 1).position.z = MZ;
+    const gt = T(canvasTex(64, (g, s) => { const gr = g.createLinearGradient(0, 0, 0, s); gr.addColorStop(0, "rgba(255,120,30,.95)"); gr.addColorStop(1, "rgba(255,90,20,0)"); g.fillStyle = gr; g.fillRect(0, 0, s, s); }));
+    S.rim = new THREE.MeshBasicMaterial({ map: gt, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false }); const m = flat(new THREE.PlaneGeometry(MW + 6, 2.6), S.rim, G + 0.01, 2); m.position.set(0, G + 0.01, MZ - MD / 2 - 0.05); }
+  // the river of lava and its dark bank
+  const out = new THREE.CatmullRomCurve3(C.river.map(([x, z]) => new THREE.Vector3(x, 0, z)), true, "centripetal").getPoints(80).map((p) => [p.x, p.z]); S.poly = out;
+  const cx = out.reduce((a, p) => a + p[0], 0) / out.length, cz = out.reduce((a, p) => a + p[1], 0) / out.length;
+  const shape = (grow) => new THREE.ShapeGeometry(new THREE.Shape(out.map(([x, z]) => { const dx = x - cx, dz = z - cz, d = Math.hypot(dx, dz) || 1; return new THREE.Vector2(x + (dx / d) * grow, -(z + (dz / d) * grow)); })));
+  flat(shape(0.22), new THREE.MeshBasicMaterial({ color: 0x1a0a08 }), G + 0.003, 1);
+  { const rt = T(rippleTexture()); rt.wrapS = rt.wrapT = THREE.RepeatWrapping;
+    S.lava = new THREE.ShaderMaterial({ uniforms: { ...fogU, uRip: { value: rt } }, vertexShader: VS,
+      fragmentShader: `uniform float uT; uniform sampler2D uRip; uniform vec3 uFogC; uniform float uFogD; varying vec3 vW;
+        void main(){ vec2 p = vW.xz; float n = texture2D(uRip, p * vec2(0.06, 0.12) + vec2(uT * 0.02, 0.0)).r * 0.75 + texture2D(uRip, p * vec2(0.11, 0.21) + vec2(uT * 0.034, uT * 0.004)).r * 0.6;
+          vec3 col = mix(vec3(0.3, 0.025, 0.0), vec3(1.0, 0.3, 0.02), smoothstep(0.04, 0.5, n)) + vec3(1.0, 0.72, 0.2) * smoothstep(0.45, 0.95, n);
+          ${FOG} }` }); flat(shape(0), S.lava, G + 0.006, 3); }
+  const hot = (x, z) => inPoly(x, z, out), dry = (x, z) => !hot(x, z) && !(Math.abs(x) < MW / 2 + 1.0 && Math.abs(z - MZ) < MD / 2 + 1.0);
+  const rock = new THREE.MeshStandardMaterial({ color: 0x1f1719, roughness: 0.95, metalness: 0, flatShading: true, emissive: 0x3a0a02, emissiveIntensity: 0.5 });
+  // spires: small ones along the near bank, tall ones out in the margins
+  { const spots = []; for (let i = 0; i < out.length; i += low ? 4 : 2) { const [x, z] = out[i]; if (z < -8.3 || Math.abs(x) > 13.5) continue; spots.push([x + (rnd() - 0.5) * 0.3, z + 0.14 + rnd() * 0.1, 0.16 + rnd() * 0.16, 0.3 + rnd() * 0.75]); }
+    const n = low ? 10 : Q === "mid" ? 18 : 30; for (let t = 0; t < n * 8 && spots.length < 200 && t < 400; t++) { const b = C.beds[Math.floor(rnd() * C.beds.length)], x = b[0] + rnd() * (b[1] - b[0]), z = b[2] + rnd() * (b[3] - b[2]); if (dry(x, z) && spots.filter((s) => s[4]).length < n) spots.push([x, z, 0.22 + rnd() * 0.3, 0.6 + rnd() * 1.7, 1]); }
+    const geo = new THREE.ConeGeometry(1, 1, 5); geo.translate(0, 0.5, 0); const sp = new THREE.InstancedMesh(geo, rock, spots.length);
+    spots.forEach(([x, z, r, hh], i) => { o.position.set(x, G, z); o.rotation.set((rnd() - 0.5) * 0.3, rnd() * 6.28, (rnd() - 0.5) * 0.3); o.scale.set(r, hh, r); o.updateMatrix(); sp.setMatrixAt(i, o.matrix); const v = 0.75 + rnd() * 0.5; sp.setColorAt(i, col.setRGB(v, v * 0.9, v * 0.9)); });
+    o.rotation.set(0, 0, 0); sp.castShadow = Q === "high"; grp.add(sp); }
+  // the ruined gate: two pillars in the lava, half a lintel left on one, chains hanging from it
+  { const [x0, x1, gz] = C.gate, box = new THREE.BoxGeometry(1, 1, 1), parts = [[x0, 1.3, gz, 0.72, 2.9, 0.72, 0], [x1, 0.95, gz, 0.72, 2.2, 0.72, 0.05], [x0, 2.85, gz, 0.95, 0.24, 0.95, 0], [x0 + 1.25, 3.12, gz, 3.0, 0.5, 0.78, -0.07], [x1 + 0.7, 0.16, gz + 0.5, 0.8, 0.5, 0.6, 0.5], [x0 - 0.1, 0.1, gz + 0.62, 0.5, 0.3, 0.4, 0.2], [x1, 2.12, gz, 0.9, 0.2, 0.9, 0.12]];
+    const gm = new THREE.InstancedMesh(box, new THREE.MeshStandardMaterial({ color: 0x2a2023, roughness: 0.95, metalness: 0, flatShading: true, emissive: 0x4a0e03, emissiveIntensity: 0.5 }), parts.length);
+    parts.forEach(([x, y, z, sx, sy, sz, a], i) => { o.position.set(x, G + y, z); o.rotation.set(0, a * 0.6, a); o.scale.set(sx, sy, sz); o.updateMatrix(); gm.setMatrixAt(i, o.matrix); }); o.rotation.set(0, 0, 0); gm.castShadow = Q === "high"; grp.add(gm);
+    const iron = new THREE.MeshStandardMaterial({ color: 0x8a8088, roughness: 0.5, metalness: 0.6 }), link = new THREE.BoxGeometry(0.09, 0.2, 0.035);
+    [[x0 + 0.95, 8], [x0 + 2.2, 6]].slice(0, low ? 1 : 2).forEach(([x, n], i) => { const ch = new THREE.Group(); ch.position.set(x, G + 2.86, gz + 0.1); const m = new THREE.InstancedMesh(link, iron, n);
+      for (let k = 0; k < n; k++) { o.position.set(0, -0.09 - k * 0.165, 0); o.rotation.set(0, k % 2 ? Math.PI / 2 : 0, 0); o.scale.set(1, 1, 1); o.updateMatrix(); m.setMatrixAt(k, o.matrix); } ch.add(m); grp.add(ch); S.chains.push({ g: ch, ph: i * 1.9 }); }); o.rotation.set(0, 0, 0); }
+  // braziers at the corners of the stone
+  { const bowl = new THREE.CylinderGeometry(0.34, 0.2, 0.26, 8), leg = new THREE.CylinderGeometry(0.1, 0.16, 0.5, 6), bm = new THREE.InstancedMesh(bowl, rock, C.braz.length), lm = new THREE.InstancedMesh(leg, rock, C.braz.length);
+    C.braz.forEach(([x, z], i) => { o.position.set(x, G + 0.63, z); o.scale.set(1, 1, 1); o.updateMatrix(); bm.setMatrixAt(i, o.matrix); o.position.y = G + 0.25; o.updateMatrix(); lm.setMatrixAt(i, o.matrix); bm.setColorAt(i, col.setRGB(1, 0.92, 0.9)); lm.setColorAt(i, col); // (one material: every batch that shares it carries colours)
+      const f = new THREE.Sprite(new THREE.SpriteMaterial({ map: R.flameTex, color: 0xffb070, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); f.position.set(x, G + 1.15, z); f.scale.set(0.55, 1.0, 1); grp.add(f);
+      const hl = sprite(R.FX.dot, 0xff6a20, 2.6, new THREE.Vector3(x, G + 1.0, z), 0.4, grp); S.flames.push({ f, hl, ph: i * 2.7 }); }); grp.add(bm, lm); }
+  // bubbles bursting on the river, embers rising over everything
+  { const rt = T(ringTexture()); for (let i = 0; i < (low ? 1 : 4); i++) { const m = flat(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: rt, color: 0xffd070, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }), G + 0.012, 5); S.rings.push({ m, age: 9, dur: 1.3, wait: 0.5 + i * 0.9 }); } S.bub = C.bub;
+    const n = reduce ? 0 : low ? 18 : Q === "mid" ? 44 : 90; if (n) { const fp = new Float32Array(n * 3), fg = new THREE.BufferGeometry(); fg.setAttribute("position", new THREE.BufferAttribute(fp, 3));
+      const pts = new THREE.Points(fg, new THREE.PointsMaterial({ map: R.FX.dot, color: 0xff6a1a, size: 0.2, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false })); pts.frustumCulled = false; grp.add(pts);
+      S.emb = { pts, fp, st: Array.from({ length: n }, () => ({ x: -13 + Math.random() * 26, z: -12 + Math.random() * 20, y: Math.random() * 6, v: 0.25 + Math.random() * 0.6, ph: Math.random() * 6.28 })) }; } }
+  return S;
+}
+function stepHell(S, dt, t) {
+  S.ground.uniforms.uT.value = t; S.lava.uniforms.uT.value = t; S.rim.opacity = 0.46 + 0.07 * Math.sin(t * 1.7) + 0.03 * Math.sin(t * 4.3);
+  for (const c of S.chains) c.g.rotation.z = Math.sin(t * 0.9 + c.ph) * 0.07;
+  for (const b of S.flames) { const f = 1 + 0.1 * Math.sin(t * 12 + b.ph) + 0.07 * Math.sin(t * 7.1 + b.ph * 2) + Math.random() * 0.04; b.f.scale.set(0.55 * (2 - f), 1.0 * f, 1); b.hl.material.opacity = 0.36 * f; }
+  for (const r of S.rings) { r.age += dt; if (r.age > r.dur + r.wait) { const [x0, x1, z0, z1] = S.bub; let x = 0, z = 0; for (let n = 0; n < 10; n++) { x = x0 + Math.random() * (x1 - x0); z = z0 + Math.random() * (z1 - z0); if (inPoly(x, z, S.poly)) break; } r.m.position.x = x; r.m.position.z = z; r.age = 0; r.wait = 0.4 + Math.random() * 2.2; }
+    const u = Math.min(1, r.age / r.dur); r.m.scale.setScalar(0.15 + u * 0.75); r.m.material.opacity = u >= 1 ? 0 : (1 - u) * 0.9; }
+  if (S.emb) { const E2 = S.emb; for (let i = 0; i < E2.st.length; i++) { const e = E2.st[i]; e.y += e.v * dt; if (e.y > 7) { e.y = 0; e.x = -13 + Math.random() * 26; e.z = -12 + Math.random() * 20; } E2.fp[i * 3] = e.x + Math.sin(t * 0.8 + e.ph) * 0.3; E2.fp[i * 3 + 1] = e.y; E2.fp[i * 3 + 2] = e.z + Math.cos(t * 0.6 + e.ph) * 0.2; }
+    E2.pts.geometry.attributes.position.needsUpdate = true; E2.pts.material.opacity = 0.8 + 0.15 * Math.sin(t * 9); }
+}
 // the table's surroundings are the scene the viewer chose (สนาม), whatever cloth lies on the table
 function decor() {
   if (!R) return; const want = R.sceneKey;
@@ -987,7 +1071,7 @@ function decor() {
 function hallShow() {
   if (!R) return; const gr = GROUND[R.sceneKey], on = !gr, air = gr ? gr.air : [0x0b0605, 0.026, 0xffe2c0, 0x140a06, 0.5];
   if (R.wood) R.wood.visible = on; if (R.shade) R.shade.visible = on && !R.shadeOff; for (const c of R.candles || []) c.grp.visible = on;
-  const pr = R.scene.getObjectByName("props"); if (pr) pr.visible = on; if (R.motes) R.motes.visible = on || R.Q !== "low";
+  const pr = R.scene.getObjectByName("props"); if (pr) pr.visible = on; if (R.motes) R.motes.visible = on || (R.Q !== "low" && !gr.noMotes);
   R.scene.fog.color.setHex(air[0]); R.scene.fog.density = air[1];
   if (R.hemi) { R.hemi.color.setHex(air[2]); R.hemi.groundColor.setHex(air[3]); R.hemi.intensity = air[4]; }
 }
