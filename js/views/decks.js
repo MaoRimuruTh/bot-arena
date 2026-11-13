@@ -1,17 +1,17 @@
-import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261113131839";
-import { plain, isOwnerNow } from "../persona.js?v=20261113131839";
-import { fxText } from "../fxtext.js?v=20261113131839";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, banlist, banMax, banPair, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261113131839";
-import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261113131839";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261113131839";
-import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261113131839";
-import { filterBar, filterCards } from "./library.js?v=20261113131839";
-import { openingOdds, simGame } from "./lab.js?v=20261113131839";
-import { freeBuild } from "../builder.js?v=20261113131839";
-import { deckCode, deckText, parseDeck, printCard } from "../deckcode.js?v=20261113131839";
-import { CIEL_DECKS } from "../cieldecks.js?v=20261113131839";
-import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261113131839";
-import { deckLocked, deckLockAch } from "../achieve.js?v=20261113131839";
+import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261113133136";
+import { plain, isOwnerNow } from "../persona.js?v=20261113133136";
+import { fxText } from "../fxtext.js?v=20261113133136";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, limitKey, banlist, banMax, banPair, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261113133136";
+import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261113133136";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261113133136";
+import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261113133136";
+import { filterBar, filterCards } from "./library.js?v=20261113133136";
+import { openingOdds, simGame } from "./lab.js?v=20261113133136";
+import { freeBuild } from "../builder.js?v=20261113133136";
+import { deckCode, deckText, parseDeck, printCard } from "../deckcode.js?v=20261113133136";
+import { CIEL_DECKS } from "../cieldecks.js?v=20261113133136";
+import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261113133136";
+import { deckLocked, deckLockAch } from "../achieve.js?v=20261113133136";
 
 // Ciel's theme decks: print codes → card ids (resolved once the card data is loaded). They are Ciel's decks for Rimuru,
 // so only the owner's account sees them: other accounts get none (not in the deck list, the duel setup, the lab or the bot's picks)
@@ -44,7 +44,7 @@ export function addToDeck(d, id, delta = 1) {
     else d.life = d.life.filter((x) => +x !== +id); return;
   }
   if (c.t === "T") return toast("Token ใส่ในเด็คไม่ได้");
-  const same = deckEntries(d).filter((e) => e.c.n === c.n).reduce((a, e) => a + e.n, 0);
+  const same = deckEntries(d).filter((e) => limitKey(e.c) === limitKey(c)).reduce((a, e) => a + e.n, 0);
   if (delta > 0 && same >= limitOf(c)) return toast(`${c.n} ใส่ได้สูงสุด ${limitOf(c)} ใบ`);
   const n = Math.max(0, (d.main[c.i] || 0) + delta); const main = { ...d.main }; if (n) main[c.i] = n; else delete main[c.i]; d.main = main;
 }

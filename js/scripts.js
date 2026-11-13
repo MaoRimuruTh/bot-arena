@@ -515,12 +515,13 @@ Object.assign(SCRIPTS, {
   // ฟูมะ: from the hand, a นินจา on our Avatar Zone goes back to the hand and this card comes down (once a turn by this way).
   // Brought down by its own ability it gets POWER +3 and hides in the dark zone at our End Phase, coming back at the start
   // of our next Main Phase (by its own ability again). Summoned the usual way it does none of that.
+  // FAQ ฟูมะ: the return from the dark zone is "put onto the Avatar Zone", not a summon — no POWER +3 and no End Phase exile again
   "BT11-010": { activate: { label: "นำนินจาบน Avatar Zone กลับขึ้นมือ: อัญเชิญฟูมะจากมือ",
       can: (E, s, x, L) => L.z === "hand" && s.phase === "main" && once(s, L.p, "ฟูมะ:สลับ") && s.P[L.p].av.some((y) => isAv(E, s, y) && E.named(s, y, "นินจา") && E.def(s, y).n !== E.def(s, x).n),
       run: (c) => { const { E, s, seat: p, self: x } = c; const pool = s.P[p].av.filter((y) => isAv(E, s, y) && E.named(s, y, "นินจา") && E.def(s, y).n !== E.def(s, x).n).sort((a, b) => worth(E, s, a) - worth(E, s, b));
         const n = c.choose(pool, 1, "เลือกนินจาบน Avatar Zone ที่จะนำกลับขึ้นมือ", { exact: true })[0]; if (!n) return { explain: "ไม่มีนินจาบน Avatar Zone", ops: [] };
         return { explain: `${E.name(s, n)} กลับขึ้นมือ · อัญเชิญ ${E.name(s, x)} POWER +3`, ops: [{ op: "nameOnce", seat: p, name: "ฟูมะ:สลับ" }, { op: "move", i: n.i, to: "hand" }, { op: "put", i: x.i }, { op: "flag", i: x.i, k: "sb", v: x.c }, { op: "power", i: x.i, n: 3, temp: false }] }; } },
-    endPhase: (E, s, x, L) => (L.z === "av" && mineEnd(s, L) && x.sb === x.c ? [{ op: "exile", i: x.i }, { op: "later", seat: L.p, ops: [{ op: "put", i: x.i }, { op: "flag", i: x.i, k: "sb", v: x.c }, { op: "power", i: x.i, n: 3, temp: false }], why: "ฟูมะกลับจากมิติมืด" }] : []) },
+    endPhase: (E, s, x, L) => (L.z === "av" && mineEnd(s, L) && x.sb === x.c ? [{ op: "exile", i: x.i }, { op: "later", seat: L.p, ops: [{ op: "move", i: x.i, to: "av" }], why: "ฟูมะกลับจากมิติมืด (นำลง Avatar Zone ไม่ใช่การอัญเชิญ จึงไม่ได้ POWER +3 อีก)" }] : []) },
   // อินาริ: draw 1, +1 per 15 cards in our hell
   "CC02-016": { endPhase: (E, s, x, L) => (L.z === "av" && mineEnd(s, L) ? [{ op: "draw", seat: L.p, n: 1 + Math.floor(s.P[L.p].hell.length / 15) }] : []) },
   // พาลี: destroy every enemy Avatar with the lowest Cost

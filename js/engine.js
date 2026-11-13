@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113131839";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261113131839";
-import { SCRIPTS } from "./scripts.js?v=20261113131839";
-import { newId, clone } from "./util.js?v=20261113131839";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113133136";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261113133136";
+import { SCRIPTS } from "./scripts.js?v=20261113133136";
+import { newId, clone } from "./util.js?v=20261113133136";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -116,7 +116,7 @@ export const E = {
     }
     return { total: E.power(s, x), parts, halved: !!(me && me.z === "av" && E.landSc(s, "halvePower")) };
   },
-  hellGem(s, p, x) { const ids = new Set(); for (const { x: y, L: Ly } of fieldCards(s)) { if (Ly.p !== p || y.mute) continue; const sc = scriptOf(s, y); if (sc && sc.hellGem) for (const z of sc.hellGem(E, s, y, Ly, x) || []) ids.add(z); } const list = s.P[p].hell.filter((z) => ids.has(z.i)); return { list, n: list.reduce((a, z) => a + (E.def(s, z).g || 0), 0) }; },
+  hellGem(s, p, x) { const ids = new Set(); for (const { x: y, L: Ly } of fieldCards(s)) { if (Ly.p !== p || y.mute) continue; const sc = scriptOf(s, y); if (sc && sc.hellGem) for (const z of sc.hellGem(E, s, y, Ly, x) || []) ids.add(z); } const td = E.def(s, x); /* FAQ แม่นางลิ: GEM taken from hell still has to match the colour, like GEM from the hand */ const list = s.P[p].hell.filter((z) => ids.has(z.i) && !(E.def(s, z).gc && td && td.co && E.def(s, z).gc !== td.co && !(traits(td) || {}).anyColor)); return { list, n: list.reduce((a, z) => a + (E.def(s, z).g || 0), 0) }; },
   costOf(s, p, x, noHell) { // Cost after continuous reductions (e.g. ซาร์อึก)
     let c = E.def(s, x).c || 0; { const own = x.mute ? null : scriptOf(s, x); if (own && own.selfCost) c += own.selfCost(E, s, x, p) || 0; }
     for (const { x: src, L } of fieldCards(s)) { if (L.p !== p) continue; const sc = scriptOf(s, src); if (sc && sc.costMod) c += sc.costMod(E, s, src, L, x); }

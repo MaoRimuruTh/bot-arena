@@ -1,9 +1,9 @@
 // Ciel's free deck builder (no API key): builds a legal 50 + 5 LIFE deck around a set of core
 // cards (favourites or aces) by picking supporting cards that share their symbols, names and
 // colours, keeping a playable Cost curve and enough GEM.
-import { CARDS, card, baseId, isBase, limitOf, banMax, validateDeck } from "./cards.js?v=20261113131839";
-import { SCRIPTS } from "./scripts.js?v=20261113131839";
-import { readable } from "./effects.js?v=20261113131839";
+import { CARDS, card, baseId, isBase, limitOf, limitKey, banMax, validateDeck } from "./cards.js?v=20261113133136";
+import { SCRIPTS } from "./scripts.js?v=20261113133136";
+import { readable } from "./effects.js?v=20261113133136";
 
 let scripted = null;
 const isScripted = (c) => { if (!scripted || scripted.n !== CARDS.length) { const s = new Set(); for (const p of Object.keys(SCRIPTS)) { const x = CARDS.find((y) => y.p === p); if (x) s.add(baseId(x.i)); } scripted = { n: CARDS.length, s }; } return scripted.s.has(baseId(c.i)); };
@@ -80,8 +80,8 @@ export function freeBuild({ core = [], colors = [], style = "win", name = "" } =
   const pool = CARDS.filter((c) => isBase(c) && !["L", "T"].includes(c.t) && c.fl !== "le" && okColor(c) && !(c.gc && cols.length && !cols.includes(c.gc)));
   const scored = pool.map((c) => ({ c, s: score(c), y: syn(c) })).sort((a, b) => b.s - a.s);
   const main = {}; const byName = {}; let total = 0;
-  const room = (c) => Math.min(Math.min(limitOf(c), banMax(c) ?? 99) - (byName[c.n] || 0), 50 - total); // within the official limits (การ์ดบาป) too
-  const add = (c, n) => { const k = Math.max(0, Math.min(n, room(c))); if (!k) return 0; main[c.i] = (main[c.i] || 0) + k; byName[c.n] = (byName[c.n] || 0) + k; total += k; return k; };
+  const room = (c) => Math.min(Math.min(limitOf(c), banMax(c) ?? 99) - (byName[limitKey(c)] || 0), 50 - total); // within the official limits (การ์ดบาป) too
+  const add = (c, n) => { const k = Math.max(0, Math.min(n, room(c))); if (!k) return 0; main[c.i] = (main[c.i] || 0) + k; byName[limitKey(c)] = (byName[limitKey(c)] || 0) + k; total += k; return k; };
   // exactly one Only #1: the best one among the core, else the best that fits
   const o1core = keep.filter((c) => c.o1).sort((a, b) => (b.c || 0) - (a.c || 0));
   if (o1core.length > 1) notes.push(`Only #1 ใส่ได้ใบเดียว เลือก ${o1core[0].n}`);
@@ -92,7 +92,7 @@ export function freeBuild({ core = [], colors = [], style = "win", name = "" } =
   const cnt = (f) => Object.entries(main).reduce((a, [i, n]) => a + (f(card(+i)) ? n : 0), 0);
   const famA = { n: 0 }, famM = { n: 0 };
   for (const e of [...scored].sort((a, b) => b.y - a.y || b.s - a.s)) {
-    if (total >= 42) break; if (e.y < 3 || e.c.o1 || byName[e.c.n]) continue;
+    if (total >= 42) break; if (e.y < 3 || e.c.o1 || byName[limitKey(e.c)]) continue;
     if (e.c.t === "A") { if (famA.n >= 16) continue; if ((e.c.c || 0) >= 7 && e.y < 5) continue; if ((e.c.c || 0) >= 5 && cnt((c) => c.t === "A" && (c.c || 0) >= 5) >= 11) continue; famA.n += add(e.c, e.y >= 5 ? 3 : 2); }
     else if (e.c.t === "M") { if (famM.n >= 9) continue; famM.n += add(e.c, e.y >= 5 ? 3 : 2); }
   }
@@ -100,7 +100,7 @@ export function freeBuild({ core = [], colors = [], style = "win", name = "" } =
   const want = style === "fun" ? { 0: 5, 1: 6, 2: 7, 3: 6, 4: 6, 5: 3, 6: 3 } : { 0: 4, 1: 7, 2: 8, 3: 7, 4: 6, 5: 3, 6: 2 };
   const have = (k) => Object.entries(main).reduce((a, [i, n]) => { const c = card(+i); return a + (c.t === "A" && Math.min(6, c.c || 0) === k ? n : 0); }, 0);
   for (const k of [2, 1, 3, 4, 0, 5, 6]) for (const e of scored) { if (have(k) >= want[k] || total >= 50) break; if (e.c.t !== "A" || e.c.o1 || Math.min(6, e.c.c || 0) !== k) continue; add(e.c, Math.min(want[k] - have(k), e.s >= 4 ? 4 : 3)); }
-  for (const p of STAPLES) { if (total >= 50) break; const c = CARDS.find((x) => x.p === p); if (c && okColor(c) && !byName[c.n]) add(card(baseId(c.i)), 2); }
+  for (const p of STAPLES) { if (total >= 50) break; const c = CARDS.find((x) => x.p === p); if (c && okColor(c) && !byName[limitKey(c)]) add(card(baseId(c.i)), 2); }
   for (const e of scored) { if (total >= 50) break; if (e.c.t !== "M" || e.c.st === "L" && Object.keys(main).some((i) => card(+i).st === "L")) continue; if (e.s < 0.5) continue; add(e.c, e.s >= 4 ? 3 : 2); }
   for (const e of scored) { if (total >= 50) break; if (e.c.o1) continue; add(e.c, 2); }
   // LIFE: favourites first, then readable LIFE cards that suit the colours / symbols

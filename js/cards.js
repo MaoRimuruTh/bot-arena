@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261113131839";
-import { h } from "./util.js?v=20261113131839";
-import { Data } from "./fb.js?v=20261113131839";
+import { CARD_SOURCE } from "./config.js?v=20261113133136";
+import { h } from "./util.js?v=20261113133136";
+import { Data } from "./fb.js?v=20261113133136";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -277,13 +277,19 @@ export function banIssues(d, B = banlist()) {
 // ----- decks -----
 export const deckCount = (d) => Object.values(d.main || {}).reduce((a, b) => a + b, 0);
 export const deckEntries = (d) => Object.entries(d.main || {}).filter(([, n]) => n > 0).map(([id, n]) => ({ c: card(id), n, id: +id })).filter((e) => e.c);
+// One card, several spellings: the copy limit is per card. A reprint that only corrects a spelling (พญายักษ์ ทศกัณฑ์ → ทศกัณฐ์),
+// or one code printed under two spellings (อาเมอร์ ทศกัณท์ / ทศกัณฐ์), is still that card — the copies add up.
+let LK = null, LKn = -1;
+export const limitKey = (c) => { const spell = (n) => normName(n).replace(/ทศกัณ[ฑท]์/g, "ทศกัณฐ์");
+  if (!LK || LKn !== CARDS.length) { LK = {}; LKn = CARDS.length; const first = {}; for (const x of CARDS) { if (!x || x.t === "L" || x.t === "T" || !x.p) continue; const k = spell(x.n); if (first[x.p] == null) first[x.p] = k; else if (first[x.p] !== k) LK[k] = first[x.p]; } }
+  const k = spell(c.n); return LK[k] || k; };
 export function validateDeck(d) {
   const out = []; const ents = deckEntries(d); const total = deckCount(d);
   out.push({ ok: total === 50, msg: `Main Deck ${total}/50 ใบ` });
   const byName = {};
-  for (const e of ents) { byName[e.c.n] = byName[e.c.n] || { n: 0, lim: limitOf(e.c) }; byName[e.c.n].n += e.n; byName[e.c.n].lim = Math.max(byName[e.c.n].lim, limitOf(e.c)); }
+  for (const e of ents) { const k = limitKey(e.c); byName[k] = byName[k] || { n: 0, lim: limitOf(e.c) }; byName[k].n += e.n; byName[k].lim = Math.max(byName[k].lim, limitOf(e.c)); }
   // FAQ วิหารเจ้าสมุทร: a card whose "#" rule makes it count as another card's name shares that card's copy limit ("ใส่รวมกันได้เพียง 4 ใบ")
-  for (const e of ents) for (const a of (e.c.al && e.c.al.an) || []) { const k = Object.keys(byName).find((n) => n !== e.c.n && nn(n) === nn(a)); if (k) { byName[k].n += e.n; byName[k].lim = Math.min(byName[k].lim, limitOf(e.c)); } }
+  for (const e of ents) for (const a of (e.c.al && e.c.al.an) || []) { const k = Object.keys(byName).find((n) => n !== limitKey(e.c) && nn(n) === nn(a)); if (k) { byName[k].n += e.n; byName[k].lim = Math.min(byName[k].lim, limitOf(e.c)); } }
   const over = Object.entries(byName).filter(([, v]) => v.n > v.lim);
   out.push({ ok: !over.length, msg: over.length ? "เกินจำนวนต่อชื่อ: " + over.map(([k, v]) => `${k} ${v.n}/${v.lim}`).join(", ") : "ชื่อเดียวกันไม่เกินจำนวนที่กำหนด" });
   const o1 = ents.filter((e) => e.c.o1).reduce((a, e) => a + e.n, 0);
@@ -304,6 +310,11 @@ export function validateDeck(d) {
   if (ents.some((e) => e.c.n === "พญายม With The Shotgun")) { const ok = ents.some((e) => e.c.n === "สุวาน" && e.c.o1); out.push({ ok, msg: ok ? "พญายม With The Shotgun มี สุวาน (Only) คู่กันแล้ว" : "ใส่ พญายม With The Shotgun ต้องใส่ สุวาน (Only #1) ด้วย" }); }
   // "จะต้องใส่การ์ด Avatar "เพมมุ" ไว้ใน Deck ด้วยเสมอ" (สไปรท์ ยอดสุนัข)
   if (ents.some((e) => e.c.n === "สไปรท์ ยอดสุนัข")) { const ok = ents.some((e) => e.c.t === "A" && String(e.c.n || "").includes("เพมมุ")); out.push({ ok, msg: ok ? "สไปรท์ ยอดสุนัข มี เพมมุ ใน Deck แล้ว" : "ใส่ สไปรท์ ยอดสุนัข ต้องมี Avatar \"เพมมุ\" ใน Deck ด้วย" }); }
+  // "# ไม่สามารถใส่ Avatar ชื่ออื่นใน Deck ที่เป็น {คน} หรือ {ต่างชาติ} ได้ ยกเว้นว่า Avatar ใบนั้นชื่อ เพมมุ" (เพมมุ ยอดมนุษย์)
+  // FAQ: an Avatar whose own "#" rule makes it count as {คน} or {ต่างชาติ} is shut out too, because a "#" rule works all the time
+  if (ents.some((e) => e.c.n === "เพมมุ ยอดมนุษย์")) { const isHuman = (c) => allSy(c, false) || syText(c, false).split(/[|\/,\s]+/).some((w) => w === "คน" || w === "ต่างชาติ" || w === "ชาวต่างชาติ");
+    const bad = [...new Set(ents.filter((e) => e.c.t === "A" && !nameText(e.c, false).includes("เพมมุ") && isHuman(e.c)).map((e) => e.c.n))];
+    out.push({ ok: !bad.length, msg: bad.length ? "มี เพมมุ ยอดมนุษย์ ใน Deck: ใส่ Avatar {คน} หรือ {ต่างชาติ} ชื่ออื่นไม่ได้ (" + bad.slice(0, 6).join(", ") + (bad.length > 6 ? " …" : "") + ")" : "เพมมุ ยอดมนุษย์: ไม่มี Avatar {คน} หรือ {ต่างชาติ} ชื่ออื่นใน Deck" }); }
   return { ok: out.every((x) => x.ok), items: out };
 }
 export function deckStats(d) {
