@@ -286,6 +286,7 @@ body.arena-on main{padding:0;max-width:none}
 .rpsbeat{font:700 1.5rem var(--f-display);color:var(--gold-hi);letter-spacing:.06em}
 .dmg{position:fixed;font:700 2.1rem var(--f-display);color:#fff;text-shadow:0 0 14px #ff4d55,0 2px 0 #7a141a;pointer-events:none;z-index:28;transform:translate(-50%,-50%);white-space:nowrap}
 .pwl{position:fixed;transform:translate(-50%,-50%);min-width:26px;padding:1px 7px;border-radius:8px;font:700 .8rem var(--f-display);text-align:center;pointer-events:none;background:rgba(14,8,7,.84);border:1px solid rgba(216,168,74,.6);color:var(--gold-hi);z-index:4}
+.pilel.short{padding:0 5px;font-size:.64rem;border-radius:7px} .pilel.short.none{display:none}
 .pilel{position:fixed;transform:translate(-50%,-50%);padding:1px 7px;border-radius:8px;font:600 .72rem var(--f-display);white-space:nowrap;pointer-events:none;background:rgba(14,8,7,.78);border:1px solid rgba(216,168,74,.45);color:var(--gold-hi);z-index:3} .pilel.opp{border-color:rgba(198,59,46,.55);color:#ffc0c3}
 .pwl.opp{border-color:rgba(198,59,46,.7);color:#ffb0b3} .pwl.up{background:#1a5c37;color:#c9ffe0} .pwl.down{background:#6b1a1f;color:#ffd0d2} .pwl.sleep{opacity:.55}
 .arena-exit{position:absolute;left:max(16px,env(safe-area-inset-left,0px));bottom:max(14px,env(safe-area-inset-bottom,0px))}

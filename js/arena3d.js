@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113073043";
-import { E } from "./engine.js?v=20261113073043";
-import { h } from "./util.js?v=20261113073043";
-import { Sfx } from "./sfx.js?v=20261113073043";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113074623";
+import { E } from "./engine.js?v=20261113074623";
+import { h } from "./util.js?v=20261113074623";
+import { Sfx } from "./sfx.js?v=20261113074623";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -56,7 +56,7 @@ function mount(container, opts = {}) {
   renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.92;
   renderer.shadowMap.enabled = Q === "high"; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0x0b0605, 0.026);
-  const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 200);
+  const camera = new THREE.PerspectiveCamera(38, 1, 0.3, 200); // (a near plane this far keeps the depth fine enough across the table)
   const loader = new THREE.TextureLoader(); loader.setCrossOrigin("anonymous");
   const tex = (u, srgb = true) => { const t = loader.load(u); if (srgb) t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; return t; };
   const FX = {}; ["magic_02", "slash_02", "circle_05", "smoke_03", "light_02", "star_06", "flare_01", "twirl_02"].forEach((n) => (FX[n] = tex("assets/fx/" + n + ".png")));
@@ -64,6 +64,7 @@ function mount(container, opts = {}) {
 
   scene.add(new THREE.HemisphereLight(0xffe2c0, 0x140a06, 0.5));
   const key = new THREE.DirectionalLight(0xffe2b0, 1.1); key.position.set(4, 12, 7); key.castShadow = true; key.shadow.mapSize.set(1024, 1024);
+  key.shadow.bias = -0.0005; key.shadow.normalBias = 0.02;
   Object.assign(key.shadow.camera, { left: -9, right: 9, top: 9, bottom: -9, near: 1, far: 30 }); scene.add(key);
   const rim = new THREE.DirectionalLight(0x9fb4ff, 0.2); rim.position.set(-6, 6, -10); scene.add(rim);
   R.goldL = new THREE.PointLight(0xffb84a, 0.8, 16, 2); R.goldL.position.set(0, 4.2, 3.6); scene.add(R.goldL);
@@ -124,7 +125,11 @@ function mount(container, opts = {}) {
   }, undefined, () => {});
 
   if (THREE.EffectComposer && Q === "high") {
-    R.composer = new THREE.EffectComposer(renderer); R.composer.addPass(new THREE.RenderPass(scene, camera));
+    // the glow pass draws the scene into its own buffer first; by default that buffer has a 16-bit depth, too coarse to tell the
+    // table top from the board under it: thin stripes all over the mat ("สวยสุด" on phones). A depth + stencil buffer is 24-bit.
+    const sz = renderer.getDrawingBufferSize(new THREE.Vector2());
+    R.composer = new THREE.EffectComposer(renderer, new THREE.WebGLRenderTarget(sz.x, sz.y, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, stencilBuffer: true }));
+    R.composer.setPixelRatio(renderer.getPixelRatio()); R.composer.addPass(new THREE.RenderPass(scene, camera));
     R.composer.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.4, 0.9));
   }
   R.resize = (smooth) => {
@@ -185,7 +190,7 @@ function mount(container, opts = {}) {
     if (R.avatars) for (const a of R.avatars) { if (!a || a.loading) continue; a.mixer.update(dt * (R.speed || 1)); if (!a.acts.idle && !reduce) { a.bob.position.y = Math.max(0, Math.sin(t * 2.6 + a.ph)) * 0.025; a.bob.scale.y = 1 + Math.sin(t * 2.6 + a.ph) * 0.018; } }
     R.t = t; for (const m of R.meshes.values()) placeShadow(m); for (const m of R.dying) placeShadow(m);
     camera.position.set(R.camBase.x + Math.sin(t * 0.15) * 0.35 + R.off.x, R.camBase.y + R.off.y, R.camBase.z + Math.cos(t * 0.12) * 0.2); camera.lookAt(R.look);
-    if (R.side) for (const o of R.side.piles.values()) { if (!o.grp.visible && !o.n) { o.el.style.display = "none"; continue; } o.el.style.display = ""; const sp = toScreen(o.grp.position.clone().add(new THREE.Vector3(0, 0.2, (o.mine ? 0.62 : -0.62)))); o.el.style.left = sp.x + "px"; o.el.style.top = sp.y + "px"; }
+    if (R.side) for (const o of R.side.piles.values()) { if (!o.grp.visible && !o.n) { o.el.style.display = "none"; continue; } o.el.style.display = ""; const lz = (R.zones && R.zones.side && R.zones.side.piles.lz) || 0.62; const sp = toScreen(o.grp.position.clone().add(new THREE.Vector3(0, 0.2, (o.mine ? lz : -lz)))); o.el.style.left = sp.x + "px"; o.el.style.top = sp.y + "px"; }
     for (const [i, el] of R.labels) { const m = R.meshes.get(i); if (!m) continue; const s = toScreen(m.grp.position.clone().add(new THREE.Vector3(-0.55 * m.scale, 0.1, (m.side === "me" ? 0.85 : -0.85) * m.scale))); el.style.left = s.x + "px"; el.style.top = s.y + "px"; }
     if (R.composer) R.composer.render(); else renderer.render(scene, camera);
     if (R.autoQ) watchFps(R.autoQ);
@@ -473,7 +478,10 @@ const ZONES = {
     side: { life: { x: -6.3, z0: 0.5, dz: 0.6, s: 0.46 }, piles: { x: 6.3, s: 0.46, deck: 2.85, hell: 1.7, dark: 0.55 } },
     fit: [[-6.95, -5.2], [6.95, -5.2], [-6.95, 4.9], [6.95, 4.9]] }, // the outer cards of a full table
   tall: { avGap: (n) => (n > 4 ? Math.min(2.05, 8.1 / (n - 1)) : 2.05), cs: [-4.35, -1.15], mg: [-0.75, 4.35], csX: (k) => -3.75 + k * 1.0, csS: 0.6, mgX: (k) => 3.8 - k * 0.92, mgS: 0.55,
-    land: { x0: -4.45, x1: -2.85, dz: 1.08, x: -3.65, s: 0.62, s2: 0.5, dz2: 0.55, lx: -2.65, lz: MZ - 0.62, align: "left" }, band: [-2.45, 4.35],
+    land: { x0: -4.45, x1: -2.85, dz: 1.08, x: -3.65, s: 0.62, s2: 0.5, dz2: 0.55, lx: -2.65, lz: MZ - 0.62, align: "left" }, band: [-2.45, 2.15],
+    // an upright phone: the Deck, the hell and the dark zone of both players at the right end of the middle band (ours on our half, theirs on
+    // theirs, the same side for both); LIFE stays in the bars at the top and the bottom
+    side: { piles: { s: 0.44, same: true, short: true, lz: 0.56, pos: { deck: [4.5, MZ + 0.6], hell: [3.67, MZ + 0.6], dark: [2.84, MZ + 0.6] } } },
     // the part of the table that must be on screen: the zones' outer edges (six Avatars included)
     fit: [[-4.95, -5.3], [4.95, -5.3], [-4.95, 4.95], [4.95, 4.95], [-4.95, MZ], [4.95, MZ]] },
 };
@@ -727,10 +735,10 @@ function matTextures(small, mats = {}, Z = ZONES.wide) {
     // each side's LIFE (laid sideways down its owner's left, like a damage zone) and its Deck, hell and dark zone (its owner's right)
     if (Z.side) for (const [mine, flip] of [[true, false], [false, true]]) {
       const m = (x, z) => (mine ? [x, z] : [-x, 2 * MZ - z]); const box = (x0, z0, x1, z1) => { const [ax, az] = m(x0, z0), [bx, bz] = m(x1, z1); return [Math.min(ax, bx), Math.min(az, bz), Math.max(ax, bx), Math.max(az, bz)]; };
-      const Lf = Z.side.life, hw = (CARD.h * Lf.s) / 2 + 0.1, hd = (CARD.w * Lf.s) / 2 + 0.1; const lb = box(Lf.x - hw, Lf.z0 - hd, Lf.x + hw, Lf.z0 + 4 * Lf.dz + hd);
-      frame(c, ...lb, 0.08, 0.022); const [lx, lz] = m(Lf.x, Lf.z0 + 4 * Lf.dz + hd + 0.2); label(c, "LIFE", lx, lz, flip, "center", 0.17);
+      const Lf = Z.side.life; if (Lf) { const hw = (CARD.h * Lf.s) / 2 + 0.1, hd = (CARD.w * Lf.s) / 2 + 0.1; const lb = box(Lf.x - hw, Lf.z0 - hd, Lf.x + hw, Lf.z0 + 4 * Lf.dz + hd);
+        frame(c, ...lb, 0.08, 0.022); const [lx, lz] = m(Lf.x, Lf.z0 + 4 * Lf.dz + hd + 0.2); label(c, "LIFE", lx, lz, flip, "center", 0.17); }
       const Pl = Z.side.piles, pw = (CARD.w * Pl.s) / 2 + 0.07, pd = (CARD.h * Pl.s) / 2 + 0.07;
-      for (const [k, name] of [["deck", "Deck"], ["hell", "นรก"], ["dark", "มิติมืด"]]) { const b = box(Pl.x - pw, Pl[k] - pd, Pl.x + pw, Pl[k] + pd); frame(c, ...b, 0.06, 0.02); const [tx, tz] = m(Pl.x, Pl[k]); label(c, name, tx, tz, flip, "center", 0.15); }
+      for (const [k, name] of [["deck", "Deck"], ["hell", "นรก"], ["dark", Pl.short ? "มืด" : "มิติมืด"]]) { const [tx, tz] = pileSpot(0, mine ? 0 : 1, Pl, k); frame(c, tx - pw, tz - pd, tx + pw, tz + pd, 0.06, 0.02); label(c, name, tx, tz, flip, "center", Pl.short ? 0.13 : 0.15); }
     }
     // Land Magic Zone, shared: in the middle of the table on a wide screen (its centre band of ประจำยาม runs out to both sides), at the left on an upright phone
     const Ld = Z.land, [b0, b1] = Z.band; frame(c, Ld.x0, MZ - Ld.dz, Ld.x1, MZ + Ld.dz, 0.13, 0.03); label(c, "Land Magic", Ld.lx, Ld.lz, false, Ld.align);
@@ -1060,6 +1068,8 @@ function swapMat() {
 // last card into hell or the dark zone on top. A tap opens what is in a pile (the Deck only tells how many are left).
 const PILE_TH = { deck: "Deck", hell: "นรก", dark: "มิติมืด" };
 function sideSpot(V, p, x, z) { return p === V ? [x, z] : [-x, 2 * MZ - z]; }
+// where a pile lies: down its owner's right on a wide table, or (Pl.pos, Pl.same) at one spot each on the same side for both players
+function pileSpot(V, p, Pl, k) { const [x, z] = Pl.pos ? Pl.pos[k] : [Pl.x, Pl[k]]; return p === V ? [x, z] : [Pl.same ? x : -x, 2 * MZ - z]; }
 function makePile(key) {
   const grp = new THREE.Group(), body = new THREE.Mesh(R.geo.edge, [R.capMat, R.pileMat]), top = new THREE.Mesh(R.geo.face, R.backMat);
   body.castShadow = top.castShadow = true; grp.add(body, top); R.scene.add(grp); body.userData.pile = top.userData.pile = key;
@@ -1107,14 +1117,14 @@ function syncSide(s, V) {
   const keep = new Set();
   for (const p of [0, 1]) { const P = s.P[p]; if (!P) continue; const ry = p === V ? 0 : Math.PI;
     for (const z of ["deck", "hell", "dark"]) { const key = p + ":" + z; let o = S.piles.get(key); if (!o) { o = makePile(key); S.piles.set(key, o); }
-      const list = P[z] || [], n = list.length, [x, zz] = sideSpot(V, p, Z.piles.x, Z.piles[z]), hgt = Math.min(0.34, 0.012 + n * 0.0066);
+      const list = P[z] || [], n = list.length, [x, zz] = pileSpot(V, p, Z.piles, z), hgt = Math.min(0.34, 0.012 + n * 0.0066);
       o.grp.position.set(x, 0.02, zz); o.grp.rotation.y = ry; o.grp.scale.setScalar(Z.piles.s); o.grp.visible = n > 0;
       o.body.scale.y = hgt / CARD.t; o.body.position.y = hgt / 2; o.top.position.y = hgt - CARD.t / 2 + 0.003;
       const topX = z === "deck" ? null : list[list.length - 1] || null;
       if (z === "deck") o.top.material = backFor(s, p);
       if (z !== "deck" && topX && topX.i !== o.topI) { if (o.top.material !== R.backMat && !o.top.material.userData.keep && o.top.material.dispose) o.top.material.dispose(); const fm = faceMat(E.def(s, topX), topX.o); if (z === "dark") fm.color = new THREE.Color(0xb9a6ff); o.top.material = fm; }
-      o.topI = topX ? topX.i : null; o.n = n; o.mine = p === V; o.el.textContent = `${PILE_TH[z]} ${n}`; o.el.className = "pilel" + (p === V ? "" : " opp") + (n ? "" : " none"); }
-    P.life.forEach((x, k) => { keep.add(x.i); let o = S.life.get(x.i); const fresh = !o; if (!o) { o = makeLife(s, x, p); S.life.set(x.i, o); }
+      o.topI = topX ? topX.i : null; o.n = n; o.mine = p === V; o.el.textContent = Z.piles.short ? String(n) : `${PILE_TH[z]} ${n}`; o.el.className = "pilel" + (p === V ? "" : " opp") + (n ? "" : " none") + (Z.piles.short ? " short" : ""); }
+    if (Z.life) P.life.forEach((x, k) => { keep.add(x.i); let o = S.life.get(x.i); const fresh = !o; if (!o) { o = makeLife(s, x, p); S.life.set(x.i, o); }
       const [lx, lz] = sideSpot(V, p, Z.life.x, Z.life.z0 + k * Z.life.dz); o.grp.position.set(lx, 0.03 + k * 0.004, lz); o.grp.rotation.y = Math.PI / 2 + ry; o.grp.scale.setScalar(Z.life.s);
       const up = !!x.up; if (o.up !== up) { const z0 = up ? 0 : Math.PI;
         if (fresh || reduce) o.flip.rotation.z = z0; else { gsap.timeline().to(o.flip.position, { y: 0.9, duration: 0.25, ease: "power2.out" }).to(o.flip.rotation, { z: z0, duration: 0.45, ease: "power2.inOut" }, 0.05).to(o.flip.position, { y: 0, duration: 0.3, ease: "power2.in" }); }
@@ -1444,10 +1454,10 @@ const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms / ((R && R.speed) ||
 // went) and land on its hell pile (a ไวรัส exiled by it, on the dark zone pile), under a "ธรณีสูบ N" label
 async function millFx(s, ev, V) {
   const Z = R.zones && R.zones.side, n = (ev.ids || []).length; if (!n) return;
-  const deckAt = Z ? new THREE.Vector3(...((a) => [a[0], 0.22, a[1]])(sideSpot(V, ev.p, Z.piles.x, Z.piles.deck))) : new THREE.Vector3(ev.p === V ? 5.6 : -5.6, 0.22, ev.p === V ? 3.2 : -3.6);
+  const deckAt = Z ? new THREE.Vector3(...((a) => [a[0], 0.22, a[1]])(pileSpot(V, ev.p, Z.piles, "deck"))) : new THREE.Vector3(ev.p === V ? 5.6 : -5.6, 0.22, ev.p === V ? 3.2 : -3.6);
   popText(deckAt.clone().setY(1.5), `ธรณีสูบ ${n}`, "#c9a2ff");
   if (!Z || reduce) { await sleepMs(450); return; } // an upright phone draws no piles on the table: the label (and the HUD's counts) tell it
-  const spot = (z) => { const [x, zz] = sideSpot(V, ev.p, Z.piles.x, Z.piles[z]); return new THREE.Vector3(x, 0.22, zz); };
+  const spot = (z) => { const [x, zz] = pileSpot(V, ev.p, Z.piles, z); return new THREE.Vector3(x, 0.22, zz); };
   const show = Math.min(n, 6), gap = n > 3 ? 0.12 : 0.2;
   await Promise.all(ev.ids.slice(0, show).map((i, k) => {
     const d = s.cards[ev.cs[k]] || {}, face = new THREE.Mesh(R.geo.face, faceMat(d, ev.p)), back = new THREE.Mesh(R.geo.back, backFor(s, ev.p)), edge = new THREE.Mesh(R.geo.edge, [R.capMat, R.edgeMat]);
