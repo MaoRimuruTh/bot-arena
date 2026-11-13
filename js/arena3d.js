@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113161704";
-import { E } from "./engine.js?v=20261113161704";
-import { h } from "./util.js?v=20261113161704";
-import { Sfx } from "./sfx.js?v=20261113161704";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113170018";
+import { E } from "./engine.js?v=20261113170018";
+import { h } from "./util.js?v=20261113170018";
+import { Sfx } from "./sfx.js?v=20261113170018";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -218,7 +218,10 @@ export const AVATARS = { chang: { name: "ช้างน้อย", file: "chang
 export const MATS = { black: { name: "รักดำ", lac: "#120b09", edge: "rgba(150,34,24," }, red: { name: "รักแดง", lac: "#3a0d09", edge: "rgba(190,60,30," },
   navy: { name: "กรมท่า", lac: "#0b1324", edge: "rgba(60,90,170," }, jade: { name: "เขียวหยก", lac: "#0a1c15", edge: "rgba(40,140,100," }, violet: { name: "ม่วงไพลิน", lac: "#190e22", edge: "rgba(130,70,170," }, gold: { name: "ทองคำเปลว", lac: "#21160a", edge: "rgba(214,166,64," }, indigo: { name: "ครามจันทร์", lac: "#0f1030", edge: "rgba(110,110,210," },
   // ซากุระราตรี: night-lacquer with sakura painted in the corners (maki-e style) — and sakura trees by the table, petals drifting over it
-  sakura: { name: "ซากุระราตรี", lac: "#160d22", edge: "rgba(236,140,178,", kind: "sakura" } };
+  sakura: { name: "ซากุระราตรี", lac: "#160d22", edge: "rgba(236,140,178,", kind: "sakura" },
+  // drawn by hand (kind "sketch"): the zones are marker lines on a flattened box, or pen lines on a ruled page — no lacquer, no gold
+  box: { name: "ลังกระดาษ", lac: "#6b4b28", edge: "rgba(60,40,20,", kind: "sketch", paper: "box", ink: "#f4efe2", pens: { hell: "#ff8a70", deck: "#9be8da", dark: "#dcc2ff" } },
+  note: { name: "สมุดเส้น", lac: "#dcddd6", edge: "rgba(120,130,150,", kind: "sketch", paper: "note", ink: "#1b1c24", pens: { hell: "#c23a2c", deck: "#2b4fa8", dark: "#6b3fa3" } } };
 // the scene (สนาม, the map) round the table — not the cloth on it (ผ้าปู, the playmat above). Each viewer sees the one they chose.
 export const SCENES = { hall: { name: "โถงไม้แสงเทียน" }, pond: { name: "สวนสระบัว" }, market: { name: "ตลาดน้ำยามค่ำ" }, hell: { name: "นรกภูมิ" }, forest: { name: "ป่าหิมพานต์" }, sakura: { name: "ซากุระราตรี" },
   azure: { name: "ลานเปลวคราม", owner: true } }; // owner: the owner's own (achieve.js opens it to him alone)
@@ -1245,6 +1248,33 @@ function playmat(g, rq, m, near, [x0, y0, x1, y1], U) {
   g.restore();
   rq.save(); rq.fillStyle = "#e4e4e4"; roundRect(rq, x0, y0, x1, y1, r); rq.fill(); rq.restore(); // cloth is matt: the hall's light does not shine in it
 }
+// a "sketch" mat's half of the table: a flattened cardboard box, or a ruled page — drawn the way its owner sees it (the far one turned round)
+function paintPaper(g, rq, m, near, CW, CH, yMid, U) {
+  const H = near ? CH - yMid : yMid, r = lcg(m.paper === "box" ? 31 : 47), W = CW; rq.fillStyle = "#ececec"; rq.fillRect(0, near ? yMid : 0, CW, H);
+  g.save(); g.beginPath(); g.rect(0, near ? yMid : 0, CW, H); g.clip(); if (near) g.translate(0, yMid); else { g.translate(CW, yMid); g.rotate(Math.PI); } // now (0,0) is the middle of the table at its owner's left, y runs toward the owner
+  g.fillStyle = m.lac; g.fillRect(-2, -2, W + 4, H + 4);
+  const blot = (n, a) => { for (let k = 0; k < n; k++) { const x = r() * W, y = r() * H, rad = U(0.9 + r() * 2.2), gr = g.createRadialGradient(x, y, 0, x, y, rad); gr.addColorStop(0, k % 2 ? `rgba(0,0,0,${a})` : `rgba(255,255,255,${a})`); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(x - rad, y - rad, rad * 2, rad * 2); } };
+  if (m.paper === "box") {
+    for (let x = 0, k = 0; x < W; x += U(0.085), k++) { g.fillStyle = k % 2 ? "rgba(0,0,0,.025)" : "rgba(255,236,200,.02)"; g.fillRect(x, 0, U(0.03), H); } // the corrugation showing through, faintly
+    blot(30, 0.1); for (let k = 0; k < 3; k++) { const x = r() * W, y = r() * H, rad = U(0.45 + r() * 0.3); g.strokeStyle = "rgba(52,28,10,.22)"; g.lineWidth = U(0.05 + r() * 0.04); g.beginPath(); g.arc(x, y, rad, r() * 6, 5 + r() * 1.2); g.stroke(); } // coffee-cup rings g.lineCap = "round";
+    for (let k = 0; k < 520; k++) { const x = r() * W, y = r() * H, l = U(0.04 + r() * 0.16); g.strokeStyle = k % 3 ? "rgba(40,24,10,.11)" : "rgba(255,240,212,.09)"; g.lineWidth = Math.max(1, U(0.008)); g.beginPath(); g.moveTo(x, y); g.lineTo(x + l, y + (r() - 0.5) * l * 0.3); g.stroke(); }
+    const fy = H * 0.5; g.fillStyle = "rgba(28,16,6,.3)"; g.fillRect(0, fy, W, Math.max(1, U(0.022))); g.fillStyle = "rgba(255,236,200,.13)"; g.fillRect(0, fy + U(0.022), W, Math.max(1, U(0.018))); // where the flap folds
+    g.save(); g.translate(U(1.5), U(0.75)); g.rotate(-0.1); g.fillStyle = "rgba(222,198,146,.4)"; g.beginPath(); const tw = U(2.3), th = U(0.52); g.moveTo(-tw / 2, -th / 2); g.lineTo(tw / 2, -th / 2); for (let k = 0; k <= 6; k++) g.lineTo(tw / 2 + (k % 2 ? U(0.05) : 0), -th / 2 + (th * k) / 6); g.lineTo(-tw / 2, th / 2); for (let k = 6; k >= 0; k--) g.lineTo(-tw / 2 - (k % 2 ? U(0.05) : 0), -th / 2 + (th * k) / 6); g.closePath(); g.fill(); g.restore(); // a strip of packing tape
+    g.save(); g.fillStyle = g.strokeStyle = "rgba(34,20,8,.42)"; g.font = `700 ${U(0.2)}px "Chakra Petch", sans-serif`; g.textBaseline = "middle"; g.fillText("THIS SIDE UP", U(1.15), H - U(0.42)); // box markings, stencilled
+    for (const ax of [U(0.42), U(0.82)]) { g.beginPath(); g.moveTo(ax, H - U(0.68)); g.lineTo(ax + U(0.14), H - U(0.46)); g.lineTo(ax + U(0.05), H - U(0.46)); g.lineTo(ax + U(0.05), H - U(0.2)); g.lineTo(ax - U(0.05), H - U(0.2)); g.lineTo(ax - U(0.05), H - U(0.46)); g.lineTo(ax - U(0.14), H - U(0.46)); g.closePath(); g.fill(); } g.restore();
+    g.save(); g.translate(W - U(1.55), H - U(0.5)); g.rotate(-0.12); g.strokeStyle = g.fillStyle = "rgba(128,22,16,.4)"; g.lineWidth = U(0.03); roundRect(g, -U(1.05), -U(0.26), U(1.05), U(0.26), U(0.08)); g.stroke(); g.font = `700 ${U(0.2)}px "Chakra Petch", sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("BoT ARENA", 0, U(0.01)); g.restore(); // a rubber stamp
+  } else {
+    blot(26, 0.045);
+    for (let k = 0; k < 5; k++) { const x0 = r() * W, y0 = r() * H, a = r() * 6.28, l = U(4 + r() * 6), dx = Math.cos(a) * l, dy = Math.sin(a) * l; for (const [o, col] of [[0, "rgba(0,0,0,.06)"], [U(0.02), "rgba(255,255,255,.35)"]]) { g.strokeStyle = col; g.lineWidth = Math.max(1, U(0.014)); g.beginPath(); g.moveTo(x0 + o, y0 + o); g.lineTo(x0 + dx + o, y0 + dy + o); g.stroke(); } } // creases of a page that was folded
+    g.strokeStyle = "rgba(58,104,188,.34)"; g.lineWidth = Math.max(1, U(0.013)); for (let y = U(0.3); y < H; y += U(0.44)) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); } // ruled lines
+    g.strokeStyle = "rgba(206,66,66,.5)"; g.lineWidth = Math.max(1, U(0.016)); g.beginPath(); g.moveTo(U(1.02), 0); g.lineTo(U(1.02), H); g.stroke(); // the margin
+    g.fillStyle = "rgba(26,20,16,.62)"; for (const fy of [0.18, 0.5, 0.82]) { g.beginPath(); g.arc(U(0.45), H * fy, U(0.1), 0, 7); g.fill(); } // punched holes
+    g.save(); g.translate(W - U(1.35), H - U(0.78)); g.rotate(0.06); g.strokeStyle = "rgba(43,79,168,.6)"; g.lineWidth = Math.max(1, U(0.022)); g.lineCap = "round"; const c3 = U(0.3); // a game of noughts and crosses in the corner
+    for (const k of [-0.5, 0.5]) { g.beginPath(); g.moveTo(k * c3, -1.5 * c3); g.lineTo(k * c3 + U(0.02), 1.5 * c3); g.moveTo(-1.5 * c3, k * c3); g.lineTo(1.5 * c3, k * c3 - U(0.02)); g.stroke(); }
+    for (const [cx, cy, o] of [[-1, -1, 1], [0, 0, 0], [1, -1, 0], [1, 1, 1], [-1, 1, 0]]) { g.beginPath(); if (o) g.arc(cx * c3, cy * c3, c3 * 0.3, 0, 7); else { g.moveTo(cx * c3 - c3 * 0.28, cy * c3 - c3 * 0.28); g.lineTo(cx * c3 + c3 * 0.28, cy * c3 + c3 * 0.28); g.moveTo(cx * c3 + c3 * 0.28, cy * c3 - c3 * 0.28); g.lineTo(cx * c3 - c3 * 0.28, cy * c3 + c3 * 0.28); } g.stroke(); } g.restore();
+  }
+  g.restore();
+}
 function matTextures(small, mats = {}, Z = ZONES.wide) {
   const NEAR = mats.near || MATS.black, FAR = mats.far || NEAR, theme = NEAR;
   const S = small ? 84 : 128; const CW = Math.round(MW * S), CH = Math.round(MD * S);
@@ -1263,30 +1293,38 @@ function matTextures(small, mats = {}, Z = ZONES.wide) {
   gr = g.createLinearGradient(0, CH, 0, CH * 0.6); gr.addColorStop(0, "rgba(216,168,74,.10)"); gr.addColorStop(1, "rgba(216,168,74,0)"); g.fillStyle = gr; g.fillRect(0, CH * 0.6, CW, CH * 0.4);
   // ซากุระราตรี: branches in bloom painted across that side (under the gold line-work; the cards lie on top)
   for (const [m, near] of [[FAR, false], [NEAR, true]]) if (m.kind === "sakura") paintSakura(g, X, Y, U, near, small);
+  for (const [m, near] of [[FAR, false], [NEAR, true]]) if (m.kind === "sketch") paintPaper(g, rq, m, near, CW, CH, yMid, U);
   for (let k = 0; k < CW * CH / 900; k++) { const v = Math.random(); g.fillStyle = v < 0.5 ? "rgba(255,255,255,.018)" : "rgba(0,0,0,.05)"; g.fillRect(Math.random() * CW, Math.random() * CH, 1 + Math.random() * 2, 1 + Math.random() * 2); }
   // a player's own picture (vault.js): a cloth playmat on their half, the far one turned round to face its owner
   const cloths = [[FAR, false], [NEAR, true]].filter(([m]) => m.img).map(([m, near]) => ({ m, near, r: matRect(near, X, Y) }));
   for (const { m, near, r } of cloths) playmat(g, rq, m, near, r, U);
-  const onCloth = (x, y) => cloths.some(({ r }) => x > r[0] && x < r[2] && y > r[1] && y < r[3]);
+  const onCloth = (x, y) => cloths.some(({ r }) => x > r[0] && x < r[2] && y > r[1] && y < r[3]) || (y < yMid ? FAR : NEAR).kind === "sketch"; // no gold flecks on cloth or paper
   for (let k = 0; k < (small ? 260 : 520); k++) { const x = Math.random() * CW, y = Math.random() * CH, r = Math.random() * 1.6 + 0.4, a = Math.random() * 0.22 + 0.04; if (onCloth(x, y)) continue; g.fillStyle = `rgba(232,186,92,${a})`; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); q.fillStyle = `rgba(255,255,255,${a * 0.6})`; q.beginPath(); q.arc(x, y, r, 0, 7); q.fill(); }
   // everything gilded is drawn three times: in gold on the mat, in white on the glow (and metal) map, in grey on the roughness map
-  const gild = (fn) => { for (const [c, col, gr] of [[g, GOLD, LAC], [q, "#fff", "#000"], [rq, "#a0a0a0", "#c0c0c0"]]) { c.save(); c.strokeStyle = c.fillStyle = col; c.lineJoin = "miter"; fn(c, gr); c.restore(); } };
-  const frame = (c, x0, z0, x1, z1, st, w = 0.035) => { c.lineWidth = U(w); stepPath(c, X(x0), Y(z0), X(x1), Y(z1), U(st)); c.stroke(); c.lineWidth = U(w * 0.38); stepPath(c, X(x0) + U(0.1), Y(z0) + U(0.1), X(x1) - U(0.1), Y(z1) - U(0.1), U(st * 0.8)); c.stroke(); };
-  const label = (c, text, x, z, flip, align = "left", size = 0.19) => { c.save(); c.translate(X(x), Y(z)); if (flip) c.rotate(Math.PI); c.font = `600 ${U(size)}px "Chakra Petch", "IBM Plex Sans Thai", sans-serif`; c.textAlign = align; c.textBaseline = "middle"; c.globalAlpha = 0.8; c.fillText(text, 0, 0); c.restore(); };
+  // (each half in its owner's own hand: gold leaf on lacquer, or — a "sketch" mat — marker or pen on paper, which is drawn on the colour map only)
+  const gild = (fn) => { for (const [m, y0, y1] of [[FAR, 0, yMid], [NEAR, yMid, CH]]) for (const [c, col, gr] of m.kind === "sketch" ? [[g, m.ink, LAC]] : [[g, GOLD, LAC], [q, "#fff", "#000"], [rq, "#a0a0a0", "#c0c0c0"]]) {
+    c.save(); c.beginPath(); c.rect(0, y0, CW, y1 - y0); c.clip(); c.strokeStyle = c.fillStyle = col; c.lineJoin = "miter"; c.sk = m.kind === "sketch" ? { m, rnd: lcg(977) } : null; fn(c, gr); c.sk = null; c.restore(); } };
+  // a box drawn by hand: each side a stroke or two that bows a little and runs past the corner
+  const scrawl = (c, x0, y0, x1, y1, w, n = 2) => { const r = c.sk.rnd; c.lineCap = "round"; for (let k = 0; k < n; k++) { const j = () => (r() - 0.5) * w * 2.4, o = () => r() * w * 3.2; c.lineWidth = w * (0.7 + r() * 0.55);
+    for (const [ax, ay, bx, by] of [[x0 - o(), y0 + j(), x1 + o(), y0 + j()], [x1 + j(), y0 - o(), x1 + j(), y1 + o()], [x1 + o(), y1 + j(), x0 - o(), y1 + j()], [x0 + j(), y1 + o(), x0 + j(), y0 - o()]]) { c.beginPath(); c.moveTo(ax, ay); c.quadraticCurveTo((ax + bx) / 2 + j() * 1.4, (ay + by) / 2 + j() * 1.4, bx, by); c.stroke(); } } };
+  const orn = (c, ...a) => { if (!c.sk) prajamyam(c, ...a); };
+  const frame = (c, x0, z0, x1, z1, st, w = 0.035) => { if (c.sk) return scrawl(c, X(x0), Y(z0), X(x1), Y(z1), U(w * 1.1), w > 0.03 ? 3 : 2); c.lineWidth = U(w); stepPath(c, X(x0), Y(z0), X(x1), Y(z1), U(st)); c.stroke(); c.lineWidth = U(w * 0.38); stepPath(c, X(x0) + U(0.1), Y(z0) + U(0.1), X(x1) - U(0.1), Y(z1) - U(0.1), U(st * 0.8)); c.stroke(); };
+  const label = (c, text, x, z, flip, align = "left", size = 0.19) => { c.save(); c.translate(X(x), Y(z)); if (flip) c.rotate(Math.PI); if (c.sk) c.rotate((c.sk.rnd() - 0.5) * 0.07); c.font = c.sk ? `600 ${U(size * 1.12)}px "Mali", "IBM Plex Sans Thai", sans-serif` : `600 ${U(size)}px "Chakra Petch", "IBM Plex Sans Thai", sans-serif`; c.textAlign = align; c.textBaseline = "middle"; c.globalAlpha = c.sk ? 0.92 : 0.8; c.fillText(text, 0, 0); c.restore(); };
   const inLabel = (c, text, x0, z0, x1, z1, flip) => (flip ? label(c, text, x1 - 0.32, z1 - 0.3, true) : label(c, text, x0 + 0.32, z0 + 0.3, false));
   const draw = () => gild((c, ground) => {
     // the mat's border: a double rule with a row of saw teeth (ฟันปลา) between
-    const e = 0.2; c.lineWidth = U(0.045); stepPath(c, X(-MW / 2 + e), Y(MZ - MD / 2 + e), X(MW / 2 - e), Y(MZ + MD / 2 - e), U(0.22)); c.stroke();
+    const e = 0.2; if (c.sk) { scrawl(c, X(-MW / 2 + e + 0.1), Y(MZ - MD / 2 + e + 0.1), X(MW / 2 - e - 0.1), Y(MZ + MD / 2 - e - 0.1), U(0.03), 2); } else {
+    c.lineWidth = U(0.045); stepPath(c, X(-MW / 2 + e), Y(MZ - MD / 2 + e), X(MW / 2 - e), Y(MZ + MD / 2 - e), U(0.22)); c.stroke();
     c.lineWidth = U(0.016); stepPath(c, X(-MW / 2 + e + 0.24), Y(MZ - MD / 2 + e + 0.24), X(MW / 2 - e - 0.24), Y(MZ + MD / 2 - e - 0.24), U(0.17)); c.stroke();
     const tooth = 0.17, th = 0.1; const side = (x0, z0, x1, z1, nx, nz) => { const L = Math.hypot(x1 - x0, z1 - z0), n = Math.floor(L / tooth), dx = (x1 - x0) / n, dz = (z1 - z0) / n;
       c.beginPath(); for (let k = 0; k < n; k++) { const ax = x0 + dx * k, az = z0 + dz * k; c.moveTo(X(ax), Y(az)); c.lineTo(X(ax + dx / 2 + nx * th), Y(az + dz / 2 + nz * th)); c.lineTo(X(ax + dx), Y(az + dz)); } c.fill(); };
     const i0 = e + 0.07, xa = -MW / 2 + i0 + 0.5, xb = MW / 2 - i0 - 0.5, za = MZ - MD / 2 + i0 + 0.5, zb = MZ + MD / 2 - i0 - 0.5;
-    side(xa, MZ - MD / 2 + i0, xb, MZ - MD / 2 + i0, 0, 1); side(xa, MZ + MD / 2 - i0, xb, MZ + MD / 2 - i0, 0, -1); side(-MW / 2 + i0, za, -MW / 2 + i0, zb, 1, 0); side(MW / 2 - i0, za, MW / 2 - i0, zb, -1, 0);
+    side(xa, MZ - MD / 2 + i0, xb, MZ - MD / 2 + i0, 0, 1); side(xa, MZ + MD / 2 - i0, xb, MZ + MD / 2 - i0, 0, -1); side(-MW / 2 + i0, za, -MW / 2 + i0, zb, 1, 0); side(MW / 2 - i0, za, MW / 2 - i0, zb, -1, 0); }
     // zones, mine near and the opponent's far (their labels face them)
     for (const [zs, flip] of [[1, false], [-1, true]]) {
       const zc = zs > 0 ? 2.15 : -2.55, zo = zs > 0 ? 4.17 : -4.5; const gnd = ground === LAC ? (zs > 0 ? NEAR.lac : FAR.lac) : ground;
       frame(c, -4.35, zc - 1.18, 4.35, zc + 1.18, 0.16); inLabel(c, "Avatar Zone", -4.35, zc - 1.18, 4.35, zc + 1.18, flip);
-      prajamyam(c, X(0), Y(zc - zs * 1.18), U(0.2), gnd); prajamyam(c, X(0), Y(zc + zs * 1.18), U(0.13), gnd);
+      orn(c, X(0), Y(zc - zs * 1.18), U(0.2), gnd); orn(c, X(0), Y(zc + zs * 1.18), U(0.13), gnd);
       frame(c, Z.cs[0], zo - 0.76, Z.cs[1], zo + 0.76, 0.11, 0.028); inLabel(c, "Construct Zone", Z.cs[0], zo - 0.76, Z.cs[1], zo + 0.76, flip);
       frame(c, Z.mg[0], zo - 0.76, Z.mg[1], zo + 0.76, 0.11, 0.028); inLabel(c, "Magic Zone", Z.mg[0], zo - 0.76, Z.mg[1], zo + 0.76, flip);
     }
@@ -1296,19 +1334,25 @@ function matTextures(small, mats = {}, Z = ZONES.wide) {
       const Lf = Z.side.life; if (Lf) { const hw = (CARD.h * Lf.s) / 2 + 0.1, hd = (CARD.w * Lf.s) / 2 + 0.1; const lb = box(Lf.x - hw, Lf.z0 - hd, Lf.x + hw, Lf.z0 + 4 * Lf.dz + hd);
         frame(c, ...lb, 0.08, 0.022); const [lx, lz] = m(Lf.x, Lf.z0 + 4 * Lf.dz + hd + 0.2); label(c, "LIFE", lx, lz, flip, "center", 0.17); }
       const Pl = Z.side.piles, pw = (CARD.w * Pl.s) / 2 + 0.07, pd = (CARD.h * Pl.s) / 2 + 0.07;
-      for (const [k, name] of [["deck", "Deck"], ["hell", "นรก"], ["dark", Pl.short ? "มืด" : "มิติมืด"]]) { const [tx, tz] = pileSpot(0, mine ? 0 : 1, Pl, k); frame(c, tx - pw, tz - pd, tx + pw, tz + pd, 0.06, 0.02); label(c, name, tx, tz, flip, "center", Pl.short ? 0.13 : 0.15); }
+      for (const [k, name] of [["deck", "Deck"], ["hell", "นรก"], ["dark", Pl.short ? "มืด" : "มิติมืด"]]) { const [tx, tz] = pileSpot(0, mine ? 0 : 1, Pl, k); c.save(); if (c.sk) c.strokeStyle = c.fillStyle = c.sk.m.pens[k];
+        frame(c, tx - pw, tz - pd, tx + pw, tz + pd, 0.06, c.sk ? 0.03 : 0.02); label(c, name, tx, tz, flip, "center", Pl.short ? 0.13 : 0.15); c.restore(); }
     }
     // Land Magic Zone, shared: in the middle of the table on a wide screen (its centre band of ประจำยาม runs out to both sides), at the left on an upright phone
     const Ld = Z.land, [b0, b1] = Z.band; frame(c, Ld.x0, MZ - Ld.dz, Ld.x1, MZ + Ld.dz, 0.13, 0.03); label(c, "Land Magic", Ld.lx, Ld.lz, false, Ld.align);
+    if (c.sk) { const r = c.sk.rnd, gp = Ld.center ? [Ld.x0 - 0.12, Ld.x1 + 0.12] : null; c.lineCap = "round"; c.lineWidth = U(0.024); // on paper: two plain strokes for the band, no ornaments
+      for (const dz of [-0.24, 0.24]) for (const [a, b] of gp ? [[b0, gp[0]], [gp[1], b1]] : [[b0, b1]]) { c.beginPath(); c.moveTo(X(a - 0.1 * r()), Y(MZ + dz) + (r() - 0.5) * U(0.05)); c.quadraticCurveTo(X((a + b) / 2), Y(MZ + dz) + (r() - 0.5) * U(0.1), X(b + 0.1 * r()), Y(MZ + dz) + (r() - 0.5) * U(0.05)); c.stroke(); } return; }
     const gap = Ld.center ? [Ld.x0 - 0.12, Ld.x1 + 0.12] : null; c.lineWidth = U(0.022);
     for (const dz of [-0.24, 0.24]) for (const [a, b] of gap ? [[b0, gap[0]], [gap[1], b1]] : [[b0, b1]]) { c.beginPath(); c.moveTo(X(a), Y(MZ + dz)); c.lineTo(X(b), Y(MZ + dz)); c.stroke(); }
     for (let x = b0 + 0.4; x <= b1 - 0.25; x += 0.9) if (!gap || x < gap[0] - 0.15 || x > gap[1] + 1.4) prajamyam(c, X(x), Y(MZ), U(0.14), ground); // (none under the "Land Magic" label)
     for (const x of [b0, b1]) prajamyam(c, X(x), Y(MZ), U(0.3), ground);
   });
+  const under = NEAR.kind === "sketch" || FAR.kind === "sketch" ? mk() : null; if (under) under.getContext("2d").drawImage(base, 0, 0); // paper shows a second drawing of the lines, so they are redrawn from here
   draw();
+  const repaint = () => { if (!R) return; if (under) g.drawImage(under, 0, 0); draw(); tb.needsUpdate = tg.needsUpdate = tr.needsUpdate = true; };
   const tb = new THREE.CanvasTexture(base), tg = new THREE.CanvasTexture(glow), tr = new THREE.CanvasTexture(rough); tb.encoding = THREE.sRGBEncoding; tb.anisotropy = tg.anisotropy = tr.anisotropy = 8;
   // the labels need the display font: redraw once it has loaded
-  if (document.fonts && document.fonts.status !== "loaded") document.fonts.ready.then(() => { if (!R) return; draw(); tb.needsUpdate = tg.needsUpdate = tr.needsUpdate = true; });
+  if (document.fonts && document.fonts.status !== "loaded") document.fonts.ready.then(repaint);
+  if (document.fonts && (NEAR.kind === "sketch" || FAR.kind === "sketch") && !document.fonts.check('600 20px "Mali"', "นรกAa")) document.fonts.load('600 20px "Mali"', "นรกAa").then(repaint).catch(() => {});
   return { base: tb, glow: tg, rough: tr };
 }
 // dark teak planks: grain running along each plank, a seam between them, each plank a slightly different tone
