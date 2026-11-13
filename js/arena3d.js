@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113134242";
-import { E } from "./engine.js?v=20261113134242";
-import { h } from "./util.js?v=20261113134242";
-import { Sfx } from "./sfx.js?v=20261113134242";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113141419";
+import { E } from "./engine.js?v=20261113141419";
+import { h } from "./util.js?v=20261113141419";
+import { Sfx } from "./sfx.js?v=20261113141419";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -31,6 +31,7 @@ export const Arena = {
   customReady: (o) => { if (!R || !R.last) return; const k = R.matKey && R.matKey[1]; if (k && (k.near === o || k.far === o)) swapMat(); if (o.sleeve) syncBacks(R.last.s); },
   refreshCustom: () => { if (!R || !R.last) return; const { s, V } = R.last; applyMats(s, V); syncBacks(s); syncAvatars(s, V); },
   setQuiet: (v) => { quiet = !!v; },
+  setScene: (k) => { if (R && SCENES[k]) { R.sceneKey = k; decor(); } },
   // a picture of the table as it is now (the cards in hand are not part of it): one frame drawn and copied at once
   // (drawn at twice the screen's size at least, so a phone's picture is sharp too)
   snapshot: () => { if (!R) return null; const pr = R.renderer.getPixelRatio(), want = Math.max(pr, 2);
@@ -62,7 +63,8 @@ function mount(container, opts = {}) {
   const FX = {}; ["magic_02", "slash_02", "circle_05", "smoke_03", "light_02", "star_06", "flare_01", "twirl_02"].forEach((n) => (FX[n] = tex("assets/fx/" + n + ".png")));
   R = { container, canvas, renderer, scene, camera, loader, FX, meshes: new Map(), dying: new Set(), texCache: new Map(), labels: new Map(), queue: Promise.resolve(), lastEv: 0, camBase: new THREE.Vector3(0, 11, 9.6), look: new THREE.Vector3(0, 0, 0.4), off: new THREE.Vector3(), alive: true, onHover: null, onClick: null, hovered: null, view: 0 };
 
-  scene.add(new THREE.HemisphereLight(0xffe2c0, 0x140a06, 0.5));
+  R.sceneKey = SCENES[opts.scene] ? opts.scene : "hall";
+  R.hemi = new THREE.HemisphereLight(0xffe2c0, 0x140a06, 0.5); scene.add(R.hemi);
   const key = new THREE.DirectionalLight(0xffe2b0, 1.1); key.position.set(4, 12, 7); key.castShadow = true; key.shadow.mapSize.set(1024, 1024);
   key.shadow.bias = -0.0005; key.shadow.normalBias = 0.02;
   Object.assign(key.shadow.camera, { left: -9, right: 9, top: 9, bottom: -9, near: 1, far: 30 }); scene.add(key);
@@ -95,7 +97,7 @@ function mount(container, opts = {}) {
   for (let k = 0; k < tp.count; k++) { const x = tp.getX(k), y = tp.getY(k), d = Math.hypot(x / 1.25, y + 1.5); const v = 0.3 + 1.3 * Math.exp(-((Math.max(0, d - 6)) ** 2) / 80); tc[k * 3] = v; tc[k * 3 + 1] = v * 0.93; tc[k * 3 + 2] = v * 0.86; }
   tg.setAttribute("color", new THREE.BufferAttribute(tc, 3));
   const wood = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ map: woodTexture(small), vertexColors: true }));
-  wood.rotation.x = -Math.PI / 2; wood.position.set(0, -0.335, -2); scene.add(wood);
+  wood.rotation.x = -Math.PI / 2; wood.position.set(0, -0.335, -2); scene.add(wood); R.wood = wood; R.shade = shade;
   R.flameTex = flameTexture();
   // two candles at the far corners of the mat show at the top of a wide screen, two further back show on a phone
   R.candles = [[-4.2, -8.2], [4.2, -8.2], [-8.7, -5.4], [8.7, -5.4]].map(([x, z]) => candle(x, z));
@@ -104,12 +106,12 @@ function mount(container, opts = {}) {
   const envUrl = (f) => `assets/env/${f}?v=${ENV_V}`;
   { let n = 0; const ok = () => { if (++n < 2 || !R) return;
       woodT.encoding = THREE.sRGBEncoding; woodT.wrapS = woodT.wrapT = THREE.RepeatWrapping; woodT.repeat.set(70 / 12, 50 / 12); woodT.anisotropy = 8; lightT.encoding = THREE.sRGBEncoding;
-      tg.setAttribute("uv2", tg.attributes.uv); wood.material.dispose(); wood.material = new THREE.MeshBasicMaterial({ map: woodT, lightMap: lightT, lightMapIntensity: LIGHT_MAX }); shade.visible = false; };
+      tg.setAttribute("uv2", tg.attributes.uv); wood.material.dispose(); wood.material = new THREE.MeshBasicMaterial({ map: woodT, lightMap: lightT, lightMapIntensity: LIGHT_MAX }); R.shadeOff = true; shade.visible = false; };
     const woodT = loader.load(envUrl("wood.jpg"), ok), lightT = loader.load(envUrl("table-light.jpg"), ok); }
   if (THREE.GLTFLoader) new THREE.GLTFLoader().load(envUrl("props.glb"), (g) => {
     if (!R) return;
     g.scene.traverse((o) => { if (!o.isMesh) return; const m = o.material; if (/wax/.test(m.name)) { m.emissive = new THREE.Color(0x5a2c0a); m.emissiveIntensity = 0.55; } if (/brass/.test(m.name)) m.envMapIntensity = 1.6; });
-    g.scene.name = "props"; scene.add(g.scene); for (const c of R.candles) c.onStand(); envProps();
+    g.scene.name = "props"; scene.add(g.scene); for (const c of R.candles) c.onStand(); envProps(); hallShow();
   }, undefined, () => {});
   // on phones only the small brass pieces reflect the hall: the mat covers most of the screen and stays cheap to draw
   const envProps = () => { const g = scene.getObjectByName("props"); if (Q === "high" || !g || !R.env) return; g.traverse((o) => { if (o.isMesh && /brass|water/.test(o.material.name)) { o.material.envMap = R.env; o.material.needsUpdate = true; } }); };
@@ -181,6 +183,7 @@ function mount(container, opts = {}) {
       for (const pts of [R.motes]) { const a = pts.geometry.attributes.position.array, sp = pts.userData.sp; for (let i = 0; i < sp.length; i++) { a[i * 3 + 1] += sp[i] * 60 * dt * (pts === R.motes ? 0.35 : 1); a[i * 3] += Math.sin(t + i) * 0.002; if (a[i * 3 + 1] > 9) a[i * 3 + 1] = 0; } pts.geometry.attributes.position.needsUpdate = true; }
       for (const c of R.candles) { const f = 1 + 0.07 * Math.sin(t * 13 + c.ph) + 0.05 * Math.sin(t * 7.3 + c.ph * 2) + Math.random() * 0.03; c.flame.scale.set(0.16 * (2 - f), 0.36 * f, 1); c.halo.material.opacity = 0.32 * f; c.pool.material.opacity = 0.2 * f; }
       if (R.sakura) stepSakura(R.sakura, dt, t);
+      if (R.pond) stepPond(R.pond, dt, t);
       R.lifeT.rotation.y = t * 1.2; R.lifeT.position.y = 1 + Math.sin(t * 2) * 0.12; R.lifeHalo.position.copy(R.lifeT.position);
       for (const m of R.meshes.values()) {
         if (m.pulse) m.glow.material.opacity = 0.45 + Math.sin(t * 6) * 0.3;
@@ -216,6 +219,8 @@ export const MATS = { black: { name: "รักดำ", lac: "#120b09", edge: "r
   navy: { name: "กรมท่า", lac: "#0b1324", edge: "rgba(60,90,170," }, jade: { name: "เขียวหยก", lac: "#0a1c15", edge: "rgba(40,140,100," }, violet: { name: "ม่วงไพลิน", lac: "#190e22", edge: "rgba(130,70,170," }, gold: { name: "ทองคำเปลว", lac: "#21160a", edge: "rgba(214,166,64," }, indigo: { name: "ครามจันทร์", lac: "#0f1030", edge: "rgba(110,110,210," },
   // ซากุระราตรี: night-lacquer with sakura painted in the corners (maki-e style) — and sakura trees by the table, petals drifting over it
   sakura: { name: "ซากุระราตรี", lac: "#160d22", edge: "rgba(236,140,178,", kind: "sakura" } };
+// the scene (สนาม, the map) round the table — not the cloth on it (ผ้าปู, the playmat above). Each viewer sees the one they chose.
+export const SCENES = { hall: { name: "โถงไม้แสงเทียน" }, pond: { name: "สวนสระบัว" }, sakura: { name: "ซากุระราตรี" } };
 const avCache = new Map();
 const loadAvatar = (key, f) => {
   if (f) { if (!avCache.has(f.key)) avCache.set(f.key, f.url.then((u) => (u && THREE.GLTFLoader ? new Promise((res) => new THREE.GLTFLoader().load(u, res, undefined, () => res(null))) : null))); return avCache.get(f.key); }
@@ -652,11 +657,232 @@ function dropSakura(S) {
   R.scene.remove(S.grp); S.grp.traverse((o) => { if (o.isMesh && !S.geos.includes(o.geometry)) o.geometry.dispose(); });
   for (const x of [...S.geos, ...S.mats, ...S.tex]) x.dispose();
 }
-// the table's surroundings follow the mats: the sakura trees and petals stand while either side has the sakura mat
+// ---------- สวนสระบัว: a garden diorama round the table ----------
+// A lotus pond behind and beside the mat with an arched wooden bridge to a small islet and its stone lantern, a blossom tree
+// that sheds petals, rocks, stepping stones, daisies and leafy clumps, koi under the water, a robin on the bridge rail and
+// butterflies over the flowers. All of it is made here (no picture or model is loaded); every repeated thing is one batch,
+// nothing has a lamp of its own, and the water is one small shader — so it stays cheap on a phone.
+// What a screen sees: the band behind the mat and its left margin on a wide screen (the right margin lies under the game
+// panel), the band past the far edge on an upright phone.
+const POND = {
+  wide: { water: [[-14.5, -7.9], [-10, -7.3], [-5, -7.2], [0, -7.2], [5, -7.2], [10, -7.3], [14.8, -7.9], [15.6, -10.5], [13, -13], [8, -14], [0, -14.4], [-8, -14], [-14, -12.6], [-15.6, -10.2]],
+    bridge: [-8.5, -3.0, -7.95], isles: [[-9.75, -8.25, 1.55, 1.0], [-2.0, -8.2, 1.2, 0.9]], lamp: [-10.25, -8.45], tree: [10.8, -3.4, -0.7, 1.0, 5],
+    stones: [[-9.3, 4.6], [-9.25, 1.2], [-9.4, -2.2], [-9.6, -5.2], [-9.7, -6.9]],
+    beds: [[-12.8, -8.75, -7.0, 4.8], [8.75, 12.6, -7.0, 4.8]], pads: [-13, 9.4, -8.9],
+    koi: [[-5.6, -8.5, 2.3, 0.45], [6.6, -8.4, 1.6, 0.4], [10.2, -8.7, 1.3, 0.4]], fly: [-10.6, -3.0], rockBird: [-11.2, -5.2] },
+  tall: { water: [[-10, -8.4], [-5, -7.7], [0, -7.6], [5, -7.7], [10, -8.4], [11, -11], [8, -14], [0, -14.6], [-8, -14], [-11, -11]],
+    bridge: [-3.6, 2.0, -8.7], isles: [[-4.9, -8.95, 1.5, 1.15], [3.0, -8.95, 1.2, 1.0]], lamp: [-5.5, -9.1], tree: [-6.4, -7.2, 0.5, 0.82, 3],
+    stones: [[-6.7, -6.3], [-5.9, -7.0], [-5.3, -7.9]],
+    beds: [[-7.6, 7.6, -7.5, -6.9], [-7.4, 7.4, 6.6, 9.5]], pads: [-7.6, 7.6, -10.2],
+    koi: [[4.6, -9.2, 1.6, 0.5], [-0.8, -9.9, 1.8, 0.4], [6.4, -10.4, 1.0, 0.8]], fly: [3.6, -7.3], rockBird: [5.6, -7.25] } };
+const inPoly = (x, z, P) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, zi] = P[i], [xj, zj] = P[j]; if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) c = !c; } return c; };
+const lcg = (seed) => () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+function grassTexture() {
+  return canvasTex(512, (g, S) => { g.fillStyle = "#43923c"; g.fillRect(0, 0, S, S); const rnd = lcg(11);
+    for (let k = 0; k < 90; k++) { const x = rnd() * S, y = rnd() * S, r = 26 + rnd() * 70, light = rnd() < 0.5;
+      for (const dx of [-S, 0, S]) for (const dy of [-S, 0, S]) { const gr = g.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, r); gr.addColorStop(0, light ? "rgba(132,200,84,.34)" : "rgba(28,98,56,.34)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.beginPath(); g.arc(x + dx, y + dy, r, 0, 7); g.fill(); } }
+    for (let k = 0; k < 3200; k++) { const x = rnd() * S, y = rnd() * S, l = 3 + rnd() * 7; g.strokeStyle = rnd() < 0.5 ? "rgba(160,216,100,.36)" : "rgba(22,84,46,.36)"; g.lineWidth = 1; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (rnd() - 0.5) * 4, y - l); g.stroke(); }
+    for (let k = 0; k < 70; k++) { g.fillStyle = rnd() < 0.6 ? "rgba(255,255,242,.85)" : "rgba(255,226,120,.85)"; g.beginPath(); g.arc(rnd() * S, rnd() * S, 1.4, 0, 7); g.fill(); } });
+}
+function paverTexture() {
+  return canvasTex(256, (g, S) => { g.fillStyle = "#4a4658"; g.fillRect(0, 0, S, S); const rnd = lcg(29), N = 4, c = S / N;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const v = 138 + Math.floor(rnd() * 34), x = i * c + 3, y = j * c + 3, w = c - 6; g.fillStyle = `rgb(${v},${v - 5},${v + 12})`; roundRect(g, x, y, x + w, y + w, 7); g.fill();
+      for (let k = 0; k < 26; k++) { g.fillStyle = rnd() < 0.5 ? "rgba(255,255,255,.07)" : "rgba(0,0,0,.09)"; g.fillRect(x + rnd() * w, y + rnd() * w, 2 + rnd() * 5, 2 + rnd() * 3); } } });
+}
+function padTexture() {
+  return canvasTex(128, (g, S) => { const C = S / 2; g.fillStyle = "#2f8f4e"; g.beginPath(); g.moveTo(C, C); g.arc(C, C, C - 4, 0.28, 6.0); g.closePath(); g.fill();
+    g.strokeStyle = "rgba(190,236,160,.5)"; g.lineWidth = 2; for (let k = 0; k < 9; k++) { const a = 0.5 + k * 0.63; g.beginPath(); g.moveTo(C, C); g.lineTo(C + Math.cos(a) * (C - 10), C + Math.sin(a) * (C - 10)); g.stroke(); }
+    g.strokeStyle = "rgba(20,70,40,.55)"; g.lineWidth = 4; g.beginPath(); g.arc(C, C, C - 5, 0.28, 6.0); g.stroke(); });
+}
+function daisyTexture() {
+  return canvasTex(128, (g, S) => { g.strokeStyle = "#3d8a3c"; g.lineWidth = 5; g.lineCap = "round"; g.beginPath(); g.moveTo(S / 2, S); g.quadraticCurveTo(S * 0.45, S * 0.7, S / 2, S * 0.4); g.stroke();
+    g.fillStyle = "#4f9a40"; g.beginPath(); g.ellipse(S * 0.37, S * 0.8, 17, 6, -0.6, 0, 7); g.fill(); g.beginPath(); g.ellipse(S * 0.63, S * 0.87, 16, 6, 0.6, 0, 7); g.fill();
+    g.fillStyle = "#ffffff"; for (let k = 0; k < 13; k++) { g.save(); g.translate(S / 2, S * 0.36); g.rotate((k * 6.2832) / 13); g.beginPath(); g.ellipse(0, -19, 6.5, 17, 0, 0, 7); g.fill(); g.restore(); }
+    g.fillStyle = "#ffcf3d"; g.beginPath(); g.arc(S / 2, S * 0.36, 9.5, 0, 7); g.fill(); g.fillStyle = "#e79a1c"; g.beginPath(); g.arc(S / 2, S * 0.36, 5, 0, 7); g.fill(); });
+}
+function leafTexture() {
+  return canvasTex(128, (g, S) => { for (let k = 0; k < 7; k++) { const a = -1.15 + k * 0.383, len = S * (0.62 + 0.3 * Math.cos(a)); g.save(); g.translate(S / 2, S * 0.98); g.rotate(a);
+      const gr = g.createLinearGradient(0, 0, 0, -len); gr.addColorStop(0, "#1f6a3a"); gr.addColorStop(1, k % 2 ? "#6cc05a" : "#4fa64c"); g.fillStyle = gr; g.beginPath(); g.moveTo(0, 0); g.bezierCurveTo(17, -len * 0.3, 15, -len * 0.8, 0, -len); g.bezierCurveTo(-15, -len * 0.8, -17, -len * 0.3, 0, 0); g.fill();
+      g.strokeStyle = "rgba(210,240,170,.45)"; g.lineWidth = 1.5; g.beginPath(); g.moveTo(0, -4); g.lineTo(0, -len * 0.9); g.stroke(); g.restore(); } });
+}
+function koiTexture(spot) {
+  return canvasTex(128, (g, S) => { const y = S / 2; g.fillStyle = "#fff6ea"; g.beginPath(); g.moveTo(S * 0.93, y); g.bezierCurveTo(S * 0.8, y - 17, S * 0.42, y - 15, S * 0.24, y - 3); g.lineTo(S * 0.04, y - 15); g.lineTo(S * 0.1, y); g.lineTo(S * 0.04, y + 15); g.lineTo(S * 0.24, y + 3); g.bezierCurveTo(S * 0.42, y + 15, S * 0.8, y + 17, S * 0.93, y); g.fill();
+    g.globalCompositeOperation = "source-atop"; g.fillStyle = spot; for (const [x, r] of [[0.74, 13], [0.5, 11], [0.3, 7]]) { g.beginPath(); g.arc(S * x, y + (x > 0.6 ? -3 : 4), r, 0, 7); g.fill(); } g.globalCompositeOperation = "source-over";
+    g.fillStyle = "rgba(255,246,234,.8)"; g.beginPath(); g.ellipse(S * 0.6, y - 17, 9, 4, -0.5, 0, 7); g.fill(); g.beginPath(); g.ellipse(S * 0.6, y + 17, 9, 4, 0.5, 0, 7); g.fill(); });
+}
+function wingTexture(col) {
+  return canvasTex(64, (g, S) => { g.fillStyle = "#2a1c18"; g.beginPath(); g.moveTo(0, S * 0.5); g.bezierCurveTo(S * 0.3, -S * 0.1, S * 1.05, S * 0.02, S * 0.96, S * 0.42); g.bezierCurveTo(S * 1.0, S * 0.8, S * 0.5, S * 1.02, 0, S * 0.5); g.fill();
+    g.fillStyle = col; g.beginPath(); g.moveTo(S * 0.06, S * 0.5); g.bezierCurveTo(S * 0.32, S * 0.04, S * 0.9, S * 0.1, S * 0.84, S * 0.42); g.bezierCurveTo(S * 0.86, S * 0.72, S * 0.48, S * 0.9, S * 0.06, S * 0.5); g.fill();
+    g.fillStyle = "rgba(255,255,255,.85)"; for (const [x, y] of [[0.8, 0.26], [0.86, 0.5], [0.72, 0.7]]) { g.beginPath(); g.arc(S * x, S * y, 2.6, 0, 7); g.fill(); } });
+}
+function ringTexture() { return canvasTex(128, (g, S) => { g.strokeStyle = "rgba(255,255,255,.95)"; g.lineWidth = 5; g.beginPath(); g.arc(S / 2, S / 2, S / 2 - 8, 0, 7); g.stroke(); g.strokeStyle = "rgba(255,255,255,.4)"; g.lineWidth = 2; g.beginPath(); g.arc(S / 2, S / 2, S / 2 - 22, 0, 7); g.stroke(); }); }
+// the arched bridge as a list of boxes: planks, the two beams under them, posts and two rails each side [x, y, z, sx, sy, sz, turn, tone]
+function bridgeParts(x0, x1, zc, w, rise, base) {
+  const len = x1 - x0, N = 16, parts = [], y = (u) => base + 0.12 + rise * Math.sin(Math.PI * u), ang = (u) => Math.atan((rise * Math.PI * Math.cos(Math.PI * u)) / len);
+  const box = (...a) => parts.push(a);
+  for (let k = 0; k < N; k++) { const u = (k + 0.5) / N, x = x0 + len * u, a = ang(u), L = (len / N / Math.cos(a)) * 0.95;
+    box(x, y(u), zc, L, 0.06, w, a, 0.9 + ((k * 7) % 5) * 0.045);
+    for (const s of [-1, 1]) box(x, y(u) - 0.1, zc + s * (w / 2 - 0.07), L * 1.08, 0.15, 0.09, a, 0.7); }
+  const posts = []; for (let k = 0; k <= N; k += 2) { const u = k / N, end = k === 0 || k === N, ph = end ? 0.76 : 0.52, x = x0 + len * u; posts.push([x, y(u)]);
+    for (const s of [-1, 1]) box(x, y(u) + ph / 2, zc + s * (w / 2 - 0.05), end ? 0.14 : 0.08, ph, end ? 0.14 : 0.08, 0, end ? 0.74 : 0.84); }
+  for (let k = 0; k + 1 < posts.length; k++) { const [xa, ya] = posts[k], [xb, yb] = posts[k + 1], dx = xb - xa, dy = yb - ya, L = Math.hypot(dx, dy);
+    for (const [hh, th] of [[0.47, 0.07], [0.25, 0.045]]) for (const s of [-1, 1]) box((xa + xb) / 2, (ya + yb) / 2 + hh, zc + s * (w / 2 - 0.05), L, th, th, Math.atan2(dy, dx), 1); }
+  return { parts, top: (u) => y(u) + 0.47 + 0.035 };
+}
+function makeBird(M) {
+  const grp = new THREE.Group(), body = new THREE.Mesh(M.sph, M.back); body.scale.set(0.13, 0.115, 0.17); grp.add(body);
+  const belly = new THREE.Mesh(M.sph, M.belly); belly.scale.set(0.115, 0.09, 0.13); belly.position.set(0, -0.03, 0.01); grp.add(belly);
+  const chest = new THREE.Mesh(M.sph, M.chest); chest.scale.set(0.105, 0.1, 0.09); chest.position.set(0, 0.005, 0.085); grp.add(chest);
+  const tail = new THREE.Mesh(M.box, M.back); tail.scale.set(0.07, 0.02, 0.2); tail.position.set(0, 0.03, -0.22); tail.rotation.x = -0.35; grp.add(tail);
+  const neck = new THREE.Group(); neck.position.set(0, 0.09, 0.08); grp.add(neck);
+  const head = new THREE.Mesh(M.sph, M.back); head.scale.set(0.085, 0.08, 0.085); head.position.set(0, 0.035, 0.02); neck.add(head);
+  const face = new THREE.Mesh(M.sph, M.chest); face.scale.set(0.066, 0.058, 0.05); face.position.set(0, 0.022, 0.062); neck.add(face);
+  const beak = new THREE.Mesh(M.cone, M.dark); beak.scale.set(0.022, 0.07, 0.022); beak.rotation.x = Math.PI / 2; beak.position.set(0, 0.035, 0.125); neck.add(beak);
+  for (const s of [-1, 1]) { const eye = new THREE.Mesh(M.sph, M.dark); eye.scale.setScalar(0.013); eye.position.set(s * 0.058, 0.052, 0.062); neck.add(eye); }
+  return { grp, neck, t: 1 + Math.random() * 3, yaw: 0, hop: 0, turn: 0, y0: 0 };
+}
+function buildPond() {
+  const Q = R.Q, low = Q === "low", C = POND[R.zones === ZONES.tall ? "tall" : "wide"], G = -0.335, grp = new THREE.Group(); grp.name = "pond"; R.scene.add(grp);
+  const S = { grp, zk: R.zones, o: new THREE.Object3D(), tex: [], koi: [], rings: [], flies: [], birds: [] }, o = S.o, rnd = lcg(71), T = (t) => { S.tex.push(t); return t; };
+  const flat = (geo, mat, y, order = 0) => { const m = new THREE.Mesh(geo, mat); m.rotation.x = -Math.PI / 2; m.position.y = y; m.renderOrder = order; grp.add(m); return m; };
+  // grass as far as the eye goes (unlit, its light painted in: bright round the table, deep green toward the edges)
+  { const gt = T(grassTexture()); gt.wrapS = gt.wrapT = THREE.RepeatWrapping; gt.repeat.set(7, 5); gt.anisotropy = 8;
+    const tg = new THREE.PlaneGeometry(70, 50, 28, 20), tp = tg.attributes.position, tc = new Float32Array(tp.count * 3);
+    for (let k = 0; k < tp.count; k++) { const d = Math.hypot(tp.getX(k) / 1.3, tp.getY(k) + 1.5), v = 0.3 + 0.62 * Math.exp(-(Math.max(0, d - 7) ** 2) / 120); tc[k * 3] = v * 0.93; tc[k * 3 + 1] = v; tc[k * 3 + 2] = v * 0.95; }
+    tg.setAttribute("color", new THREE.BufferAttribute(tc, 3)); const m = flat(tg, new THREE.MeshBasicMaterial({ map: gt, vertexColors: true }), G); m.position.z = -2; }
+  // the table stands on a terrace of stone slabs
+  { const pt = T(paverTexture()); pt.wrapS = pt.wrapT = THREE.RepeatWrapping; pt.repeat.set(7, 5.5); flat(new THREE.PlaneGeometry(MW + 1.7, MD + 1.7), new THREE.MeshBasicMaterial({ map: pt, color: 0xc9c6d2 }), G + 0.006, 1).position.z = MZ;
+    flat(new THREE.PlaneGeometry(MW + 3.2, MD + 3.2), new THREE.MeshBasicMaterial({ map: R.shade.material.map, transparent: true, opacity: 0.5, depthWrite: false }), G + 0.004, 1).position.z = MZ; }
+  // the pond: a sandy bank, then water whose light ripples run across it
+  const out = new THREE.CatmullRomCurve3(C.water.map(([x, z]) => new THREE.Vector3(x, 0, z)), true, "centripetal").getPoints(80).map((p) => [p.x, p.z]); S.poly = out;
+  const cx = out.reduce((a, p) => a + p[0], 0) / out.length, cz = out.reduce((a, p) => a + p[1], 0) / out.length;
+  const shape = (grow) => new THREE.ShapeGeometry(new THREE.Shape(out.map(([x, z]) => { const dx = x - cx, dz = z - cz, d = Math.hypot(dx, dz) || 1; return new THREE.Vector2(x + (dx / d) * grow, -(z + (dz / d) * grow)); })));
+  flat(shape(0.34), new THREE.MeshBasicMaterial({ color: 0x9a8f6e }), G + 0.003, 1); flat(shape(0.12), new THREE.MeshBasicMaterial({ color: 0x4a6f5c }), G + 0.0045, 2);
+  const water = new THREE.ShaderMaterial({ uniforms: { uT: { value: 0 }, uDeep: { value: new THREE.Color(0x0c6d86) }, uShal: { value: new THREE.Color(0x35c9c4) }, uHi: { value: new THREE.Color(0xc8fff2) }, uFogC: { value: R.scene.fog.color }, uFogD: { value: 0.019 } },
+    vertexShader: "varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }",
+    fragmentShader: `${low ? "#define LOW\n" : ""}uniform float uT; uniform vec3 uDeep; uniform vec3 uShal; uniform vec3 uHi; uniform vec3 uFogC; uniform float uFogD; varying vec3 vW;
+      vec2 h2(vec2 p){ p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3))); return fract(sin(p) * 43758.5453); }
+      float cell(vec2 p){ vec2 i = floor(p), f = fract(p); float d1 = 8.0, d2 = 8.0;
+        for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) { vec2 g = vec2(float(x), float(y)); vec2 o = 0.5 + 0.42 * sin(uT * 0.8 + 6.2831 * h2(i + g)); float d = length(g + o - f); if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d; }
+        return d2 - d1; }
+      void main(){ vec2 p = vW.xz; float line = smoothstep(0.1, 0.02, cell(p * 0.62 + vec2(uT * 0.035, 0.0)));
+        #ifndef LOW
+        line = line * 0.85 + 0.4 * smoothstep(0.08, 0.015, cell(p * 1.27 + vec2(3.7, -uT * 0.05)));
+        #endif
+        float depth = 0.5 + 0.5 * sin(p.x * 0.33 + sin(p.y * 0.41) * 1.3 + uT * 0.07);
+        vec3 col = mix(uDeep, uShal, 0.18 + 0.6 * depth) + uHi * line * 0.55;
+        float d = length(cameraPosition - vW); col = mix(col, uFogC, 1.0 - exp(-uFogD * uFogD * d * d));
+        gl_FragColor = vec4(col, 1.0);
+        #include <tonemapping_fragment>
+        #include <encodings_fragment>
+      }` });
+  flat(shape(0), water, G + 0.006, 3); S.water = water;
+  const wet = (x, z, pad = 0) => inPoly(x, z, out) && (!pad || [[pad, 0], [-pad, 0], [0, pad], [0, -pad]].every(([a, b]) => inPoly(x + a, z + b, out)));
+  const [bx0, bx1, bz] = C.bridge, onIslet = (x, z, k = 1) => C.isles.some(([ix, iz, irx, irz]) => ((x - ix) / (irx * k)) ** 2 + ((z - iz) / (irz * k)) ** 2 < 1);
+  // a free spot on the water, in the part of the pond a screen shows
+  const inWater = (pad) => { const [x0, x1, z0] = C.pads; for (let n = 0; n < 80; n++) { const x = x0 + rnd() * (x1 - x0), z = z0 + rnd() * (-7.4 - z0) * 1.0; if (wet(x, z, pad) && !onIslet(x, z, 1.3) && !(Math.abs(z - bz) < 1.0 && x > bx0 - 0.4 && x < bx1 + 0.4)) return [x, z]; } return null; };
+  // the islet the bridge leads to, with its stone lantern
+  { const cg = new THREE.CircleGeometry(1, 28), sand = new THREE.MeshBasicMaterial({ color: 0x9a8f6e }), turf = new THREE.MeshBasicMaterial({ color: 0x3f8f3c });
+    for (const [ix, iz, irx, irz] of C.isles) { const im = flat(cg, sand, G + 0.008, 4); im.position.set(ix, G + 0.008, iz); im.scale.set(irx + 0.2, irz + 0.2, 1); const ig = flat(cg, turf, G + 0.011, 5); ig.position.set(ix, G + 0.011, iz); ig.scale.set(irx, irz, 1); } }
+  const stone = new THREE.MeshStandardMaterial({ color: 0x9a95a6, roughness: 0.95, metalness: 0, flatShading: true });
+  { const L = new THREE.Group(); L.position.set(C.lamp[0], G, C.lamp[1]); grp.add(L); const part = (geo, y, mat = stone) => { const m = new THREE.Mesh(geo, mat); m.position.y = y; L.add(m); return m; };
+    part(new THREE.CylinderGeometry(0.3, 0.36, 0.14, 6), 0.07); part(new THREE.CylinderGeometry(0.1, 0.13, 0.62, 6), 0.45);
+    part(new THREE.CylinderGeometry(0.27, 0.2, 0.08, 6), 0.8); part(new THREE.BoxGeometry(0.32, 0.26, 0.32), 0.97, new THREE.MeshStandardMaterial({ color: 0xffe2a0, emissive: 0xffb04a, emissiveIntensity: 1.25, roughness: 0.6 }));
+    const roof = part(new THREE.ConeGeometry(0.42, 0.26, 4), 1.23); roof.rotation.y = Math.PI / 4; part(new THREE.SphereGeometry(0.07, 6, 5), 1.4);
+    S.glow = sprite(R.FX.dot, 0xffb050, 2.3, new THREE.Vector3(0, 0.97, 0), 0.5, L); }
+  // the bridge: every board, post and rail is one box of the same batch
+  { const B = bridgeParts(bx0, bx1, bz, 1.3, 0.95, G), bm = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xb06a3c, roughness: 0.82, metalness: 0 }), B.parts.length), col = new THREE.Color();
+    B.parts.forEach(([x, y, z, sx, sy, sz, a, tone], i) => { o.position.set(x, y, z); o.rotation.set(0, 0, a); o.scale.set(sx, sy, sz); o.updateMatrix(); bm.setMatrixAt(i, o.matrix); bm.setColorAt(i, col.setRGB(tone, tone * 0.97, tone * 0.93)); });
+    bm.castShadow = Q === "high"; grp.add(bm); S.railTop = B.top;
+    const sh = flat(new THREE.PlaneGeometry(bx1 - bx0 + 1, 2.6), new THREE.MeshBasicMaterial({ map: R.shade.material.map, transparent: true, opacity: 0.42, depthWrite: false }), G + 0.012, 6); sh.position.set((bx0 + bx1) / 2, G + 0.012, bz + 0.25); }
+  // lily pads and lotus in bloom
+  { const n = low ? 8 : Q === "mid" ? 13 : 19, pads = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: T(padTexture()), alphaTest: 0.5 }), n), col = new THREE.Color(), spots = [];
+    for (let i = 0; i < n; i++) { const p = inWater(0.45) || [bx1 + 2, bz - 0.9]; spots.push(p); o.position.set(p[0], G + 0.012 + i * 0.0002, p[1]); o.rotation.set(-Math.PI / 2, 0, rnd() * 6.28); o.scale.setScalar(0.55 + rnd() * 0.5); o.updateMatrix(); pads.setMatrixAt(i, o.matrix); pads.setColorAt(i, col.setRGB(0.8 + rnd() * 0.2, 0.9 + rnd() * 0.1, 0.8 + rnd() * 0.2)); }
+    pads.renderOrder = 4; grp.add(pads);
+    const nf = Math.min(spots.length, low ? 3 : Q === "mid" ? 5 : 7), rings = [[7, 1.08, 1], [6, 0.62, 0.86], [4, 0.24, 0.7]], per = 17;
+    const pg = new THREE.BufferGeometry(); pg.setAttribute("position", new THREE.Float32BufferAttribute([0, 0, 0, 0.13, 0.2, 0.05, 0, 0.44, 0.1, -0.13, 0.2, 0.05], 3)); pg.setIndex([0, 1, 2, 0, 2, 3]); pg.computeVertexNormals();
+    const petals = new THREE.InstancedMesh(pg, new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true, side: THREE.DoubleSide, roughness: 0.6, metalness: 0, emissive: 0x8a2a55, emissiveIntensity: 0.28 }), nf * per);
+    const hearts = new THREE.InstancedMesh(new THREE.SphereGeometry(0.07, 7, 5), new THREE.MeshStandardMaterial({ color: 0xffd257, emissive: 0x8a5a10, emissiveIntensity: 0.4, roughness: 0.6 }), nf); let k = 0; o.rotation.order = "YXZ";
+    for (let f = 0; f < nf; f++) { const [x, z] = spots[f], sc = 0.85 + rnd() * 0.45, y = G + 0.03, a0 = rnd() * 6.28, white = f % 3 === 2;
+      for (const [cnt, tilt, size] of rings) for (let j = 0; j < cnt; j++) { o.position.set(x, y, z); o.rotation.set(tilt, a0 + (j / cnt) * 6.2832 + tilt, 0); o.scale.setScalar(sc * size); o.updateMatrix(); petals.setMatrixAt(k, o.matrix);
+        petals.setColorAt(k++, white ? col.setRGB(1, 0.96 - tilt * 0.06, 0.98) : col.setRGB(1, 0.5 + (1.1 - tilt) * 0.3, 0.72 + (1.1 - tilt) * 0.16)); }
+      o.rotation.set(0, 0, 0); o.position.set(x, y + 0.07 * sc, z); o.scale.setScalar(sc); o.updateMatrix(); hearts.setMatrixAt(f, o.matrix); }
+    o.rotation.order = "XYZ"; o.rotation.set(0, 0, 0); grp.add(petals, hearts); }
+  // koi going round under the surface, and the rings a fish leaves when it comes up
+  { const cols = ["#f0652a", "#e23a2a", "#f4b63a"]; C.koi.slice(0, low ? 1 : 3).forEach(([kx, kz, a, b], i) => { const g2 = new THREE.Group(), m = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.95), new THREE.MeshBasicMaterial({ map: T(koiTexture(cols[i])), transparent: true, opacity: 0.86, depthWrite: false }));
+      m.rotation.x = -Math.PI / 2; m.renderOrder = 4; g2.add(m); g2.position.y = G + 0.009; grp.add(g2); S.koi.push({ g: g2, kx, kz, a, b, w: (0.16 + i * 0.05) * (i % 2 ? -1 : 1), ph: i * 2.1 }); });
+    const rt = T(ringTexture()); for (let i = 0; i < (low ? 1 : 3); i++) { const m = flat(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: rt, transparent: true, opacity: 0, depthWrite: false }), G + 0.014, 5); S.rings.push({ m, age: 9, dur: 2.6, wait: 1 + i * 2.3 }); } }
+  // the blossom tree, the petals it has dropped and the ones still falling
+  { const [tx, tz, ry, k, seed] = C.tree, bt = T(barkTexture()), ft = T(flowerTexture()), pt = T(petalTexture()); bt.wrapS = bt.wrapT = THREE.RepeatWrapping;
+    const bark = new THREE.MeshStandardMaterial({ map: bt, color: 0xd8c2b4, roughness: 0.93, metalness: 0 });
+    const flower = new THREE.MeshStandardMaterial({ map: ft, color: 0xfff0ff, alphaTest: 0.42, side: THREE.DoubleSide, roughness: 0.7, metalness: 0, emissive: 0xe9b6ff, emissiveMap: ft, emissiveIntensity: 0.3 });
+    const petal = new THREE.MeshBasicMaterial({ map: pt, color: 0xfff2ff, alphaTest: 0.4, side: THREE.DoubleSide });
+    const fGeo = new THREE.PlaneGeometry(0.24, 0.24), pGeo = new THREE.PlaneGeometry(0.15, 0.12);
+    const tree = sakuraTree(seed * 7919, low ? "mid" : Q, bark, flower, fGeo); tree.position.set(tx, G, tz); tree.rotation.y = ry; tree.scale.setScalar(k); grp.add(tree);
+    const sh = flat(new THREE.PlaneGeometry(7.5 * k, 7.5 * k), new THREE.MeshBasicMaterial({ map: R.shade.material.map, transparent: true, opacity: 0.5, depthWrite: false }), G + 0.005, 1); sh.position.set(tx + 0.4, G + 0.005, tz + 0.3);
+    const n = low ? 40 : 110, m = new THREE.InstancedMesh(pGeo, petal, n); for (let i = 0; i < n; i++) { const a = rnd() * 6.28, r = Math.sqrt(rnd()) * 4.2 * k; o.position.set(tx + Math.cos(a) * r, G + 0.013 + rnd() * 0.003, tz + Math.sin(a) * r); o.rotation.set(-Math.PI / 2, 0, rnd() * 6.28); o.scale.setScalar(0.8 + rnd() * 0.5); o.updateMatrix(); m.setMatrixAt(i, o.matrix); }
+    m.frustumCulled = false; m.renderOrder = 6; grp.add(m);
+    const nf = reduce ? 0 : low ? 14 : Q === "mid" ? 30 : 52; if (nf) { const fm = new THREE.InstancedMesh(pGeo, petal, nf); fm.instanceMatrix.setUsage(THREE.DynamicDrawUsage); fm.frustumCulled = false; grp.add(fm); S.fall = { m: fm, st: Array.from({ length: nf }, () => respawnPetal({}, true)) }; } }
+  // rocks along the bank and by the tree, and stepping stones leading to the bridge
+  { const spots = []; for (let i = 0; i < out.length; i += low ? 9 : 5) { const [x, z] = out[i], dx = x - cx, dz = z - cz, d = Math.hypot(dx, dz) || 1; if (z < -13.4 || x > 13.6) continue; spots.push([x + (dx / d) * (0.25 + rnd() * 0.35), z + (dz / d) * (0.25 + rnd() * 0.35), 0.28 + rnd() * 0.42]); }
+    const [tx, tz] = C.tree; spots.push([tx + 0.95, tz + 1.2, 0.42], [tx - 0.9, tz + 1.5, 0.34], [tx + 1.2, tz - 1.1, 0.26], [C.rockBird[0], C.rockBird[1], 0.55], [C.rockBird[0] + 0.8, C.rockBird[1] + 0.35, 0.3], ...C.isles.map(([ix, iz, irx, irz], i) => [ix + (i ? 0.75 : -0.8) * irx, iz + irz * 0.55, 0.3]));
+    const rk = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), stone, spots.length), col = new THREE.Color(); spots.forEach(([x, z, s], i) => { const sy = s * (0.55 + rnd() * 0.3); o.position.set(x, G + sy * 0.5, z); o.rotation.set(rnd() * 0.5, rnd() * 6.28, rnd() * 0.5); o.scale.set(s * (0.9 + rnd() * 0.5), sy, s * (0.8 + rnd() * 0.4)); o.updateMatrix(); rk.setMatrixAt(i, o.matrix); const v = 0.82 + rnd() * 0.3; rk.setColorAt(i, col.setRGB(v, v * 0.97, v * 1.06)); });
+    o.rotation.set(0, 0, 0); rk.castShadow = Q === "high"; grp.add(rk); S.rock = [C.rockBird[0], G + 0.55 * 0.7, C.rockBird[1]];
+    const path = []; for (let i = 0; i + 1 < C.stones.length; i++) { const [xa, za] = C.stones[i], [xb, zb] = C.stones[i + 1], L = Math.hypot(xb - xa, zb - za), n = Math.max(1, Math.round(L / 1.2)); for (let j = 0; j < n; j++) path.push([xa + ((xb - xa) * j) / n, za + ((zb - za) * j) / n]); }
+    const st = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.45, 0.5, 0.05, 7), stone, path.length); path.forEach(([x, z], i) => { o.position.set(x + (rnd() - 0.5) * 0.16, G + 0.027, z + (rnd() - 0.5) * 0.16); o.rotation.set(0, rnd() * 6.28, 0); o.scale.set(0.85 + rnd() * 0.3, 1, 0.8 + rnd() * 0.3); o.updateMatrix(); st.setMatrixAt(i, o.matrix); const v = 0.95 + rnd() * 0.2; st.setColorAt(i, col.setRGB(v, v, v * 1.04)); });
+    o.rotation.set(0, 0, 0); grp.add(st); S.path = path; }
+  // daisies and leafy clumps: flat cards that lean back toward the eye
+  { const beds = C.beds, dry = (x, z) => !wet(x, z) && !inPoly(x + 0.4, z, out) && !inPoly(x - 0.4, z, out) && !(Math.abs(x) < MW / 2 + 0.95 && Math.abs(z - MZ) < MD / 2 + 0.95) && !S.path.some(([px, pz]) => Math.hypot(px - x, pz - z) < 0.62);
+    const place = (n) => { const r = []; for (let t = 0; t < n * 6 && r.length < n; t++) { const b = beds[Math.floor(rnd() * beds.length)], x = b[0] + rnd() * (b[1] - b[0]), z = b[2] + rnd() * (b[3] - b[2]); if (dry(x, z)) r.push([x, z]); } if (!low) for (const [ix, iz, irx, irz] of C.isles) for (let t = 0; t < 3; t++) r.push([ix + (rnd() - 0.5) * irx * 1.2, iz + (rnd() - 0.1) * irz * 0.9]); return r; };
+    const geo = new THREE.PlaneGeometry(1, 1); geo.translate(0, 0.5, 0); const col = new THREE.Color();
+    const card = (tex, spots, s0, s1, tint) => { const m = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ map: T(tex), alphaTest: 0.45, side: THREE.DoubleSide }), spots.length);
+      spots.forEach(([x, z], i) => { o.position.set(x, G, z); o.rotation.set(-0.5, (rnd() - 0.5) * 0.7, 0); o.scale.setScalar(s0 + rnd() * (s1 - s0)); o.updateMatrix(); m.setMatrixAt(i, o.matrix); m.setColorAt(i, tint(col)); }); m.frustumCulled = false; grp.add(m); };
+    card(leafTexture(), place(low ? 14 : Q === "mid" ? 26 : 40), 0.7, 1.15, (c) => { const v = 0.82 + rnd() * 0.25; return c.setRGB(v, v, v * 0.95); });
+    card(daisyTexture(), place(low ? 18 : Q === "mid" ? 36 : 60), 0.42, 0.7, (c) => { const k = rnd(); return k < 0.55 ? c.setRGB(1, 1, 1) : k < 0.8 ? c.setRGB(1, 0.78, 0.9) : c.setRGB(1, 0.94, 0.7); }); o.rotation.set(0, 0, 0); }
+  // a robin on the bridge rail, another on a rock; butterflies over the flowers
+  { const M = { sph: new THREE.SphereGeometry(1, 9, 7), box: new THREE.BoxGeometry(1, 1, 1), cone: new THREE.ConeGeometry(1, 1, 5), mk: (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, metalness: 0, flatShading: true }) };
+    Object.assign(M, { back: M.mk(0x7b6a5b), belly: M.mk(0xf0e7da), chest: M.mk(0xe5702c), dark: M.mk(0x2a1d18) });
+    const at = (x, y, z, ry, s) => { const b = makeBird(M); b.grp.position.set(x, y, z); b.grp.rotation.y = ry; b.grp.scale.setScalar(s); b.y0 = y; grp.add(b.grp); S.birds.push(b); };
+    at(bx0 + (bx1 - bx0) * 0.42, S.railTop(0.42) + 0.15, bz + 0.6, 0.5, 1.5); if (Q === "high") at(S.rock[0], S.rock[1] + 0.13, S.rock[2], -0.7, 1.5);
+    const wg = (s) => { const g2 = new THREE.PlaneGeometry(0.2, 0.24); g2.rotateX(-Math.PI / 2); g2.translate(s * 0.1, 0, 0); return g2; };
+    ["#f39a2c", "#f6e27a", "#8ec9ff"].slice(0, low || reduce ? 1 : 3).forEach((c, i) => { const g2 = new THREE.Group(), wm = new THREE.MeshBasicMaterial({ map: T(wingTexture(c)), alphaTest: 0.3, side: THREE.DoubleSide }), a = new THREE.Mesh(wg(1), wm), b = new THREE.Mesh(wg(1), wm); b.scale.x = -1; g2.add(a, b); grp.add(g2);
+      S.flies.push({ g: g2, a, b, cx: C.fly[0] + (i - 1) * 1.1, cz: C.fly[1] + (i - 1) * 2.3, ph: i * 2.3, f: 0.33 + i * 0.07, px: 0, pz: 0 }); }); }
+  return S;
+}
+function stepPond(S, dt, t) {
+  S.water.uniforms.uT.value = t; if (S.fall) stepSakura(S, dt, t);
+  for (const k of S.koi) { const a = t * k.w + k.ph, x = k.kx + Math.cos(a) * k.a, z = k.kz + Math.sin(a) * k.b; k.g.position.x = x; k.g.position.z = z; k.g.rotation.y = Math.atan2(-k.b * Math.cos(a) * k.w, -k.a * Math.sin(a) * k.w) + Math.sin(t * 5 + k.ph) * 0.14; }
+  for (const r of S.rings) { r.age += dt; if (r.age > r.dur + r.wait) { let p = null; for (let n = 0; n < 12 && !p; n++) { const q = S.poly[Math.floor(Math.random() * S.poly.length)], k = S.koi[Math.floor(Math.random() * Math.max(1, S.koi.length))]; p = k ? [k.g.position.x, k.g.position.z] : q; }
+      r.m.position.x = p[0]; r.m.position.z = p[1]; r.age = 0; r.wait = 2 + Math.random() * 5; }
+    const u = Math.min(1, r.age / r.dur); r.m.scale.setScalar(0.3 + u * 1.7); r.m.material.opacity = u >= 1 ? 0 : (1 - u) * 0.55; }
+  for (const f of S.flies) { const x = f.cx + Math.sin(t * f.f + f.ph) * 2.1, z = f.cz + Math.cos(t * f.f * 0.8 + f.ph * 1.3) * 2.4, y = 0.35 + Math.sin(t * 1.9 + f.ph) * 0.22 + Math.sin(t * 7 + f.ph) * 0.04;
+    f.g.rotation.y = Math.atan2(x - f.px, z - f.pz); f.px = x; f.pz = z; f.g.position.set(x, y, z); const w = 0.25 + Math.abs(Math.sin(t * 13 + f.ph)) * 1.15; f.a.rotation.z = w; f.b.rotation.z = -w; }
+  for (const b of S.birds) { b.t -= dt; if (b.t <= 0) { b.t = 1.6 + Math.random() * 4; b.yaw = (Math.random() - 0.5) * 1.9; if (Math.random() < 0.35) { b.hop = 0.34; b.turn = (Math.random() - 0.5) * 1.3; } }
+    b.neck.rotation.y += (b.yaw - b.neck.rotation.y) * Math.min(1, dt * 10); b.neck.rotation.x = Math.sin(t * 2.3 + b.y0 * 9) * 0.06;
+    if (b.hop > 0) { b.hop -= dt; const u = 1 - Math.max(0, b.hop) / 0.34; b.grp.position.y = b.y0 + Math.sin(Math.PI * u) * 0.11; b.grp.rotation.y += (b.turn * dt) / 0.34; } }
+  if (S.glow) S.glow.material.opacity = 0.44 + 0.07 * Math.sin(t * 9.3) + 0.04 * Math.sin(t * 23);
+}
+function dropPond(S) {
+  R.scene.remove(S.grp); const seen = new Set(), shared = R.shade.material.map;
+  S.grp.traverse((o) => { if (!o.isMesh && !o.isSprite) return; for (const x of o.isSprite ? [o.material] : [o.geometry, o.material]) if (x && !seen.has(x)) { seen.add(x); x.dispose(); } }); // (every sprite shares one geometry)
+  for (const t of S.tex) if (t !== shared && t !== R.FX.dot) t.dispose();
+}
+// the table's surroundings are the scene the viewer chose (สนาม), whatever cloth lies on the table
 function decor() {
-  if (!R) return; const k = R.matKey && R.matKey[1], want = !!k && [k.near, k.far].some((m) => m && m.kind === "sakura");
-  if (R.sakura && (!want || R.sakura.zk !== R.zones)) { dropSakura(R.sakura); R.sakura = null; }
-  if (want && !R.sakura) R.sakura = buildSakura();
+  if (!R) return; const want = R.sceneKey;
+  if (R.sakura && (want !== "sakura" || R.sakura.zk !== R.zones)) { dropSakura(R.sakura); R.sakura = null; }
+  if (want === "sakura" && !R.sakura) R.sakura = buildSakura();
+  if (R.pond && (want !== "pond" || R.pond.zk !== R.zones)) { dropPond(R.pond); R.pond = null; }
+  if (want === "pond" && !R.pond) R.pond = buildPond();
+  hallShow();
+}
+// the candle-lit hall (teak table, candles, brass and garland) gives way to a scene that brings its own ground
+function hallShow() {
+  if (!R) return; const on = R.sceneKey !== "pond";
+  if (R.wood) R.wood.visible = on; if (R.shade) R.shade.visible = on && !R.shadeOff; for (const c of R.candles || []) c.grp.visible = on;
+  const pr = R.scene.getObjectByName("props"); if (pr) pr.visible = on; if (R.motes) R.motes.visible = on || R.Q !== "low";
+  R.scene.fog.color.setHex(on ? 0x0b0605 : 0x0f2a26); R.scene.fog.density = on ? 0.026 : 0.019;
+  if (R.hemi) { R.hemi.color.setHex(on ? 0xffe2c0 : 0xf2f6ff); R.hemi.groundColor.setHex(on ? 0x140a06 : 0x1c3320); R.hemi.intensity = on ? 0.5 : 0.62; }
 }
 const rgbaOf = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
 // the gold line-work of our half of the wide table, gold on black, for the playmat editor to lay over a picture ("screen")
@@ -782,7 +1008,7 @@ function candle(x, z) { // no real light: a lamp per candle would make every lit
   grp.add(dish, wax, flame, halo, pool);
   // once the brass candlesticks have loaded, the drawn dish and candle give way and the flame moves up to the wick
   const onStand = () => { dish.visible = wax.visible = false; flame.position.y = halo.position.y = 1.7; };
-  R.scene.add(grp); return { flame, halo, pool, ph: Math.random() * 10, onStand };
+  R.scene.add(grp); return { grp, flame, halo, pool, ph: Math.random() * 10, onStand };
 }
 function softShadow() {
   const c = document.createElement("canvas"); c.width = c.height = 256; const g = c.getContext("2d");

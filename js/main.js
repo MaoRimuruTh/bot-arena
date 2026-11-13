@@ -1,20 +1,20 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261113134242";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261113134242";
-import { AVATARS, MATS, SIGILS, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261113134242";
-import { myFigure, myMat, mySleeve, mySigil, unlocked, needFor } from "./achieve.js?v=20261113134242";
-import { Vault, startVault } from "./vault.js?v=20261113134242";
-import { vaultSection } from "./vaultui.js?v=20261113134242";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261113134242";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261113134242";
-import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261113134242";
-import { Views, avatarEl } from "./ui.js?v=20261113134242";
-import { Ciel } from "./ai.js?v=20261113134242";
-import "./views/library.js?v=20261113134242";
-import "./views/decks.js?v=20261113134242";
-import "./views/lab.js?v=20261113134242";
-import "./views/history.js?v=20261113134242";
-import { openReport } from "./views/ask.js?v=20261113134242";
-import "./views/play.js?v=20261113134242";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261113141419";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261113141419";
+import { AVATARS, MATS, SIGILS, SCENES, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261113141419";
+import { myFigure, myMat, myScene, sceneOpen, mySleeve, mySigil, unlocked, needFor } from "./achieve.js?v=20261113141419";
+import { Vault, startVault } from "./vault.js?v=20261113141419";
+import { vaultSection } from "./vaultui.js?v=20261113141419";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261113141419";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261113141419";
+import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261113141419";
+import { Views, avatarEl } from "./ui.js?v=20261113141419";
+import { Ciel } from "./ai.js?v=20261113141419";
+import "./views/library.js?v=20261113141419";
+import "./views/decks.js?v=20261113141419";
+import "./views/lab.js?v=20261113141419";
+import "./views/history.js?v=20261113141419";
+import { openReport } from "./views/ask.js?v=20261113141419";
+import "./views/play.js?v=20261113141419";
 
 const root = $("#view");
 let current = null, cardsReady = false;
@@ -76,10 +76,11 @@ function avatarSection() {
       try { if (k) localStorage.setItem(key, k); else localStorage.removeItem(key); } catch {} for (const b of e.currentTarget.parentElement.children) b.setAttribute("aria-pressed", b === e.currentTarget ? "true" : "false"); toast(done(t)); } }, open ? t : "🔒 " + t); })));
   const locked = [...Object.keys(AVATARS).filter((k) => !unlocked("av", k)).map((k) => [AVATARS[k].name, needFor("av", k)]), ...Object.keys(MATS).filter((k) => !unlocked("mat", k)).map((k) => ["ผ้าปู" + MATS[k].name, needFor("mat", k)]),
     ...Object.keys(SIGILS).filter((k) => !unlocked("sig", k)).map((k) => ["วงอัญเชิญ" + SIGILS[k].name, needFor("sig", k)])];
-  return [h("div", { class: "eyebrow", style: "margin-top:12px" }, "อวตาร 3 มิติ ผ้าปูโต๊ะ และวงอัญเชิญ"),
-    h("div", { class: "small muted" }, "อวตารยืนข้างแถบกลางสนามฝั่งคุณ เด้งตอนเริ่มเทิร์น สะดุ้งตอนเสีย LIFE ดีใจหรือคอตกตอนจบเกม วงอัญเชิญคือวงที่เปิดใต้การ์ดตอนเราอัญเชิญ เปลี่ยนแล้วใช้ตั้งแต่เกมถัดไป"),
+  return [h("div", { class: "eyebrow", style: "margin-top:12px" }, "อวตาร 3 มิติ สนาม ผ้าปูโต๊ะ และวงอัญเชิญ"),
+    h("div", { class: "small muted" }, "อวตารยืนข้างแถบกลางสนามฝั่งคุณ เด้งตอนเริ่มเทิร์น สะดุ้งตอนเสีย LIFE ดีใจหรือคอตกตอนจบเกม สนามคือฉากรอบโต๊ะ (แมพ) ที่เห็นเฉพาะบนเครื่องเรา ส่วนผ้าปูโต๊ะ (playmat) คือผ้าที่ปูบนโต๊ะฝั่งเราซึ่งคู่แข่งเห็นด้วย วงอัญเชิญคือวงที่เปิดใต้การ์ดตอนเราอัญเชิญ เปลี่ยนแล้วใช้ตั้งแต่เกมถัดไป"),
     seg("อวตาร 3 มิติ", "bot.av3", myFigure(), [["", "ไม่มี"], ...Object.entries(AVATARS).map(([k, a]) => [k, a.name]), ...(Vault.has("fig") ? [["own", "รูปปั้นของฉัน"]] : [])], "av", (t) => `เลือก${t}แล้ว ใช้ตั้งแต่เกมถัดไป`),
-    seg("ผ้าปูโต๊ะ", "bot.mat", myMat(), [...Object.entries(MATS).map(([k, m]) => [k, m.name]), ...(Vault.has("mat") ? [["own", "ผ้าปูของฉัน"]] : [])], "mat", (t) => `ผ้าปู${t} ใช้ตั้งแต่เปิดสนามครั้งถัดไป`),
+    seg("สนาม (ฉากรอบโต๊ะ)", "bot.scene", myScene(), Object.entries(SCENES).filter(([k]) => sceneOpen(k)).map(([k, m]) => [k, m.name]), "scene", (t) => `สนาม${t} ใช้ตั้งแต่เกมถัดไป`),
+    seg("ผ้าปูโต๊ะ (playmat)", "bot.mat", myMat(), [...Object.entries(MATS).map(([k, m]) => [k, m.name]), ...(Vault.has("mat") ? [["own", "ผ้าปูของฉัน"]] : [])], "mat", (t) => `ผ้าปู${t} ใช้ตั้งแต่เปิดสนามครั้งถัดไป`),
     Vault.has("sleeve") ? seg("หลังการ์ด", "bot.sleeve", mySleeve(), [["", "ลายไทย"], ["own", "หลังการ์ดของฉัน"]], "sleeve", (t) => `หลังการ์ด${t} ใช้ตั้งแต่เกมถัดไป`) : null,
     seg("วงอัญเชิญ", "bot.sig", mySigil(), Object.entries(SIGILS).map(([k, m]) => [k, m.name]), "sig", (t) => `วงอัญเชิญลาย${t} ใช้ตั้งแต่เกมถัดไป`),
     locked.length ? h("details", { class: "unlocks" }, h("summary", null, `วิธีปลดล็อคที่เหลืออีก ${locked.length} อย่าง (ได้จากการเล่นเท่านั้น)`), h("ul", null, locked.map(([n, w]) => h("li", null, h("b", null, n), h("span", null, w))))) : null].filter(Boolean);
