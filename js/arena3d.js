@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113231935";
-import { E } from "./engine.js?v=20261113231935";
-import { h } from "./util.js?v=20261113231935";
-import { Sfx } from "./sfx.js?v=20261113231935";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113232215";
+import { E } from "./engine.js?v=20261113232215";
+import { h } from "./util.js?v=20261113232215";
+import { Sfx } from "./sfx.js?v=20261113232215";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -150,6 +150,8 @@ function mount(container, opts = {}) {
   // automatic quality: if the table keeps running under ~28 frames a second, give up the glow first, then resolution
   R.autoQ = gfxSetting() === "auto" ? { t0: performance.now(), born: performance.now(), sum: 0, n: 0, slow: 0, last: 0 } : null;
   R.onVis = () => { if (R && R.autoQ) R.autoQ.last = 0; }; document.addEventListener("visibilitychange", R.onVis);
+  // where each hand card sat on the screen when it was touched: a card played from the hand flies out from that spot (handStart)
+  R.handAt = new Map(); R.onHand = (e) => { const c = e.target && e.target.closest && e.target.closest(".hcard"); if (!c || !R) return; if (R.handAt.size > 12) R.handAt.clear(); R.handAt.set(+c.dataset.i, c.getBoundingClientRect()); }; document.addEventListener("pointerdown", R.onHand, true);
   const ray = new THREE.Raycaster(); const ptr = new THREE.Vector2();
   const pick = (e) => {
     const r = canvas.getBoundingClientRect(); ptr.x = ((e.clientX - r.left) / r.width) * 2 - 1; ptr.y = -((e.clientY - r.top) / r.height) * 2 + 1; ray.setFromCamera(ptr, camera);
@@ -196,7 +198,7 @@ function mount(container, opts = {}) {
     camera.position.set(R.camBase.x + Math.sin(t * 0.15) * 0.35 + R.off.x, R.camBase.y + R.off.y, R.camBase.z + Math.cos(t * 0.12) * 0.2); camera.lookAt(R.look);
     const cr = R.canvas.getBoundingClientRect(); // the labels below read the layout once a frame and move by transform: no layout per label
     if (R.side) for (const o of R.side.piles.values()) { if (!o.grp.visible && !o.n) { o.el.style.display = "none"; continue; } o.el.style.display = ""; const lz = (R.zones && R.zones.side && R.zones.side.piles.lz) || 0.62; const sp = toScreen(o.grp.position.clone().add(new THREE.Vector3(0, 0.2, (o.mine ? lz : -lz))), cr); o.el.style.transform = `translate(${sp.x}px,${sp.y}px) translate(-50%,-50%)`; }
-    for (const [i, el] of R.labels) { const m = R.meshes.get(i); if (!m) continue; const s = toScreen(m.grp.position.clone().add(new THREE.Vector3(-0.55 * m.scale, 0.1, (m.side === "me" ? 0.85 : -0.85) * m.scale)), cr); el.style.transform = `translate(${s.x}px,${s.y}px) translate(-50%,-50%)`; }
+    for (const [i, el] of R.labels) { const m = R.meshes.get(i); if (!m) continue; const s = toScreen(m.grp.position.clone().add(new THREE.Vector3(-0.55 * m.scale, 0.1, (m.side === "me" ? 0.85 : -0.85) * m.scale)), cr); el.style.transform = `translate(${s.x}px,${s.y}px) translate(-50%,-50%)` + (el._pk && el._pk.k !== 1 ? ` scale(${el._pk.k})` : ""); }
     if (R.composer) R.composer.render(); else renderer.render(scene, camera);
     if (R.autoQ) watchFps(R.autoQ);
     requestAnimationFrame(tick);
@@ -208,7 +210,7 @@ function mount(container, opts = {}) {
 }
 function unmount() {
   document.querySelectorAll(".fxcuts,.rpsduel").forEach((x) => x.remove());
-  if (!R) return; R.alive = false; removeEventListener("resize", R.onResize); if (R.onVis) document.removeEventListener("visibilitychange", R.onVis); gsap.globalTimeline.timeScale(1);
+  if (!R) return; R.alive = false; removeEventListener("resize", R.onResize); if (R.onVis) document.removeEventListener("visibilitychange", R.onVis); if (R.onHand) document.removeEventListener("pointerdown", R.onHand, true); gsap.globalTimeline.timeScale(1);
   for (const el of R.labels.values()) el.remove(); if (R.side) for (const o of R.side.piles.values()) o.el.remove();
   R.renderer.dispose(); try { R.renderer.forceContextLoss(); } catch { /* already gone */ } R.canvas.remove(); R = null; // free the GPU now, not at the next garbage collection
 }
@@ -1815,10 +1817,25 @@ export function banner(t, s) {
   gsap.to(band, { opacity: 0, duration: 0.4, delay: 1.3 });
 }
 export function flash(color, a = 0.45) { let f = document.querySelector(".flash"); if (!f) { f = h("div", { class: "flash" }); document.body.append(f); } f.style.background = color; gsap.fromTo(f, { opacity: a }, { opacity: 0, duration: 0.5, ease: "power2.out" }); }
-export function shake(p = 0.25, d = 0.4, dir = null) { if (reduce || !R) return; gsap.fromTo(R.off, dir ? { x: dir.x * p, y: -p * 0.35 } : { x: p, y: p * 0.6 }, { x: 0, y: 0, duration: d, ease: "elastic.out(1.2,0.3)" }); } // dir: kicked along the blow
-export function popText(pos3, text, color) {
+// camera shake from "trauma": each blow adds to it (up to a cap) and it drains away, so blows close together build up instead of cutting each other off;
+// the offset is trauma² (small knocks barely move it, big ones do) along the blow (dir) plus a little wobble across it
+const TRAUMA = { max: 1, per: 1.6, amp: 0.45, rate: 1.4 }; // 0.45: gentler peak on phones
+export function shake(p = 0.25, d = 0.4, dir = null) {
+  if (reduce || !R) return; R.trauma = Math.min(TRAUMA.max, (R.trauma || 0) + p * TRAUMA.per); R.tdir = dir || R.tdir || null; gsap.killTweensOf(R, "trauma");
+  gsap.to(R, { trauma: 0, duration: Math.max(d, R.trauma / TRAUMA.rate), ease: "power1.out", onUpdate() { if (!R) return; const k = R.trauma * R.trauma * TRAUMA.amp, a = this.time() * 42, D = R.tdir;
+    const along = Math.cos(a * 0.9), w1 = Math.sin(a * 1.3) * 0.8 + Math.sin(a * 2.9) * 0.2, w2 = Math.sin(a * 1.7 + 1) * 0.8 + Math.sin(a * 3.3) * 0.2;
+    R.off.x = k * (D ? D.x * along + w1 * 0.35 : w1); R.off.y = k * (D ? -Math.abs(D.z) * along * 0.5 + w2 * 0.25 : w2 * 0.6); },
+  onComplete: () => { if (R) { R.off.x = R.off.y = 0; R.tdir = null; } } });
+}
+export function popText(pos3, text, color, big = 1) {
   if (!R) return; const s = toScreen(pos3); const d = h("div", { class: "dmg" }, text); d.style.left = s.x + "px"; d.style.top = s.y + "px"; if (color) d.style.textShadow = `0 0 14px ${color},0 2px 0 #000`;
-  document.body.append(d); gsap.fromTo(d, { y: 0, scale: 0.4, opacity: 0 }, { y: -40, scale: 1, opacity: 1, duration: 0.35, ease: "back.out(3)" }); gsap.to(d, { y: -90, opacity: 0, duration: 0.6, delay: 0.55, onComplete: () => d.remove() });
+  document.body.append(d);
+  if (reduce) { gsap.fromTo(d, { opacity: 0, scale: big }, { opacity: 1, duration: 0.2 }); gsap.to(d, { opacity: 0, duration: 0.4, delay: 0.9, onComplete: () => d.remove() }); return; }
+  const r = (Math.random() - 0.5) * 10; // slams down onto the table big, thuds, holds, then drops away under its own weight
+  gsap.timeline({ onComplete: () => d.remove() })
+    .fromTo(d, { y: -28, scale: 2.4 * big, rotation: r * 1.6, opacity: 0 }, { y: 0, scale: big, rotation: r * 0.4, opacity: 1, duration: 0.16, ease: "power4.in" })
+    .to(d, { scale: 1.14 * big, duration: 0.06, ease: "power2.out" }).to(d, { scale: big, duration: 0.14, ease: "power2.in" })
+    .to(d, { y: 48, rotation: r, opacity: 0, duration: 0.5, ease: "power2.in" }, "+=0.42");
 }
 export function mood(mine) { if (!R) return; gsap.to(R.goldL, { intensity: mine ? 0.95 : 0.5, duration: 0.8 }); gsap.to(R.redL, { intensity: mine ? 0.45 : 0.9, duration: 0.8 }); }
 const GLOW = { rest: 0.16, sel: 0.85 };
@@ -1979,10 +1996,11 @@ function placeShadow(m) {
   m.shadow.scale.set(k * Math.max(0.12, Math.abs(Math.cos(r.z))), 1, k * Math.max(0.12, Math.abs(Math.cos(r.x))));
   m.shadow.material.opacity = m.shOp * Math.max(0.15, 1 - hgt * 0.3);
 }
-function label(s, m, x) {
+function label(s, m, x, instant) {
   const d = E.def(s, x); if (!(d.t === "A" || d.t === "T" || d.t === "C")) { const old = R.labels.get(m.i); if (old) { old.remove(); R.labels.delete(m.i); } return; }
   let el = R.labels.get(m.i); if (!el) { el = h("div", { class: "pwl" }); document.body.append(el); R.labels.set(m.i, el); }
-  const p = E.power(s, x), b = d.pw || 0; el.textContent = p; el.className = "pwl" + (m.side === "opp" ? " opp" : "") + (p > b ? " up" : p < b ? " down" : "") + (x.a === false ? " sleep" : "");
+  const p = E.power(s, x), b = d.pw || 0, was = el.dataset.v; el.dataset.v = p; el.textContent = p;
+  if (!instant && !reduce && was != null && +was !== p) { const dv = p - +was; popText(m.grp.position.clone().setY(0.9), (dv > 0 ? "+" : "−") + Math.abs(dv), dv > 0 ? "#5ef0a0" : "#ff4d55", 0.8); el._pk = { k: 1.8 }; gsap.to(el._pk, { k: 1, duration: 0.4, ease: "back.out(3)" }); } // a POWER change: the new number punches in el.className = "pwl" + (m.side === "opp" ? " opp" : "") + (p > b ? " up" : p < b ? " down" : "") + (x.a === false ? " sleep" : "");
 }
 function sync(s, V, drops, burned, instant) {
   const want = layout(s, V); let k = 0, hold = 0;
@@ -1999,7 +2017,7 @@ function sync(s, V, drops, burned, instant) {
       const co = E.def(s, L.x).co, cHex = co ? colorHex(co) : L.side === "me" ? 0xffc35a : 0xff4a52;
       if (reduce || instant) settle(m, 0.05 * k++); else if (drops.has(i)) summonIn(m, L, co, cHex); else placeIn(m, L);
     } else if (!m.busy) home(m, 0.4, hold);
-    label(s, m, L.x);
+    label(s, m, L.x, instant);
   }
 }
 // where a card belongs now: its place may have changed while it was busy animating
@@ -2013,14 +2031,33 @@ function settle(m, delay) { // the table as it stands (resuming a game): cards j
   const w = m.want, g = m.grp; g.rotation.set(0, w.rotY, 0); g.scale.setScalar(w.scale); g.position.set(w.pos.x, w.pos.y, w.pos.z); if (reduce) return;
   m.busy = true; g.position.y = w.pos.y + 0.9; m.shOp = 0; gsap.to(m, { shOp: 0.6, duration: 0.4, delay }); gsap.to(g.position, { y: w.pos.y, duration: 0.35, delay, ease: "power2.in", onComplete: () => done(m) });
 }
+// a card just played from our hand: where it sat on the screen, as a point in the air on the line of sight (the DOM hand and the 3D table meet here)
+function handStart(i, y = 2.4) {
+  const r = R.handAt && R.handAt.get(i); if (!r) return null; R.handAt.delete(i);
+  const c = R.canvas.getBoundingClientRect(), nx = ((r.left + r.width / 2 - c.left) / c.width) * 2 - 1, ny = Math.max(-1.05, -(((r.top + r.height / 2 - c.top) / c.height) * 2 - 1));
+  const cam = R.camera.position, d = new THREE.Vector3(nx, ny, 0.5).unproject(R.camera).sub(cam).normalize(), k = (y - cam.y) / d.y;
+  return k > 0 ? cam.clone().addScaledVector(d, k) : null;
+}
+// our own spent Magic leaves the hand as a card: it arcs up over the table and burns away into light as the spell goes off
+function castFly(s, ev, d, to) {
+  const h0 = handStart(ev.i); if (!h0 || reduce) return Promise.resolve();
+  const Lc = E.locate(s, ev.i), own = Lc && Lc.x.o != null ? Lc.x.o : ev.p, fm = faceMat(d, own), u = fm.userData.u, g = new THREE.Group();
+  g.add(new THREE.Mesh(R.geo.face, fm), new THREE.Mesh(R.geo.back, backFor(s, own))); R.scene.add(g); g.position.copy(h0); g.rotation.set(1.1, 0, 0); g.scale.setScalar(0.8);
+  u.uEdge.value.setHex(d.co ? colorHex(d.co) : 0xbfd0ff); Sfx.play("fly");
+  return new Promise((res) => gsap.timeline({ onComplete: () => { if (R) R.scene.remove(g); fm.dispose(); } })
+    .to(g.position, { x: to.x, z: to.z + 0.5, duration: 0.42, ease: "power2.out" }, 0).to(g.position, { y: 2.9, duration: 0.24, ease: "sine.out" }, 0).to(g.position, { y: 1.5, duration: 0.18, ease: "sine.in" }, 0.24)
+    .to(g.rotation, { x: 0.45, duration: 0.42, ease: "power2.out" }, 0).to(g.scale, { x: 1.05, y: 1.05, z: 1.05, duration: 0.42, ease: "power2.out" }, 0)
+    .add(() => { sweep({ u }, 1, 0.35); res(); }, 0.4)
+    .to(u.uBurn, { value: 1, duration: 0.6, ease: "power1.in" }, 0.42).to(g.position, { y: 2.2, duration: 0.6, ease: "power1.in" }, 0.42));
+}
 // summoned: the card rises from its owner's hand, turns over above its slot as a summoning circle opens beneath, then slams down
 function summonIn(m, L, co, cHex) {
   const mine = L.side === "me", P = L.pos, s = L.scale, g = m.grp, hy = mine ? 3 : 2.1, hz = P.z + (mine ? 1.5 : 1.9); // the hover point stays in view from either seat
-  g.position.set(P.x * 0.45, 1.4, mine ? 6.6 : -7.8); g.rotation.set(Math.PI / 2 - 0.3, 0, Math.PI); g.scale.setScalar(s * 0.8);
+  const h0 = mine && handStart(m.i); if (h0) g.position.copy(h0); else g.position.set(P.x * 0.45, 1.4, mine ? 6.6 : -7.8); g.rotation.set(Math.PI / 2 - 0.3, 0, Math.PI); g.scale.setScalar(s * 0.8); // from the spot in the hand it was played from
   m.busy = true; m.shOp = 0; m.glow.material.opacity = 0;
   const azure = R.sig[L.p] === "azure", aHex = azure ? 0x0a4ad8 : cHex, ring = sigil(P, aHex, s, R.sig[L.p]); Sfx.play("rise"); trail(m, aHex, 0.95);
   gsap.timeline({ onComplete: () => done(m) })
-    .to(g.position, { x: P.x, y: hy, z: hz, duration: 0.5, ease: "power2.out" }, 0)
+    .to(g.position, { x: P.x, z: hz, duration: 0.5, ease: "power2.out" }, 0).to(g.position, { y: hy + 0.5, duration: 0.3, ease: "sine.out" }, 0).to(g.position, { y: hy, duration: 0.2, ease: "sine.inOut" }, 0.3) /* an arc, not a straight line */
     .to(g.rotation, { x: Math.PI / 2 - 0.12, z: 0, duration: 0.55, ease: "power2.inOut" }, 0.02)
     .to(g.scale, { x: s * 1.3, y: s * 1.3, z: s * 1.3, duration: 0.5, ease: "power2.out" }, 0)
     .add(() => R && sweep(m, 1.2, 0.55), 0.34)
@@ -2037,14 +2074,15 @@ function summonIn(m, L, co, cHex) {
 }
 // cards that arrive any other way (Magic, Constructs, Land, tokens) are laid down from the owner's side
 function placeIn(m, L) {
-  const P = L.pos, s = L.scale, g = m.grp, mine = L.side === "me";
+  const P = L.pos, s = L.scale, g = m.grp, mine = L.side === "me", h0 = mine && handStart(m.i), t0 = h0 ? 0.36 : 0; // from our hand: an arc to above the slot first
   g.position.set(P.x, 1.7, P.z + (mine ? 1.1 : -1.1)); g.rotation.set(mine ? 1 : -1, m.want.rotY, 0); g.scale.setScalar(s * 1.1); m.shOp = 0.15; m.busy = true;
-  gsap.timeline({ onComplete: () => done(m) })
-    .to(g.position, { x: P.x, y: P.y, z: P.z, duration: 0.42, ease: "power3.in" }, 0)
-    .to(g.rotation, { x: 0, duration: 0.42, ease: "power2.in" }, 0)
-    .to(g.scale, { x: s, y: s, z: s, duration: 0.42, ease: "power2.in" }, 0)
-    .to(m, { shOp: 0.6, duration: 0.42 }, 0)
-    .add(() => { if (!R) return; dust(P, s * 0.8, 6); sweep(m, 0.9, 0.6); }, 0.42);
+  const tl = gsap.timeline({ onComplete: () => done(m) });
+  if (h0) { const a = g.position.clone(); g.position.copy(h0); tl.to(g.position, { x: a.x, z: a.z, duration: t0, ease: "power2.out" }, 0).to(g.position, { y: a.y + 0.7, duration: 0.2, ease: "sine.out" }, 0).to(g.position, { y: a.y, duration: t0 - 0.2, ease: "sine.in" }, 0.2); }
+  tl.to(g.position, { x: P.x, y: P.y, z: P.z, duration: 0.42, ease: "power3.in" }, t0)
+    .to(g.rotation, { x: 0, duration: 0.42, ease: "power2.in" }, t0)
+    .to(g.scale, { x: s, y: s, z: s, duration: 0.42, ease: "power2.in" }, t0)
+    .to(m, { shOp: 0.6, duration: 0.42 }, t0)
+    .add(() => { if (!R) return; dust(P, s * 0.8, 6); sweep(m, 0.9, 0.6); }, t0 + 0.42);
 }
 function landFx(P, s, co, cHex) {
   shockwave(P, cHex, 6 * s); dust(P, s, 10); pillar(P, cHex); colorFx(P, co);
@@ -2248,6 +2286,7 @@ async function animateEvent(ev, prev, s, V) {
     Sfx.play("destroy"); const p = pos(ev.i); if (p) { popText(p.clone().setY(1), "BREAK", "#ff4d55"); burst(p.clone().setY(0.6), { n: 16, color: 0xff8a3a, size: 0.2, spread: 2.4 }); }
   } else if (ev.k === "cast") {
     const d = s.cards[(E.locate(s, ev.i) || { x: { c: "" } }).x.c]; const mco = d && d.co; const hp = ev.on != null ? pos(ev.on) : null; /* a Modification rises where it is worn */ const mpos = hp ? hp.clone().setY(0) : new THREE.Vector3(0, 0, mineSide(ev.p) ? 3.9 : -4.4);
+    const Lc = E.locate(s, ev.i); if (d && mineSide(ev.p) && (!Lc || Lc.z === "hell")) await castFly(s, ev, d, mpos); // a spent Magic flies out of the hand (one that stays is laid down by placeIn)
     Sfx.play(ev.st === "L" ? "land" : "cast", { color: mco });
     pillar(mpos, mco ? colorHex(mco) : ev.st === "L" ? 0x8fb0ff : 0xc9a2ff); burst(new THREE.Vector3(0, 0.6, -0.2), { n: 16, map: R.FX.star_06, color: 0xbfd0ff, spread: 3 });
     if (ev.st === "L") decal(R.FX.magic_02, new THREE.Vector3(0, 0, -0.2), mco ? colorHex(mco) : 0x8fb0ff, 9, 1.8, 1.2); else if (mco) colorFx(mpos, mco, 0.8);
