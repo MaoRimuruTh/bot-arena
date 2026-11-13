@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261113194340";
-import { fxText, kwGloss } from "../fxtext.js?v=20261113194340";
-import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261113194340";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261113194340";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261113194340";
-import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261113194340";
-import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor, myWinFx } from "../achieve.js?v=20261113194340";
-import { themeCounts, officialStarters } from "../boxdecks.js?v=20261113194340";
-import { ladder, ladderReset } from "../ladder.js?v=20261113194340";
-import { notify } from "../notify.js?v=20261113194340";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261113194340";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261113194340";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261113194340";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261113194340";
-import { Music } from "../music.js?v=20261113194340";
-import { Sfx } from "../sfx.js?v=20261113194340";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261113194340";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261113194340";
-import { readAura, traits } from "../auras.js?v=20261113194340";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261113194340";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261113195449";
+import { fxText, kwGloss } from "../fxtext.js?v=20261113195449";
+import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261113195449";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261113195449";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261113195449";
+import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261113195449";
+import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor, myWinFx } from "../achieve.js?v=20261113195449";
+import { themeCounts, officialStarters } from "../boxdecks.js?v=20261113195449";
+import { ladder, ladderReset } from "../ladder.js?v=20261113195449";
+import { notify } from "../notify.js?v=20261113195449";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261113195449";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261113195449";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261113195449";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261113195449";
+import { Music } from "../music.js?v=20261113195449";
+import { Sfx } from "../sfx.js?v=20261113195449";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261113195449";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261113195449";
+import { readAura, traits } from "../auras.js?v=20261113195449";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261113195449";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -26,8 +26,8 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(s.id ? [`รีเพลย์ในเครื่องนี้: ${s.id}-${V}`] : []), "บันทึก 40 บรรทัดล่าสุด:\n" + s.log.slice(-40).map((l) => "· " + l.m).join("\n"), // so a report can be traced back to its game
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261113194340";
-import { customMat, customSleeve, customFig, setOnReady, onVault } from "../vault.js?v=20261113194340";
+import { allDecks, deckById } from "./decks.js?v=20261113195449";
+import { customMat, customSleeve, customFig, setOnReady, onVault } from "../vault.js?v=20261113195449";
 // the players' own mat picture, card sleeve and figure (vault.js): the table asks for them, and redraws when one loads or changes
 Arena.setCustom({ mat: customMat, sleeve: customSleeve, fig: customFig, skins: (s) => setGameSkins(s && s.P, Me.uid) }); setOnReady((o) => Arena.customReady(o)); onVault(() => Arena.refreshCustom());
 { let sig = ""; Data.listeners.add(() => { const sh = Data.meta && Data.meta.show, now = sh ? Object.entries(sh).map(([k, x]) => k + ":" + (x && x.v) + ":" + (x && x.finish)).join() : ""; if (now !== sig) { sig = now; Arena.refreshCustom(); } }); }
@@ -573,7 +573,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261113194340").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261113195449").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", mat: botMat(), bot: true });
@@ -1435,7 +1435,7 @@ function promptBox0(s, p) {
       h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => { const ids = G.pick || []; G.pick = null; doAct({ type: "mull", iids: ids }, p); } }, n ? `เปลี่ยน ${n} ใบ` : "เก็บมือเดิม")));
   }
   if (s.rw && s.rw.by !== p) {
-    const L = E.locate(s, s.rw.i); const what = s.rw.kind === "battle" ? "เข้าสู่ Battle Phase" : s.rw.kind === "phase" ? `กำลังจะจบ ${s.rw.ph === "battle" ? "Battle" : "Main"} Phase (เข้าสู่ End Phase)` : s.rw.kind === "handed" ? (s.rw.pre ? "กำลังจะนำการ์ดจาก Deck ขึ้นมือ (ตอบโต้ได้ก่อนการ์ดออกจาก Deck)" : "นำการ์ดจาก Deck ขึ้นมือ") : L ? `${s.rw.kind === "summon" ? "อัญเชิญ" : s.rw.kind === "activate" ? "ใช้ความสามารถของ" : s.rw.kind === "react" ? "ใช้ React" : "ใช้ Magic"} ${E.name(s, L.x)}` : "เล่นการ์ด";
+    const L = E.locate(s, s.rw.i); const what = s.rw.kind === "battle" ? "เข้าสู่ Battle Phase" : s.rw.kind === "phase" ? (s.rw.ph === "draw" ? "จบ Draw Phase แล้ว (กำลังเริ่ม Main Phase)" : `กำลังจะจบ ${s.rw.ph === "battle" ? "Battle" : "Main"} Phase (เข้าสู่ End Phase)`) : s.rw.kind === "handed" ? (s.rw.pre ? "กำลังจะนำการ์ดจาก Deck ขึ้นมือ (ตอบโต้ได้ก่อนการ์ดออกจาก Deck)" : "นำการ์ดจาก Deck ขึ้นมือ") : L ? `${s.rw.kind === "summon" ? "อัญเชิญ" : s.rw.kind === "activate" ? "ใช้ความสามารถของ" : s.rw.kind === "react" ? "ใช้ React" : "ใช้ Magic"} ${E.name(s, L.x)}` : "เล่นการ์ด";
     const rs = E.reactsFor(s, p, s.rw);
     const fcd = s.rw.kind === "doom" && s.rw.fight ? fightForecast(s) : null; // the fight this destruction comes from: who hit whom
     const doomNames = s.rw.kind === "doom" ? (fcd && fcd.T ? `${fcd.A.p === p ? "ของคุณ " : ""}${tagName(s, fcd.A)} (P${fcd.ap}) ตี → ${fcd.T.p === p ? "ของคุณ " : ""}${tagName(s, fcd.T)} (P${fcd.tp}) · ` : "") + (s.rw.ids || []).map((i) => E.locate(s, i)).filter(Boolean).map((D) => `${tagName(s, D)} (P${E.power(s, D.x)})`).join(", ") : "";

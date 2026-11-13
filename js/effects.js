@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261113194340";
-import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261113194340";
-import { E, scriptOf } from "./engine.js?v=20261113194340";
+import { readAura } from "./auras.js?v=20261113195449";
+import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261113195449";
+import { E, scriptOf } from "./engine.js?v=20261113195449";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -101,7 +101,7 @@ function fitsD(d, f, pw = () => d.pw || 0, on = false, cst = () => d.c || 0, gm 
   if (f.gem != null && gm() !== f.gem) return false;
   if (f.power != null && pw() !== f.power) return false;
   if (f.maxPower != null && pw() > f.maxPower) return false;
-  if (f.color && !colorIs(d, f.color, on)) return false;
+  if (f.colors ? !f.colors.some((k) => colorIs(d, k, on)) : f.color && !colorIs(d, f.color, on)) return false;
   if (f.text && !String(d.x || "").includes(f.text)) return false;
   if (f.type && d.t !== f.type && !(f.type === "A" && d.t === "T") && f.strict) return false;
   return true;
@@ -125,7 +125,7 @@ function whyD(d, f, pw = () => d.pw || 0, on = false, cst = () => d.c || 0, gm =
   if (f.gem != null && gm() !== f.gem) return "GEM ไม่ใช่ " + f.gem;
   if (f.power != null && pw() !== f.power) return "POWER ไม่ใช่ " + f.power;
   if (f.maxPower != null && pw() > f.maxPower) return "POWER เกิน " + f.maxPower;
-  if (f.color && !colorIs(d, f.color, on)) return "ไม่ใช่สี" + f.color;
+  if (f.colors ? !f.colors.some((k) => colorIs(d, k, on)) : f.color && !colorIs(d, f.color, on)) return "ไม่ใช่สี" + (f.colors ? f.colors.join("/") : f.color);
   if (f.text && !String(d.x || "").includes(f.text)) return "ข้อความไม่ตรง";
   return null;
 }
@@ -157,7 +157,7 @@ function scoutFilter(text, selfDef) {
   let t = text; const extra = {};
   if (/ชื่อไม่ซ้ำกัน|ชื่อ(?:ที่)?(?:แตก)?ต่างกัน|คนละชื่อ/.test(t)) { extra.distinct = true; t = t.replace(/(?:ที่)?(?:มี)?ชื่อไม่ซ้ำกัน|(?:ที่)?ชื่อ(?:ที่)?(?:แตก)?ต่างกัน|คนละชื่อ/g, " "); }
   let m = t.match(/ที่มี\s*["“]([^"”]+)["”]\s*(?:อยู่)?ใน\s*Text\s*Box/i); if (m) { extra.text = m[1].trim(); t = t.replace(m[0], " "); }
-  m = t.match(/(?:ที่)?(?:มี)?สีเดียวกัน(?:กัน)?(?:กับ|เหมือน)?\s*(?:Avatar|การ์ด)\s*(?:ใบ|ตัว)?นี้/); if (m) { if (!selfDef || !selfDef.co) return null; extra.color = selfDef.co; t = t.replace(m[0], " "); }
+  m = t.match(/(?:ที่)?(?:มี)?สีเดียวกัน(?:กัน)?(?:กับ|เหมือน)?\s*(?:Avatar|การ์ด)\s*(?:ใบ|ตัว)?นี้/); if (m) { if (!selfDef || !selfDef.co) return null; extra.color = selfDef.co; if (selfDef.al && (selfDef.al.aco || []).length) extra.colors = [selfDef.co, ...selfDef.al.aco]; /* FAQ ซุนฮูหยิน: a colour it also counts as is the same colour too */ t = t.replace(m[0], " "); }
   const one = (part, base) => {
     const f = filterOf(part); if (f.bad) return null;
     if (!(f.name || f.names || f.symbol || f.symbols || f.text || f.collab || extra.text)) { const bare = part.replace(/(?:ที่ไม่ใช่|ยกเว้น|ไม่ได้ชื่อ)\s*["“]?[^"”]+?["”]?(?=\s+(?:\d+\s*ใบ|จาก|ใน|บน|ลง|ขึ้น)|\s*$)/, " ").replace(SC_STRIP, " ").replace(/\s+/g, " ").trim(); if (bare) { if (base && base.symbolish) f.symbol = bare; else if (nameKnown(bare)) f.name = bare; else return null; } }
@@ -169,7 +169,7 @@ function scoutFilter(text, selfDef) {
   else { const parts = t.split(/\s*(?:และ\/)?หรือ\s*/); if (parts.length < 2 || parts.length > 4) return null; list = [];
     for (let k = 0; k < parts.length; k++) { const prev = list[k - 1]; const f = one(parts[k], prev && { symbolish: !!(prev.symbol || prev.symbols) && !prev.name && !prev.names }); if (!f) return null; list.push(f); }
     const last = list[list.length - 1]; for (const f of list) { if (!f.type && list[0].type) f.type = list[0].type; for (const k of ["maxCost", "minCost", "maxPower", "notOnly"]) if (f[k] == null && last[k] != null) f[k] = last[k]; } }
-  for (const f of list) { Object.assign(f, extra.text ? { text: extra.text } : {}, extra.color ? { color: extra.color } : {}); }
+  for (const f of list) { Object.assign(f, extra.text ? { text: extra.text } : {}, extra.color ? { color: extra.color } : {}, extra.colors ? { colors: extra.colors } : {}); }
   return { list, distinct: !!extra.distinct };
 }
 function readScout(s, body, p, self, ctx, trig) {

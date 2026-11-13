@@ -1,11 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261113194340";
-import { plain } from "./persona.js?v=20261113194340";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261113194340";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261113194340";
-import { modPowerFor } from "./auras.js?v=20261113194340";
-import { Data } from "./fb.js?v=20261113194340";
-import { lsGet, clone } from "./util.js?v=20261113194340";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261113195449";
+import { plain } from "./persona.js?v=20261113195449";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261113195449";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261113195449";
+import { modPowerFor } from "./auras.js?v=20261113195449";
+import { Data } from "./fb.js?v=20261113195449";
+import { lsGet, clone } from "./util.js?v=20261113195449";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
