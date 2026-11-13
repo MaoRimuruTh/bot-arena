@@ -299,6 +299,9 @@ body.arena-on main{padding:0;max-width:none}
   .handzone{height:150px}
   .oppbar{padding:6px 10px;gap:8px} .oppbar .backs{display:none}
   .prompt{bottom:calc(140px + env(safe-area-inset-bottom,0px))}
+  /* a pick among cards on the table sits low, over the hand (not needed for that pick), so our Avatars and their POWER stay in view */
+  .prompt.slim.low{bottom:calc(72px + env(safe-area-inset-bottom,0px));z-index:6}
+  .prompt.slim.low .tiny{display:none}
 }
 @media (prefers-reduced-motion:reduce){*,*::after,*::before{animation:none!important;transition:none!important}}
 
