@@ -1,17 +1,17 @@
-import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261113190617";
-import { plain, isOwnerNow } from "../persona.js?v=20261113190617";
-import { fxText } from "../fxtext.js?v=20261113190617";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, limitKey, banlist, banMax, banPair, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261113190617";
-import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261113190617";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261113190617";
-import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261113190617";
-import { filterBar, filterCards } from "./library.js?v=20261113190617";
-import { openingOdds, simGame } from "./lab.js?v=20261113190617";
-import { freeBuild } from "../builder.js?v=20261113190617";
-import { deckCode, deckText, parseDeck, printCard } from "../deckcode.js?v=20261113190617";
-import { CIEL_DECKS } from "../cieldecks.js?v=20261113190617";
-import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261113190617";
-import { deckLocked, deckLockAch } from "../achieve.js?v=20261113190617";
+import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261113191423";
+import { plain, isOwnerNow } from "../persona.js?v=20261113191423";
+import { fxText } from "../fxtext.js?v=20261113191423";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, limitKey, banlist, banMax, banPair, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261113191423";
+import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261113191423";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261113191423";
+import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261113191423";
+import { filterBar, filterCards } from "./library.js?v=20261113191423";
+import { openingOdds, simGame } from "./lab.js?v=20261113191423";
+import { freeBuild } from "../builder.js?v=20261113191423";
+import { deckCode, deckText, parseDeck, printCard } from "../deckcode.js?v=20261113191423";
+import { CIEL_DECKS } from "../cieldecks.js?v=20261113191423";
+import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261113191423";
+import { deckLocked, deckLockAch } from "../achieve.js?v=20261113191423";
 
 // Ciel's theme decks: print codes → card ids (resolved once the card data is loaded). They are Ciel's decks for Rimuru,
 // so only the owner's account sees them: other accounts get none (not in the deck list, the duel setup, the lab or the bot's picks)
@@ -163,7 +163,7 @@ Views.decks = {
   // heading of "my decks": normal = a button to start choosing; choosing = how many are chosen + delete
   mineBar(mine) {
     for (const id of [...Manage.sel]) if (!mine.some((d) => d.id === id)) Manage.sel.delete(id);
-    if (!Manage.on) return h("div", { class: "row" }, h("h2", { class: "grow" }, `เด็คของฉัน (${mine.length})`), h("span", { class: "small muted" }, "กด ⋯ บนเด็คเพื่อเปลี่ยนชื่อ ทำสำเนา หรือลบ"), h("button", { class: "btn sm", onclick: () => { Manage.on = true; Manage.sel.clear(); redraw(); } }, "เลือกหลายเด็คเพื่อลบ"));
+    if (!Manage.on) return h("div", { class: "row" }, h("h2", { class: "grow" }, `เด็คของฉัน (${mine.length})`), h("span", { class: "small muted deckhint" }, "กด ⋯ บนเด็คเพื่อเปลี่ยนชื่อ ทำสำเนา หรือลบ"), h("button", { class: "btn sm", onclick: () => { Manage.on = true; Manage.sel.clear(); redraw(); } }, "เลือกหลายเด็คเพื่อลบ"));
     const n = Manage.sel.size; const chosen = mine.filter((d) => Manage.sel.has(d.id));
     return h("div", { class: "row managebar" }, h("b", { class: "grow" }, n ? `เลือกแล้ว ${n} เด็ค` : "แตะเด็คที่ต้องการลบ"),
       h("button", { class: "btn sm", onclick: () => { if (n === mine.length) Manage.sel.clear(); else mine.forEach((d) => Manage.sel.add(d.id)); redraw(); } }, n === mine.length ? "ไม่เลือกเลย" : "เลือกทั้งหมด"),

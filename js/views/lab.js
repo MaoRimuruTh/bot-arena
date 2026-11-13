@@ -1,10 +1,10 @@
-import { h, busy, lsGet, lsSet } from "../util.js?v=20261113190617";
-import { card, deckEntries, deckToList, validateDeck, TYPE_TH } from "../cards.js?v=20261113190617";
-import { E } from "../engine.js?v=20261113190617";
-import { H } from "../ai.js?v=20261113190617";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261113190617";
-import { allDecks } from "./decks.js?v=20261113190617";
-import { deckLocked } from "../achieve.js?v=20261113190617";
+import { h, busy, lsGet, lsSet } from "../util.js?v=20261113191423";
+import { card, deckEntries, deckToList, validateDeck, TYPE_TH } from "../cards.js?v=20261113191423";
+import { E } from "../engine.js?v=20261113191423";
+import { H } from "../ai.js?v=20261113191423";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261113191423";
+import { allDecks } from "./decks.js?v=20261113191423";
+import { deckLocked } from "../achieve.js?v=20261113191423";
 
 // exact hypergeometric: P(at least one of k copies within m cards from a deck of N)
 function atLeastOne(N, k, m) { if (k <= 0) return 0; if (m >= N) return 1; let p = 1; for (let i = 0; i < m; i++) p *= (N - k - i) / (N - i); return 1 - Math.max(0, p); }
@@ -90,7 +90,7 @@ Views.lab = {
       const avs = deckEntries(d).filter((e) => e.c.t === "A").sort((a, b) => (b.c.pw || 0) - (a.c.pw || 0)).slice(0, 12);
       oddsBox.replaceChildren(h("div", { class: "eyebrow" }, "โอกาสได้การ์ด (เล่นก่อน ไม่นับเปลี่ยนมือ)"),
         h("div", { class: "bar tiny muted" }, h("span", null, "การ์ด"), h("span", null, "ภายในเทิร์น 3"), h("span", null, "มือเปิด")),
-        h("div", { class: "bars" }, avs.map((e) => { const o = openingOdds(d, [e.id]); return h("div", { class: "bar" }, h("a", { href: "#", onclick: (ev) => { ev.preventDefault(); showCard(e.id); } }, `${e.n}× ${e.c.n}`), h("div", { class: "trk", title: Math.round(o.t3 * 100) + "%" }, h("i", { style: `width:${o.t3 * 100}%` })), h("span", { class: "num small" }, Math.round(o.open * 100) + "%")); })));
+        h("div", { class: "bars" }, avs.map((e) => { const o = openingOdds(d, [e.id]); return h("div", { class: "bar tapbar", role: "button", tabindex: "0", onclick: () => showCard(e.id), onkeydown: (ev) => { if (ev.key === "Enter") showCard(e.id); } }, h("span", null, `${e.n}× ${e.c.n}`), h("div", { class: "trk", title: Math.round(o.t3 * 100) + "%" }, h("i", { style: `width:${o.t3 * 100}%` })), h("span", { class: "num small" }, Math.round(o.open * 100) + "%")); })));
       const roll = () => {
         const list = deckToList(d).main.slice(); for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
         const hand = list.slice(0, 5); const cheap = hand.filter((i) => card(i).t === "A" && (card(i).c || 0) <= 3).length; const gem = hand.reduce((a, i) => a + (card(i).g || 0), 0);
