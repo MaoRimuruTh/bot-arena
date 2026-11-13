@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113095747";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261113095747";
-import { SCRIPTS } from "./scripts.js?v=20261113095747";
-import { newId, clone } from "./util.js?v=20261113095747";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113100505";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261113100505";
+import { SCRIPTS } from "./scripts.js?v=20261113100505";
+import { newId, clone } from "./util.js?v=20261113100505";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -556,7 +556,10 @@ export const E = {
   openWindow(s, p, kind, i, extra) { const q = 1 - p; const on = { kind, by: p, i, ...(extra || {}) }; if (E.reactsFor(s, q, on).length) s.rw = on; },
 
   // s.na counts the actions; every ability that comes up during one is marked with it (t.b), so "at the same time" can be told
-  apply(s, act, p) { E.sync(s); s.na = (s.na || 0) + 1; try { return E.act0(s, act, p); } finally { E.runHeld(s); E.sync(s); E.odPrune(s); E.deckOut(s); for (const t of s.trig) if (t.b == null) t.b = s.na; } },
+  apply(s, act, p) { E.sync(s); s.na = (s.na || 0) + 1; try { return E.act0(s, act, p); } finally { E.runHeld(s); E.sync(s); E.odPrune(s); E.hfPrune(s); E.deckOut(s); for (const t of s.trig) if (t.b == null) t.b = s.na; } },
+  // a hand ability offered for a fight (เมย์ แวมไพร์โกธิค) is offered one card at a time: once one has been used, the others waiting are
+  // checked again and dropped when their condition no longer holds (FAQ เมย์: the second finds a เมย์ already in the dark dimension)
+  hfPrune(s) { if (!s.trig.some((t) => t.when === "handFight")) return; s.trig = s.trig.filter((t) => { if (t.when !== "handFight" || t.held) return true; const L = E.locate(s, t.i), F = t.fighter != null ? E.locate(s, t.fighter) : null; const sc = L && L.z === "hand" ? scriptOf(s, L.x) : null; return !!(sc && sc.handFightOk && F && F.z === "av" && sc.handFightOk(E, s, L.x, F.x)); }); },
   // Rule Book (Win Condition 2): a player whose Deck reaches 0 cards loses at once, not only when a draw finds it empty;
   // both Decks empty at the same time is a draw
   deckOut(s) { if (s.phase === "over" || s.phase === "mull") return; const out = [0, 1].filter((p) => !s.P[p].deck.length); if (!out.length) return;
