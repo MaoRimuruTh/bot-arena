@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261113180120";
-import { fxText, kwGloss } from "../fxtext.js?v=20261113180120";
-import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261113180120";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261113180120";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261113180120";
-import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261113180120";
-import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261113180120";
-import { themeCounts } from "../boxdecks.js?v=20261113180120";
-import { ladder, ladderReset } from "../ladder.js?v=20261113180120";
-import { notify } from "../notify.js?v=20261113180120";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261113180120";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261113180120";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261113180120";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261113180120";
-import { Music } from "../music.js?v=20261113180120";
-import { Sfx } from "../sfx.js?v=20261113180120";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261113180120";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261113180120";
-import { readAura, traits } from "../auras.js?v=20261113180120";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261113180120";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261113180519";
+import { fxText, kwGloss } from "../fxtext.js?v=20261113180519";
+import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261113180519";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261113180519";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261113180519";
+import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261113180519";
+import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261113180519";
+import { themeCounts } from "../boxdecks.js?v=20261113180519";
+import { ladder, ladderReset } from "../ladder.js?v=20261113180519";
+import { notify } from "../notify.js?v=20261113180519";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261113180519";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261113180519";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261113180519";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261113180519";
+import { Music } from "../music.js?v=20261113180519";
+import { Sfx } from "../sfx.js?v=20261113180519";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261113180519";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261113180519";
+import { readAura, traits } from "../auras.js?v=20261113180519";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261113180519";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -26,8 +26,8 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(s.id ? [`รีเพลย์ในเครื่องนี้: ${s.id}-${V}`] : []), "บันทึก 40 บรรทัดล่าสุด:\n" + s.log.slice(-40).map((l) => "· " + l.m).join("\n"), // so a report can be traced back to its game
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261113180120";
-import { customMat, customSleeve, customFig, setOnReady, onVault } from "../vault.js?v=20261113180120";
+import { allDecks, deckById } from "./decks.js?v=20261113180519";
+import { customMat, customSleeve, customFig, setOnReady, onVault } from "../vault.js?v=20261113180519";
 // the players' own mat picture, card sleeve and figure (vault.js): the table asks for them, and redraws when one loads or changes
 Arena.setCustom({ mat: customMat, sleeve: customSleeve, fig: customFig, skins: (s) => setGameSkins(s && s.P, Me.uid) }); setOnReady((o) => Arena.customReady(o)); onVault(() => Arena.refreshCustom());
 { let sig = ""; Data.listeners.add(() => { const sh = Data.meta && Data.meta.show, now = sh ? Object.entries(sh).map(([k, x]) => k + ":" + (x && x.v) + ":" + (x && x.finish)).join() : ""; if (now !== sig) { sig = now; Arena.refreshCustom(); } }); }
@@ -560,7 +560,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261113180120").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261113180519").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", mat: botMat(), bot: true });
@@ -1486,12 +1486,16 @@ function promptBox0(s, p) {
       ? h("div", { class: "prompt glass slim" }, h("b", null, touchy() ? "แตะหรือลาก Avatar ที่เรืองแสง" : "ลาก Avatar ที่เรืองแสงไปที่เป้าหมาย หรือคลิก"), listBtn, ...(G.slimList ? att.map((x) => pointAt(h("button", { class: "btn sm", onclick: () => pickAtt(x) }, `${E.name(s, x)} ${copyTag(s, x.i, attIds)}P${E.power(s, x)}`), x.i)) : []))
       : box("เลือก Avatar ที่จะโจมตี", h("div", { class: "pick" }, att.map((x) => cardBtn(E.def(s, x).im, { seat: x.o, info: () => cardView(x), badge: "P" + E.power(s, x), onclick: () => pickAtt(x) }))));
     const a = E.locate(s, G.att); if (!a) { G.att = null; return null; }
-    const opts = [...O.av.map((y) => ({ t: `${E.name(s, y)} (P${E.power(s, y)})`, tk: "av", ti: y.i })), ...O.cs.map((y) => ({ t: `Construct ${E.name(s, y)} (P${E.power(s, y)})`, tk: "cs", ti: y.i }))];
+    // what the fight would come to on the POWER showing now (LoR shows it before you commit): before any helper, React or ability
+    const ap = E.power(s, a.x), fate = (y) => { const tp = E.power(s, y); if (ap !== tp) return ap > tp ? "ชนะ" : "แพ้"; const m = E.kw(s, a.x, "ลูกฮึด"), t2 = E.kw(s, y, "ลูกฮึด"); return m && !t2 ? "ชนะ (ลูกฮึด)" : t2 && !m ? "แพ้ (ลูกฮึด)" : "เสมอ"; };
+    const opts = [...O.av.map((y) => ({ t: `${E.name(s, y)} (P${E.power(s, y)}) · ${fate(y)}`, tk: "av", ti: y.i, win: fate(y).startsWith("ชนะ") })), ...O.cs.map((y) => ({ t: `Construct ${E.name(s, y)} (P${E.power(s, y)}) · ${fate(y)}`, tk: "cs", ti: y.i, win: fate(y).startsWith("ชนะ") }))];
+    const beat = opts.filter((o) => o.win).map((o) => o.t.split(" (P")[0]); const shield = O.av.some((y) => y.a && E.kw(s, y, "โล่มนุษย์"));
+    const outlook = h("span", { class: "tiny muted" }, (beat.length ? `ตีชนะ: ${beat.slice(0, 3).join(", ")}${beat.length > 3 ? " …" : ""}` : "ยังไม่มีเป้าที่ตีชนะด้วย POWER ตอนนี้") + (shield ? " · ระวังโล่มนุษย์รับแทน" : ""));
     if ((E.lifeOpen(s, p, a.x) || E.kw(s, a.x, "เตะไข่")) && !E.noLife(s, a.x)) opts.push({ t: "LIFE ฝ่ายตรงข้าม (ตีบ้าน)", tk: "life" });
     const optBtns = opts.map((o) => h("button", { class: "btn sm" + (o.tk === "life" ? " gold" : ""), onclick: () => attack(G.att, o.tk, o.ti) }, o.t));
-    if (slim) return h("div", { class: "prompt glass slim" }, h("b", null, `${E.name(s, a.x)} (P${E.power(s, a.x)}) โจมตี: ${touchy() ? "แตะ" : "คลิก"}เป้าบนโต๊ะ`), ...optBtns.filter((_, k) => opts[k].tk === "life" || G.slimList),
+    if (slim) return h("div", { class: "prompt glass slim" }, h("b", null, `${E.name(s, a.x)} (P${E.power(s, a.x)}) โจมตี: ${touchy() ? "แตะ" : "คลิก"}เป้าบนโต๊ะ`), outlook, ...optBtns.filter((_, k) => opts[k].tk === "life" || G.slimList),
       h("button", { class: "btn sm", title: "Esc", onclick: closePicked }, "ยกเลิก"), listBtn);
-    return box(`${E.name(s, a.x)} (P${E.power(s, a.x)}) โจมตี…`, h("div", { class: "opts" }, optBtns));
+    return box(`${E.name(s, a.x)} (P${E.power(s, a.x)}) โจมตี…`, outlook, h("div", { class: "opts" }, optBtns));
   }
   return null;
 }

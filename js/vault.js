@@ -5,7 +5,7 @@
 // The figure can be shown too, as a lighter copy (fewer polygons: fine on the table, poor for printing). Shown copies are
 // stored scrambled, so browsing the database shows no picture or model file; that keeps out casual copying, not a determined
 // expert, since whatever a browser draws has to reach it.
-import { db, F, Me, Data, setMeta } from "./fb.js?v=20261113180120";
+import { db, F, Me, Data, setMeta } from "./fb.js?v=20261113180519";
 
 const CHUNK = 700 * 1024, MAX = 6 * 1024 * 1024;
 const ref = (id) => F.doc(db, "users", Me.uid, "private", id);
