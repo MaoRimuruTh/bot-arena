@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261113131055";
-import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261113131055";
-import { E, scriptOf } from "./engine.js?v=20261113131055";
+import { readAura } from "./auras.js?v=20261113131839";
+import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261113131839";
+import { E, scriptOf } from "./engine.js?v=20261113131839";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -711,6 +711,9 @@ export function resolveEffect(s, t, picks = [], interactive = false) {
   try {
     if (t.when === "trim") { const P = s.P[t.seat]; const n = Math.max(0, E.avatars(P) - 4); const pick = n ? ctx.choose(P.av.filter((x) => P.c3 || !x.tok).sort((a, b) => (b.tok ? 1 : 0) - (a.tok ? 1 : 0) || cardVal(s, a) - cardVal(s, b)), n, `Avatar Zone เกินจำนวนที่ควบคุมได้: เลือก Avatar ${n} ใบส่งลงนรก`, { exact: true }) : [];
       return { explain: pick.length ? `ควบคุมได้ไม่เกินจำนวนที่กำหนด: ${pick.map((x) => E.name(s, x)).join(", ")} ลงนรก` : "", ops: pick.map((x) => ({ op: "move", i: x.i, to: "hell", player: true })) }; }
+    if (t.when === "activate" && t.k === "kraken") { const L = E.locate(s, t.i), P = s.P[t.seat]; if (!L || L.z !== "mg" || !L.x.kraken || P.hand.length < 2 || E.avatars(P) >= 4) return { explain: "ใช้ความสามารถนี้ไม่ได้แล้ว", ops: [] };
+      const pay = ctx.choose([...P.hand].sort((a, b) => cardVal(s, a) - cardVal(s, b)), 2, "ทิ้งการ์ดบนมือ 2 ใบ", { exact: true });
+      return pay.length === 2 ? { explain: `ทิ้ง 2 ใบ · อัญเชิญ ${E.name(s, L.x)} จาก Magic Zone`, ops: [{ op: "discard", seat: t.seat, iids: pay.map((y) => y.i) }, { op: "put", i: t.i, here: true }, { op: "flagSet", i: t.i, k: "kraken", v: false }] } : { explain: "", ops: [] }; }
     const sc = scriptOf(s, { c: t.c });
     const run = sc && (t.when === "activate" ? t.k == null && sc.activate && sc.activate.run : t.when === "answer" ? sc.answer && sc.answer.run : sc[t.when]);
     if (run) return run(ctx);

@@ -996,6 +996,8 @@ Object.assign(SCRIPTS, {
 
 // ---------- Starter Deck 09: วานร ----------
 const monkey = (E, s, x) => isAv(E, s, x) && E.named(s, x, "วานร");
+// FAQ ป่าแห่งเมืองขีดขิน: the other side may use our Land, but not with a วานร that takes no effect from OUR Magic (วีรชนชีวภาพ, ริกกี้ คุณตา …)
+const landMonkey = (E, s, land, p) => (y) => { if (!monkey(E, s, y)) return false; if (land.o == null || land.o === p) return true; return !E.magicProof(s, y); };
 const monkeyDef = (d) => !!d && d.t === "A" && String(d.n || "").includes("วานร");
 const monkeyToken = (seat, n = 1) => ({ op: "token", seat, n, name: "วานร", power: 1, cost: 1, symbol: "สัตว์", color: "เขียว" });
 const tokensFirst = (E, s) => (a, b) => (b.tok ? 1 : 0) - (a.tok ? 1 : 0) || worth(E, s, a) - worth(E, s, b);
@@ -1072,8 +1074,8 @@ Object.assign(SCRIPTS, {
   // ดาบพระขรรค์: worn only by วานร · POWER +2
   "SD09-019": { modOnly: (E, s, host) => monkey(E, s, host), worn: () => 2 },
   // ป่าแห่งเมืองขีดขิน (Land): once per turn, sacrifice a วานร: draw 1
-  "SD09-020": { activate: { label: "เซ่นไหว้ Avatar วานร 1 ใบ: จั่ว 1 ใบ", can: (E, s, x, L) => L.z === "land" && s.phase === "main" && s.P[L.p].av.some((y) => monkey(E, s, y)),
-    run: (c) => { const { E, s, seat: p } = c; const sac = c.choose(s.P[p].av.filter((y) => monkey(E, s, y)).sort(tokensFirst(E, s)), 1, "เซ่นไหว้ Avatar วานร 1 ใบเพื่อจั่ว 1 ใบ", { exact: true })[0];
+  "SD09-020": { activate: { label: "เซ่นไหว้ Avatar วานร 1 ใบ: จั่ว 1 ใบ", can: (E, s, x, L) => L.z === "land" && s.phase === "main" && s.P[L.p].av.some(landMonkey(E, s, x, L.p)),
+    run: (c) => { const { E, s, seat: p, self: x } = c; const sac = c.choose(s.P[p].av.filter(landMonkey(E, s, x || { o: p }, p)).sort(tokensFirst(E, s)), 1, "เซ่นไหว้ Avatar วานร 1 ใบเพื่อจั่ว 1 ใบ", { exact: true })[0];
       return sac ? { explain: `เซ่นไหว้ ${E.name(s, sac)} · จั่ว 1 ใบ`, ops: [{ op: "destroy", i: sac.i, why: "เซ่นไหว้" }, { op: "draw", seat: p, n: 1 }] } : { explain: "ไม่มีวานรให้เซ่นไหว้", ops: [] }; } } },
   // ไม่นะ คิงคา / นังชั่ว ตายแล้ว (LIFE): in the next Main Phase, with 4+ วานร Avatars in our hell: a วานร Token
   "SD09-023": { life: lifeMonkey }, "SD09-024": { life: lifeMonkey },

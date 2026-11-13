@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113131055";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261113131055";
-import { SCRIPTS } from "./scripts.js?v=20261113131055";
-import { newId, clone } from "./util.js?v=20261113131055";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113131839";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261113131839";
+import { SCRIPTS } from "./scripts.js?v=20261113131839";
+import { newId, clone } from "./util.js?v=20261113131839";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -255,6 +255,9 @@ export const E = {
   lands(s) { return [s.land, s.land2].filter(Boolean); }, // two Land Magic cards only while แบ่งแยกดินแดน is on the Land Magic Zone
   // Land Magic is shared by both players: either may use its "สั่งใช้" abilities, and "ฝ่ายเรา" on it means whoever
   // uses it. The card's place with p set to that player, for the ability's own checks (other cards: just where it is)
+  // does this Avatar take no effect from the other side's Magic right now? (วีรชนชีวภาพ's protection, or a card that says so itself)
+  magicProof(s, x) { if (x.mprot && x.mprot.until >= s.turn) return true; const mp = !x.mute && (scriptOf(s, x) || {}).magicProof; return !!(typeof mp === "function" ? mp(E, s, x) : mp); },
+  krakenCan(s, p, x) { const L = E.locate(s, x.i); return !!x.kraken && !!L && L.z === "mg" && L.p === p && x.on == null && s.phase === "main" && s.active === p && s.P[p].hand.length >= 2 && E.avatars(s.P[p]) < 4 && !E.actBlocked(s, p, x); },
   actLoc(s, i, p) { const L = E.locate(s, i); return L && L.z === "land" ? { ...L, p } : L; },
   landSc(s, k) { for (const l of E.lands(s)) { if (l.mute) continue; const sc = scriptOf(s, l); if (sc && sc[k]) return sc; } return null; },
   placeLand(s, x) { // x goes onto the Land Magic Zone: it replaces the Land there, or (แบ่งแยกดินแดน) only its owner's own Land
@@ -415,7 +418,7 @@ export const E = {
     if (L.z === "mg" && x.on) { const H = E.locate(s, x.on); if (H && H.x.muteBy === x.i) { delete H.x.mute; delete H.x.muteBy; } delete x.on; if (H && H.z === "av" && !x.mute && (scriptOf(s, x) || {}).leaveKillsHost) s.later2 = [...(s.later2 || []), H.x.i]; if (H && H.z === "av" && !x.mute && (scriptOf(s, x) || {}).leaveReturns && H.p !== H.x.o) { const P0 = s.P[H.x.o]; if (E.avatars(P0) < 4) { s.P[H.p].av.splice(s.P[H.p].av.indexOf(H.x), 1); P0.av.push(H.x); E.log(s, H.x.o, `${E.name(s, H.x)} กลับไปอยู่กับเจ้าของ`); } } }
     if (L.z === "av" && to !== "av") { for (const q of [0, 1]) for (const y of s.P[q].av) if (y.nwBy === x.i) { delete y.nw; delete y.nwBy; } const so = x.mute ? null : scriptOf(s, x); if (so && so.onLeave) s.trig.push({ id: tid(s), seat: L.p, i: x.i, c: x.c, when: "onLeave" }); }
     if (x.tok && to !== "av") { E.log(s, L.p, `Token ${E.name(s, x)} ถูกนำออกจากเกม`); return null; }
-    x.a = true; x.pm = 0; x.tm = 0; for (const k of ["ntg", "backDraw", "ctlx", "home", "kw", "kt", "ua", "tn", "fm", "story", "mute", "zero", "muteEnd", "guard", "used", "saved", "exd", "canAtk", "back", "lk", "lkp", "cst", "nlt", "hs", "sb", "t0", "muteBy", "ind", "imm", "nsh", "cm", "ups", "blk", "fromHell", "noAct", "bp", "fd", "rimm", "own", "lh2", "kf", "frz", "px", "feed", "ofa", "mustAtk", "sumt", "picky", "hs2", "tani", "twice", "twiceUsed", "sye", "nw", "nwBy", "nact", "mil", "kdm", "fa", "stay"]) delete x[k]; if (to !== "hand") delete x.hcm; if (to !== "hell") delete x.hlock; if (to !== "life") delete x.up; if (!["av", "mg", "cs", "land"].includes(to)) { delete x.nameAs; delete x.syAs; delete x.ov; delete x.srv; delete x.xn; delete x.xsy; delete x.mgo; }
+    x.a = true; x.pm = 0; x.tm = 0; for (const k of ["ntg", "backDraw", "ctlx", "home", "kw", "kt", "ua", "tn", "fm", "story", "mute", "zero", "muteEnd", "guard", "used", "saved", "exd", "canAtk", "back", "lk", "lkp", "cst", "nlt", "hs", "sb", "t0", "muteBy", "ind", "imm", "nsh", "cm", "ups", "blk", "fromHell", "noAct", "bp", "fd", "rimm", "own", "lh2", "kf", "frz", "kraken", "px", "feed", "ofa", "mustAtk", "sumt", "picky", "hs2", "tani", "twice", "twiceUsed", "sye", "nw", "nwBy", "nact", "mil", "kdm", "fa", "stay"]) delete x[k]; if (to !== "hand") delete x.hcm; if (to !== "hell") delete x.hlock; if (to !== "life") delete x.up; if (!["av", "mg", "cs", "land"].includes(to)) { delete x.nameAs; delete x.syAs; delete x.ov; delete x.srv; delete x.xn; delete x.xsy; delete x.mgo; }
     const owner = x.o; const ctl = seatOverride != null ? seatOverride : (L.z === "land" ? owner : L.p);
     const dest = { hand: owner, hell: owner, dark: owner, deckTop: owner, deckBottom: owner, life: seatOverride != null ? seatOverride : owner }[to];
     if (to === "deckTop") s.P[dest].deck.unshift(x);
@@ -845,6 +848,9 @@ export const E = {
       case "activate": { // scripted once-per-turn ability on the field
         const L = E.actLoc(s, act.i, p); need(L && L.p === p, "ไม่พบการ์ดของคุณ"); const sc = scriptOf(s, L.x);
         need(E.canAct(s, p) && (s.phase === "main" || (s.phase === "battle" && sc && sc.activate && sc.activate.battle)), "สั่งใช้ตอนนี้ไม่ได้");
+        if (act.k === "kraken") { // FAQ คราเค่น: the Avatar sent to its controller's Magic Zone may come back for two cards from hand — used by that controller only
+          need(L.z === "mg" && E.krakenCan(s, p, L.x), "ใช้ความสามารถนี้ไม่ได้ตอนนี้"); s.trig.push({ id: tid(s), seat: p, i: L.x.i, c: L.x.c, when: "activate", k: "kraken" }); E.log(s, p, `สั่งใช้ความสามารถ ${E.name(s, L.x)} (จาก Magic Zone)`); E.openWindow(s, p, "activate", L.x.i, { off: L.z }); return;
+        }
         if (act.k != null) { // an ability read from the card text (see effects.js)
           need(s.phase === "main" && E.ext.acts && E.ext.acts(s, L.x, L).some((a) => a.k === act.k), "ใช้ความสามารถนี้ไม่ได้ตอนนี้"); need(!E.actBlocked(s, p, L.x), "เทิร์นนี้ใช้ความสามารถของการ์ดใบนี้ไม่ได้");
           (L.x.ua = L.x.ua || {})[act.k] = s.turn; s.trig.push({ id: tid(s), seat: p, i: L.x.i, c: L.x.c, when: "activate", k: act.k }); E.log(s, p, `สั่งใช้ความสามารถ ${E.name(s, L.x)}`); if (L.z === "av") E.abilitySeen(s, p, L.x); if (L.z === "av") E.openWindow(s, p, "activate", L.x.i); else if (["A", "T"].includes(E.def(s, L.x).t)) E.openWindow(s, p, "activate", L.x.i, { off: L.z }); return;
@@ -1335,6 +1341,7 @@ export function legalMoves(s, p) {
       else if (d.st !== "L") out.push({ d: `ใช้ ${SUB_TH[d.st]} Magic ${d.n} จากนรก`, a: { type: "cast", i: x.i, from: "hell" } }); }
     for (const x of [...P.av, ...P.cs, ...P.mg, ...P.dark, ...P.hell, ...P.hand, ...uniqDeckActs(s, P), ...E.lands(s)]) { const L = E.actLoc(s, x.i, p); const sc = scriptOf(s, x); if (sc && sc.activate && (sc.activate.multi || x.used !== s.turn) && x.noAct !== s.turn && !E.actBlocked(s, p, x) && sc.activate.can(E, s, x, L)) out.push({ d: `สั่งใช้ ${E.name(s, x)}: ${sc.activate.label}`, a: { type: "activate", i: x.i } }); }
     if (E.ext.acts) for (const x of [...P.av, ...P.cs, ...E.lands(s)]) if (!E.actBlocked(s, p, x)) for (const a of E.ext.acts(s, x, E.actLoc(s, x.i, p))) out.push({ d: `สั่งใช้ ${E.name(s, x)}: ${a.label}`, a: { type: "activate", i: x.i, k: a.k } });
+    for (const x of P.mg) if (E.krakenCan(s, p, x)) out.push({ d: `สั่งใช้ ${E.name(s, x)}: ทิ้งการ์ดบนมือ 2 ใบ อัญเชิญจาก Magic Zone (ความสามารถที่ได้จาก คราเค่น ปลาหมึกปีศาจ)`, a: { type: "activate", i: x.i, k: "kraken" } });
     out.push(...anytimeReacts(s, p));
     out.push({ d: s.turn === 1 ? "จบเทิร์น (เทิร์นแรกไม่มี Battle)" : "ไป Battle Phase", a: { type: "battle" } });
   } else if (s.phase === "battle") {
