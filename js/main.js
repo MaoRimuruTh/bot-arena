@@ -1,22 +1,26 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261113180519";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261113180519";
-import { AVATARS, MATS, SIGILS, SCENES, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261113180519";
-import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, unlocked, needFor } from "./achieve.js?v=20261113180519";
-import { Vault, startVault } from "./vault.js?v=20261113180519";
-import { vaultSection } from "./vaultui.js?v=20261113180519";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261113180519";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261113180519";
-import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261113180519";
-import { Views, avatarEl } from "./ui.js?v=20261113180519";
-import { Ciel } from "./ai.js?v=20261113180519";
-import "./views/library.js?v=20261113180519";
-import "./views/decks.js?v=20261113180519";
-import "./views/lab.js?v=20261113180519";
-import "./views/history.js?v=20261113180519";
-import { openReport } from "./views/ask.js?v=20261113180519";
-import "./views/play.js?v=20261113180519";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261113180720";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261113180720";
+import { AVATARS, MATS, SIGILS, SCENES, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261113180720";
+import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, unlocked, needFor } from "./achieve.js?v=20261113180720";
+import { Vault, startVault } from "./vault.js?v=20261113180720";
+import { vaultSection } from "./vaultui.js?v=20261113180720";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261113180720";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261113180720";
+import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261113180720";
+import { Views, avatarEl } from "./ui.js?v=20261113180720";
+import { Ciel } from "./ai.js?v=20261113180720";
+import "./views/library.js?v=20261113180720";
+import "./views/decks.js?v=20261113180720";
+import "./views/lab.js?v=20261113180720";
+import "./views/history.js?v=20261113180720";
+import { openReport } from "./views/ask.js?v=20261113180720";
+import "./views/play.js?v=20261113180720";
 
 const root = $("#view");
+// text size for the whole app (everything is sized in rem), kept per browser; Hearthstone and LoR offer the same for small screens
+const textSize = () => { const v = +lsGet("bot.fs", 1); return [1, 1.12, 1.25].includes(v) ? v : 1; };
+const applyTextSize = () => { document.documentElement.style.fontSize = textSize() === 1 ? "" : textSize() * 100 + "%"; };
+applyTextSize();
 let current = null, cardsReady = false;
 // installable as an app: the service worker serves the app's own files, and the browser's install prompt waits in Settings
 let installEv = null;
@@ -93,6 +97,7 @@ function gfxSection() {
     h("div", { class: "small muted" }, "สวยสุด: แสงฟุ้ง เงา และทองสะท้อนแสงทุกเครื่อง · ประหยัดเครื่อง: เหมาะกับมือถือรุ่นเก่า วาดภาพ 30 เฟรมต่อวินาที แบตอยู่นานขึ้น · อัตโนมัติ: เริ่มตามขนาดจอ แล้วลดแสงฟุ้งและความละเอียดลงเองถ้าเครื่องเล่นไม่ลื่น · แบบเรียบ 2D: ไม่มีโต๊ะ 3 มิติ การ์ดบนสนามวางเป็นแถว เบาเครื่องที่สุด"),
     seg("คุณภาพภาพ", gfxSetting(), [["auto", "อัตโนมัติ"], ["high", "สวยสุด"], ["low", "ประหยัดเครื่อง"], ["flat", "แบบเรียบ 2D"]], "bot.gfx", (t) => `ภาพ: ${t} มีผลตอนเปิดสนามครั้งถัดไป`),
     seg("ความเร็วแอนิเมชัน", animSetting(), [[1, "ปกติ"], [1.6, "เร็ว"], [2.5, "เร็วมาก"]], "bot.anim", (t) => `แอนิเมชัน: ${t} มีผลตอนเปิดสนามครั้งถัดไป`),
+    seg("ขนาดตัวหนังสือ", textSize(), [[1, "ปกติ"], [1.12, "ใหญ่"], [1.25, "ใหญ่มาก"]], "bot.fs", (t) => { applyTextSize(); return `ตัวหนังสือ: ${t}`; }),
     // phones that can buzz (Android): a short buzz when our LIFE is hit and when our turn begins
     "vibrate" in navigator ? seg("สั่นเมื่อโดนตี LIFE และถึงตาเรา", buzzOn() ? "1" : "0", [["1", "สั่น"], ["0", "ไม่สั่น"]], "bot.buzz", (t) => (t === "สั่น" ? "มือถือจะสั่นเมื่อโดนตี LIFE และถึงตาเรา" : "ปิดการสั่นแล้ว")) : null];
 }
