@@ -738,3 +738,30 @@ table.t th{white-space:nowrap}
 
 /* a phone's top bar shows all six pages at once (the last one used to sit off the edge, out of sight) */
 @media (max-width:430px){.nav{gap:0;justify-content:space-between;margin:0}.nav a{padding:6px 5px;font-size:.88rem}.nav a[aria-current="page"]::after{left:6px;right:6px}}
+
+/* before the game: a die each, or a coin with both players' pictures (play.js tossBox) */
+.tossing .handzone,.tossing .handrow{visibility:hidden}
+.prompt.toss{top:50%;bottom:auto;transform:translate(-50%,-50%);width:min(560px,92vw);align-items:center;text-align:center;gap:14px;padding:20px 18px;z-index:7}
+body.arena-on .prompt.toss{top:50%;bottom:auto;max-height:86vh}
+.tossvote{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%}
+.tosscard{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 10px;border-radius:16px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:inherit;cursor:pointer;transition:transform .15s,border-color .15s,background .15s}
+.tosscard .ic{font-size:2.4rem;line-height:1} .tosscard b{font:700 1.05rem var(--f-display)} .tosscard small{font-size:.72rem;opacity:.75;line-height:1.35}
+.tosscard:not(:disabled):hover,.tosscard:not(:disabled):focus-visible{transform:translateY(-3px);border-color:var(--gold);background:rgba(216,168,74,.12)}
+.tosscard.on{border-color:var(--gold);background:rgba(216,168,74,.18)} .tosscard:disabled{cursor:default;opacity:.7} .tosscard.on:disabled{opacity:1}
+.tossstat{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;font-size:.78rem;opacity:.85} .tossstat .ok{color:#8ee3b2}
+.tossrow{display:flex;align-items:center;justify-content:center;gap:22px;width:100%} .tossrow .vs{font:700 1rem var(--f-display);opacity:.6}
+.tosscol{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:120px;padding:10px;border-radius:16px;border:1px solid transparent}
+.tosscol.win{border-color:var(--gold);background:rgba(216,168,74,.12);box-shadow:0 0 26px rgba(216,168,74,.25)}
+.ava.xl{width:64px;height:64px;font-size:1.5rem}
+.die{position:relative;width:74px;height:74px;border-radius:16px;background:linear-gradient(145deg,#fff8ea,#e9d6ad);box-shadow:inset 0 -5px 10px rgba(120,80,20,.28),0 8px 18px rgba(0,0,0,.45);display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:11px;gap:2px}
+.die i{border-radius:50%;margin:2px} .die i.on{background:radial-gradient(circle at 35% 30%,#7a1f2b,#3a0b12)}
+.die.blank{background:linear-gradient(145deg,#4a3327,#2a1a13);box-shadow:inset 0 0 0 1px var(--line),0 8px 18px rgba(0,0,0,.45)} .die .q{position:absolute;inset:0;display:grid;place-items:center;font:700 1.8rem var(--f-display);color:var(--gold);opacity:.8}
+.die.rolling{animation:dieroll .36s linear infinite}
+@keyframes dieroll{0%{transform:rotate(-14deg) translateY(0) scale(1)}25%{transform:rotate(10deg) translateY(-12px) scale(1.06)}50%{transform:rotate(-6deg) translateY(0) scale(1)}75%{transform:rotate(14deg) translateY(-8px) scale(1.04)}100%{transform:rotate(-14deg) translateY(0) scale(1)}}
+.coinbox{perspective:700px;height:150px;display:grid;place-items:center;width:100%}
+.coin{position:relative;width:112px;height:112px;transform-style:preserve-3d}
+.coin .face{position:absolute;inset:0;border-radius:50%;display:grid;place-items:center;backface-visibility:hidden;-webkit-backface-visibility:hidden;background:radial-gradient(circle at 32% 28%,#ffe9a8,#d8a84a 55%,#8a5d12);box-shadow:inset 0 0 0 5px rgba(120,80,20,.55),inset 0 0 0 8px rgba(255,236,170,.5),0 10px 24px rgba(0,0,0,.5)}
+.coin .face.back{transform:rotateY(180deg);background:radial-gradient(circle at 32% 28%,#f1f4f8,#aab4c2 55%,#5b6675);box-shadow:inset 0 0 0 5px rgba(70,80,95,.6),inset 0 0 0 8px rgba(240,245,250,.5),0 10px 24px rgba(0,0,0,.5)}
+.coin .face .ava{width:78px;height:78px;font-size:1.9rem;box-shadow:none}
+@media (max-width:560px){.tosscard{padding:12px 6px} .tosscard .ic{font-size:2rem} .tossrow{gap:10px} .tosscol{min-width:96px} .die{width:62px;height:62px;padding:9px}}
+@media (prefers-reduced-motion:reduce){.die.rolling{animation:none}}

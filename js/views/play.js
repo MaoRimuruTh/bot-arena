@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261113115141";
-import { fxText, kwGloss } from "../fxtext.js?v=20261113115141";
-import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261113115141";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261113115141";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261113115141";
-import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261113115141";
-import { myFigure, myMat, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261113115141";
-import { themeCounts } from "../boxdecks.js?v=20261113115141";
-import { ladder, ladderReset } from "../ladder.js?v=20261113115141";
-import { notify } from "../notify.js?v=20261113115141";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261113115141";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261113115141";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261113115141";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261113115141";
-import { Music } from "../music.js?v=20261113115141";
-import { Sfx } from "../sfx.js?v=20261113115141";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261113115141";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261113115141";
-import { readAura, traits } from "../auras.js?v=20261113115141";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261113115141";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261113120629";
+import { fxText, kwGloss } from "../fxtext.js?v=20261113120629";
+import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261113120629";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261113120629";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261113120629";
+import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261113120629";
+import { myFigure, myMat, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor } from "../achieve.js?v=20261113120629";
+import { themeCounts } from "../boxdecks.js?v=20261113120629";
+import { ladder, ladderReset } from "../ladder.js?v=20261113120629";
+import { notify } from "../notify.js?v=20261113120629";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261113120629";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261113120629";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261113120629";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261113120629";
+import { Music } from "../music.js?v=20261113120629";
+import { Sfx } from "../sfx.js?v=20261113120629";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261113120629";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261113120629";
+import { readAura, traits } from "../auras.js?v=20261113120629";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261113120629";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -26,8 +26,8 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(s.id ? [`รีเพลย์ในเครื่องนี้: ${s.id}-${V}`] : []), "บันทึก 40 บรรทัดล่าสุด:\n" + s.log.slice(-40).map((l) => "· " + l.m).join("\n"), // so a report can be traced back to its game
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261113115141";
-import { customMat, customSleeve, customFig, setOnReady, onVault } from "../vault.js?v=20261113115141";
+import { allDecks, deckById } from "./decks.js?v=20261113120629";
+import { customMat, customSleeve, customFig, setOnReady, onVault } from "../vault.js?v=20261113120629";
 // the players' own mat picture, card sleeve and figure (vault.js): the table asks for them, and redraws when one loads or changes
 Arena.setCustom({ mat: customMat, sleeve: customSleeve, fig: customFig, skins: (s) => setGameSkins(s && s.P, Me.uid) }); setOnReady((o) => Arena.customReady(o)); onVault(() => Arena.refreshCustom());
 { let sig = ""; Data.listeners.add(() => { const sh = Data.meta && Data.meta.show, now = sh ? Object.entries(sh).map(([k, x]) => k + ":" + (x && x.v) + ":" + (x && x.finish)).join() : ""; if (now !== sig) { sig = now; Arena.refreshCustom(); } }); }
@@ -39,6 +39,7 @@ let G = null; // live game
 // who must act now
 function whoActs(s) {
   if (s.phase === "over") return null;
+  if (s.phase === "toss") return E.tossSeat(s);
   if (s.phase === "mull") return s.mull[0] ? (s.mull[1] ? null : 1) : 0;
   if (s.rw) return 1 - s.rw.by;
   if (s.trig.length) return s.trig[0].seat;
@@ -222,7 +223,7 @@ function startLocal(mode) {
   // goldfish (ซ้อมมือเดียว): the other side is a training dummy that never plays a card, so the game shows how fast this deck can win
   const fish = mode === "goldfish"; const me = deckById(Setup.deck), op = fish ? me : pickOpp(); if (!me || !op) return toast("เลือกเด็คก่อน");
   const botName = Setup.brain === "ciel" && Ciel.on() ? "ชิเอล" : (BOT_LEVEL[Setup.brain] || BOT_LEVEL.basic).name;
-  const init = { players: [{ uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), skins: skinsFor(me) }, fish ? { name: "หุ่นซ้อม", bot: true, mat: botMat() } : mode === "bot" ? { name: botName, bot: true, av3: myFigure() ? "chang" : "", mat: botMat() } : { uid: Me.uid, name: "ฝั่งที่ 2", mat: botMat(), skins: skinsFor(op) }], decks: [pack(me), pack(op)], seed: (Math.random() * 2 ** 31) | 0, first: fish ? 0 : Math.random() < 0.5 ? 0 : 1, mode: fish ? "bot" : mode };
+  const init = { players: [{ uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), skins: skinsFor(me) }, fish ? { name: "หุ่นซ้อม", bot: true, mat: botMat() } : mode === "bot" ? { name: botName, bot: true, av3: myFigure() ? "chang" : "", mat: botMat() } : { uid: Me.uid, name: "ฝั่งที่ 2", mat: botMat(), skins: skinsFor(op) }], decks: [pack(me), pack(op)], seed: (Math.random() * 2 ** 31) | 0, first: 0, toss: !fish, mode: fish ? "bot" : mode };
   const s = E.newGame(init);
   G = { s, V: 0, mode: fish ? "bot" : mode, fish, brain: fish ? "goldfish" : mode !== "bot" ? "basic" : Setup.brain === "ciel" ? (Ciel.on() ? "ciel" : "basic") : BOT_LEVEL[Setup.brain] ? Setup.brain : "basic", id: s.id, saved: false, rec: { init: { ...init, id: s.id }, acts: [] } };
   persist(); go();
@@ -248,7 +249,7 @@ function persist() { if (!G || G.replay || G.watch) return; if (G.mode === "frie
 function stopGame(clear) {
   if (!G) return; if (G.unsub) G.unsub(); if (clear) { if (!G.watch) lsDel(SAVE); } else persist(); // a watcher never touches their own saved game
   if (G.mode === "friend" && !G.watch && G.s && G.s.phase === "over") trimGame(G.id, G.s);
-  clearInterval(G.idleTick); clearInterval(G.dog); Arena.unmount(); Music.stop(); setGameSkins(null); document.body.classList.remove("arena-on"); document.querySelectorAll(".banner,.dmg,.emo,.showcase,.flatfx,.fxcuts,.dragghost,#atkarrow,#foearrow").forEach((e) => e.remove()); G = null;
+  clearInterval(G.idleTick); clearInterval(G.dog); Arena.unmount(); Music.stop(); setGameSkins(null); document.body.classList.remove("arena-on", "tossing"); document.querySelectorAll(".banner,.dmg,.emo,.showcase,.flatfx,.fxcuts,.dragghost,#atkarrow,#foearrow").forEach((e) => e.remove()); G = null;
 }
 // ---------- friends ----------
 async function createRoom(extra = {}) { // extra: a tournament match ({ tour, vs, vsName }) only that friend may join
@@ -262,7 +263,7 @@ async function joinRoom(r) {
   try {
     await F.runTransaction(db, async (tx) => {
       const snap = await tx.get(gameRef(r.id)); const g = snap.data(); if (!g || g.status !== "waiting") throw new Error("ห้องนี้เริ่มไปแล้ว"); if (g.vs && g.vs !== Me.uid) throw new Error("ห้องนี้เป็นแมตช์ทัวร์ของเพื่อนคนอื่น");
-      const s = E.newGame({ players: [{ uid: g.host, name: g.hostName, ava: g.hostAva || "", av3: g.hostAv3 || "", sig: g.hostSig || "", mat: g.hostMat || "", sleeve: g.hostSleeve || "", skins: g.hostSkins || null }, { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), skins: skinsFor(me) }], decks: [g.hostDeck, pack(me)], seed: (Math.random() * 2 ** 31) | 0, first: Math.random() < 0.5 ? 0 : 1, mode: "friend", id: r.id });
+      const s = E.newGame({ players: [{ uid: g.host, name: g.hostName, ava: g.hostAva || "", av3: g.hostAv3 || "", sig: g.hostSig || "", mat: g.hostMat || "", sleeve: g.hostSleeve || "", skins: g.hostSkins || null }, { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), skins: skinsFor(me) }], decks: [g.hostDeck, pack(me)], seed: (Math.random() * 2 ** 31) | 0, first: 0, toss: true, mode: "friend", id: r.id });
       tx.update(gameRef(r.id), { status: "playing", guest: Me.uid, guestName: myName(), seats: [g.host, Me.uid], state: JSON.stringify(s), updatedAt: Date.now() });
     });
     openOnline(r.id, 1);
@@ -300,7 +301,7 @@ function heads(was, s) {
   if (!was) { if (G.sawWaiting) notify("เพื่อนเข้าห้องแล้ว", `${op} เข้าร่วมแล้ว เริ่มเกมได้เลย`, "bot-game"); return; }
   if (s.phase === "over") { if (was.phase !== "over") notify(s.winner === V ? "คุณชนะ!" : s.winner == null ? "เกมเสมอ" : "เกมจบแล้ว", s.reason || "", "bot-game"); return; }
   const p = whoActs(s); if (p !== V || whoActs(was) === V || (s.pend && nothingToAnswer(s, V))) return;
-  notify("ถึงตาคุณแล้ว", s.phase === "mull" ? "เลือกเปลี่ยนการ์ดบนมือ" : s.pend ? `${op} โจมตี เลือกการตอบโต้` : s.active === V ? `เทิร์น ${s.turn} ของคุณ` : "มีเอฟเฟกต์ให้เลือก", "bot-game");
+  notify("ถึงตาคุณแล้ว", s.phase === "toss" ? "เสี่ยงทายว่าใครได้เลือกเริ่มก่อน" : s.phase === "mull" ? "เลือกเปลี่ยนการ์ดบนมือ" : s.pend ? `${op} โจมตี เลือกการตอบโต้` : s.active === V ? `เทิร์น ${s.turn} ของคุณ` : "มีเอฟเฟกต์ให้เลือก", "bot-game");
 }
 // ---------- watching a friend's game: the same table, read only, both hands face down ----------
 function flipWatch() { if (!G || !G.watch || !G.s) return; G.V = 1 - G.V; G.pcMe = G.pcOp = undefined; G.sel = G.hover = null; Arena.update(G.s, G.V, { reset: true, flush: true }); draw(); }
@@ -463,6 +464,7 @@ async function drive() {
     if (!quick && !(await pace())) return;
     let a = null; const lv = BOT_LEVEL[G.brain]; if (lv) H.look = lv.look;
     if (G.brain === "goldfish" && !s.trig.length && !(s.phase === "end" && s.need)) a = s.phase === "mull" ? { type: "mull", iids: [] } : s.rw ? { type: "pass" } : s.pend ? { type: "respond" } : { type: "end" }; // the dummy keeps its hand and never answers
+    else if (s.phase === "toss") { await sleep(Math.max(0, tossBusy(s) - Date.now()) + 350); if (!fresh()) return; a = H.toss(s, p); }
     else if (s.phase === "mull") a = { type: "mull", iids: G.brain === "easy" ? [] : H.mulligan(s, p) };
     else if (s.rw) a = (G.brain === "easy" ? null : H.react(s, p)) || { type: "pass" };
     else if (s.trig.length) {
@@ -558,7 +560,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261113115141").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261113120629").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", mat: botMat(), bot: true });
@@ -804,10 +806,12 @@ function openLife(P) {
 function draw() {
   if (!G || !G.hud || !G.s) return; setGameSkins(G.s.P, Me.uid); if (G.hoverHand != null && !G.s.P[view()].hand.some((x) => x.i === G.hoverHand)) G.hoverHand = null; const s = G.s; const V = view(); const me = s.P[V], op = s.P[1 - V]; const p = whoActs(s);
   const myTurn = p != null && mine(p);
+  document.body.classList.toggle("tossing", s.phase === "toss"); // the hand stays face down until it is settled who starts
+  if (s.toss && s.toss.pick && G.tossSaid !== s.id) { G.tossSaid = s.id; if (s.turn === 0) toast(`${s.P[s.first].name} เริ่มก่อน`); }
   const hint0 = G.replay ? `รีเพลย์ · เทิร์น ${s.turn} · ${s.phase === "over" ? "จบเกม" : "ตาของ " + s.P[s.active].name}`
     : G.puzzle && (G.pzFail || s.phase === "over") ? (s.phase === "over" && s.winner === V ? `ไขโจทย์ที่ ${G.puzzle.k + 1} สำเร็จ!` : "หมดเทิร์นแล้วยังไม่ชนะ · ย้อนตาหรือเริ่มโจทย์ใหม่")
     : G.watch ? (s.phase === "over" ? (s.winner == null ? "เสมอ · " : s.P[s.winner].name + " ชนะ · ") + s.reason : "กำลังชม" + (p == null ? "" : ` · รอ ${s.P[p].name}…`)) : s.phase === "over" ? (s.winner === V ? "ชนะ! " : s.winner == null ? "เสมอ · " : "แพ้ · ") + s.reason
-    : G.thinking || (p == null ? "" : !mine(p) ? `รอ ${s.P[p].name}…` : s.phase === "mull" ? "เลือกการ์ดที่จะเปลี่ยน หรือเก็บมือเดิม" : s.trig.length ? "มีเอฟเฟกต์ต้องจัดการ" : s.rw ? "ใช้ React ตอบโต้ หรือกด ไม่ตอบโต้" : s.pend ? "ถูกโจมตี เลือกการตอบโต้" : s.phase === "main" ? "Main Phase · แตะการ์ดบนมือเพื่อเล่น" : s.phase === "battle" ? (G.att != null ? (touchy() ? "แตะเป้าหมาย · แตะใบเดิมอีกครั้งเพื่อดูการ์ด" : "คลิกเป้าหมาย หรือลากไปปล่อยที่เป้า") : "Battle · ลาก Avatar ที่ตื่นไปที่เป้าหมาย หรือแตะทีละใบ") : s.phase === "end" && s.need ? `ทิ้งการ์ด ${s.need} ใบ` : "");
+    : G.thinking || (p == null ? "" : s.phase === "toss" ? "เสี่ยงทายว่าใครได้เลือกเริ่มก่อนหรือทีหลัง" : !mine(p) ? `รอ ${s.P[p].name}…` : s.phase === "mull" ? "เลือกการ์ดที่จะเปลี่ยน หรือเก็บมือเดิม" : s.trig.length ? "มีเอฟเฟกต์ต้องจัดการ" : s.rw ? "ใช้ React ตอบโต้ หรือกด ไม่ตอบโต้" : s.pend ? "ถูกโจมตี เลือกการตอบโต้" : s.phase === "main" ? "Main Phase · แตะการ์ดบนมือเพื่อเล่น" : s.phase === "battle" ? (G.att != null ? (touchy() ? "แตะเป้าหมาย · แตะใบเดิมอีกครั้งเพื่อดูการ์ด" : "คลิกเป้าหมาย หรือลากไปปล่อยที่เป้า") : "Battle · ลาก Avatar ที่ตื่นไปที่เป้าหมาย หรือแตะทีละใบ") : s.phase === "end" && s.need ? `ทิ้งการ์ด ${s.need} ใบ` : "");
   const hint = G.puzzle && !G.pzFail && s.phase !== "over" && hint0 ? `โจทย์ที่ ${G.puzzle.k + 1} · ` + hint0 : hint0;
   const pile = (P, z, t) => h("button", { onclick: () => openPile(P, z) }, h("b", null, P[z].length), h("span", null, t));
   const ph = ["draw", "main", "battle", "end"];
@@ -1040,7 +1044,7 @@ function abilityActs(s, x, L, hasOther) {
 // abilities with no card on the table to tap: used from the hand, hell, the dark zone or the deck (and Magic cast from
 // hell). The desktop turn bar shows them; the game menu lists them on every screen (the phone bar has room for two buttons)
 function farActs(s, p) {
-  if (p == null || !mine(p) || s.trig.length || s.pend || s.rw || s.phase === "mull" || s.active !== p || G.replay || G.watch) return [];
+  if (p == null || !mine(p) || s.trig.length || s.pend || s.rw || (s.phase === "mull" || s.phase === "toss") || s.active !== p || G.replay || G.watch) return [];
   const main = s.phase === "main"; if (!main && s.phase !== "battle") return [];
   const P = s.P[p]; const zones = main ? [...P.hand, ...P.hell, ...P.dark, ...uniqDeckActs(s, P)] : [...P.hand, ...P.hell, ...P.dark, ...P.mg];
   const out = zones.filter((x) => { const sc = scriptOf(s, x); return sc && sc.activate && (main || sc.activate.battle) && x.used !== s.turn && sc.activate.can(E, s, x, E.locate(s, x.i)); })
@@ -1083,7 +1087,7 @@ function cardView(x) {
 // the same decks again straight away (a random opponent is drawn again); learn mode replays its lesson game
 // take-back (local games): rebuild the game from its start without my last deliberate move and everything after it;
 // effects resolving on their own, answers and passes are stepped over, so the move undone is the one I actually chose
-const UNDO_SKIP = new Set(["trig", "respond", "pass", "answer"]);
+const UNDO_SKIP = new Set(["trig", "respond", "pass", "answer", "tossVote", "tossRoll", "tossPick"]);
 function undoPoint() {
   if (!G || !G.rec || G.replay || G.mode === "friend" || !G.s || G.s.phase === "over") return -1;
   const acts = G.rec.acts, human = (p) => G.mode === "solo" || p === G.V;
@@ -1108,7 +1112,7 @@ function turnButtons(s, p) {
     const choose = h("button", { class: "btn sm", onclick: () => { stopGame(true); location.hash = "#play"; } }, "เลือกโจทย์อื่น");
     if (s.phase === "over" && s.winner === G.V) return [h("button", { class: "btn gold sm", onclick: puzzleNext }, "โจทย์ถัดไป"), choose];
     if (s.phase === "over" || G.pzFail) return [undoBtn(), h("button", { class: "btn gold sm", onclick: puzzleRestart }, "เริ่มโจทย์ใหม่"), choose];
-    const b = turnButtons0(s, p); if (!(p === G.V && mine(p) && !s.trig.length && !s.pend && s.phase !== "mull")) return b;
+    const b = turnButtons0(s, p); if (!(p === G.V && mine(p) && !s.trig.length && !s.pend && s.phase !== "mull" && s.phase !== "toss")) return b;
     const hint = h("button", { class: "btn ciel sm", onclick: puzzleHint }, "คำใบ้"); return compact() ? [hint, ...b] : [...b, hint]; // the phone bar shows only two
   }
   return turnButtons0(s, p);
@@ -1120,7 +1124,7 @@ function turnButtons0(s, p) {
       : G.offer ? h("button", { class: "btn gold sm", onclick: acceptRematch }, "รับคำท้า ดวลอีกครั้ง") : h("button", { class: "btn gold sm", onclick: friendRematch }, "ขอดวลอีกครั้ง"),
     G.rec && G.mode !== "friend" ? h("button", { class: "btn sm", onclick: () => openSummary(G) }, "สรุปเกม") : null,
     h("button", { class: "btn sm", onclick: () => { stopGame(true); location.hash = "#play"; } }, "กลับหน้าเตรียมเกม"), h("a", { class: "btn sm", href: "#history", onclick: () => stopGame(true) }, "ดูประวัติ")];
-  if (p == null || !mine(p) || s.trig.length || s.pend || s.rw || s.phase === "mull") return []; // a React moment is answered in its box
+  if (p == null || !mine(p) || s.trig.length || s.pend || s.rw || (s.phase === "mull" || s.phase === "toss")) return []; // a React moment is answered in its box
   const farBtns = (n) => farActs(s, p).slice(0, n).map((f) => h("button", { class: "btn ciel sm", title: f.title || "", onclick: () => doAct(f.a, p) }, f.d));
   if (s.phase === "main") return [h("button", { class: "btn gold sm", onclick: () => doAct({ type: "battle" }, p) }, s.turn === 1 ? "จบเทิร์น" : "ไป Battle Phase"), s.turn === 1 ? null : h("button", { class: "btn sm", onclick: () => doAct({ type: "end" }, p) }, "จบเทิร์นเลย"), compact() ? null : undoBtn(), ...farBtns(6)];
   if (s.phase === "battle") return [h("button", { class: "btn gold sm", onclick: () => doAct({ type: "end" }, p) }, "จบเทิร์น"), G.att ? h("button", { class: "btn sm", onclick: () => { G.att = null; draw(); } }, "ยกเลิกการเลือก") : compact() ? null : undoBtn(), ...farBtns(4)];
@@ -1232,7 +1236,7 @@ function showHandInspect(x) { G.hoverHand = x.i; drawInspector(); }
 // and it goes back. A press that hardly moves stays a click.
 function dragStart(e, x, el) {
   if (e.pointerType !== "mouse" || e.button !== 0 || touchy() || !G || !G.s) return;
-  const s = G.s, p = whoActs(s); if (p == null || !mine(p) || p !== view() || G.payFor || G.host || s.phase === "mull" || (s.phase === "end" && s.need)) return;
+  const s = G.s, p = whoActs(s); if (p == null || !mine(p) || p !== view() || G.payFor || G.host || (s.phase === "mull" || s.phase === "toss") || (s.phase === "end" && s.need)) return;
   const x0 = e.clientX, y0 = e.clientY, zone = document.querySelector(".hud .handzone"); let ghost = null, off = null;
   const line = () => (zone ? zone.getBoundingClientRect().top + 10 : innerHeight - 220);
   const move = (ev) => {
@@ -1280,7 +1284,57 @@ function handClick(x) {
   if (d.t === "M") { G.castFor = x.i; return draw(); } // always confirm before a Magic goes off
   showHandInspect(x);
 }
+// ── before the game: a die each, or a coin with the two players' pictures, decides who chooses to go first or second ──
+const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+const tossMs = () => (matchMedia("(prefers-reduced-motion: reduce)").matches ? { die: 250, coin: 400, tie: 900 } : { die: 1100, coin: 2800, tie: 1500 });
+const tossFx = () => (G.tossFx = G.tossFx && G.tossFx.id === G.s.id ? G.tossFx : { id: G.s.id, die: {}, coin: 0 });
+// the moment (ms) the toss animations now running are over: nothing is pressed and the bot does not act before it
+function tossBusy(s) { const t = s.toss; if (!t || !G) return 0; const fx = tossFx(), ms = tossMs(); let u = 0;
+  for (const [k, at] of Object.entries(fx.die)) { const tie = t.m === "dice" && t.win == null && Number(k.split(":")[0]) === t.n - 1; u = Math.max(u, at + ms.die + (tie ? ms.tie : 0)); }
+  if (fx.coin) u = Math.max(u, fx.coin + ms.coin); return u; }
+function dieEl(v, rolling) { const d = h("div", { class: "die" + (rolling ? " rolling" : v ? "" : " blank") });
+  const paint = (n) => d.replaceChildren(...Array.from({ length: 9 }, (_, k) => h("i", { class: (PIPS[n] || []).includes(k) ? "on" : "" })), ...(n ? [] : [h("span", { class: "q" }, "?")]));
+  paint(rolling ? 1 + Math.floor(Math.random() * 6) : v || 0);
+  if (rolling) { const iv = setInterval(() => { if (!d.isConnected) return clearInterval(iv); paint(1 + Math.floor(Math.random() * 6)); }, 90); }
+  return d; }
+function tossBox(s) {
+  const t = s.toss, V = view(), fx = tossFx(), ms = tossMs(), now = Date.now(); const p = whoActs(s); const live = !G.replay && !G.watch;
+  const nm = (q) => s.P[q].name, face = (q) => (s.P[q].bot && !s.P[q].ava ? h("span", { class: "ava xl" }, "✦") : avatarEl(s.P[q].ava, s.P[q].name, "xl"));
+  const TH = { dice: "ทอยเต๋า", coin: "โยนเหรียญ" }; const kids = []; const later = (at) => { clearTimeout(fx.timer); fx.timer = setTimeout(() => G && G.s === s && draw(), Math.max(30, at - Date.now() + 40)); };
+  if (t.m == null) { // the vote
+    kids.push(h("div", { class: "tiny muted" }, "เลือกวิธีเสี่ยงทาย ผู้ชนะได้เลือกว่าจะเริ่มก่อนหรือทีหลัง · ถ้าเลือกไม่ตรงกัน ระบบสุ่มหนึ่งในสองวิธีให้"));
+    kids.push(h("div", { class: "tossvote" }, ...[["dice", "🎲", "ทอยเต๋า", "ทอยคนละลูก แต้มมากกว่าได้เลือก"], ["coin", "🪙", "โยนเหรียญ", "เหรียญสองหน้าเป็นรูปของทั้งสองฝ่าย หน้าใครออก คนนั้นได้เลือก"]].map(([m, ic, name, sub]) =>
+      h("button", { class: "tosscard" + (live && mine(p) && t.vote[p] === m ? " on" : ""), disabled: !(live && mine(p) && t.vote[p] == null), onclick: () => doAct({ type: "tossVote", m }, p) }, h("span", { class: "ic" }, ic), h("b", null, name), h("small", null, sub)))));
+    kids.push(h("div", { class: "tossstat" }, ...[V, 1 - V].map((q) => h("span", { class: t.vote[q] ? "ok" : "" }, `${nm(q)}: ${t.vote[q] ? "เลือกแล้ว ✓" : q === p ? "กำลังเลือก…" : "รอ"}`))));
+  } else {
+    if (t.split) kids.push(h("div", { class: "tiny", style: "color:var(--gold)" }, `เลือกไม่ตรงกัน (${nm(0)}: ${TH[t.vote[0]]} · ${nm(1)}: ${TH[t.vote[1]]}) ระบบสุ่มได้: ${TH[t.m]}`));
+    if (t.m === "dice") { // a die each
+      const tieShow = t.win == null && t.tie && t.roll[0] == null && t.roll[1] == null && now < Math.max(...[0, 1].map((q) => (fx.die[`${t.n - 1}:${q}`] = fx.die[`${t.n - 1}:${q}`] || now))) + ms.die + ms.tie;
+      const val = (q) => (tieShow ? t.tie[q] : t.roll[q]), key = (q) => `${tieShow ? t.n - 1 : t.n}:${q}`;
+      for (const q of [0, 1]) if (val(q) != null && !fx.die[key(q)]) fx.die[key(q)] = now; // both dice are timed before either column is drawn
+      const col = (q) => { const v = val(q); if (v != null && !fx.die[key(q)]) fx.die[key(q)] = now; const rolling = v != null && now - fx.die[key(q)] < ms.die; if (rolling) later(fx.die[key(q)] + ms.die);
+        return h("div", { class: "tosscol" + (t.win === q && !rolling && now >= tossBusy(s) ? " win" : "") }, face(q), h("b", null, nm(q)), dieEl(rolling ? 0 : v, rolling), h("span", { class: "tiny muted" }, v == null ? (q === p ? "รอทอย" : "รอ") : rolling ? "กำลังทอย…" : `ได้ ${v}`)); };
+      kids.push(h("div", { class: "tossrow" }, col(V), h("span", { class: "vs" }, "VS"), col(1 - V)));
+      if (tieShow) { kids.push(h("div", { class: "small", style: "font-weight:700;color:var(--warn)" }, "แต้มเท่ากัน ทอยใหม่ทั้งสองฝ่าย")); later(tossBusy(s)); }
+      else if (t.win == null) kids.push(h("div", { class: "row" }, live && mine(p) && now >= tossBusy(s) ? h("button", { class: "btn gold", onclick: () => doAct({ type: "tossRoll" }, p) }, G.mode === "solo" ? `${nm(p)}: ทอยเต๋า` : "ทอยเต๋า") : h("span", { class: "tiny muted" }, now < tossBusy(s) ? "…" : `รอ ${nm(p)} ทอย…`)));
+      if (now < tossBusy(s)) later(tossBusy(s));
+    } else { // the coin: our picture on one side, theirs on the other
+      if (!fx.coin) fx.coin = now; const spinning = now - fx.coin < ms.coin; const end = 360 * 7 + (t.win === V ? 0 : 180);
+      const coin = h("div", { class: "coin" }, h("div", { class: "face front" }, face(V)), h("div", { class: "face back" }, face(1 - V)));
+      try { const an = coin.animate([{ transform: "translateY(0) rotateY(0deg) scale(1)" }, { transform: `translateY(-64px) rotateY(${end * 0.55}deg) scale(1.18)`, offset: 0.45 }, { transform: `translateY(0) rotateY(${end}deg) scale(1)` }], { duration: ms.coin, easing: "cubic-bezier(.25,.6,.3,1)", fill: "forwards" }); an.currentTime = Math.min(ms.coin, now - fx.coin); } catch { coin.style.transform = `rotateY(${end}deg)`; }
+      kids.push(h("div", { class: "coinbox" }, coin), h("div", { class: "tossstat" }, h("span", null, `หน้าหนึ่ง: ${nm(V)}`), h("span", null, `อีกหน้า: ${nm(1 - V)}`)));
+      if (spinning) { kids.push(h("div", { class: "tiny muted" }, "กำลังโยนเหรียญ…")); later(fx.coin + ms.coin); }
+    }
+    if (t.win != null && now >= tossBusy(s)) { // the winner's choice
+      kids.push(h("div", { class: "small", style: "font-weight:700;color:var(--gold)" }, t.m === "coin" ? `เหรียญออกหน้า ${nm(t.win)}` : `${nm(t.win)} แต้มมากกว่า (${t.roll[t.win]} ต่อ ${t.roll[1 - t.win]})`));
+      kids.push(live && mine(t.win) ? h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => doAct({ type: "tossPick", first: true }, t.win) }, G.mode === "solo" ? `${nm(t.win)}: เริ่มก่อน` : "เริ่มก่อน"), h("button", { class: "btn", onclick: () => doAct({ type: "tossPick", first: false }, t.win) }, "เริ่มทีหลัง"))
+        : h("div", { class: "tiny muted" }, `รอ ${nm(t.win)} เลือกว่าจะเริ่มก่อนหรือทีหลัง…`));
+    }
+  }
+  return h("div", { class: "prompt glass toss" }, h("b", { style: "font-family:var(--f-display)" }, "ใครได้เลือกเริ่มก่อน?"), ...kids);
+}
 function promptBox(s, p) {
+  if (s.phase === "toss" && s.toss) return tossBox(s);
   try { return promptBox0(s, p); } catch (e) {
     console.warn(e); const t = s.trig[0]; if (!t || !mine(p)) return null; const d = s.cards[t.c] || {};
     return h("div", { class: "prompt glass" }, h("b", { style: "font-family:var(--f-display)" }, `${d.n || "เอฟเฟกต์"}: แสดงตัวเลือกไม่ได้`),
@@ -1449,6 +1503,7 @@ function localHint() {
   const P = s.P[p], nm = (i) => { const x = [...P.hand, ...P.av, ...P.cs].find((y) => y.i === i); return x ? E.name(s, x) : "?"; };
   const by = "คำแนะนำจากบอทมือโปร: ";
   try {
+    if (s.phase === "toss") return "เลือกทอยเต๋าหรือโยนเหรียญได้เลยค่ะ โอกาสชนะเท่ากันทั้งสองวิธี ถ้าชนะจะได้เลือกว่าจะเริ่มก่อนหรือทีหลัง";
     if (s.phase === "mull") { const back = H.mulligan(s, p); return by + (back.length ? `เปลี่ยน ${back.map(nm).join(", ")}` : "เก็บมือนี้ไว้ (มี Avatar ราคาถูกพอเปิดเกม)"); }
     if (s.trig.length && !s.rw) return "จัดการเอฟเฟกต์ในกล่องกลางจอก่อนนะคะ";
     if (s.rw) { const r = H.react(s, p); return by + (r ? `ใช้ ${nm(r.i)} ตอบโต้` : "ไม่ต้องตอบโต้ตอนนี้"); }

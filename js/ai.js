@@ -1,11 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261113115141";
-import { plain } from "./persona.js?v=20261113115141";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261113115141";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261113115141";
-import { modPowerFor } from "./auras.js?v=20261113115141";
-import { Data } from "./fb.js?v=20261113115141";
-import { lsGet, clone } from "./util.js?v=20261113115141";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261113120629";
+import { plain } from "./persona.js?v=20261113120629";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261113120629";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261113120629";
+import { modPowerFor } from "./auras.js?v=20261113120629";
+import { Data } from "./fb.js?v=20261113120629";
+import { lsGet, clone } from "./util.js?v=20261113120629";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -180,6 +180,8 @@ export const H = {
   // what a card in hand is worth when it is paid away as GEM: its script's word (keepV) when it has one
   keep(s, p, x) { const sk = x && scriptOf(s, x); if (sk && sk.keepV) { const v = sk.keepV(E, s, x, p); if (v != null) return v; } return H.value(s, x); },
   value(s, x) { const d = E.def(s, x); if ((scriptOf(s, x) || {}).anyHell) return 8; return d.t === "A" ? (d.pw || 0) + (d.c || 0) * 0.5 + (d.o1 ? 10 : 0) : d.t === "C" ? 3 : 2; },
+  // before the game: a die or a coin at random, roll, and with the choice go first more often than not
+  toss(s, p) { const m = E.tossMoves(s, p); if (!m.length) return { type: "note", text: "" }; const t = s.toss; return t.m == null ? m[Math.random() < 0.5 ? 0 : 1].a : t.win == null ? m[0].a : m[Math.random() < 0.7 ? 0 : 1].a; },
   mulligan(s, p) {
     const P = s.P[p]; const cheap = P.hand.filter((x) => { const d = E.def(s, x); return d.t === "A" && (d.c || 0) <= 3; });
     if (cheap.length >= 2) return [];

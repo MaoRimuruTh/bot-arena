@@ -1,14 +1,14 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113115141";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261113115141";
-import { SCRIPTS } from "./scripts.js?v=20261113115141";
-import { newId, clone } from "./util.js?v=20261113115141";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113120629";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261113120629";
+import { SCRIPTS } from "./scripts.js?v=20261113120629";
+import { newId, clone } from "./util.js?v=20261113120629";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
 export const ZONES = ["deck", "hand", "av", "mg", "cs", "hell", "dark", "life"];
 export const ZONE_TH = { deck: "Deck", hand: "มือ", av: "Avatar Zone", mg: "Magic Zone", cs: "Construct Zone", hell: "นรก", dark: "มิติมืด", life: "LIFE", land: "Land Magic" };
-export const PHASE_TH = { mull: "เปลี่ยนมือ", draw: "Draw", main: "Main", battle: "Battle", end: "End", over: "จบเกม" };
+export const PHASE_TH = { toss: "เสี่ยงทาย", mull: "เปลี่ยนมือ", draw: "Draw", main: "Main", battle: "Battle", end: "End", over: "จบเกม" };
 export class RuleError extends Error {}
 // script lookup: print code → base card id, so reprints share one script
 let scriptBase = null;
@@ -56,6 +56,13 @@ export const E = {
   hooks: (s, x) => hk(s, x), // script or text-derived static rules of a card
   ext: {}, // filled in by effects.js: acts(s, x, L) → text abilities usable now, react(s, x, p, on) → may this React answer now
   ev(s, o) { s.evc = (s.evc || 0) + 1; (s.ev = s.ev || []).push({ id: s.evc, ...o }); if (s.ev.length > 40) s.ev.shift(); },
+  // before the game (phase "toss"): both vote for a die or a coin (a split vote is drawn between the two), then each rolls a die
+  // (a tie is rolled again) or the coin is flipped; the winner chooses to go first or second
+  tossSeat(s) { const t = s.toss; if (!t) return null; if (t.m == null) return t.vote[0] == null ? 0 : 1; if (t.win == null) return t.roll[0] == null ? 0 : 1; return t.win; },
+  tossMoves(s, p) { const t = s.toss; if (!t) return [];
+    if (t.m == null) return t.vote[p] == null ? [{ d: "เลือก: ทอยเต๋า", a: { type: "tossVote", m: "dice" } }, { d: "เลือก: โยนเหรียญ", a: { type: "tossVote", m: "coin" } }] : [];
+    if (t.win == null) return t.m === "dice" && t.roll[p] == null ? [{ d: "ทอยเต๋า", a: { type: "tossRoll" } }] : [];
+    return t.win === p ? [{ d: "เริ่มก่อน", a: { type: "tossPick", first: true } }, { d: "เริ่มทีหลัง", a: { type: "tossPick", first: false } }] : []; },
   rnd(s) { s.seed = (s.seed + 0x6D2B79F5) | 0; let t = s.seed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; },
   shuffle(s, a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(E.rnd(s) * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; },
   def: (s, x) => (x.ov ? { ...(s.cards[x.c] || {}), ...x.ov } : s.cards[x.c] || { n: "?", t: "A", x: "" }),
@@ -224,7 +231,7 @@ export const E = {
   // what p summoned this turn (เครื่องบิน Super Air)
   // FAQ หุ่นนักรบผู้กล้า : โปรโตไมเกรน: an Avatar (or Token) brought down by an ability can be answered by "เมื่อมี Avatar อัญเชิญ" Reacts too
   // (อุบัติเหตุ, จิ้มมันเลย จิ้ม!) — the window opens here and the ability finishes its other steps before the React resolves
-  fxSummoned(s, p, x) { if (x && !s.rw && s.phase !== "over" && s.phase !== "mull") E.openWindow(s, p, "summon", x.i); },
+  fxSummoned(s, p, x) { if (x && !s.rw && s.phase !== "over" && s.phase !== "mull" && s.phase !== "toss") E.openWindow(s, p, "summon", x.i); },
   noteSummon(s, p, x) { for (const y of s.P[p].av) { if (y.i === x.i || y.mute) continue; const sc = scriptOf(s, y); if (sc && sc.allyIn && sc.allyIn(E, s, y, x)) { y.pm = (y.pm || 0) + 1; E.log(s, p, `${E.name(s, y)} POWER +1 (${E.name(s, x)} เข้ามาใน Avatar Zone)`); } }
     if (s.sum && s.sum[p] && s.sum[p].t === s.turn && s.sum[p].n.length >= 2) for (const y of s.P[1 - p].hand) { const sc = scriptOf(s, y); if (sc && sc.oppThird && !s.trig.some((t) => t.i === y.i)) s.trig.push({ id: tid(s), seat: 1 - p, i: y.i, c: y.c, when: "oppThird", optional: true }); }
     s.sum = s.sum || [null, null]; if (!s.sum[p] || s.sum[p].t !== s.turn) s.sum[p] = { t: s.turn, n: [], d: [] }; s.sum[p].n.push(E.name(s, x)); { const d = E.def(s, x); (s.sum[p].d = s.sum[p].d || []).push({ co: E.colors(s, x), c: d.c || 0, sy: String(d.sy || "") }); }
@@ -300,7 +307,7 @@ export const E = {
     return Math.max(0, c); },
   capSync(s) { for (const p of [0, 1]) { const P = s.P[p]; const sc = E.lands(s).filter((l) => !l.mute).map((l) => scriptOf(s, l)).find((y) => y && y.cap6) || null; /* a Land Magic: for either player */ if (sc && sc.cap6 && P.av.every((x) => sc.cap6(E, s, x))) P.c6 = true; else delete P.c6; }
     { const sc = E.landSc(s, "cap3"); for (const P of s.P) if (sc && sc.cap3) P.c3 = true; else delete P.c3; }
-    if (s.phase !== "over" && s.phase !== "mull") for (const p of [0, 1]) { const P = s.P[p]; const x = P.av.find((y) => !y.tok); if (x && E.avatars(P) > 4 && !s.trig.some((t) => t.when === "trim" && t.seat === p)) s.trig.push({ id: tid(s), seat: p, i: x.i, c: x.c, when: "trim" }); } },
+    if (s.phase !== "over" && s.phase !== "mull" && s.phase !== "toss") for (const p of [0, 1]) { const P = s.P[p]; const x = P.av.find((y) => !y.tok); if (x && E.avatars(P) > 4 && !s.trig.some((t) => t.when === "trim" && t.seat === p)) s.trig.push({ id: tid(s), seat: p, i: x.i, c: x.c, when: "trim" }); } },
   // may Avatar x join p's Avatar Zone? (only a card that keeps the six-slot rule may use the two extra slots)
   fits6(s, p, x) { const P = s.P[p]; if (!P.c6) return true; const sc = E.landSc(s, "cap6"); return !!(sc && sc.cap6 && sc.cap6(E, s, x)) || P.av.filter((y) => !y.tok).length < 4; },
   critical: (P) => P.life.length > 0 && P.life.every((x) => x.up),
@@ -309,8 +316,10 @@ export const E = {
   cardDef(id) { const c = card(id); return { n: c.n, t: c.t, st: c.st, c: c.c, g: c.g, gc: c.gc, pw: c.pw, sy: c.sy, co: c.co, x: c.x || "", o1: c.o1, im: +id, ...(c.al ? { al: c.al } : {}), ...(c.fl ? { fl: c.fl } : {}) }; },
   // a "โดนใจ" (collaboration) card: the mark printed on the card, not a word in its text (older saved games: looked up again)
   collab(s, x) { const d = E.def(s, x); if (!d) return false; if (d.fl) return d.fl === "dj"; const c = d.im != null ? card(d.im) : null; return !!(c && c.fl === "dj"); },
-  newGame({ players, decks, seed, first, mode, id }) {
-    const s = { v: 1, id: id || newId(), mode, seed: seed | 0, turn: 0, active: first, first, phase: "mull", land: null, cards: {}, nextI: 1, log: [], trig: [], pend: null, need: 0,
+  // toss: true starts with the players settling who chooses to go first (a die each, or a coin): phase "toss", then "mull"
+  newGame({ players, decks, seed, first, mode, id, toss }) {
+    first = first === 1 ? 1 : 0;
+    const s = { v: 1, id: id || newId(), mode, seed: seed | 0, turn: 0, active: first, first, phase: toss ? "toss" : "mull", land: null, cards: {}, nextI: 1, log: [], trig: [], pend: null, need: 0,
       winner: null, reason: "", mull: [false, false], mu: [{}, {}], played: [{}, {}], startedAt: Date.now(), P: [] };
     for (let p = 0; p < 2; p++) {
       const pl = players[p];
@@ -321,7 +330,8 @@ export const E = {
       for (let k = 0; k < 5 && P.deck.length; k++) P.hand.push(P.deck.shift());
       s.P.push(P);
     }
-    E.log(s, null, `เริ่มเกม · ${s.P[first].name} เริ่มก่อน`);
+    if (toss) { s.toss = { vote: [null, null], m: null, roll: [null, null], n: 0, win: null }; E.log(s, null, "ก่อนเริ่มเกม: เลือกทอยเต๋าหรือโยนเหรียญ ผู้ชนะได้เลือกว่าจะเริ่มก่อนหรือทีหลัง"); }
+    else E.log(s, null, `เริ่มเกม · ${s.P[first].name} เริ่มก่อน`);
     return s;
   },
   draw(s, p, n) {
@@ -368,7 +378,7 @@ export const E = {
   stateChanged(s, L) { for (const { x: y, L: Ly } of fieldCards(s)) { if (Ly.p === L.p || Ly.z !== "av" || y.mute || s.active !== Ly.p) continue; const sc = scriptOf(s, y); if (sc && sc.foeState && once0(s, Ly.p, "foeState:" + y.i)) { (s.nu = s.nu || [{}, {}])[Ly.p]["foeState:" + y.i] = s.turn; s.trig.push({ id: tid(s), seat: Ly.p, i: y.i, c: y.c, when: "foeState" }); } } },
   hospital(s, p, x) { const h = s.hosp && s.hosp[p]; return !!(h && h.t === s.turn && h.names.includes(E.def(s, x).n)); },
   noSteal(s, L) { return fieldCards(s).some(({ x: y, L: Ly }) => { if (Ly.p !== L.p || y.mute) return false; const ns = (scriptOf(s, y) || {}).noSteal; return typeof ns === "function" ? !!ns(E, s, y, Ly) : !!ns; }); },
-  forceEnd(s) { const p = s.active, P = s.P[p]; if (s.phase === "end" || s.phase === "over" || s.phase === "mull") return; s.phase = "end"; for (const q of [0, 1]) for (const x of s.P[q].av) x.tm = 0; E.log(s, p, `เทิร์นของ ${P.name} จบลงทันที`);
+  forceEnd(s) { const p = s.active, P = s.P[p]; if (s.phase === "end" || s.phase === "over" || s.phase === "mull" || s.phase === "toss") return; s.phase = "end"; for (const q of [0, 1]) for (const x of s.P[q].av) x.tm = 0; E.log(s, p, `เทิร์นของ ${P.name} จบลงทันที`);
     if (P.hand.length > 7) { s.need = P.hand.length - 7; E.log(s, p, `มือเกิน 7 ใบ ต้องทิ้ง ${s.need} ใบ`); return; } E.nextTurn(s); },
   nextTurn(s) {
     s.need = 0; s.phase = "end";
@@ -532,7 +542,7 @@ export const E = {
   // the abilities of player p's cards waiting at the front of the queue that came up together and may go in any order
   // (not the rest of an effect already under way, not LIFE cards: those go from the top card down, Rule Book)
   ownRun(s, p) { const out = []; const b = s.trig.length ? s.trig[0].b : null; for (const t of s.trig) { if (t.seat !== p || t.b !== b || b == null || t.held || t.part || t.tail || t.manualRest || t.now || t.via || ["trim", "life", "handReact", "answer"].includes(t.when)) break; out.push(t); } return out; },
-  canAct(s, p) { return s.phase !== "over" && !s.trig.length && !s.pend && !s.rw && s.active === p && s.phase !== "mull"; },
+  canAct(s, p) { return s.phase !== "over" && !s.trig.length && !s.pend && !s.rw && s.active === p && s.phase !== "mull" && s.phase !== "toss"; },
   // which React cards in p's hand fit this moment (on = the window: summon / cast / attack)
   reactsFor(s, p, on) {
     if (s.phase === "over") return [];
@@ -562,7 +572,7 @@ export const E = {
   hfPrune(s) { if (!s.trig.some((t) => t.when === "handFight")) return; s.trig = s.trig.filter((t) => { if (t.when !== "handFight" || t.held) return true; const L = E.locate(s, t.i), F = t.fighter != null ? E.locate(s, t.fighter) : null; const sc = L && L.z === "hand" ? scriptOf(s, L.x) : null; return !!(sc && sc.handFightOk && F && F.z === "av" && sc.handFightOk(E, s, L.x, F.x)); }); },
   // Rule Book (Win Condition 2): a player whose Deck reaches 0 cards loses at once, not only when a draw finds it empty;
   // both Decks empty at the same time is a draw
-  deckOut(s) { if (s.phase === "over" || s.phase === "mull") return; const out = [0, 1].filter((p) => !s.P[p].deck.length); if (!out.length) return;
+  deckOut(s) { if (s.phase === "over" || s.phase === "mull" || s.phase === "toss") return; const out = [0, 1].filter((p) => !s.P[p].deck.length); if (!out.length) return;
     if (out.length === 1) return E.lose(s, out[0], "การ์ดใน Deck หมด (เหลือ 0 ใบ)");
     s.winner = null; s.phase = "over"; s.reason = "การ์ดใน Deck ของทั้งสองฝ่ายหมดพร้อมกัน"; s.pend = null; s.trig = []; s.rw = null; E.log(s, null, `เสมอ · ${s.reason}`); E.ev(s, { k: "over", w: null }); },
   // an effect held back so the other player could answer "when an Avatar would be destroyed / leave the field" runs once that window closes
@@ -608,7 +618,22 @@ export const E = {
     if (s.phase === "over" && act.type !== "note") throw new RuleError("เกมจบแล้ว");
     const P = s.P[p], O = s.P[1 - p];
     const need = (cond, msg) => { if (!cond) throw new RuleError(msg); };
+    if (s.phase === "toss") need(["tossVote", "tossRoll", "tossPick", "concede", "note"].includes(act.type), "ต้องตัดสินก่อนว่าใครได้เลือกเริ่มก่อนหรือทีหลัง");
     switch (act.type) {
+      case "tossVote": { const t = s.toss; const TH = { dice: "ทอยเต๋า", coin: "โยนเหรียญ" };
+        need(s.phase === "toss" && t && t.m == null && t.vote[p] == null, "เลือกไปแล้ว"); need(TH[act.m], "เลือกได้แค่ทอยเต๋าหรือโยนเหรียญ"); t.vote[p] = act.m;
+        if (t.vote[0] && t.vote[1]) { const [a, b] = t.vote; t.split = a !== b; t.m = a === b ? a : E.rnd(s) < 0.5 ? a : b;
+          E.log(s, null, a === b ? `ทั้งสองฝ่ายเลือก${TH[a]}` : `เลือกไม่ตรงกัน (${s.P[0].name}: ${TH[a]} · ${s.P[1].name}: ${TH[b]}) ระบบสุ่มได้: ${TH[t.m]}`);
+          if (t.m === "coin") { t.win = E.rnd(s) < 0.5 ? 0 : 1; E.log(s, null, `โยนเหรียญ: ออกหน้า ${s.P[t.win].name} · ${s.P[t.win].name} ได้เลือกว่าจะเริ่มก่อนหรือทีหลัง`); } }
+        return; }
+      case "tossRoll": { const t = s.toss; need(s.phase === "toss" && t && t.m === "dice" && t.win == null && t.roll[p] == null, "ทอยไปแล้ว");
+        t.roll[p] = 1 + Math.floor(E.rnd(s) * 6); E.log(s, p, `${P.name} ทอยเต๋าได้ ${t.roll[p]}`);
+        if (t.roll[0] != null && t.roll[1] != null) { if (t.roll[0] === t.roll[1]) { t.tie = t.roll.slice(); t.roll = [null, null]; t.n = (t.n || 0) + 1; E.log(s, null, "แต้มเท่ากัน ทอยใหม่ทั้งสองฝ่าย"); }
+          else { t.win = t.roll[0] > t.roll[1] ? 0 : 1; E.log(s, null, `${s.P[t.win].name} แต้มมากกว่า ได้เลือกว่าจะเริ่มก่อนหรือทีหลัง`); } }
+        return; }
+      case "tossPick": { const t = s.toss; need(s.phase === "toss" && t && t.win === p, "ผู้ชนะการเสี่ยงเป็นคนเลือก"); const f = act.first ? p : 1 - p;
+        t.pick = act.first ? "first" : "second"; s.first = s.active = f; s.phase = "mull"; E.log(s, p, `${P.name} เลือก${act.first ? "เริ่มก่อน" : "เริ่มทีหลัง"}`); E.log(s, null, `เริ่มเกม · ${s.P[f].name} เริ่มก่อน`);
+        return; }
       case "mull": {
         need(s.phase === "mull" && !s.mull[p], "เปลี่ยนมือได้ตอนเริ่มเกมครั้งเดียว");
         const ids = act.iids || [];
@@ -1285,6 +1310,7 @@ export function legalMoves(s, p) {
     for (const y of shields) out.push({ d: `ใช้โล่มนุษย์ ${E.name(s, y)} (POWER ${E.power(s, y)}) รับแทน`, a: { type: "respond", shield: y.i } });
     return out;
   }
+  if (s.phase === "toss") return E.tossMoves(s, p);
   if (s.phase === "mull") return out;
   if (s.active !== p) return out;
   if (s.phase === "end" && s.need) return out;
