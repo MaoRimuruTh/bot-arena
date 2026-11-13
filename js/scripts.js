@@ -3661,7 +3661,7 @@ Object.assign(SCRIPTS, {
       const big = E.magicInHell(s, p) >= 8; const kill = big && c.mode([`ทำลาย ${E.name(s, t)} ด้วย`, "ไม่ทำลาย"], "Magic ในนรก 8 ใบขึ้นไป: ทำลาย Avatar ใบนั้นด้วยไหม", 0) === 0;
       return { explain: `${E.name(s, t)} สูญเสียความสามารถทั้งหมดจนจบเทิร์น${kill ? " และถูกทำลาย" : ""}`, ops: [{ op: "cancelTrig", i: t.i }, { op: "mute", i: t.i, until: "turn" }, ...(kill ? [{ op: "destroy", i: t.i, why: "Skill : Hypersense" }] : [])] }; } },
   // อินาริ โอคามิ แห่งการเก็บเกี่ยว: จุติ moves it into our Magic Zone, where its abilities keep working
-  "CC02-016": { summon: (c) => (c.self && (c.E.locate(c.s, c.self.i) || {}).z === "av" ? { explain: "อินาริย้ายไปอยู่ใน Magic Zone", ops: [{ op: "move", i: c.self.i, to: "mg" }] } : { explain: "", ops: [] }),
+  "CC02-016": { keepV: () => 9, botHold: (E, s, x, p) => 3 + 1.5 * s.P[p].av.length, /* POWER 0 on the card, but out it is +1 for every Avatar of ours and a card every turn: the bot wants it out */ summon: (c) => (c.self && (c.E.locate(c.s, c.self.i) || {}).z === "av" ? { explain: "อินาริย้ายไปอยู่ใน Magic Zone", ops: [{ op: "move", i: c.self.i, to: "mg" }] } : { explain: "", ops: [] }),
     aura: (E, s, src, L) => (L.z === "av" || (L.z === "mg" && src.on == null) ? [{ seat: L.p, test: () => true, n: 1 + Math.floor(s.P[L.p].hell.length / 15) }] : []),
     endPhase: (E, s, x, L) => ((L.z === "av" || (L.z === "mg" && x.on == null)) && mineEnd(s, L) ? [{ op: "draw", seat: L.p, n: 1 + Math.floor(s.P[L.p].hell.length / 15) }] : []) },
 });
