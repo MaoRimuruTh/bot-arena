@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113070936";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261113070936";
-import { SCRIPTS } from "./scripts.js?v=20261113070936";
-import { newId, clone } from "./util.js?v=20261113070936";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113071549";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261113071549";
+import { SCRIPTS } from "./scripts.js?v=20261113071549";
+import { newId, clone } from "./util.js?v=20261113071549";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -637,10 +637,12 @@ export const E = {
         E.ev(s, { k: "summon", i: x.i, p });
         s.played[p][x.c] = (s.played[p][x.c] || 0) + 1;
         E.log(s, p, `${act.type === "summon" ? "อัญเชิญ" : "ก่อสร้าง"} ${d.n} (จ่าย ${(act.pay || []).length} ใบ GEM ${r.total || 0}/${cost})${r.exact && kwHas(d.x, "พอดี") ? " · พอดี!" : ""}`);
-        const scS = scriptOf(s, x); if (r.exact) x.px = true; if (act.type === "summon") E.noteSummon(s, p, x);
+        const scS = scriptOf(s, x); if (r.exact) x.px = true; const kS = s.trig.length; if (act.type === "summon") E.noteSummon(s, p, x);
         if (scS && scS.summon) { if (!scS.storyOnly || x.story) E.addTrig(s, p, x, "summon", { exact: r.exact }); }
         else if (kwHas(d.x, "จุติ")) E.addTrig(s, p, x, "summon", { exact: r.exact });
         else if (act.type === "build" && d.x && fires(s, x, "build")) E.addTrig(s, p, x, "build"); // only Constructs with a "when built" ability
+        // the summoned Avatar's own จุติ comes before "เมื่อมีการอัญเชิญ Avatar" of the cards already there (FAQ แมวนิค: it is still ours when the จุติ is checked)
+        { const tail = s.trig.splice(kS); s.trig.push(...tail.filter((t) => t.when !== "anySummon"), ...tail.filter((t) => t.when === "anySummon")); }
         { const pt = paid.filter((y) => { const sc = scriptOf(s, y); return sc ? sc.paid && (!sc.paidFor || sc.paidFor(d)) : act.type === "summon" && E.ext.paid && E.ext.paid(s, y, d); }).map((y) => ({ id: tid(s), seat: p, i: y.i, c: y.c, when: "paid", for: x.c, forI: x.i }));
           const k = s.trig.findIndex((t) => t.i === x.i); s.trig.splice(k < 0 ? s.trig.length : k, 0, ...pt); } // paying happens before จุติ
         if (act.type === "summon") { E.summonBuff(s, p, x); E.openWindow(s, p, "summon", x.i); }
