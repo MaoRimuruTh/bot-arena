@@ -458,6 +458,8 @@ Object.assign(SCRIPTS, {
   "BT06-027": { millBy: "god", milled: (c) => valkFromHell(c, (x) => (c.E.def(c.s, x).c || 0) <= 4 && !nm(c.E, c.s, x, "สกัลด์"), "สกัลด์ถูกธรณีสูบ: เลือกเทพธิดา Cost 4 หรือต่ำกว่าในนรกที่จะอัญเชิญ") },
   "BT06-028": { millBy: "god", milled: (c) => ({ explain: "โอลรุนกลับขึ้นมือ", ops: [{ op: "move", i: c.self.i, to: "hand", onlyFrom: "hell" }] }) },
   "SD03-003": { millBy: "any", noHand: true, milled: putSelf("นายนิรยบาล แว่น ถูกธรณีสูบ") },
+  // นายนิรยบาล พ่อจีจ้า (SD03, also its SCR reprint under KD02-006): attacks or is attacked: mill 2, POWER +1 (the KD02 base mills 1); set here so it is claimed before KD02-006
+  "SD03-002": (() => { const f = (c) => ({ explain: "ธรณีสูบ 2 ใบ · POWER +1 จนจบเทิร์น", ops: [{ op: "mill", seat: c.seat, n: 2 }, ...(c.self && c.E.locate(c.s, c.self.i) ? [{ op: "power", i: c.self.i, n: 1, temp: true }] : [])] }); return { attack: f, attacked: f }; })(),
   // ซีกรุน: mill 3 → POWER +1
   "BT06-029": { activate: { label: "ธรณีสูบ 3 ใบ: POWER +1", can: (E, s, x, L) => L.z === "av" && s.P[L.p].deck.length > 8,
     run: (c) => ({ explain: "ธรณีสูบ 3 ใบ · POWER +1", ops: [{ op: "mill", seat: c.seat, n: 3 }, { op: "power", i: c.self.i, n: 1, temp: false }] }) } },
@@ -509,7 +511,7 @@ Object.assign(SCRIPTS, {
   // โลกิ: moves to the other side's Avatar Zone at every End Phase; once its control has changed it can no longer attack
   "BT03-023": { endPhase: (E, s, x, L) => (L.z === "av" && E.avatars(s.P[1 - L.p]) < 4 ? [{ op: "control", i: x.i, seat: 1 - L.p }] : []), noAttack: (E, s, x) => (x.ctlx || 0) > 0 },
   // ศาสตราจารย์วานร: 3+ วานร on our field → draw 2
-  "BT08-041": { endPhase: (E, s, x, L) => (L.z === "av" && s.P[L.p].av.filter((y) => nm(E, s, y, "วานร")).length >= 3 ? [{ op: "draw", seat: L.p, n: 2 }] : []) },
+  "BT08-041": { endPhase: (E, s, x, L) => (L.z === "av" && once(s, L.p, "ศาสตราจารย์วานร") && s.P[L.p].av.filter((y) => nm(E, s, y, "วานร")).length >= 3 ? [{ op: "nameOnce", seat: L.p, name: "ศาสตราจารย์วานร" }, { op: "draw", seat: L.p, n: 2 }] : []) }, /* # usable once per turn by name: a second copy draws nothing */
   // ม้าเฉียว: back to hand at our End Phase unless another green ขุนพล {ต่างชาติ} is with it
   "BT10-049": { endPhase: (E, s, x, L) => (L.z === "av" && mineEnd(s, L) && !s.P[L.p].av.some((y) => y.i !== x.i && nm(E, s, y, "ขุนพล") && E.def(s, y).co === "เขียว" && sy(E, s, y, "ต่างชาติ")) ? [{ op: "move", i: x.i, to: "hand" }] : []) },
   // ฟูมะ: from the hand, a นินจา on our Avatar Zone goes back to the hand and this card comes down (once a turn by this way).
@@ -1496,7 +1498,7 @@ Object.assign(SCRIPTS, {
   // โรงบาลรัฐ (Land): LIFE cards cannot be turned face down
   "BT04-058": { noLifeDown: true },
   // Podcast Untitled Case (Land): {ผี}, {เปรต}, {เอเลี่ยน} and dinosaur Avatars POWER +1
-  "BT04-060": { aura: (E, s, src, L) => (L.z === "land" ? [0, 1].map((q) => ({ seat: q, test: (x) => ["ผี", "เปรต", "เอเลี่ยน"].some((k) => sy(E, s, x, k)) || E.named(s, x, "ไดโนเสาร์"), n: 1 })) : []) },
+  "BT04-060": { aura: (E, s, src, L) => (L.z === "land" ? [0, 1].map((q) => ({ seat: q, test: (x) => ["ผี", "เปรต", "เอเลี่ยน", "กะปอม"].some((k) => sy(E, s, x, k)), n: 1 } /* the dinosaur tribe is {กะปอม}: no Symbol ไดโนเสาร์ exists, and the name matched only the hunter เรนะ */)) : []) },
 });
 
 // ---------- BT05 ----------

@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113202103";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261113202103";
-import { SCRIPTS } from "./scripts.js?v=20261113202103";
-import { newId, clone } from "./util.js?v=20261113202103";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113215711";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261113215711";
+import { SCRIPTS } from "./scripts.js?v=20261113215711";
+import { newId, clone } from "./util.js?v=20261113215711";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -428,13 +428,13 @@ export const E = {
   // move a card instance anywhere; handles leave-field cleanup
   moveTo(s, i, to, seatOverride) {
     const L = E.locate(s, i); if (!L) throw new RuleError("ไม่พบการ์ด");
-    const x = L.x; if (["hell", "dark", "hand", "deck", "deckTop", "deckBottom"].includes(to) && to !== L.z) { delete x.used; delete x.ua; } // a new card there: its once-a-turn uses start again (FAQ บัมเบิ้ลแบงค์)
+    const x = L.x; if (["hell", "dark", "hand", "deck", "deckTop", "deckBottom"].includes(to) && to !== L.z) { delete x.used; delete x.ua; delete x.ao; } // a new card there: its once-a-turn uses start again (FAQ บัมเบิ้ลแบงค์)
     if (L.z === "land") E.unLand(s, x); else s.P[L.p][L.z].splice(L.idx, 1);
     if (L.z === "av") for (const q of [0, 1]) { const att = s.P[q].mg.filter((m) => m.on === x.i); for (const m of att) { s.P[q].mg.splice(s.P[q].mg.indexOf(m), 1); delete m.on; m.hd = s.dying === x.i; if (!m.mute && (scriptOf(s, m) || {}).fallTo === "deck") { s.P[m.o].deck.push(m); E.shuffle(s, s.P[m.o].deck); E.log(s, m.o, `${E.name(s, m)} กลับเข้า Deck แทนการถูกทำลาย`); continue; } s.P[m.o].hell.push(m); E.log(s, m.o, `${E.name(s, m)} หลุดลงนรก (Avatar ที่สวมใส่ออกจากสนาม)`); E.fellToHell(s, m); } }
     if (L.z === "mg" && x.on) { const H = E.locate(s, x.on); if (H && H.x.muteBy === x.i) { delete H.x.mute; delete H.x.muteBy; } delete x.on; if (H && H.z === "av" && !x.mute && (scriptOf(s, x) || {}).leaveKillsHost) s.later2 = [...(s.later2 || []), H.x.i]; if (H && H.z === "av" && !x.mute && (scriptOf(s, x) || {}).leaveReturns && H.p !== H.x.o) { const P0 = s.P[H.x.o]; if (E.avatars(P0) < 4) { s.P[H.p].av.splice(s.P[H.p].av.indexOf(H.x), 1); P0.av.push(H.x); E.log(s, H.x.o, `${E.name(s, H.x)} กลับไปอยู่กับเจ้าของ`); } } }
     if (L.z === "av" && to !== "av") { if (x.ov && x.ov.t) delete x.ov; /* FAQ เครื่องบิน Super Air: off the Avatar Zone it is a Magic Card again */ for (const q of [0, 1]) for (const y of s.P[q].av) if (y.nwBy === x.i) { delete y.nw; delete y.nwBy; } const so = x.mute ? null : scriptOf(s, x); if (so && so.onLeave) s.trig.push({ id: tid(s), seat: L.p, i: x.i, c: x.c, when: "onLeave" }); if (s.dying !== x.i && !x.tok) for (const y of s.P[L.p].hand) { const sh = scriptOf(s, y); if (sh && sh.anyLeave && sh.handDeath && (!sh.handDeathOk || sh.handDeathOk(E, s, y, x, false))) s.trig.unshift({ id: tid(s), seat: L.p, i: y.i, c: y.c, when: "handDeath", dead: x.i, optional: true }); } } /* FAQ หนึ่งเดียวเพื่อทุกอย่าง: "ถูกนำออกจากสนาม" (รัททาทุย นินจา) also answers an exile or a bounce, at once */
     if (x.tok && to !== "av") { E.log(s, L.p, `Token ${E.name(s, x)} ถูกนำออกจากเกม`); return null; }
-    x.a = true; x.pm = 0; x.tm = 0; for (const k of ["ntg", "backDraw", "ctlx", "home", "kw", "kt", "ua", "tn", "fm", "story", "mute", "zero", "muteEnd", "guard", "used", "saved", "exd", "canAtk", "back", "lk", "lkp", "cst", "nlt", "hs", "sb", "t0", "muteBy", "ind", "imm", "nsh", "cm", "ups", "blk", "fromHell", "noAct", "bp", "fd", "rimm", "own", "lh2", "kf", "frz", "kraken", "px", "feed", "ofa", "mustAtk", "sumt", "picky", "hs2", "tani", "twice", "twiceUsed", "sye", "nw", "nwBy", "nact", "mil", "kdm", "fa", "stay"]) delete x[k]; if (to !== "hand") delete x.hcm; if (to !== "hell") delete x.hlock; if (to !== "life") delete x.up; if (!["av", "mg", "cs", "land"].includes(to)) { delete x.nameAs; delete x.syAs; delete x.ov; delete x.srv; delete x.xn; delete x.xsy; delete x.mgo; }
+    x.a = true; x.pm = 0; x.tm = 0; for (const k of ["ntg", "backDraw", "ctlx", "home", "kw", "kt", "ua", "ao", "tn", "fm", "story", "mute", "zero", "muteEnd", "guard", "used", "saved", "exd", "canAtk", "back", "lk", "lkp", "cst", "nlt", "hs", "sb", "t0", "muteBy", "ind", "imm", "nsh", "cm", "ups", "blk", "fromHell", "noAct", "bp", "fd", "rimm", "own", "lh2", "kf", "frz", "kraken", "px", "feed", "ofa", "mustAtk", "sumt", "picky", "hs2", "tani", "twice", "twiceUsed", "sye", "nw", "nwBy", "nact", "mil", "kdm", "fa", "stay"]) delete x[k]; if (to !== "hand") delete x.hcm; if (to !== "hell") delete x.hlock; if (to !== "life") delete x.up; if (!["av", "mg", "cs", "land"].includes(to)) { delete x.nameAs; delete x.syAs; delete x.ov; delete x.srv; delete x.xn; delete x.xsy; delete x.mgo; }
     const owner = x.o; const ctl = seatOverride != null ? seatOverride : (L.z === "land" ? owner : L.p);
     const dest = { hand: owner, hell: owner, dark: owner, deckTop: owner, deckBottom: owner, life: seatOverride != null ? seatOverride : owner }[to];
     if (to === "deckTop") s.P[dest].deck.unshift(x);
@@ -1144,6 +1144,7 @@ export const E = {
       case "later": { if (s.lifeNow && (o.at !== "battle" || s.lifeNow === "all")) { E.log(s, seat, "ทำงานทันทีในเทิร์นนี้"); if (o.t) s.trig.push({ id: tid(s), ...o.t }); else E.ops(s, (o.ops || []).slice(0, 10), seat); return; } (s.later = s.later || []).push({ seat, ...(o.t ? { t: o.t } : { ops: (o.ops || []).slice(0, 10) }), why: o.why, ...(o.at === "battle" ? { at: "battle", after: s.turn } : {}) }); E.log(s, seat, o.at === "battle" ? "รอทำงานใน Battle Phase ของเทิร์นถัดไปของเรา" : "รอทำงานใน Main Phase ถัดไป"); return; }
       case "guard": { const L = E.locate(s, o.i); if (!L) throw new RuleError("ไม่พบการ์ด"); L.x.guard = o.until || true; E.log(s, by, `${E.name(s, L.x)} ได้รับการป้องกันการถูกทำลาย 1 ครั้ง${o.until ? " จนจบเทิร์นถัดไปของฝ่ายตรงข้าม" : ""}`); return; }
       case "used": { const L = E.locate(s, o.i); if (L) L.x.used = s.turn; return; }
+      case "aoUse": { const L = E.locate(s, o.i); if (L) (L.x.ao = L.x.ao || {})[o.w] = s.turn; return; } /* a "เทิร์นละครั้ง อัตโนมัติ" ability read from the text was used this turn */
       case "roll": { // dice (sides 6) or a coin (sides 2: 1 = heads): the matching ops run
         const sides = o.sides === 2 ? 2 : 6; const r = 1 + Math.floor(E.rnd(s) * sides); const label = sides === 2 ? (r === 1 ? "หัว" : "ก้อย") : String(r);
         E.log(s, by, `${o.why ? o.why + ": " : ""}${sides === 2 ? "ทอยเหรียญได้" : "ทอยลูกเต๋าได้ "}${label}`); E.ev(s, { k: "roll", p: by, sides, r, why: String(o.why || "") });
