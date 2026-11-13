@@ -1,11 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261113085439";
-import { plain } from "./persona.js?v=20261113085439";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261113085439";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261113085439";
-import { modPowerFor } from "./auras.js?v=20261113085439";
-import { Data } from "./fb.js?v=20261113085439";
-import { lsGet, clone } from "./util.js?v=20261113085439";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261113090929";
+import { plain } from "./persona.js?v=20261113090929";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261113090929";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261113090929";
+import { modPowerFor } from "./auras.js?v=20261113090929";
+import { Data } from "./fb.js?v=20261113090929";
+import { lsGet, clone } from "./util.js?v=20261113090929";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -209,6 +209,9 @@ export const H = {
         const payLoss = (a.pay || []).reduce((t, i) => t + H.keep(s, p, P.hand.find((y) => y.i === i)), 0);
         let sc = -99;
         let bias = 0; { const sx = scriptOf(s, x); if (sx && sx.botHold) bias = sx.botHold(E, s, x, p) || 0; } // a card that is better kept in hand for now
+        // a POWER 0 Avatar with nothing written on it and GEM 3+ (อรุณีย์, ช่างแอร์ดวงซวย) is there to pay with: on the field it
+        // only fills one of the four Avatar places (so does มามิ, by its script)
+        if (a.type === "summon" && !(d.pw || 0) && (d.g || 0) >= 3 && !String(d.x || "").trim()) bias -= 12;
         if (a.type === "summon") { const fx = d.x && /จุติ/.test(d.x) ? H.opsScore(s, p, H.preview(s, { i: x.i, c: x.c, when: "summon", seat: p, exact: true })) : 0; sc = (d.pw || 0) + 2 + Math.max(0, fx) + csBonus(d) - payLoss * 0.45 + (P.av.length < 2 ? 3 : 0) + bias; } // csBonus: a lasting buff for every Avatar of ours
         else if (a.type === "build") sc = 3 + csBonus(d) - payLoss * 0.3;
         else if (a.type === "cast" && d.st === "L") sc = E.lands(s).some((l) => l.o === p) ? -1 : E.lands(s).length && !E.landSc(s, "splitLand") ? 3 : 2.5; // ours replaces theirs: their Land goes too
