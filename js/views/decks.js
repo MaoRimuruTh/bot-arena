@@ -1,17 +1,17 @@
-import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261113174405";
-import { plain, isOwnerNow } from "../persona.js?v=20261113174405";
-import { fxText } from "../fxtext.js?v=20261113174405";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, limitKey, banlist, banMax, banPair, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261113174405";
-import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261113174405";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261113174405";
-import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261113174405";
-import { filterBar, filterCards } from "./library.js?v=20261113174405";
-import { openingOdds, simGame } from "./lab.js?v=20261113174405";
-import { freeBuild } from "../builder.js?v=20261113174405";
-import { deckCode, deckText, parseDeck, printCard } from "../deckcode.js?v=20261113174405";
-import { CIEL_DECKS } from "../cieldecks.js?v=20261113174405";
-import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261113174405";
-import { deckLocked, deckLockAch } from "../achieve.js?v=20261113174405";
+import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261113175832";
+import { plain, isOwnerNow } from "../persona.js?v=20261113175832";
+import { fxText } from "../fxtext.js?v=20261113175832";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, limitKey, banlist, banMax, banPair, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261113175832";
+import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261113175832";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261113175832";
+import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261113175832";
+import { filterBar, filterCards } from "./library.js?v=20261113175832";
+import { openingOdds, simGame } from "./lab.js?v=20261113175832";
+import { freeBuild } from "../builder.js?v=20261113175832";
+import { deckCode, deckText, parseDeck, printCard } from "../deckcode.js?v=20261113175832";
+import { CIEL_DECKS } from "../cieldecks.js?v=20261113175832";
+import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261113175832";
+import { deckLocked, deckLockAch } from "../achieve.js?v=20261113175832";
 
 // Ciel's theme decks: print codes → card ids (resolved once the card data is loaded). They are Ciel's decks for Rimuru,
 // so only the owner's account sees them: other accounts get none (not in the deck list, the duel setup, the lab or the bot's picks)
@@ -110,6 +110,22 @@ export function openDeckMenu(d) {
 // choosing several of my decks to delete at once
 const Manage = { on: false, sel: new Set() };
 
+// the opening hand, by drawing it many times: 5 cards, a 6th going first (the first player draws on turn 1 too)
+// - "can summon": some Avatar in hand whose Cost the GEM of the other cards covers (a rough guide: card-specific payment rules are not counted)
+const handPile = (d) => deckEntries(d).filter((e) => e.c.t !== "L").flatMap((e) => Array(e.n).fill(e.c));
+const drawHand = (pile, n, rnd = Math.random) => { const a = [...pile]; for (let i = 0; i < Math.min(n, a.length); i++) { const j = i + Math.floor(rnd() * (a.length - i)); [a[i], a[j]] = [a[j], a[i]]; } return a.slice(0, n); };
+const canSummon = (hand) => hand.some((c, k) => c.t === "A" && (c.c || 0) <= hand.reduce((t, y, j) => t + (j === k ? 0 : y.g || 0), 0));
+function handOdds(d, n = 3000) { const pile = handPile(d); if (pile.length < 6) return null; let cheap = 0, t1 = 0, none = 0;
+  for (let k = 0; k < n; k++) { const h6 = drawHand(pile, 6), h5 = h6.slice(0, 5); if (h5.some((c) => c.t === "A" && (c.c ?? 99) <= 3)) cheap++; if (canSummon(h6)) t1++; if (!h5.some((c) => c.t === "A")) none++; }
+  return { cheap: cheap / n, t1: t1 / n, none: none / n }; }
+function openSampleHand(d) {
+  const pile = handPile(d); const show = (api) => { const h6 = drawHand(pile, 6), h5 = h6.slice(0, 5);
+    api.set([h("div", { class: "eyebrow" }, "มือเปิด 5 ใบ"), h("div", { class: "grid-cards", style: "grid-template-columns:repeat(5,minmax(0,1fr));gap:8px" }, ...h5.map((c) => cardBtn(c.i, { onclick: () => showCard(c.i) }))),
+      h("div", { class: "eyebrow" }, "ใบที่จั่วเทิร์นแรก (เมื่อได้เริ่มก่อน)"), h("div", { class: "grid-cards", style: "grid-template-columns:repeat(5,minmax(0,1fr));gap:8px" }, cardBtn(h6[5].i, { onclick: () => showCard(h6[5].i) })),
+      h("div", { class: "small muted" }, canSummon(h6) ? "มือนี้อัญเชิญ Avatar ได้ในเทิร์นแรก" : "มือนี้ยังอัญเชิญ Avatar ในเทิร์นแรกไม่ได้ (GEM ไม่พอหรือไม่มี Avatar)"),
+      h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => show(api) }, "สุ่มมือใหม่"), h("button", { class: "btn", onclick: api.close }, "ปิด"))]); };
+  openSheet((api) => { setTimeout(() => show(api)); return h("div", { class: "muted small" }, "กำลังสับเด็ค…"); }, { title: "ลองสุ่มมือเปิด", sub: d.name, wide: true });
+}
 const deckColors = (d) => { const st = deckStats(d); return Object.entries(st.colors).filter(([k]) => COLORS.includes(k)).sort((a, b) => b[1] - a[1]).map(([k]) => k); };
 function deckTile(d) {
   const ace = deckAce(d); const v = validateDeck(d); const ms = Data.matches.filter((m) => m.deckId === d.id && m.mode !== "goldfish"); const w = ms.filter((m) => m.result === "win").length;
@@ -200,7 +216,7 @@ Views.decks = {
     const mx = Math.max(1, ...st.curve.map((o) => Object.values(o).reduce((a, b) => a + b, 0)));
     const totalCol = Object.values(st.colors).reduce((a, b) => a + b, 0) || 1; let acc = 0;
     const donut = Object.entries(st.colors).map(([k, n]) => { const a = acc; acc += (n / totalCol) * 100; return `${colorOf(k === "ไร้สี" ? "" : k)} ${a}% ${acc}%`; }).join(",");
-    const odds = ace ? openingOdds(d, [ace.i], 1500) : null;
+    const odds = ace ? openingOdds(d, [ace.i], 1500) : null; const ho = handOdds(d); const pct = (x) => Math.round(x * 100) + "%";
     root.replaceChildren(
       h("section", { class: "hero" }, ace ? artImg(ace, "", "") : null, h("div", { class: "wash" }),
         h("div", { class: "in" }, h("div", { class: "row", style: "gap:6px" }, ...deckColors(d).map((c) => h("span", { class: "chip", style: `background:color-mix(in srgb,${colorOf(c)} 25%,transparent)` }, c)), d.style && STYLE_TH[d.style] ? h("span", { class: "chip" }, STYLE_TH[d.style].split(":")[0]) : null, v.ok ? h("span", { class: "chip good" }, "ถูกกติกา") : h("span", { class: "chip warn" }, "ยังไม่ครบกติกา")),
@@ -224,7 +240,15 @@ Views.decks = {
             h("div", { class: "curve-l" }, [0, 1, 2, 3, 4, 5, 6, 7, "8+"].map((x) => h("span", null, x)))),
           h("div", { class: "panel row", style: "gap:16px;flex-wrap:nowrap" }, h("div", { class: "donut", style: `background:conic-gradient(${donut})`, role: "img", "aria-label": "สัดส่วนสี" }),
             h("div", { class: "stack small", style: "gap:4px" }, Object.entries(st.colors).map(([k, n]) => h("span", { class: "row", style: "gap:7px" }, h("span", { class: "dot", style: "background:" + colorOf(k === "ไร้สี" ? "" : k) }), `${k} ${n}`))),
-            h("div", { class: "stack small", style: "margin-left:auto;text-align:right;gap:2px" }, h("span", { class: "muted" }, "GEM รวม"), h("b", { class: "num" }, st.gem), h("span", { class: "muted" }, "POWER เฉลี่ย"), h("b", { class: "num" }, st.avgPw.toFixed(1)))))));
+            h("div", { class: "stack small", style: "margin-left:auto;text-align:right;gap:2px" }, h("span", { class: "muted" }, "GEM รวม"), h("b", { class: "num" }, st.gem), h("span", { class: "muted" }, "POWER เฉลี่ย"), h("b", { class: "num" }, st.avgPw.toFixed(1)))),
+          h("div", { class: "panel stack", style: "gap:8px" }, h("div", { class: "eyebrow" }, "สัดส่วนประเภทการ์ด"),
+            h("div", { class: "row", style: "gap:6px;flex-wrap:wrap" }, ...Object.entries(st.types).sort((a, b) => b[1] - a[1]).map(([k, n]) => h("span", { class: "chip" }, `${k} ${n}`)))),
+          ho ? h("div", { class: "panel stack", style: "gap:6px" }, h("div", { class: "eyebrow" }, "มือเปิด (สุ่ม 3,000 ครั้ง)"),
+            h("div", { class: "row small", style: "justify-content:space-between" }, h("span", null, "มี Avatar Cost ไม่เกิน 3"), h("b", { class: "num" }, pct(ho.cheap))),
+            h("div", { class: "row small", style: "justify-content:space-between" }, h("span", null, "อัญเชิญได้ในเทิร์นแรก (เริ่มก่อน)"), h("b", { class: "num" }, pct(ho.t1))),
+            h("div", { class: "row small", style: "justify-content:space-between" }, h("span", null, "ไม่มี Avatar เลย"), h("b", { class: "num", style: ho.none > 0.1 ? "color:var(--warn)" : "" }, pct(ho.none))),
+            h("div", { class: "tiny muted" }, "นับแบบคร่าว ๆ: GEM ของการ์ดใบอื่นบนมือพอจ่าย Cost (ยังไม่นับกฎจ่ายเฉพาะของการ์ดบางใบ)"),
+            h("button", { class: "btn sm", onclick: () => openSampleHand(d) }, "ลองสุ่มมือเปิด")) : null)));
   },
 
   // ---------- editor ----------
