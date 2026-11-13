@@ -1,6 +1,6 @@
 // Sharing decks as a short code or a plain list, and reading either back.
 // Cards are named by print code (e.g. SD01-001), which stays the same when the card data is updated.
-import { CARDS, card, baseId, isBase, deckEntries, TYPE_TH } from "./cards.js?v=20261113094154";
+import { CARDS, card, baseId, isBase, deckEntries, TYPE_TH } from "./cards.js?v=20261113094932";
 
 const CODE_HEAD = "BoT1";
 const printOf = (id) => { const c = card(baseId(id)); return c ? c.p : null; };

@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113094154";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261113094154";
-import { SCRIPTS } from "./scripts.js?v=20261113094154";
-import { newId, clone } from "./util.js?v=20261113094154";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113094932";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261113094932";
+import { SCRIPTS } from "./scripts.js?v=20261113094932";
+import { newId, clone } from "./util.js?v=20261113094932";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -567,6 +567,8 @@ export const E = {
   // which of the other player's Avatars / Constructs these ops would destroy or move off the field; a window only if they hold an answer for it
   doomFor(s, ops, p) { const q = 1 - p; const kill = [], killCs = [], leave = [];
     for (const o of ops || []) { if (!o || o.i == null || typeof o.i !== "number") continue; const L = E.locate(s, o.i); if (!L || L.p !== q || (L.z !== "av" && L.z !== "cs")) continue;
+      // "destroyed if its POWER is 0" (คาถา ปลดอาวุสสิวะ): about to be destroyed only when the POWER these ops leave it with is 0
+      if (o.op === "destroy" && o.ifPower0 && E.power(s, L.x) + ops.filter((y) => y && y.op === "power" && y.i === o.i).reduce((a, y) => a + (y.n || 0), 0) > 0) continue;
       if (o.op === "destroy") (L.z === "av" ? kill : killCs).push(o.i); else if (L.z === "av" && ((o.op === "move" && o.to !== "av") || o.op === "exile")) leave.push(o.i); }
     return E.doomWin(s, { kind: "doom", by: p, p: q, kill: [...new Set(kill)], killCs: [...new Set(killCs)], leave: [...new Set(leave)], fight: false }); },
   // an attack ability that takes from the defender's hand (เจค: สุ่มทิ้ง) waits while the defender may still answer the attack with a React (FAQ)
