@@ -3451,8 +3451,7 @@ Object.assign(SCRIPTS, {
   "CC02-050": { activate: { label: "ปลา เปลี่ยนเป็นสภาพนอน: สอดแนม 3 ใบ หาปลา", can: (E, s, x, L) => L.z === "land" && s.phase === "main" && s.P[L.p].av.some((y) => y.a && sy(E, s, y, "ปลา")) && s.P[L.p].deck.length > 0,
     run: (c) => { const { E, s, seat: p } = c; const f = c.choose(s.P[p].av.filter((y) => y.a && sy(E, s, y, "ปลา")).sort((a, b) => E.power(s, a) - E.power(s, b)), 1, "เลือก Avatar ปลา ที่ตื่นอยู่ให้เปลี่ยนเป็นสภาพนอน", { exact: true })[0]; const { top, t } = scoutPick(c, 3, (y) => sy(E, s, y, "ปลา"), "เลือกการ์ด ปลา ขึ้นมือ", { optional: true }); return f ? { explain: `${E.name(s, f)} นอน · สอดแนม ${top.length} ใบ${t ? ` · ${E.name(s, t)} ขึ้นมือ` : ""} · ที่เหลือลงนรก`, ops: [{ op: "toggle", i: f.i }, { op: "scoutShow", seat: p, ids: top.map((y) => y.i) }, ...(t ? [{ op: "move", i: t.i, to: "hand" }] : []), ...restOps(p, top, t ? [t] : [], "hell")] } : { explain: "", ops: [] }; } } },
   // จมน้ำ: each player puts one Avatar of their own under their Deck
-  "CC02-052": { canCast: (E, s) => s.P[0].av.length > 0 || s.P[1].av.length > 0, cast: (c) => { const { E, s, seat: p } = c; const mine = c.choose([...s.P[p].av].sort(cheapCard(E, s)), 1, "เลือก Avatar ฝ่ายเราที่จะกลับเข้าใต้ Deck", { exact: true })[0]; const theirs = [...s.P[1 - p].av].sort(cheapCard(E, s))[0];
-    return { explain: `${[mine, theirs].filter(Boolean).map((y) => E.name(s, y)).join(", ")} กลับเข้าใต้ Deck`, ops: [mine, theirs].filter(Boolean).map((y) => ({ op: "move", i: y.i, to: "deckBottom" })) }; } },
+  // จมน้ำ (CC02 printing): the same card as BT03-046 — both players must have an Avatar, and what the player is made to do is not answered by card abilities (FAQ)
   // ล้มโต๊ะ: every hand back into its Deck, shuffled, then 4 each
   // FAQ: both players need cards in hand to put back · Rule Book (แมวนิค): not while a player cannot draw
   "CC02-053": { canCast: (E, s, p) => s.P[p].hand.length >= 2 && s.P[1 - p].hand.length >= 1 && ![0, 1].some((q) => E.deckHandBlocked(s, q, { t: "M" })), cast: (c) => ({ explain: "มือทั้งหมดกลับเข้า Deck · ต่างฝ่ายจั่ว 4 ใบ", ops: [{ op: "handToDeck", seat: 0 }, { op: "handToDeck", seat: 1 }, { op: "draw", seat: 0, n: 4 }, { op: "draw", seat: 1, n: 4 }] }) },
@@ -3599,7 +3598,7 @@ Object.assign(SCRIPTS, {
       return t ? { explain: `${E.name(s, t)} ไปอยู่ที่ Magic Zone ฝ่ายเรา`, ops: [{ op: "move", i: t.i, to: "mg", seat: p }] } : { explain: "ไม่มีเป้าหมาย", ops: [] }; } },
 });
 for (const [a, b] of [["KD01-005", "CC01-002"], ["KD01-008", "BT02-008"], ["KD01-009", "BT03-002"], ["KD01-016", "BT03-055"], ["KD01-020", "BT02-060"], ["KD02-008", "SD03-004"], ["KD04-003", "BT03-004"], ["KD04-007", "BT03-005"], ["KD04-010", "CC02-022"],
-  ["KD04-014", "BT04-053"], ["KD04-015", "BT05-063"], ["SL02-001", "BT07-006"], ["SL02-006", "BT06-031"]]) if (SCRIPTS[b]) SCRIPTS[a] = SCRIPTS[b];
+  ["CC02-052", "BT03-046"], ["KD04-014", "BT04-053"], ["KD04-015", "BT05-063"], ["SL02-001", "BT07-006"], ["SL02-006", "BT06-031"]]) if (SCRIPTS[b]) SCRIPTS[a] = SCRIPTS[b];
 
 // ── B2SA (น้อง Passion mini set)
 const passion = (E, s, x) => isAv(E, s, x) && E.named(s, x, "น้อง Passion");

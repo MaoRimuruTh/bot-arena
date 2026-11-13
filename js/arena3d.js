@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113154648";
-import { E } from "./engine.js?v=20261113154648";
-import { h } from "./util.js?v=20261113154648";
-import { Sfx } from "./sfx.js?v=20261113154648";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113160539";
+import { E } from "./engine.js?v=20261113160539";
+import { h } from "./util.js?v=20261113160539";
+import { Sfx } from "./sfx.js?v=20261113160539";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -1744,7 +1744,7 @@ function sync(s, V, drops, burned, instant) {
     let m = R.meshes.get(i); const fresh = !m;
     if (fresh) { m = makeMesh(s, L); R.meshes.set(i, m); }
     m.side = L.side; m.zone = L.zone; m.scale = L.scale;
-    m.want = { pos: L.pos, rotY: (L.side === "opp" ? Math.PI : 0) + (L.x.a === false && L.zone === "av" ? -Math.PI / 2 : 0), scale: L.scale };
+    m.want = { pos: L.pos, rotY: (L.side === "opp" ? Math.PI : 0) + (L.x.a === false && (L.zone === "av" || (L.zone === "mg" && L.x.on == null)) ? -Math.PI / 2 : 0), scale: L.scale };
     if (fresh) {
       const co = E.def(s, L.x).co, cHex = co ? colorHex(co) : L.side === "me" ? 0xffc35a : 0xff4a52;
       if (reduce || instant) settle(m, 0.05 * k++); else if (drops.has(i)) summonIn(m, L, co, cHex); else placeIn(m, L);

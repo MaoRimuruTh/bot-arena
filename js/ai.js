@@ -1,11 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261113154648";
-import { plain } from "./persona.js?v=20261113154648";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261113154648";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261113154648";
-import { modPowerFor } from "./auras.js?v=20261113154648";
-import { Data } from "./fb.js?v=20261113154648";
-import { lsGet, clone } from "./util.js?v=20261113154648";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261113160539";
+import { plain } from "./persona.js?v=20261113160539";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261113160539";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261113160539";
+import { modPowerFor } from "./auras.js?v=20261113160539";
+import { Data } from "./fb.js?v=20261113160539";
+import { lsGet, clone } from "./util.js?v=20261113160539";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -255,7 +255,7 @@ export const H = {
         if (m.a.tk === "av" && shieldP(x, t.i) > ap) return { m, score: -10 }; // a stronger shield steps in and our attacker loses
         if (ap > tp) return { m, score: 20 + tp };
         if (m.a.tk === "av") { // can สามัคคี / แทงหลัง helpers turn this into a win?
-          const helpers = P.av.map((y) => ({ y, hq: E.helpOf(s, p, x, y) })).filter((z) => z.hq && !z.hq.risky).map((z) => ({ i: z.y.i, b: z.hq.n })).sort((a, b) => a.b - b.b);
+          const helpers = E.helpPool(s, p).map((y) => ({ y, hq: E.helpOf(s, p, x, y) })).filter((z) => z.hq && !z.hq.risky).map((z) => ({ i: z.y.i, b: z.hq.n })).sort((a, b) => a.b - b.b);
           let bonus = 0; const sup = []; for (const hlp of helpers) { if (ap + bonus > tp) break; bonus += hlp.b; sup.push(hlp.i); }
           if (ap + bonus > tp) return { m: { ...m, a: { ...m.a, sup } }, score: 14 + tp - sup.length * 2 };
         }

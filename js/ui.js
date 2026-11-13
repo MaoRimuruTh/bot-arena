@@ -1,10 +1,10 @@
-import { h, openSheet, holo, toast, fmtDate } from "./util.js?v=20261113154648";
-import { fxText, kwGloss } from "./fxtext.js?v=20261113154648";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt, priceOf, setCode } from "./cards.js?v=20261113154648";
-import { Data, saveOwned, saveSkins, saveFavs, savePrices } from "./fb.js?v=20261113154648";
-import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261113154648";
-import { loadFaq, faqFor } from "./faq.js?v=20261113154648";
-import { CARD_SOURCE } from "./config.js?v=20261113154648";
+import { h, openSheet, holo, toast, fmtDate } from "./util.js?v=20261113160539";
+import { fxText, kwGloss } from "./fxtext.js?v=20261113160539";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt, priceOf, setCode } from "./cards.js?v=20261113160539";
+import { Data, saveOwned, saveSkins, saveFavs, savePrices } from "./fb.js?v=20261113160539";
+import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261113160539";
+import { loadFaq, faqFor } from "./faq.js?v=20261113160539";
+import { CARD_SOURCE } from "./config.js?v=20261113160539";
 
 // opts.seat: in a game, the card's owner (their skin shows) · opts.info: a way to read the card first (right-click or hold
 // it, or the magnifier in its corner) without choosing it

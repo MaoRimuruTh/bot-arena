@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113154648";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261113154648";
-import { SCRIPTS } from "./scripts.js?v=20261113154648";
-import { newId, clone } from "./util.js?v=20261113154648";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261113160539";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261113160539";
+import { SCRIPTS } from "./scripts.js?v=20261113160539";
+import { newId, clone } from "./util.js?v=20261113160539";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -71,7 +71,7 @@ export const E = {
   kw(s, x, k) { if (x.mute) return false; if ((k === "โล่มนุษย์" || k === "ลูกฮึด") && s.P) { const L = E.locate(s, x.i); if (L && L.z === "av" && E.odHas(s, 1 - L.p, "shield")) return false; } const d = E.def(s, x); const w = kwWhere(d.x, k); return w === 1 || (w === 2 && !!x.lk) || (x.kw || []).includes(k) || (x.kt || []).some((e) => e.k === k) || E.auraKw(s, x, k); },
   // keywords handed out by continuous effects on the field, or by a Modification it wears
   auraKw(s, x, k) {
-    const me = E.locate(s, x.i); if (!me || me.z !== "av") return false;
+    const me = E.locate(s, x.i); if (!me || (me.z !== "av" && !(k === "สามัคคี" && E.mgActive(s, x, me)))) return false; // FAQ เสาซินแสมงคล: a เสามงคล on the Magic Zone gets สามัคคี from ผู้เจริญ นาย too
     for (const { x: src, L } of fieldCards(s)) { const sc = scriptOf(s, src); const ra = sc && sc.aura ? null : !src.mute && readAura(E.def(s, src));
       const list = sc && sc.aura ? sc.aura(E, s, src, L) : ra ? ra.run(E, s, src, L) : []; for (const a of list) if (a.kw && a.kw.includes(k) && a.seat === me.p && a.test(x)) return true; }
     for (const P of s.P) for (const m of P.mg) if (m.on === x.i) { const tr = traits(E.def(s, m)); if (tr && tr.modKw && tr.modKw.includes(k)) return true; }
@@ -185,8 +185,10 @@ export const E = {
   colors(s, x) { const pd = s.pend; if (pd && pd.tk === "av" && (pd.att === x.i || pd.ti === x.i)) { const foe = pd.att === x.i ? pd.ti : pd.att; if (foe != null && [...s.P[0].mg, ...s.P[1].mg].some((m) => m.on === foe && !m.mute && (scriptOf(s, m) || {}).foeColor)) { const m = [...s.P[0].mg, ...s.P[1].mg].find((z) => z.on === foe && !z.mute && (scriptOf(s, z) || {}).foeColor); return [scriptOf(s, m).foeColor]; } } // มีมมิ: "Avatar ที่ต่อสู้กับ … จะถูกเปลี่ยนเป็น Avatar สีม่วง"
     const d = E.def(s, x); const on = hasFieldAlias(d) && E.onField(s, x); return COLORS.filter((c) => colorIs(d, c, on)); },
   // how Avatar y of player p may help attacker att: สามัคคี adds its POWER, แทงหลัง adds +1 (risky: other colour → attacker destroyed after the fight)
+  // who may help an attack: our Avatars, and the Avatars on our Magic Zone that may use their abilities from there (เสาซินแสมงคล)
+  helpPool(s, p) { const P = s.P[p]; return [...P.av, ...P.mg.filter((m) => m.on == null && E.def(s, m).t === "A" && E.mgActive(s, m, { p, z: "mg" }))]; },
   helpOf(s, p, att, y) {
-    if (!y.a || y.i === att.i || y.mute) return null; { const sc = scriptOf(s, y); if (sc && sc.helpOnly && !sc.helpOnly(E, s, att)) return null; }
+    if (!y.a || y.i === att.i || y.mute) return null; if (!s.P[p].av.includes(y) && !E.helpPool(s, p).includes(y)) return null; { const sc = scriptOf(s, y); if (sc && sc.helpOnly && !sc.helpOnly(E, s, att)) return null; }
     if (E.kw(s, y, "สามัคคี") && !fieldCards(s).some(({ x: z, L }) => L.p !== p && !z.mute && (scriptOf(s, z) || {}).noUnite)) return { k: "u", n: E.power(s, y) };
     if (E.kw(s, y, "แทงหลัง")) { const yc = E.colors(s, y), ac = E.colors(s, att); return { k: "b", n: 1, risky: !yc.some((c) => ac.includes(c)) }; }
     return null;
@@ -356,6 +358,7 @@ export const E = {
     s.turn++; s.active = p; s.phase = "draw"; s.mu = [{}, {}]; E.ev(s, { k: "turn", p, t: s.turn });
     for (const q of [0, 1]) for (const x of s.P[q].av) x.tm = 0;
     for (const x of s.P[p].av) { if (x.nw && x.nw >= s.turn) { E.log(s, p, `${E.name(s, x)} ยังไม่ตื่น (ผลของการ์ดที่สวมใส่)`); continue; } delete x.nw; x.a = true; }
+    for (const x of s.P[p].mg) if (x.on == null && x.a === false) x.a = true; // an Avatar on the Magic Zone that lent its POWER (สามัคคี from there) wakes with the rest
     for (const q of [0, 1]) for (const x of s.P[q].av) if (x.tn) { delete x.tn[p]; if (!Object.keys(x.tn).length) delete x.tn; } // "until our next Draw Phase" bonuses end
     // Rule Book (Draw Phase): up to 3 cards in hand, else 1; the very first turn of the player who starts draws 2
     const P = s.P[p]; const n = s.turn === 1 ? 2 : P.hand.length < 3 ? 3 - P.hand.length : 1;
@@ -759,11 +762,11 @@ export const E = {
         if (x.picky === s.turn && act.tk === "av") { const opts = O.av.filter((y) => !E.atkSafe(s, y) && !E.atkBy(s, y, x)); const ap = E.power(s, x); const pick = opts.filter((y) => E.power(s, y) >= ap).sort((a, b) => E.power(s, b) - E.power(s, a))[0] || opts.sort((a, b) => (E.def(s, a).c || 0) - (E.def(s, b).c || 0))[0]; if (pick && pick.i !== act.ti) { act = { ...act, ti: pick.i }; E.log(s, 1 - p, `${O.name} เลือกเป้าหมายการโจมตีเอง: ${E.name(s, pick)}`); } }
         let bonus = 0; const sup = [], bs = [], stab = [];
         for (const i of act.sup || []) {
-          const y = P.av.find((z) => z.i === i); const hp = y ? E.helpOf(s, p, x, y) : null; if (!hp) continue;
+          const y = E.helpPool(s, p).find((z) => z.i === i); const hp = y ? E.helpOf(s, p, x, y) : null; if (!hp) continue;
           bonus += hp.n; y.a = false; sup.push(i); if (hp.k === "u") E.helped(s, p, x, y);
           if (hp.k === "b") { bs.push({ i, n: E.name(s, y), co: E.colors(s, y) }); const sy = y.mute ? null : scriptOf(s, y); if (sy && sy.stab && (!sy.stabOk || sy.stabOk(E, s, y, x))) stab.push(y); }
         }
-        x.a = false; E.slept(s, p, [x, ...sup.map((i) => P.av.find((z) => z.i === i)).filter(Boolean)]);
+        x.a = false; E.slept(s, p, [x, ...sup.map((i) => [...P.av, ...P.mg].find((z) => z.i === i)).filter(Boolean)]);
         s.pend = { att: x.i, tk: act.tk, ti: act.ti || null, bonus, sup, by: p, ...(bs.length ? { bs } : {}) };
         s.atk = s.atk && s.atk.t === s.turn ? { t: s.turn, n: s.atk.n + 1, ids: [...new Set([...(s.atk.ids || []), x.i])] } : { t: s.turn, n: 1, ids: [x.i] };
         for (const { x: y, L: Ly } of fieldCards(s)) { if (y.mute) continue; const sy = scriptOf(s, y); if (sy && sy.onDeclare) { const ops = sy.onDeclare(E, s, y, Ly, p) || []; if (ops.length) { E.log(s, Ly.p, `เอฟเฟกต์ ${E.name(s, y)}`); E.ops(s, ops, Ly.p); } } }
