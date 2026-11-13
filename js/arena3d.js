@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113222510";
-import { E } from "./engine.js?v=20261113222510";
-import { h } from "./util.js?v=20261113222510";
-import { Sfx } from "./sfx.js?v=20261113222510";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113224004";
+import { E } from "./engine.js?v=20261113224004";
+import { h } from "./util.js?v=20261113224004";
+import { Sfx } from "./sfx.js?v=20261113224004";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -1685,7 +1685,7 @@ export function banner(t, s) {
   gsap.to(band, { opacity: 0, duration: 0.4, delay: 1.3 });
 }
 export function flash(color, a = 0.45) { let f = document.querySelector(".flash"); if (!f) { f = h("div", { class: "flash" }); document.body.append(f); } f.style.background = color; gsap.fromTo(f, { opacity: a }, { opacity: 0, duration: 0.5, ease: "power2.out" }); }
-export function shake(p = 0.25, d = 0.4) { if (reduce || !R) return; gsap.fromTo(R.off, { x: p, y: p * 0.6 }, { x: 0, y: 0, duration: d, ease: "elastic.out(1.2,0.3)" }); }
+export function shake(p = 0.25, d = 0.4, dir = null) { if (reduce || !R) return; gsap.fromTo(R.off, dir ? { x: dir.x * p, y: -p * 0.35 } : { x: p, y: p * 0.6 }, { x: 0, y: 0, duration: d, ease: "elastic.out(1.2,0.3)" }); } // dir: kicked along the blow
 export function popText(pos3, text, color) {
   if (!R) return; const s = toScreen(pos3); const d = h("div", { class: "dmg" }, text); d.style.left = s.x + "px"; d.style.top = s.y + "px"; if (color) d.style.textShadow = `0 0 14px ${color},0 2px 0 #000`;
   document.body.append(d); gsap.fromTo(d, { y: 0, scale: 0.4, opacity: 0 }, { y: -40, scale: 1, opacity: 1, duration: 0.35, ease: "back.out(3)" }); gsap.to(d, { y: -90, opacity: 0, duration: 0.6, delay: 0.55, onComplete: () => d.remove() });
@@ -1898,9 +1898,10 @@ function summonIn(m, L, co, cHex) {
     .to(g.position, { y: hy + 0.14, duration: 0.24, ease: "sine.inOut" }, 0.5)
     .to(g.position, { x: P.x, y: P.y, z: P.z, duration: 0.22, ease: "power4.in" }, 0.76)
     .to(g.rotation, { x: 0, y: m.want.rotY, duration: 0.22, ease: "power3.in" }, 0.76)
-    .to(g.scale, { x: s, y: s, z: s, duration: 0.22, ease: "power3.in" }, 0.76)
+    .to(g.scale, { x: s * 0.94, y: s, z: s * 1.1, duration: 0.22, ease: "power3.in" }, 0.76) // stretched as it falls
     .add(() => { if (R && azure) azureFx(P, s); }, 0.06)
     .add(() => { if (!R) return; landFx(P, s, co, aHex); ringOut(ring, s); Sfx.play("summon", { color: co }); m.glow.material.opacity = 1; }, 0.98)
+    .to(g.scale, { x: s * 1.1, z: s * 0.9, duration: 0.05, ease: "power2.out" }, 0.98).to(g.scale, { x: s, z: s, duration: 0.45, ease: "elastic.out(1.2,0.35)" }, 1.03) // squashed by the slam
     .to(g.position, { y: P.y + 0.12, duration: 0.08, ease: "power2.out" }, 0.98)
     .to(g.position, { y: P.y, duration: 0.3, ease: "bounce.out" }, 1.06);
 }
@@ -1959,9 +1960,15 @@ function sweep(m, k = 0.9, dur = 0.7) {
   if (!m || !m.u) return; const u = m.u; gsap.killTweensOf(u.uSweep); u.uSheen.value = k;
   gsap.fromTo(u.uSweep, { value: -1.35 }, { value: 1.15, duration: dur, ease: "power1.inOut", onComplete: () => { u.uSheen.value = 0; } });
 }
-function hitFx(m) {
+// struck: it flashes and trembles while the blow holds, then is knocked back along the blow and springs home
+function knock(m, dir) {
   if (!m) return; gsap.fromTo(m.u.uFlash, { value: 0.85 }, { value: 0, duration: 0.35, ease: "power2.out" }); if (m.busy || reduce) return;
-  const p = m.grp.position, x = p.x; gsap.fromTo(p, { x: x - 0.07 }, { x: x + 0.07, duration: 0.04, repeat: 5, yoyo: true, ease: "none", onComplete: () => { p.x = x; } });
+  const g = m.grp, p = g.position, x = p.x, z = p.z, tilt = dir.z > 0 ? 0.35 : -0.35; m.busy = true;
+  gsap.timeline({ onComplete: () => { if (R && R.meshes.get(m.i) === m) done(m); } })
+    .fromTo(p, { x: x - 0.05 }, { x: x + 0.05, duration: 0.035, repeat: 1, yoyo: true, ease: "none" })
+    .to(p, { x: x + dir.x * 0.38, z: z + dir.z * 0.38, y: m.restY + 0.18, duration: 0.09, ease: "power3.out" })
+    .to(g.rotation, { x: tilt, duration: 0.09, ease: "power3.out" }, "<")
+    .to(p, { x, z, y: m.restY, duration: 0.45, ease: "elastic.out(1,0.45)" }).to(g.rotation, { x: 0, duration: 0.4, ease: "power2.out" }, "<");
 }
 // ---------- leaving the field ----------
 const EMBER = { "แดง": 0xff7a2a, "ฟ้า": 0x56c8ff, "เขียว": 0x6dff8a, "ม่วง": 0xc58aff };
@@ -2087,22 +2094,26 @@ async function animateEvent(ev, prev, s, V) {
     const m = R.meshes.get(ev.att); if (!m) return;
     const from = m.grp.position.clone(); let to = ev.tk === "life" ? new THREE.Vector3(0, 0.6, mineSide(ev.by) ? -4.7 : 5.3) : pos(ev.ti); if (!to) return;
     const hit = from.clone().add(to.clone().sub(from).multiplyScalar(0.82)); m.busy = true;
+    const dir = to.clone().sub(from).setY(0).normalize(), wind = from.clone().addScaledVector(dir, -0.45), s0 = m.grp.scale.x, T = ev.ti != null && R.meshes.get(ev.ti); // wound back away from the target first
     const aco = (s.cards[(E.locate(s, ev.att) || { x: {} }).x.c] || {}).co; const tint = aco ? colorHex(aco) : 0xfff1c9; Sfx.play("declare");
     await new Promise((res) => gsap.timeline({ onComplete: res })
-      .to(m.grp.position, { y: 1.3, duration: 0.22, ease: "power2.out" }).to(m.glow.material, { opacity: 1, duration: 0.2 }, "<").to(m.grp.rotation, { x: mineSide(ev.by) ? -0.42 : 0.42, duration: 0.22, ease: "power2.out" }, "<")
-      .to(m.grp.position, { x: hit.x, z: hit.z, y: 0.6, duration: 0.26, ease: "power4.in" })
+      .to(m.grp.position, { x: wind.x, z: wind.z, y: 1.3, duration: 0.26, ease: "power2.out" }).to(m.glow.material, { opacity: 1, duration: 0.2 }, "<").to(m.grp.rotation, { x: mineSide(ev.by) ? -0.5 : 0.5, duration: 0.26, ease: "power2.out" }, "<")
+      .to(m.grp.position, { x: hit.x, z: hit.z, y: 0.6, duration: 0.2, ease: "power4.in" }).to(m.grp.scale, { x: s0 * 0.93, z: s0 * 1.12, duration: 0.2, ease: "power2.in" }, "<") /* stretched into the lunge */
       .add(() => {
-        if (!R) return; Sfx.play("clash"); hitFx(ev.ti != null && R.meshes.get(ev.ti)); sweep(m, 1, 0.4); const sl = sprite(R.FX.slash_02, tint, 3.6, hit.clone().setY(1)); sl.material.rotation = Math.random() * 2;
+        if (!R) return; Sfx.play("clash"); knock(T, dir); sweep(m, 1, 0.4); const sl = sprite(R.FX.slash_02, tint, 3.6, hit.clone().setY(1)); sl.material.rotation = Math.random() * 2;
         gsap.fromTo(sl.scale, { x: 0.5, y: 0.5 }, { x: 4.2, y: 4.2, duration: 0.25, ease: "power3.out" }); gsap.to(sl.material, { opacity: 0, duration: 0.35, delay: 0.1, onComplete: () => R && R.scene.remove(sl) });
-        burst(hit.clone().setY(0.8), { n: 22, color: 0xffd27a, spread: 2.6, size: 0.24 }); burst(hit.clone().setY(0.8), { n: 6, map: R.FX.star_06, color: 0xfff1c9, spread: 1.6, size: 0.5, dur: 0.5 }); shockwave(hit, aco ? tint : 0xff8a4a, 5); if (aco) colorFx(hit, aco, 0.6); shake(0.42, 0.6); flash("rgba(255,240,210,.5)", 0.45);
+        burst(hit.clone().setY(0.8), { n: 22, color: 0xffd27a, spread: 2.6, size: 0.24 }); burst(hit.clone().setY(0.8), { n: 6, map: R.FX.star_06, color: 0xfff1c9, spread: 1.6, size: 0.5, dur: 0.5 }); shockwave(hit, aco ? tint : 0xff8a4a, 5); if (aco) colorFx(hit, aco, 0.6); shake(0.42, 0.6, dir); flash("rgba(255,240,210,.5)", 0.2); /* the light is at the blow, not over the whole screen */
       })
-      .to(m.grp.position, { x: from.x, y: from.y, z: from.z, duration: 0.42, ease: "power2.out" }, "+=0.1").to(m.grp.rotation, { x: 0, duration: 0.42, ease: "power2.out" }, "<")
+      .to(m.grp.scale, { x: s0 * 1.08, z: s0 * 0.88, duration: 0.05, ease: "power2.out" }).to({}, { duration: 0.07 }) /* squashed against it, and the blow holds for a beat (hit-stop) */
+      .to(m.grp.scale, { x: s0, y: s0, z: s0, duration: 0.35, ease: "elastic.out(1.1,0.4)" })
+      .to(m.grp.position, { x: from.x, y: from.y, z: from.z, duration: 0.42, ease: "power2.out" }, "<").to(m.grp.rotation, { x: 0, duration: 0.42, ease: "power2.out" }, "<")
       .add(() => done(m)));
   } else if (ev.k === "life") {
-    const mine = mineSide(ev.p); Sfx.play("life"); avatarDo(ev.p, "hit"); if (mine) buzz([35, 50, 60]);
+    const mine = mineSide(ev.p), lo = R.side && R.side.life.get(ev.i), at = lo ? lo.grp.position.clone().setY(0.6) : new THREE.Vector3(0, 1, mine ? 5.2 : -4.7); Sfx.play("life"); avatarDo(ev.p, "hit"); if (mine) buzz([35, 50, 60]); // at the LIFE card itself (an upright phone has none on the table)
     if (E.critical(s.P[ev.p]) && R.crit !== ev.p + ":" + s.turn) { R.crit = ev.p + ":" + s.turn; setTimeout(() => R && Sfx.play("crit"), 450); } /* one LIFE from losing */ flash(mine ? "rgba(255,40,60,.5)" : "rgba(255,200,90,.35)", 0.5);
-    popText(new THREE.Vector3(0, 1.2, mine ? 5.2 : -4.7), "LIFE −1", "#ff4d55");
-    burst(new THREE.Vector3(0, 1, mine ? 5.2 : -4.7), { n: 26, color: 0xff6a70, spread: 2.2 });
+    popText(at.clone().setY(1.3), "LIFE −1", "#ff4d55");
+    burst(at, { n: 26, color: 0xff6a70, spread: lo ? 1.5 : 2.2 });
+    if (lo && !reduce) { shockwave(at, 0xff4a52, 3.4); const sl = sprite(R.FX.slash_02, 0xff5a5a, 2.6, at.clone().setY(1)); sl.material.rotation = mine ? 0.6 : -0.6; gsap.fromTo(sl.scale, { x: 0.4, y: 0.4 }, { x: 3, y: 3, duration: 0.22, ease: "power3.out" }); gsap.to(sl.material, { opacity: 0, duration: 0.3, delay: 0.1, onComplete: () => R && R.scene.remove(sl) }); shake(0.3, 0.5, new THREE.Vector3(Math.sign(at.x) || 1, 0, 0)); }
   } else if (ev.k === "destroy") {
     Sfx.play("destroy"); const p = pos(ev.i); if (p) { popText(p.clone().setY(1), "BREAK", "#ff4d55"); burst(p.clone().setY(0.6), { n: 16, color: 0xff8a3a, size: 0.2, spread: 2.4 }); }
   } else if (ev.k === "cast") {
