@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113224004";
-import { E } from "./engine.js?v=20261113224004";
-import { h } from "./util.js?v=20261113224004";
-import { Sfx } from "./sfx.js?v=20261113224004";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113231935";
+import { E } from "./engine.js?v=20261113231935";
+import { h } from "./util.js?v=20261113231935";
+import { Sfx } from "./sfx.js?v=20261113231935";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -74,7 +74,7 @@ function mount(container, opts = {}) {
 
   // the play mat: black lacquer with gold-leaf line-work (ลายรดน้ำ), stepped corners (ย่อมุม) round every zone
   const small = innerWidth < 760; R.small = small; R.Q = Q; R.watch = !!opts.watch; /* a friend looking on: no "your turn", and the winner gets the banner */ R.matKey = [small || Q === "low", { near: MATS[opts.mat] || MATS.black, far: MATS[opts.farMat] || MATS[opts.mat] || MATS.black }]; R.zones = tallScreen(container) ? ZONES.tall : ZONES.wide; const mt = matTextures(...R.matKey, R.zones);
-  R.matMat = new THREE.MeshStandardMaterial({ map: mt.base, emissiveMap: mt.glow, emissive: new THREE.Color(0xe0982c), emissiveIntensity: 0.2, roughness: Q === "high" ? 0.62 : 0.44, roughnessMap: Q === "high" ? mt.rough : null, metalness: 0 }); R.matGlow = mt.glow; // (below high nothing reflects in the mat: a constant roughness, one texture fewer)
+  R.matMat = new THREE.MeshStandardMaterial({ map: mt.base, emissiveMap: mt.glow, emissive: new THREE.Color(mt.emis), emissiveIntensity: 0.2, roughness: Q === "high" ? 0.62 : 0.44, roughnessMap: Q === "high" ? mt.rough : null, metalness: 0 }); R.matGlow = mt.glow; // (below high nothing reflects in the mat: a constant roughness, one texture fewer)
   const top = new THREE.Mesh(new THREE.PlaneGeometry(MW, MD), R.matMat); top.rotation.x = -Math.PI / 2; top.position.set(0, 0, MZ); top.receiveShadow = true; scene.add(top);
   const lacq = new THREE.MeshStandardMaterial({ color: 0x5a1812, roughness: 0.34, metalness: 0, envMapIntensity: 0.3 }); R.lacq = lacq;
   const body = new THREE.Mesh(new THREE.BoxGeometry(MW, 0.28, MD), lacq); body.position.set(0, -0.18, MZ); body.receiveShadow = true; scene.add(body);
@@ -223,17 +223,21 @@ export const MATS = { black: { name: "รักดำ", lac: "#120b09", edge: "r
   sakura: { name: "ซากุระราตรี", lac: "#160d22", edge: "rgba(236,140,178,", kind: "sakura" },
   // drawn by hand (kind "sketch"): the zones are marker lines on a flattened box, or pen lines on a ruled page — no lacquer, no gold
   box: { name: "ลังกระดาษ", lac: "#6b4b28", edge: "rgba(60,40,20,", kind: "sketch", paper: "box", ink: "#f4efe2", pens: { hell: "#ff8a70", deck: "#9be8da", dark: "#dcc2ff" } },
-  note: { name: "สมุดเส้น", lac: "#dcddd6", edge: "rgba(120,130,150,", kind: "sketch", paper: "note", ink: "#1b1c24", pens: { hell: "#c23a2c", deck: "#2b4fa8", dark: "#6b3fa3" } } };
+  note: { name: "สมุดเส้น", lac: "#dcddd6", edge: "rgba(120,130,150,", kind: "sketch", paper: "note", ink: "#1b1c24", pens: { hell: "#c23a2c", deck: "#2b4fa8", dark: "#6b3fa3" } },
+  // geometric (paintGeo): night glass with a circle of light under each Avatar Zone, or graphite with a carbon weave — clean lines in place of gold leaf
+  glass: { name: "กระจกดารา", lac: "#060b1e", edge: "rgba(70,160,255,", kind: "glass", deep: ["#071028", "#0b1636"], ink: "#b4e4ff", glow: "#4aa6ff" },
+  pro: { name: "กราไฟต์", lac: "#15181e", edge: "rgba(90,130,255,", kind: "pro", deep: ["#121419", "#1a1d24"], ink: "#e9edf5", glow: "#7d9cff", acc: "#4f7dff" } };
 // what fills the air over the table when you win (seen on your own screen; earned by playing, see achieve.js)
 export const WINFX = { gold: { name: "ทองคำเปลวโปรย" }, lotus: { name: "กลีบบัวโปรย" }, lantern: { name: "โคมลอย" }, fireworks: { name: "พลุฉลอง" } };
 // the scene (สนาม, the map) round the table — not the cloth on it (ผ้าปู, the playmat above). Each viewer sees the one they chose.
 export const SCENES = { hall: { name: "โถงไม้แสงเทียน" }, pond: { name: "สวนสระบัว" }, market: { name: "ตลาดน้ำยามค่ำ" }, hell: { name: "นรกภูมิ" }, forest: { name: "ป่าหิมพานต์" }, deep: { name: "เมืองบาดาล" }, sakura: { name: "ซากุระราตรี" },
-  azure: { name: "ลานเปลวคราม", owner: true } }; // owner: the owner's own (achieve.js opens it to him alone)
+  astral: { name: "หอดาราผลึก" }, azure: { name: "ลานเปลวคราม", owner: true } }; // owner: the owner's own (achieve.js opens it to him alone)
 // a scene that brings its own ground: how to build it, and the air round it (fog colour and thickness, sky and ground light, how strong)
 const GROUND = { pond: { build: () => buildPond(), air: [0x0f2a26, 0.019, 0xf2f6ff, 0x1c3320, 0.62] }, market: { build: () => buildMarket(), air: [0x04080f, 0.015, 0xaab8ff, 0x0a0a14, 0.4] },
   hell: { build: () => buildHell(), air: [0x140403, 0.02, 0xffa070, 0x2a0805, 0.5], noMotes: true },
   forest: { build: () => buildForest(), air: [0x0b1f1a, 0.02, 0xbfe8d8, 0x10241a, 0.5], noMotes: true },
-  deep: { build: () => buildDeep(), air: [0x062636, 0.022, 0x9fdcff, 0x062030, 0.55], noMotes: true }, azure: { build: () => buildAzure(), air: [0x030818, 0.017, 0x9fc4ff, 0x060a1c, 0.46], noMotes: true } };
+  deep: { build: () => buildDeep(), air: [0x062636, 0.022, 0x9fdcff, 0x062030, 0.55], noMotes: true }, astral: { build: () => buildAstral(), air: [0x040918, 0.016, 0xb4d2ff, 0x070b20, 0.5], noMotes: true },
+  azure: { build: () => buildAzure(), air: [0x030818, 0.017, 0x9fc4ff, 0x060a1c, 0.46], noMotes: true } };
 const avCache = new Map();
 const loadAvatar = (key, f) => {
   if (f) { if (!avCache.has(f.key)) avCache.set(f.key, f.url.then((u) => (u && THREE.GLTFLoader ? new Promise((res) => new THREE.GLTFLoader().load(u, res, undefined, () => res(null))) : null))); return avCache.get(f.key); }
@@ -1253,6 +1257,64 @@ function azureFx(P, s) {
     gsap.to(f.material, { opacity: 1, duration: 0.2, delay: i * 0.015 }); gsap.to(f.material, { opacity: 0, duration: 0.22, delay: 0.82, onComplete: () => { if (R) R.scene.remove(f); f.material.dispose(); } }); }
   for (let k = 0; k < 2; k++) ripple(P, 0x0a4ad8, 4.4 * s, 0.1 + k * 0.3);
 }
+// ---------- หอดาราผลึก: a terrace of dark glass under the stars ----------
+// The floor is dark glass with stars caught in it and faint lines of light running across; a great circle of light lies round
+// the table, turning slowly, and two small ones turn the other way at its sides; glass panels hang low by the table's corners,
+// drops of water float and bob round it and motes of light rise. The camera looks down at the table, so everything stands
+// low and close (nothing in the sky would be seen). One batch per repeated thing, no lamps.
+const ASTRAL = {
+  wide: { rings: [[-10.6, -1.2, 4.2], [10.6, -1.2, 4.2]], panels: [[-10.0, 1.0, -5.2, 0.55, 0.62], [10.0, 1.0, -5.2, -0.55, 0.62], [-11.2, 0.9, 2.6, 1.05, 0.55], [11.2, 0.9, 2.6, -1.05, 0.55]], box: [-13, 13, -9, 6] },
+  tall: { rings: [[-6.2, -7.6, 3.4], [6.2, -7.6, 3.4]], panels: [[-5.4, 1.0, -7.4, 0.35, 0.55], [5.4, 1.0, -7.4, -0.35, 0.55]], box: [-7.8, 7.8, -10.5, 9.5] } };
+// a circle of light on a 1024 canvas (white on black, tinted by its material)
+function astralCircleTexture(n) {
+  const c = document.createElement("canvas"); c.width = c.height = n; const g = c.getContext("2d"); g.fillStyle = "#000"; g.fillRect(0, 0, n, n);
+  g.shadowColor = "#fff"; g.shadowBlur = n / 120; lightCircle(g, n / 2, n / 2, n * 0.47, "#fff"); return new THREE.CanvasTexture(c);
+}
+// a floating glass panel: a pale wash, a bright edge with cut corners, a header bar, a few read-out bars and a small dial (no words)
+function astralPanelTexture() {
+  const W = 256, H = 168, c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d"); g.fillStyle = "#000"; g.fillRect(0, 0, W, H);
+  const k = 14; g.fillStyle = "rgba(70,140,255,.16)"; chamfer(g, 6, 6, W - 6, H - 6, k); g.fill();
+  g.strokeStyle = "rgba(170,220,255,.95)"; g.lineWidth = 2.5; chamfer(g, 6, 6, W - 6, H - 6, k); g.stroke();
+  g.fillStyle = "rgba(150,205,255,.55)"; g.fillRect(20, 20, W - 40, 10); g.fillStyle = "rgba(230,245,255,.9)"; g.fillRect(20, 20, 46, 10);
+  [[0.82, 46], [0.56, 64], [0.7, 82], [0.38, 100]].forEach(([f, y]) => { g.fillStyle = "rgba(120,180,255,.35)"; g.fillRect(20, y, 150, 6); g.fillStyle = "rgba(190,230,255,.85)"; g.fillRect(20, y, 150 * f, 6); });
+  g.strokeStyle = "rgba(190,230,255,.8)"; g.lineWidth = 3; g.beginPath(); g.arc(212, 80, 22, 0, 7); g.stroke(); g.lineWidth = 6; g.beginPath(); g.arc(212, 80, 22, -1.57, 2.2); g.stroke();
+  g.fillStyle = "rgba(150,205,255,.5)"; for (let x = 20; x < W - 20; x += 12) g.fillRect(x, 132, 6, 3);
+  return new THREE.CanvasTexture(c);
+}
+function buildAstral() {
+  const Q = R.Q, low = Q === "low", C = ASTRAL[R.zones === ZONES.tall ? "tall" : "wide"], G = -0.335, grp = new THREE.Group(); grp.name = "astral"; R.scene.add(grp);
+  const S = { grp, zk: R.zones, o: new THREE.Object3D(), tex: [], steps: [], C, step: stepAstral }, o = S.o, rnd = lcg(523), T = (t) => { S.tex.push(t); return t; };
+  const flat = (geo, mat, y, order = 0) => { const m = new THREE.Mesh(geo, mat); m.rotation.x = -Math.PI / 2; m.position.y = y; m.renderOrder = order; grp.add(m); return m; };
+  S.water = cellWater(Q !== "high", new THREE.Color(0.002, 0.003, 0.02), new THREE.Color(0.01, 0.018, 0.07), new THREE.Color(0.3, 0.55, 1.0), 0.016, 0.16, 0); flat(new THREE.PlaneGeometry(70, 50), S.water, G).position.z = -2;
+  { const pt = T(paverTexture()); pt.wrapS = pt.wrapT = THREE.RepeatWrapping; pt.repeat.set(7, 5.5); flat(new THREE.PlaneGeometry(MW + 1.7, MD + 1.7), new THREE.MeshBasicMaterial({ map: pt, color: 0x2c3858 }), G + 0.008, 2).position.z = MZ; }
+  // the great circle round the table, and the two small ones at its sides (one picture, two materials; the small ones one batch)
+  const ct = T(astralCircleTexture(Q === "high" ? 1024 : 512)); // (phones: 512, 1.4 MB instead of 5.6)
+  S.ring = new THREE.MeshBasicMaterial({ map: ct, color: 0x3d94ff, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
+  S.big = flat(new THREE.PlaneGeometry(MW + 8, MW + 8), S.ring, G + 0.004, 1); S.big.position.z = MZ;
+  S.ring2 = new THREE.MeshBasicMaterial({ map: ct, color: 0x9ad6ff, transparent: true, opacity: 0.42, blending: THREE.AdditiveBlending, depthWrite: false });
+  S.rm = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), S.ring2, C.rings.length); S.rm.renderOrder = 1; grp.add(S.rm);
+  // the glass panels hanging low by the corners, leaning back toward the players (one batch)
+  S.pm = new THREE.InstancedMesh(new THREE.PlaneGeometry(3.2, 2.1), new THREE.MeshBasicMaterial({ map: T(astralPanelTexture()), transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }), C.panels.length); grp.add(S.pm);
+  // drops of water hanging in the air round the table, each a little glassy and lit from inside (one batch)
+  { const prof = [[0, -1], [0.5, -0.88], [0.76, -0.5], [0.78, -0.05], [0.62, 0.42], [0.38, 0.84], [0.15, 1.2], [0, 1.42]].map(([x, y]) => new THREE.Vector2(x, y));
+    S.dropMat = new THREE.MeshStandardMaterial({ color: 0x0b2a70, emissive: 0x2c84ff, emissiveIntensity: 0.65, roughness: 0.12, metalness: 0.1, transparent: true, opacity: 0.82 });
+    const n = low ? 10 : Q === "mid" ? 18 : 28, [x0, x1, z0, z1] = C.box; S.drops = [];
+    for (let t = 0; t < n * 10 && S.drops.length < n; t++) { const x = x0 + rnd() * (x1 - x0), z = z0 + rnd() * (z1 - z0); if (Math.abs(x) < MW / 2 + 0.8 && Math.abs(z - MZ) < MD / 2 + 0.8) continue; S.drops.push({ x, z, y: 0.7 + rnd() * 2.6, s: 0.1 + rnd() * 0.16, ph: rnd() * 6.28, sp: 0.4 + rnd() * 0.5 }); }
+    S.dm = new THREE.InstancedMesh(new THREE.LatheGeometry(prof, low ? 8 : 12), S.dropMat, S.drops.length); grp.add(S.dm); }
+  // stars caught in the glass floor round the table (they twinkle together)
+  { const n = low ? 220 : Q === "mid" ? 420 : 700, sp = new Float32Array(n * 3); for (let i = 0, k = 0; k < n && i < n * 6; i++) { const x = -16 + rnd() * 32, z = -11 + rnd() * 21; if (Math.abs(x) < MW / 2 + 1 && Math.abs(z - MZ) < MD / 2 + 1) continue; sp[k * 3] = x; sp[k * 3 + 1] = G + 0.02; sp[k * 3 + 2] = z; k++; }
+    const sg = new THREE.BufferGeometry(); sg.setAttribute("position", new THREE.BufferAttribute(sp, 3));
+    S.stars = new THREE.Points(sg, new THREE.PointsMaterial({ map: R.FX.dot, color: 0xdcecff, size: 0.2, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false })); S.stars.frustumCulled = false; grp.add(S.stars); }
+  if (!reduce) S.steps.push(lightPoints(grp, low ? 14 : Q === "mid" ? 36 : 70, 0x9fd8ff, 0.14, 0.3, null));
+  stepAstral(S, 0, 0); return S;
+}
+function stepAstral(S, dt, t) {
+  const o = S.o; S.water.uniforms.uT.value = t; S.big.rotation.z = t * 0.02; S.ring.opacity = 0.46 + 0.06 * Math.sin(t * 0.7); S.stars.material.opacity = 0.75 + 0.15 * Math.sin(t * 1.9);
+  S.C.rings.forEach(([x, z, s], i) => { o.position.set(x, -0.33, z); o.rotation.set(-Math.PI / 2, 0, -t * 0.06 * (i ? 1 : -1)); o.scale.set(s, s, s); o.updateMatrix(); S.rm.setMatrixAt(i, o.matrix); }); S.rm.instanceMatrix.needsUpdate = true;
+  S.C.panels.forEach(([x, y, z, ry, s], i) => { o.position.set(x, y + Math.sin(t * 0.6 + i * 2.1) * 0.08, z); o.rotation.set(-0.45, ry, 0, "YXZ"); o.scale.set(s, s, s); o.updateMatrix(); S.pm.setMatrixAt(i, o.matrix); }); S.pm.instanceMatrix.needsUpdate = true;
+  S.drops.forEach((d, i) => { o.position.set(d.x, d.y + Math.sin(t * d.sp + d.ph) * 0.18, d.z); o.rotation.set(0, t * 0.3 + d.ph, Math.sin(t * d.sp * 0.7 + d.ph) * 0.08); o.scale.set(d.s, d.s, d.s); o.updateMatrix(); S.dm.setMatrixAt(i, o.matrix); }); S.dm.instanceMatrix.needsUpdate = true;
+  for (const f of S.steps) f(dt, t);
+}
 // the table's surroundings are the scene the viewer chose (สนาม), whatever cloth lies on the table
 function decor() {
   if (!R) return; const want = R.sceneKey;
@@ -1326,13 +1388,80 @@ function paintPaper(g, rq, m, near, CW, CH, yMid, U) {
   }
   g.restore();
 }
+// ---------- geometric mats (กระจกดารา, กราไฟต์): clean lines in place of gold leaf ----------
+// A mat of this kind draws its own ground (paintGeo) and its line-work in its own ink, with a glow in its own colour; the
+// frames are chamfered (cut corners) with corner brackets, the knots are small diamonds — no Thai ornament on these.
+const GEO = { glass: 1, pro: 1 };
+function chamfer(c, x0, y0, x1, y1, k) { c.beginPath(); c.moveTo(x0 + k, y0); c.lineTo(x1 - k, y0); c.lineTo(x1, y0 + k); c.lineTo(x1, y1 - k); c.lineTo(x1 - k, y1); c.lineTo(x0 + k, y1); c.lineTo(x0, y1 - k); c.lineTo(x0, y0 + k); c.closePath(); }
+// a zone: a chamfered rule with a fainter one inside it, and (big zones) an L-bracket outside each corner, like a viewfinder's marks
+function geoFrame(c, x0, y0, x1, y1, st, w, d, plain) {
+  const k = Math.max(st * 0.8, w * 2.5); c.lineWidth = w * 0.85; chamfer(c, x0, y0, x1, y1, k); c.stroke();
+  c.save(); c.globalAlpha *= 0.5; c.lineWidth = Math.max(1, w * 0.32); chamfer(c, x0 + d, y0 + d, x1 - d, y1 - d, Math.max(1, k - d * 0.4)); c.stroke(); c.restore();
+  if (plain) return; const b = st * 1.25, o = d * 0.6; c.save(); c.lineWidth = w * 1.1; c.lineCap = "square";
+  for (const [sx, sy, px, py] of [[1, 1, x0 - o, y0 - o], [-1, 1, x1 + o, y0 - o], [1, -1, x0 - o, y1 + o], [-1, -1, x1 + o, y1 + o]]) { c.beginPath(); c.moveTo(px, py + sy * b); c.lineTo(px, py); c.lineTo(px + sx * b, py); c.stroke(); }
+  c.restore();
+}
+// the mat's edge: two chamfered rules and, between them on the long sides, a scale (a dot each step, a tick each fifth) like an instrument's rim
+function geoBorder(c, x0, y0, x1, y1, U) {
+  const k = U(0.34), i = U(0.2); c.lineWidth = U(0.03); chamfer(c, x0, y0, x1, y1, k); c.stroke();
+  c.lineWidth = Math.max(1, U(0.012)); chamfer(c, x0 + i, y0 + i, x1 - i, y1 - i, k - i * 0.4); c.stroke();
+  const st = U(0.19); for (const y of [y0 + i * 0.5, y1 - i * 0.5]) { let n = 0; for (let x = x0 + k + U(0.3); x < x1 - k - U(0.3); x += st, n++) {
+    if (n % 5 === 0) c.fillRect(x - Math.max(1, U(0.008)), y - U(0.055), Math.max(2, U(0.016)), U(0.11)); else { c.beginPath(); c.arc(x, y, Math.max(1, U(0.013)), 0, 7); c.fill(); } } }
+}
+// a knot on a geometric mat: a diamond with a hollow heart, a ring round it and a short bar to each side
+function geoNode(c, cx, cy, r, ground) {
+  const dia = (s) => { c.beginPath(); c.moveTo(cx, cy - r * s); c.lineTo(cx + r * s, cy); c.lineTo(cx, cy + r * s); c.lineTo(cx - r * s, cy); c.closePath(); };
+  dia(0.62); c.fill(); if (ground) { const f = c.fillStyle; c.fillStyle = ground; dia(0.3); c.fill(); c.fillStyle = f; c.beginPath(); c.arc(cx, cy, r * 0.11, 0, 7); c.fill(); }
+  c.save(); c.lineWidth = Math.max(1, r * 0.07); c.beginPath(); c.arc(cx, cy, r * 0.95, 0, 7); c.stroke(); c.beginPath(); for (const s of [-1, 1]) { c.moveTo(cx + s * r * 1.15, cy); c.lineTo(cx + s * r * 1.75, cy); } c.stroke(); c.restore();
+}
+// a circle of light (an original design: rings, a scale, a band of small plain marks, two squares crossed in an eight-point star,
+// a hexagon with its spokes and six small circles on its corners). col: the stroke; a fixed seed, so it is the same every time
+function lightCircle(c, cx, cy, R0, col) {
+  const r = lcg(811), lw = Math.max(1, R0 * 0.006), ring = (k, w = 1) => { c.lineWidth = lw * w; c.beginPath(); c.arc(cx, cy, R0 * k, 0, 7); c.stroke(); };
+  const P = (a, k) => [cx + Math.cos(a) * R0 * k, cy + Math.sin(a) * R0 * k];
+  c.save(); c.strokeStyle = c.fillStyle = col; c.lineCap = "round";
+  ring(1, 1.6); ring(0.955); ring(0.74, 1.2); ring(0.7); ring(0.46, 1.1); ring(0.2);
+  c.lineWidth = lw; for (let k = 0; k < 72; k++) { const a = (k / 72) * 6.2832, l = k % 6 ? 0.975 : 0.962; c.beginPath(); c.moveTo(...P(a, 1)); c.lineTo(...P(a, l)); c.stroke(); }
+  // the band of marks between the rings: each slot a dot pair, a short arc, a small triangle or a bar with a dot (no letters)
+  for (let k = 0; k < 28; k++) { const a = (k / 28) * 6.2832 + 0.06, m = Math.floor(r() * 4), s = R0 * 0.045, [x, y] = P(a, 0.85);
+    c.save(); c.translate(x, y); c.rotate(a + Math.PI / 2); c.lineWidth = lw * 1.1; c.beginPath();
+    if (m === 0) { c.arc(-s * 0.6, 0, s * 0.28, 0, 7); c.moveTo(s * 0.88, 0); c.arc(s * 0.6, 0, s * 0.28, 0, 7); c.fill(); }
+    else if (m === 1) { c.arc(0, s * 0.6, s * 0.9, -2.4, -0.74); c.stroke(); }
+    else if (m === 2) { c.moveTo(0, -s * 0.8); c.lineTo(s * 0.7, s * 0.5); c.lineTo(-s * 0.7, s * 0.5); c.closePath(); c.stroke(); }
+    else { c.moveTo(-s * 0.9, 0); c.lineTo(s * 0.4, 0); c.stroke(); c.beginPath(); c.arc(s * 0.85, 0, s * 0.22, 0, 7); c.fill(); }
+    c.restore(); }
+  c.lineWidth = lw * 1.1; for (const off of [0, Math.PI / 4]) { c.beginPath(); for (let k = 0; k < 4; k++) c[k ? "lineTo" : "moveTo"](...P(off + (k * Math.PI) / 2, 0.7)); c.closePath(); c.stroke(); }
+  c.beginPath(); for (let k = 0; k < 6; k++) c[k ? "lineTo" : "moveTo"](...P((k * Math.PI) / 3 - Math.PI / 2, 0.46)); c.closePath(); c.stroke();
+  for (let k = 0; k < 6; k++) { const a = (k * Math.PI) / 3 - Math.PI / 2; c.lineWidth = lw * 0.7; c.beginPath(); c.moveTo(...P(a, 0.2)); c.lineTo(...P(a, 0.46)); c.stroke(); c.lineWidth = lw; c.beginPath(); c.arc(...P(a, 0.46), R0 * 0.045, 0, 7); c.stroke(); }
+  c.beginPath(); c.arc(cx, cy, R0 * 0.05, 0, 7); c.fill(); c.restore();
+}
+// one side of a geometric mat, drawn the way its owner sees it (the far one turned round): its ground on the colour map, what
+// glows of it on the glow map
+function paintGeo(g, q, m, near, CW, CH, yMid, U) {
+  const H = near ? CH - yMid : yMid, W = CW, r = lcg(m.kind === "glass" ? 613 : 419);
+  for (const c of [g, q]) { c.save(); c.beginPath(); c.rect(0, near ? yMid : 0, CW, H); c.clip(); if (near) c.translate(0, yMid); else { c.translate(CW, yMid); c.rotate(Math.PI); } } // (0,0): the middle of the table at its owner's left
+  const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, m.deep[0]); gr.addColorStop(1, m.deep[1]); g.fillStyle = gr; g.fillRect(-2, -2, W + 4, H + 4);
+  if (m.kind === "glass") { // night glass: soft clouds of blue and violet, stars (a few with a glint), and a circle of light under the Avatar Zone
+    for (const [x, y, rad, col] of [[0.22, 0.58, 0.5, "rgba(40,96,230,.2)"], [0.8, 0.32, 0.42, "rgba(112,64,210,.15)"], [0.55, 0.88, 0.34, "rgba(30,160,230,.12)"]]) { const gg = g.createRadialGradient(W * x, H * y, 0, W * x, H * y, W * rad); gg.addColorStop(0, col); gg.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gg; g.fillRect(0, 0, W, H); }
+    for (let k = 0; k < (W * H) / 1300; k++) { const x = r() * W, y = r() * H, a = 0.12 + r() * 0.55, big = r() < 0.06, s = big ? 1.5 : 0.5 + r() * 0.7; g.fillStyle = `rgba(222,238,255,${a})`; g.beginPath(); g.arc(x, y, s, 0, 7); g.fill();
+      if (big) { q.fillStyle = `rgba(170,215,255,${a * 0.7})`; q.beginPath(); q.arc(x, y, s * 1.5, 0, 7); q.fill(); g.strokeStyle = `rgba(205,232,255,${a * 0.55})`; g.lineWidth = 1; g.beginPath(); g.moveTo(x - s * 4, y); g.lineTo(x + s * 4, y); g.moveTo(x, y - s * 4); g.lineTo(x, y + s * 4); g.stroke(); } }
+    lightCircle(g, W / 2, U(2.35), U(2.2), "rgba(150,212,255,.2)"); lightCircle(q, W / 2, U(2.35), U(2.2), "rgba(80,160,255,.14)");
+  } else { // graphite: a carbon weave (one small tile, repeated), a cool sheen across, and a slim bar of the owner's colour along their edge
+    const s = Math.max(3, Math.round(U(0.075))), t = document.createElement("canvas"); t.width = t.height = s * 2; const tc = t.getContext("2d");
+    for (const [i, j] of [[0, 0], [1, 1], [1, 0], [0, 1]]) { const across = (i + j) % 2 === 0, gg = tc.createLinearGradient(i * s, j * s, across ? i * s : i * s + s, across ? j * s + s : j * s); gg.addColorStop(0, "rgba(0,0,0,.16)"); gg.addColorStop(0.5, "rgba(255,255,255,.07)"); gg.addColorStop(1, "rgba(0,0,0,.16)"); tc.fillStyle = gg; tc.fillRect(i * s, j * s, s, s); }
+    g.fillStyle = g.createPattern(t, "repeat"); g.fillRect(0, 0, W, H);
+    const sh = g.createLinearGradient(0, 0, W, H); sh.addColorStop(0, "rgba(130,160,255,0)"); sh.addColorStop(0.47, "rgba(160,185,255,.07)"); sh.addColorStop(0.53, "rgba(160,185,255,.07)"); sh.addColorStop(1, "rgba(130,160,255,0)"); g.fillStyle = sh; g.fillRect(0, 0, W, H);
+    for (const c of [g, q]) { c.fillStyle = m.acc; c.fillRect(U(1.2), H - U(0.07), W - U(2.4), U(0.035)); }
+  }
+  g.restore(); q.restore();
+}
 function matTextures(small, mats = {}, Z = ZONES.wide) {
   const NEAR = mats.near || MATS.black, FAR = mats.far || NEAR, theme = NEAR;
   const S = small ? 84 : 128; const CW = Math.round(MW * S), CH = Math.round(MD * S);
   const mk = () => { const c = document.createElement("canvas"); c.width = CW; c.height = CH; return c; };
   const base = mk(), glow = mk(), rough = mk(); const g = base.getContext("2d"), q = glow.getContext("2d"), rq = rough.getContext("2d");
   const X = (x) => (x + MW / 2) * S, Y = (z) => (z - MZ + MD / 2) * S, U = (v) => v * S;
-  const LAC = theme.lac;
+  const LAC = theme.lac, tint = !!(GEO[NEAR.kind] || GEO[FAR.kind]); // with a geometric half, the glow map carries each half's own colour and the material's glow is white
   // lacquer: each side of the table is its owner's own mat (like two duel mats laid edge to edge): that colour of lacquer,
   // washed with the colour toward its own edge, a soft pool of light over both, flecks of gold leaf
   const yMid = Y(MZ);
@@ -1345,24 +1474,25 @@ function matTextures(small, mats = {}, Z = ZONES.wide) {
   // ซากุระราตรี: branches in bloom painted across that side (under the gold line-work; the cards lie on top)
   for (const [m, near] of [[FAR, false], [NEAR, true]]) if (m.kind === "sakura") paintSakura(g, X, Y, U, near, small);
   for (const [m, near] of [[FAR, false], [NEAR, true]]) if (m.kind === "sketch") paintPaper(g, rq, m, near, CW, CH, yMid, U);
+  for (const [m, near] of [[FAR, false], [NEAR, true]]) if (GEO[m.kind]) paintGeo(g, q, m, near, CW, CH, yMid, U);
   for (let k = 0; k < CW * CH / 900; k++) { const v = Math.random(); g.fillStyle = v < 0.5 ? "rgba(255,255,255,.018)" : "rgba(0,0,0,.05)"; g.fillRect(Math.random() * CW, Math.random() * CH, 1 + Math.random() * 2, 1 + Math.random() * 2); }
   // a player's own picture (vault.js): a cloth playmat on their half, the far one turned round to face its owner
   const cloths = [[FAR, false], [NEAR, true]].filter(([m]) => m.img).map(([m, near]) => ({ m, near, r: matRect(near, X, Y) }));
   for (const { m, near, r } of cloths) playmat(g, rq, m, near, r, U);
-  const onCloth = (x, y) => cloths.some(({ r }) => x > r[0] && x < r[2] && y > r[1] && y < r[3]) || (y < yMid ? FAR : NEAR).kind === "sketch"; // no gold flecks on cloth or paper
-  for (let k = 0; k < (small ? 260 : 520); k++) { const x = Math.random() * CW, y = Math.random() * CH, r = Math.random() * 1.6 + 0.4, a = Math.random() * 0.22 + 0.04; if (onCloth(x, y)) continue; g.fillStyle = `rgba(232,186,92,${a})`; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); q.fillStyle = `rgba(255,255,255,${a * 0.6})`; q.beginPath(); q.arc(x, y, r, 0, 7); q.fill(); }
+  const onCloth = (x, y) => cloths.some(({ r }) => x > r[0] && x < r[2] && y > r[1] && y < r[3]) || ["sketch", "glass", "pro"].includes((y < yMid ? FAR : NEAR).kind); // no gold flecks on cloth, paper or a geometric mat
+  for (let k = 0; k < (small ? 260 : 520); k++) { const x = Math.random() * CW, y = Math.random() * CH, r = Math.random() * 1.6 + 0.4, a = Math.random() * 0.22 + 0.04; if (onCloth(x, y)) continue; g.fillStyle = `rgba(232,186,92,${a})`; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); q.fillStyle = tint ? `rgba(224,152,44,${a * 0.6})` : `rgba(255,255,255,${a * 0.6})`; q.beginPath(); q.arc(x, y, r, 0, 7); q.fill(); }
   // everything gilded is drawn three times: in gold on the mat, in white on the glow (and metal) map, in grey on the roughness map
   // (each half in its owner's own hand: gold leaf on lacquer, or — a "sketch" mat — marker or pen on paper, which is drawn on the colour map only)
-  const gild = (fn) => { for (const [m, y0, y1] of [[FAR, 0, yMid], [NEAR, yMid, CH]]) for (const [c, col, gr] of m.kind === "sketch" ? [[g, m.ink, LAC]] : [[g, GOLD, LAC], [q, "#fff", "#000"], [rq, "#a0a0a0", "#c0c0c0"]]) {
-    c.save(); c.beginPath(); c.rect(0, y0, CW, y1 - y0); c.clip(); c.strokeStyle = c.fillStyle = col; c.lineJoin = "miter"; c.sk = m.kind === "sketch" ? { m, rnd: lcg(977) } : null; fn(c, gr); c.sk = null; c.restore(); } };
+  const gild = (fn) => { for (const [m, y0, y1] of [[FAR, 0, yMid], [NEAR, yMid, CH]]) for (const [c, col, gr] of m.kind === "sketch" ? [[g, m.ink, LAC]] : GEO[m.kind] ? [[g, m.ink, m.lac], [q, m.glow, "#000"], [rq, "#8c8c8c", "#c0c0c0"]] : [[g, GOLD, LAC], [q, tint ? "#e0982c" : "#fff", "#000"], [rq, "#a0a0a0", "#c0c0c0"]]) {
+    c.save(); c.beginPath(); c.rect(0, y0, CW, y1 - y0); c.clip(); c.strokeStyle = c.fillStyle = col; c.lineJoin = "miter"; c.sk = m.kind === "sketch" ? { m, rnd: lcg(977) } : null; c.geo = GEO[m.kind] ? m : null; fn(c, gr); c.sk = c.geo = null; c.restore(); } };
   // a box drawn by hand: each side a stroke or two that bows a little and runs past the corner
   const scrawl = (c, x0, y0, x1, y1, w, n = 2) => { const r = c.sk.rnd; c.lineCap = "round"; for (let k = 0; k < n; k++) { const j = () => (r() - 0.5) * w * 2.4, o = () => r() * w * 3.2; c.lineWidth = w * (0.7 + r() * 0.55);
     for (const [ax, ay, bx, by] of [[x0 - o(), y0 + j(), x1 + o(), y0 + j()], [x1 + j(), y0 - o(), x1 + j(), y1 + o()], [x1 + o(), y1 + j(), x0 - o(), y1 + j()], [x0 + j(), y1 + o(), x0 + j(), y0 - o()]]) { c.beginPath(); c.moveTo(ax, ay); c.quadraticCurveTo((ax + bx) / 2 + j() * 1.4, (ay + by) / 2 + j() * 1.4, bx, by); c.stroke(); } } };
-  const orn = (c, ...a) => { if (!c.sk) prajamyam(c, ...a); };
+  const orn = (c, ...a) => { if (c.geo) geoNode(c, ...a); else if (!c.sk) prajamyam(c, ...a); };
   // a zone is a panel (ลูกฟัก): a firm rule with a hairline inside it, and in each inner corner a corner piece (ลายเข้ามุม: a
   // triangle with a hollowed side, a bead beyond it). Only the shared Land Magic Zone keeps stepped corners (ย่อมุม, the corner of a
   // throne base) — one stepped frame reads as a centrepiece, a dozen read as pixels. A stepped frame's hairline follows it step for step.
-  const frame = (c, x0, z0, x1, z1, st, w = 0.035, stepped = false) => { if (c.sk) return scrawl(c, X(x0), Y(z0), X(x1), Y(z1), U(w * 1.1), w > 0.03 ? 3 : 2); const d = U(0.1);
+  const frame = (c, x0, z0, x1, z1, st, w = 0.035, stepped = false) => { if (c.sk) return scrawl(c, X(x0), Y(z0), X(x1), Y(z1), U(w * 1.1), w > 0.03 ? 3 : 2); const d = U(0.1); if (c.geo) return geoFrame(c, X(x0), Y(z0), X(x1), Y(z1), U(st), U(w), d, st < 0.1);
     if (stepped) { c.lineWidth = U(w); stepPath(c, X(x0), Y(z0), X(x1), Y(z1), U(st)); c.stroke(); c.lineWidth = U(w * 0.38); stepPath(c, X(x0) + d, Y(z0) + d, X(x1) - d, Y(z1) - d, U(st)); c.stroke(); return; }
     c.lineWidth = U(w); c.strokeRect(X(x0), Y(z0), X(x1) - X(x0), Y(z1) - Y(z0)); c.lineWidth = U(w * 0.38); c.strokeRect(X(x0) + d, Y(z0) + d, X(x1) - X(x0) - 2 * d, Y(z1) - Y(z0) - 2 * d);
     if (st < 0.1) return; // the small boxes (LIFE, the piles) stay plain
@@ -1375,7 +1505,7 @@ function matTextures(small, mats = {}, Z = ZONES.wide) {
     // the mat's border: a stepped double rule (ย่อมุม; the inner rule follows the outer one step for step) and, between the two, a
     // row of กรวยเชิง along the two long edges — tall leaves with rounded shoulders and a vein cut through, standing on the outer rule and
     // pointing in, a bead between each two (the short sides stay plain rules, as on a lacquer panel: กรวยเชิง hang from a band, they do not climb a post)
-    const e = 0.2; if (c.sk) { scrawl(c, X(-MW / 2 + e + 0.1), Y(MZ - MD / 2 + e + 0.1), X(MW / 2 - e - 0.1), Y(MZ + MD / 2 - e - 0.1), U(0.03), 2); } else {
+    const e = 0.2; if (c.geo) geoBorder(c, X(-MW / 2 + e), Y(MZ - MD / 2 + e), X(MW / 2 - e), Y(MZ + MD / 2 - e), U); else if (c.sk) { scrawl(c, X(-MW / 2 + e + 0.1), Y(MZ - MD / 2 + e + 0.1), X(MW / 2 - e - 0.1), Y(MZ + MD / 2 - e - 0.1), U(0.03), 2); } else {
     const e1 = e + 0.24, bst = U(0.2);
     c.lineWidth = U(0.045); stepPath(c, X(-MW / 2 + e), Y(MZ - MD / 2 + e), X(MW / 2 - e), Y(MZ + MD / 2 - e), bst); c.stroke();
     c.lineWidth = U(0.016); stepPath(c, X(-MW / 2 + e1), Y(MZ - MD / 2 + e1), X(MW / 2 - e1), Y(MZ + MD / 2 - e1), bst); c.stroke();
@@ -1410,8 +1540,8 @@ function matTextures(small, mats = {}, Z = ZONES.wide) {
       for (const dz of [-0.24, 0.24]) for (const [a, b] of gp ? [[b0, gp[0]], [gp[1], b1]] : [[b0, b1]]) { c.beginPath(); c.moveTo(X(a - 0.1 * r()), Y(MZ + dz) + (r() - 0.5) * U(0.05)); c.quadraticCurveTo(X((a + b) / 2), Y(MZ + dz) + (r() - 0.5) * U(0.1), X(b + 0.1 * r()), Y(MZ + dz) + (r() - 0.5) * U(0.05)); c.stroke(); } return; }
     const gap = Ld.center ? [Ld.x0 - 0.12, Ld.x1 + 0.12] : null; c.lineWidth = U(0.022);
     for (const dz of [-0.24, 0.24]) for (const [a, b] of gap ? [[b0, gap[0]], [gap[1], b1]] : [[b0, b1]]) { c.beginPath(); c.moveTo(X(a), Y(MZ + dz)); c.lineTo(X(b), Y(MZ + dz)); c.stroke(); }
-    for (let x = b0 + 0.4; x <= b1 - 0.25; x += 0.9) if (!gap || x < gap[0] - 0.15 || x > gap[1] + 1.4) prajamyam(c, X(x), Y(MZ), U(0.14), ground); // (none under the "Land Magic" label)
-    for (const x of [b0, b1]) prajamyam(c, X(x), Y(MZ), U(0.3), ground);
+    for (let x = b0 + 0.4; x <= b1 - 0.25; x += 0.9) if (!gap || x < gap[0] - 0.15 || x > gap[1] + 1.4) orn(c, X(x), Y(MZ), U(0.14), ground); // (none under the "Land Magic" label)
+    for (const x of [b0, b1]) orn(c, X(x), Y(MZ), U(0.3), ground);
   });
   const under = NEAR.kind === "sketch" || FAR.kind === "sketch" ? mk() : null; if (under) under.getContext("2d").drawImage(base, 0, 0); // paper shows a second drawing of the lines, so they are redrawn from here
   draw();
@@ -1420,7 +1550,7 @@ function matTextures(small, mats = {}, Z = ZONES.wide) {
   // the labels need the display font: redraw once it has loaded
   if (document.fonts && document.fonts.status !== "loaded") document.fonts.ready.then(repaint);
   if (document.fonts && (NEAR.kind === "sketch" || FAR.kind === "sketch") && !document.fonts.check('600 20px "Mali"', "นรกAa")) document.fonts.load('600 20px "Mali"', "นรกAa").then(repaint).catch(() => {});
-  return { base: tb, glow: tg, rough: tr };
+  return { base: tb, glow: tg, rough: tr, emis: tint ? 0xffffff : 0xe0982c };
 }
 // dark teak planks: grain running along each plank, a seam between them, each plank a slightly different tone
 function woodTexture(small) {
@@ -1745,7 +1875,7 @@ function fitTall(camera, w, hh) {
 function swapMat() {
   if (!R || !R.matMat || !R.matKey) return; const mt = matTextures(...R.matKey, R.zones), M = R.matMat;
   for (const k of ["map", "emissiveMap", "roughnessMap"]) if (M[k] && M[k].dispose) M[k].dispose();
-  M.map = mt.base; M.emissiveMap = mt.glow; M.roughnessMap = R.Q === "high" ? mt.rough : null; if (!M.roughnessMap) mt.rough.dispose(); if (M.metalnessMap) M.metalnessMap = mt.glow; R.matGlow = mt.glow; M.needsUpdate = true;
+  M.map = mt.base; M.emissiveMap = mt.glow; M.emissive.setHex(mt.emis); M.roughnessMap = R.Q === "high" ? mt.rough : null; if (!M.roughnessMap) mt.rough.dispose(); if (M.metalnessMap) M.metalnessMap = mt.glow; R.matGlow = mt.glow; M.needsUpdate = true;
 }
 // ---------- the side zones of a wide table ----------
 // LIFE lies sideways down its owner's left like a damage zone: face down until it is turned up, then its face shows (tap

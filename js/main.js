@@ -1,26 +1,31 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261113224004";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261113224004";
-import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261113224004";
-import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261113224004";
-import { Vault, startVault } from "./vault.js?v=20261113224004";
-import { vaultSection } from "./vaultui.js?v=20261113224004";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261113224004";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261113224004";
-import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261113224004";
-import { Views, avatarEl } from "./ui.js?v=20261113224004";
-import { Ciel } from "./ai.js?v=20261113224004";
-import "./views/library.js?v=20261113224004";
-import "./views/decks.js?v=20261113224004";
-import "./views/lab.js?v=20261113224004";
-import "./views/history.js?v=20261113224004";
-import { openReport } from "./views/ask.js?v=20261113224004";
-import "./views/play.js?v=20261113224004";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261113231935";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261113231935";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261113231935";
+import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261113231935";
+import { Vault, startVault } from "./vault.js?v=20261113231935";
+import { vaultSection } from "./vaultui.js?v=20261113231935";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261113231935";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261113231935";
+import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261113231935";
+import { Views, avatarEl } from "./ui.js?v=20261113231935";
+import { Ciel } from "./ai.js?v=20261113231935";
+import "./views/library.js?v=20261113231935";
+import "./views/decks.js?v=20261113231935";
+import "./views/lab.js?v=20261113231935";
+import "./views/history.js?v=20261113231935";
+import { openReport } from "./views/ask.js?v=20261113231935";
+import "./views/play.js?v=20261113231935";
 
 const root = $("#view");
 // text size for the whole app (everything is sized in rem), kept per browser; Hearthstone and LoR offer the same for small screens
 const textSize = () => { const v = +lsGet("bot.fs", 1); return [1, 1.12, 1.25].includes(v) ? v : 1; };
 const applyTextSize = () => { document.documentElement.style.fontSize = textSize() === 1 ? "" : textSize() * 100 + "%"; };
 applyTextSize();
+// the look of the pages (settings → หน้าตาเว็บ): gold leaf on lacquer (no class), night-sky glass, or graphite; kept per browser
+const UI_THEMES = [["", "ทองบนรัก"], ["glass", "กระจกดารา"], ["pro", "กราไฟต์"]];
+const uiTheme = () => { let v = ""; try { v = localStorage.getItem("bot.ui") || ""; } catch {} return UI_THEMES.some(([k]) => k === v) ? v : ""; };
+const applyUi = () => { const v = uiTheme(); for (const [k] of UI_THEMES) if (k) document.documentElement.classList.toggle("ui-" + k, v === k); dispatchEvent(new Event("bgfx")); };
+applyUi();
 let current = null, cardsReady = false;
 // installable as an app: the service worker serves the app's own files, and the browser's install prompt waits in Settings
 let installEv = null;
@@ -41,10 +46,10 @@ function appSection(api) {
 // ---------- background: still flecks of gold leaf on the lacquer (drawn once per size, no animation) ----------
 (function bgfx() {
   const c = $("#bgfx"), g = c.getContext("2d");
-  const fit = () => { const W = (c.width = innerWidth), H = (c.height = innerHeight); g.clearRect(0, 0, W, H);
-    for (let k = 0, n = Math.round((W * H) / 9000); k < n; k++) { g.globalAlpha = 0.05 + Math.random() * 0.22; g.fillStyle = "#e8ba5c"; g.beginPath(); g.arc(Math.random() * W, Math.random() * H, Math.random() * 1.3 + 0.3, 0, 7); g.fill(); }
+  const fit = () => { const W = (c.width = innerWidth), H = (c.height = innerHeight), col = document.documentElement.classList.contains("ui-glass") ? "#d4e9ff" : "#e8ba5c"; g.clearRect(0, 0, W, H); // gold flecks, or stars on the glass theme
+    for (let k = 0, n = Math.round((W * H) / 9000); k < n; k++) { g.globalAlpha = 0.05 + Math.random() * 0.22; g.fillStyle = col; g.beginPath(); g.arc(Math.random() * W, Math.random() * H, Math.random() * 1.3 + 0.3, 0, 7); g.fill(); }
     g.globalAlpha = 1; };
-  fit(); let t = 0; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(fit, 150); });
+  fit(); let t = 0; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(fit, 150); }); addEventListener("bgfx", fit);
 })();
 
 // ---------- gate screens ----------
@@ -82,6 +87,7 @@ function avatarSection() {
     ...Object.keys(SIGILS).filter((k) => !unlocked("sig", k)).map((k) => ["วงอัญเชิญ" + SIGILS[k].name, needFor("sig", k)]), ...Object.keys(WINFX).filter((k) => !unlocked("win", k)).map((k) => ["ฉากชัยชนะ" + WINFX[k].name, needFor("win", k)])];
   return [h("div", { class: "eyebrow", style: "margin-top:12px" }, "อวตาร 3 มิติ สนาม ผ้าปูโต๊ะ และวงอัญเชิญ"),
     h("div", { class: "small muted" }, "อวตารยืนข้างแถบกลางสนามฝั่งคุณ เด้งตอนเริ่มเทิร์น สะดุ้งตอนเสีย LIFE ดีใจหรือคอตกตอนจบเกม สนามคือฉากรอบโต๊ะ (แมพ) ที่เห็นเฉพาะบนเครื่องเรา ส่วนผ้าปูโต๊ะ (playmat) คือผ้าที่ปูบนโต๊ะฝั่งเราซึ่งคู่แข่งเห็นด้วย วงอัญเชิญคือวงที่เปิดใต้การ์ดตอนเราอัญเชิญ เปลี่ยนแล้วใช้ตั้งแต่เกมถัดไป"),
+    seg("หน้าตาเว็บ (ธีม)", "bot.ui", uiTheme(), UI_THEMES, "ui", (t) => { applyUi(); return `หน้าตาเว็บ: ${t}`; }),
     seg("อวตาร 3 มิติ", "bot.av3", myFigure(), [["", "ไม่มี"], ...Object.entries(AVATARS).map(([k, a]) => [k, a.name]), ...(Vault.has("fig") ? [["own", "รูปปั้นของฉัน"]] : [])], "av", (t) => `เลือก${t}แล้ว ใช้ตั้งแต่เกมถัดไป`),
     seg("สนาม (ฉากรอบโต๊ะ)", "bot.scene", myScene(), Object.entries(SCENES).filter(([k]) => sceneOpen(k)).map(([k, m]) => [k, m.owner ? "✦ " + m.name : m.name]), "scene", (t) => `สนาม${t} ใช้ตั้งแต่เกมถัดไป`),
     seg("ผ้าปูโต๊ะ (playmat)", "bot.mat", myMat(), [...Object.entries(MATS).map(([k, m]) => [k, m.name]), ...(Vault.has("mat") ? [["own", "ผ้าปูของฉัน"]] : [])], "mat", (t) => `ผ้าปู${t} ใช้ตั้งแต่เปิดสนามครั้งถัดไป`),
