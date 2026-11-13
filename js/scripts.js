@@ -461,7 +461,7 @@ Object.assign(SCRIPTS, {
   // นายนิรยบาล พ่อจีจ้า (SD03, also its SCR reprint under KD02-006): attacks or is attacked: mill 2, POWER +1 (the KD02 base mills 1); set here so it is claimed before KD02-006
   "SD03-002": (() => { const f = (c) => ({ explain: "ธรณีสูบ 2 ใบ · POWER +1 จนจบเทิร์น", ops: [{ op: "mill", seat: c.seat, n: 2 }, ...(c.self && c.E.locate(c.s, c.self.i) ? [{ op: "power", i: c.self.i, n: 1, temp: true }] : [])] }); return { attack: f, attacked: f }; })(),
   // ซีกรุน: mill 3 → POWER +1
-  "BT06-029": { activate: { label: "ธรณีสูบ 3 ใบ: POWER +1", can: (E, s, x, L) => L.z === "av" && s.P[L.p].deck.length > 8,
+  "BT06-029": { activate: { label: "ธรณีสูบ 3 ใบ: POWER +1", can: (E, s, x, L) => L.z === "av" && s.P[L.p].deck.length > (s.P[L.p].bot ? 8 : 2), /* the deck guard is for the bot; a player may pay with 3+ cards */
     run: (c) => ({ explain: "ธรณีสูบ 3 ใบ · POWER +1", ops: [{ op: "mill", seat: c.seat, n: 3 }, { op: "power", i: c.self.i, n: 1, temp: false }] }) } },
   // บัลเดอร์: once per turn, mill 9 instead of being destroyed
   "BT03-024": { wouldDestroy: (E, s, x, L) => { const P = s.P[L.p]; if (P.deck.length < (P.bot ? 15 : 9)) return false;
