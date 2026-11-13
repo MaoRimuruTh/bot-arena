@@ -1,5 +1,5 @@
 // Sound effects synthesized with Web Audio — no audio files to download or license.
-import { lsGet, lsSet } from "./util.js?v=20261113092357";
+import { lsGet, lsSet } from "./util.js?v=20261113093212";
 
 let ctx = null, master = null, out = null, noiseBuf = null; // master is the effects bus; out carries effects and music to the speakers
 const state = { on: lsGet("bot.sound", true), vol: lsGet("bot.volume", 0.6) };

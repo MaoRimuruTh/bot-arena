@@ -1,11 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261113092357";
-import { plain } from "./persona.js?v=20261113092357";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261113092357";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261113092357";
-import { modPowerFor } from "./auras.js?v=20261113092357";
-import { Data } from "./fb.js?v=20261113092357";
-import { lsGet, clone } from "./util.js?v=20261113092357";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261113093212";
+import { plain } from "./persona.js?v=20261113093212";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261113093212";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261113093212";
+import { modPowerFor } from "./auras.js?v=20261113093212";
+import { Data } from "./fb.js?v=20261113093212";
+import { lsGet, clone } from "./util.js?v=20261113093212";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -305,7 +305,9 @@ export const H = {
       else if (o.op === "discardRandom") { const sq = o.seat === 0 || o.seat === 1 ? o.seat : p; v += sq === p ? -1.6 * (o.n || 1) : Math.min(o.n || 1, s.P[sq].hand.length) * 1.4; }
       else if (o.op === "borrow") v += s.P[1 - p].hand.length ? 2.2 : 0;
       else if (o.op === "enslave") { const L = E.locate(s, o.i); v += L && L.p !== p ? 5 + E.power(s, L.x) * 0.6 : 0; }
-      else if (o.op === "extraN") v += 1;
+      // one more Normal Magic this turn (หอสมุดจอมเวทย์, อะปัด): worth it only with a second one to cast, or one in hand after
+      // this turn's Magic is already used; with nothing to cast it is not used at all
+      else if (o.op === "extraN") { const sq = o.seat === 0 || o.seat === 1 ? o.seat : p; const n = s.P[sq].hand.filter((y) => { const d = E.def(s, y); return d.t === "M" && d.st === "N" && (!o.only || String(d.n || "").includes(o.only)); }).length; v += (s.mu[sq].N ? n >= 1 : n >= 2) ? 1.5 : -3; }
     }
     return v;
   },
