@@ -1,20 +1,22 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261114003805";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261114003805";
-import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261114003805";
-import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261114003805";
-import { Vault, startVault } from "./vault.js?v=20261114003805";
-import { vaultSection } from "./vaultui.js?v=20261114003805";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261114003805";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261114003805";
-import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261114003805";
-import { Views, avatarEl } from "./ui.js?v=20261114003805";
-import { Ciel } from "./ai.js?v=20261114003805";
-import "./views/library.js?v=20261114003805";
-import "./views/decks.js?v=20261114003805";
-import "./views/lab.js?v=20261114003805";
-import "./views/history.js?v=20261114003805";
-import { openReport } from "./views/ask.js?v=20261114003805";
-import "./views/play.js?v=20261114003805";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261114010310";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261114010310";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261114010310";
+import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261114010310";
+import { Vault, startVault } from "./vault.js?v=20261114010310";
+import { vaultSection } from "./vaultui.js?v=20261114010310";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261114010310";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261114010310";
+import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261114010310";
+import { Sfx } from "./sfx.js?v=20261114010310";
+import { Music, MUSIC_STYLES } from "./music.js?v=20261114010310";
+import { Views, avatarEl } from "./ui.js?v=20261114010310";
+import { Ciel } from "./ai.js?v=20261114010310";
+import "./views/library.js?v=20261114010310";
+import "./views/decks.js?v=20261114010310";
+import "./views/lab.js?v=20261114010310";
+import "./views/history.js?v=20261114010310";
+import { openReport } from "./views/ask.js?v=20261114010310";
+import "./views/play.js?v=20261114010310";
 
 const root = $("#view");
 // text size for the whole app (everything is sized in rem), kept per browser; Hearthstone and LoR offer the same for small screens
@@ -108,6 +110,18 @@ function gfxSection() {
     // phones that can buzz (Android): a short buzz when our LIFE is hit and when our turn begins
     "vibrate" in navigator ? seg("สั่นเมื่อโดนตี LIFE และถึงตาเรา", buzzOn() ? "1" : "0", [["1", "สั่น"], ["0", "ไม่สั่น"]], "bot.buzz", (t) => (t === "สั่น" ? "มือถือจะสั่นเมื่อโดนตี LIFE และถึงตาเรา" : "ปิดการสั่นแล้ว")) : null];
 }
+// effects and music: on/off and loudness for each, the arena's music style, and quiet music in the menus
+function soundSection() {
+  const row = (label, on, set, vol, setVol) => h("div", { class: "row" }, h("label", { class: "chk" }, h("input", { type: "checkbox", checked: on, onchange: (e) => set(e.target.checked) }), h("span", null, label)),
+    h("input", { type: "range", min: 0, max: 1, step: 0.05, value: vol, "aria-label": "ความดัง" + label, oninput: (e) => setVol(+e.target.value), onchange: () => Sfx.play("click") }));
+  const style = h("div", { class: "seg", role: "group", "aria-label": "แนวเพลงในสนาม" }, Object.entries(MUSIC_STYLES).map(([k, t]) => h("button", { "aria-pressed": Music.style === k ? "true" : "false", onclick: (e) => { Music.setStyle(k); for (const b of style.children) b.setAttribute("aria-pressed", b === e.currentTarget ? "true" : "false"); toast(`เพลงในสนาม: ${t}`); } }, t)));
+  return [h("div", { class: "eyebrow", style: "margin-top:12px" }, "เสียงและเพลง"),
+    h("div", { class: "small muted" }, "เสียงและเพลงทั้งหมดสร้างสดในเครื่อง ไม่มีไฟล์เพลงให้โหลด เพลงแต่งใหม่ทุกครั้งตามจังหวะเกม"),
+    row("เสียงเอฟเฟกต์", Sfx.on, (v) => { if (v !== Sfx.on) Sfx.toggle(); }, Sfx.vol, (v) => Sfx.setVolume(v)),
+    row("เพลงประกอบ", Music.on, (v) => { if (v !== Music.on) Music.toggle(); }, Music.vol, (v) => Music.setVolume(v)),
+    h("div", { class: "segfield" }, h("div", { class: "seglabel", "aria-hidden": "true" }, "แนวเพลงในสนาม"), style),
+    h("label", { class: "chk" }, h("input", { type: "checkbox", checked: Music.menu, onchange: (e) => Music.setMenu(e.target.checked) }), h("span", null, "เปิดเพลงเบาๆ ที่หน้าเมนูด้วย"))];
+}
 // notices while the app is in the background (your turn, a friend joining, a new room)
 function notifySection() {
   const note = h("div", { class: "small muted" });
@@ -133,7 +147,7 @@ function settings() {
   openSheet((api) => {
     const key = h("input", { type: "password", value: Ciel.key(), placeholder: "sk-ant-…", autocomplete: "off", "aria-label": "Claude API key" });
     const model = h("select", { "aria-label": "โมเดลหลัก" }, ["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-5-5"].map((m) => h("option", { value: m, selected: m === Ciel.model() }, m)));
-    const out = [...profileSection(api), ...avatarSection(), ...vaultSection(), ...gfxSection(), ...notifySection(), ...appSection(api), h("div", { class: "eyebrow", style: "margin-top:12px" }, "เจอปัญหา?"), h("div", { class: "row" }, h("button", { class: "btn", onclick: () => { api.close(); openReport(); } }, "แจ้งปัญหา")), h("div", { class: "eyebrow", style: "margin-top:12px" }, "ชิเอล (Claude API)"),
+    const out = [...profileSection(api), ...avatarSection(), ...vaultSection(), ...gfxSection(), ...soundSection(), ...notifySection(), ...appSection(api), h("div", { class: "eyebrow", style: "margin-top:12px" }, "เจอปัญหา?"), h("div", { class: "row" }, h("button", { class: "btn", onclick: () => { api.close(); openReport(); } }, "แจ้งปัญหา")), h("div", { class: "eyebrow", style: "margin-top:12px" }, "ชิเอล (Claude API)"),
       h("div", { class: "small muted" }, "ใส่ API key ของคุณเองเพื่อให้ชิเอลคิดเป็นบอท อ่านเอฟเฟกต์การ์ด และจัดเด็ค key เก็บเฉพาะในเบราว์เซอร์นี้ ไม่ส่งขึ้นฐานข้อมูล ค่าใช้จ่ายคิดกับบัญชี API ของคุณ ถ้าไม่ใส่ ยังเล่นกับบอทพื้นฐานได้"),
       key, h("div", { class: "row" }, h("span", { class: "small muted" }, "โมเดลจัดเด็ค/อ่านการ์ด"), model),
       h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => { const v = key.value.trim(); if (v) lsSet("bot.apiKey", v); else lsDel("bot.apiKey"); lsSet("bot.model", model.value); toast(v ? "บันทึก key ของชิเอลแล้ว" : "ลบ key แล้ว"); meArea(); api.close(); } }, "บันทึก"), Ciel.on() ? h("button", { class: "btn danger sm", onclick: () => { lsDel("bot.apiKey"); meArea(); api.close(); toast("ลบ key แล้ว"); } }, "ลบ key") : null)];

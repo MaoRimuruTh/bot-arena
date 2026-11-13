@@ -2,8 +2,9 @@
 // ensemble: seven equal steps to the octave with a five-note scale on top, a gong-circle skeleton
 // melody, ranat runs that land on it every beat, a bamboo flute, ching-chap cymbals and drums.
 // Nothing is sampled or downloaded, so there is nothing to license.
-import { lsGet, lsSet } from "./util.js?v=20261114003805";
-import { audio } from "./sfx.js?v=20261114003805";
+import { lsGet, lsSet } from "./util.js?v=20261114010310";
+import { audio } from "./sfx.js?v=20261114010310";
+import { fantasy, FMOODS } from "./score.js?v=20261114010310";
 
 const ROOT = 293.66; // the scale's home note
 const SCALES = [[0, 1, 2, 4, 5], [0, 1, 3, 4, 5], [0, 2, 3, 4, 6]]; // five of the seven steps
@@ -168,43 +169,58 @@ export function band(ctx, out, seed = (Math.random() * 2 ** 31) | 0) {
   };
 }
 
-// ---------- live playback in the arena ----------
-const st = { on: lsGet("bot.music", true), vol: lsGet("bot.musicvol", 0.55) };
-let A = null, B = null, timer = null, mood = "mine", want = false;
-function bus() {
-  if (A) return A; const a = audio(); if (!a) return null;
-  const g = a.ctx.createGain(); g.gain.value = 0; g.connect(a.master); A = { ctx: a.ctx, g }; return A;
-}
+// ---------- live playback: the menus and the arena ----------
+// Two styles: "fantasy" (js/score.js, the default) and "piphat" (the band above). The menus get a calm
+// fantasy piece; the arena gets the chosen style, following the game's mood and tension.
+const st = { on: lsGet("bot.music", true), vol: lsGet("bot.musicvol", 0.55), style: lsGet("bot.musicstyle", "fantasy"), menu: lsGet("bot.menumusic", true) };
+let A = null, cur = null, timer = null, mood = "mine", level = 0, scene = "menu", unlocked = false;
+function ac() { if (A) return A; const a = audio(); if (!a) return null; A = { ctx: a.ctx, bus: a.master }; return A; }
+function wanted() { return st.on && unlocked && (scene === "arena" || st.menu); }
 function tick() {
-  if (!A || !B || A.ctx.state !== "running" || document.hidden) return;
-  B.until(A.ctx.currentTime + 0.3);
-  if (B.doneAt && A.ctx.currentTime > B.doneAt) halt(); // the game is over and the last gong has died away
+  if (!A || !cur || A.ctx.state !== "running" || document.hidden) return;
+  cur.b.until(A.ctx.currentTime + 0.6); // 0.6 s ahead: a busy page (the 3D table on a slow phone) can starve the timer
+  if (cur.b.doneAt && A.ctx.currentTime > cur.b.doneAt) { cur.done = true; fadeOut(); } // the game is over and the last note has died away
 }
+function fadeOut(sec = 0.8) {
+  if (!cur || !A) return; const old = cur; cur = null; const t = A.ctx.currentTime;
+  old.g.gain.cancelScheduledValues(t); old.g.gain.setValueAtTime(old.g.gain.value, t); old.g.gain.linearRampToValueAtTime(0, t + sec);
+  setTimeout(() => { old.b.dispose(); try { old.g.disconnect(); } catch (e) { /* gone */ } }, sec * 1000 + 600);
+  if (!cur) { clearInterval(timer); timer = null; }
+}
+// start the right piece for where we are, fading the old one out
 function begin() {
-  if (!st.on || !want || B) return; const a = bus(); if (!a) return;
-  B = band(a.ctx, a.g); B.setMood(MOODS[mood] ? mood : "mine");
-  const t = a.ctx.currentTime; a.g.gain.cancelScheduledValues(t); a.g.gain.setValueAtTime(a.g.gain.value, t); a.g.gain.linearRampToValueAtTime(st.vol, t + 1.5);
+  if (!wanted()) { fadeOut(); return; } const a = ac(); if (!a) return;
+  const kind = scene === "menu" ? "menu" : st.style;
+  if (cur && cur.kind === kind && cur.scene === scene && !cur.done) return;
+  fadeOut(0.9);
+  const g = a.ctx.createGain(); g.gain.value = 0; g.connect(a.bus);
+  const lite = ["low", "flat"].includes(lsGet("bot.gfx", "auto")); // the "save my phone" graphics setting also lightens the music
+  const b = kind === "piphat" ? band(a.ctx, g) : fantasy(a.ctx, g, undefined, { lite });
+  if (scene === "menu") b.setMood("menu"); else { b.setMood(MOODS[mood] || FMOODS[mood] ? mood : "mine"); if (b.setLevel) b.setLevel(level); }
+  const t = a.ctx.currentTime, vol = st.vol * (scene === "menu" ? 0.85 : 1); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 2);
+  cur = { b, g, kind, scene, done: false };
   clearInterval(timer); timer = setInterval(tick, 50);
 }
-function halt() {
-  clearInterval(timer); timer = null; if (!A) return;
-  const t = A.ctx.currentTime, old = B; B = null;
-  A.g.gain.cancelScheduledValues(t); A.g.gain.setValueAtTime(A.g.gain.value, t); A.g.gain.linearRampToValueAtTime(0, t + 0.6);
-  if (old) setTimeout(() => old.dispose(), 1500);
-}
-// browsers only allow sound after the player interacts
-addEventListener("pointerdown", () => { if (st.on && want) { const a = bus(); if (a && a.ctx.state === "suspended") a.ctx.resume(); } }, { passive: true });
+// browsers only allow sound after the player interacts: the first tap anywhere starts the music
+addEventListener("pointerdown", () => { const a = ac(); if (!a) return; if (a.ctx.state === "suspended" && st.on) a.ctx.resume(); if (!unlocked) { unlocked = true; setTimeout(begin, 60); } }, { passive: true });
 
+export const MUSIC_STYLES = { fantasy: "แฟนตาซี", piphat: "ปี่พาทย์" };
 export const Music = {
   get on() { return st.on; },
   get vol() { return st.vol; },
-  toggle() { st.on = !st.on; lsSet("bot.music", st.on); if (st.on) { const a = bus(); if (a) a.ctx.resume(); begin(); } else halt(); return st.on; },
-  start() { want = true; begin(); }, // entering the arena
-  stop() { want = false; halt(); }, // leaving it
+  get style() { return st.style; },
+  get menu() { return st.menu; },
+  toggle() { st.on = !st.on; lsSet("bot.music", st.on); if (st.on) { const a = ac(); if (a) a.ctx.resume(); begin(); } else fadeOut(0.4); return st.on; },
+  setStyle(k) { if (!MUSIC_STYLES[k]) return; st.style = k; lsSet("bot.musicstyle", k); if (scene === "arena") { if (cur) cur.kind = ""; begin(); } },
+  setMenu(v) { st.menu = !!v; lsSet("bot.menumusic", st.menu); if (scene === "menu") begin(); },
+  start() { scene = "arena"; mood = "mine"; level = 0; begin(); }, // entering the arena
+  stop() { scene = "menu"; begin(); }, // leaving it: back to the menu piece, or quiet
   // mine / foe / battle / tense / climax, or win / lose to play the close
   mood(m) {
-    if (m === mood) return; mood = m; if (!B) return;
-    if (m === "win" || m === "lose") B.end(m === "win"); else B.setMood(m);
+    if (m === mood) return; mood = m; if (!cur || scene !== "arena") return;
+    if (m === "win" || m === "lose") cur.b.end(m === "win"); else cur.b.setMood(m);
   },
-  setVolume(v) { st.vol = v; lsSet("bot.musicvol", v); if (A && B) A.g.gain.setTargetAtTime(v, A.ctx.currentTime, 0.1); },
+  // how tense the game is, 0 to 1 (late turns, LIFE running out): the fantasy score adds a layer for it
+  level(x) { if (Math.abs(x - level) < 0.05) return; level = x; if (cur && cur.b.setLevel && scene === "arena") cur.b.setLevel(x); },
+  setVolume(v) { st.vol = v; lsSet("bot.musicvol", v); if (A && cur) cur.g.gain.setTargetAtTime(v * (cur.scene === "menu" ? 0.85 : 1), A.ctx.currentTime, 0.1); },
 };
