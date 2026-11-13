@@ -1,20 +1,20 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261113191525";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261113191525";
-import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261113191525";
-import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261113191525";
-import { Vault, startVault } from "./vault.js?v=20261113191525";
-import { vaultSection } from "./vaultui.js?v=20261113191525";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261113191525";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261113191525";
-import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261113191525";
-import { Views, avatarEl } from "./ui.js?v=20261113191525";
-import { Ciel } from "./ai.js?v=20261113191525";
-import "./views/library.js?v=20261113191525";
-import "./views/decks.js?v=20261113191525";
-import "./views/lab.js?v=20261113191525";
-import "./views/history.js?v=20261113191525";
-import { openReport } from "./views/ask.js?v=20261113191525";
-import "./views/play.js?v=20261113191525";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261113193704";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261113193704";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261113193704";
+import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261113193704";
+import { Vault, startVault } from "./vault.js?v=20261113193704";
+import { vaultSection } from "./vaultui.js?v=20261113193704";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261113193704";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261113193704";
+import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261113193704";
+import { Views, avatarEl } from "./ui.js?v=20261113193704";
+import { Ciel } from "./ai.js?v=20261113193704";
+import "./views/library.js?v=20261113193704";
+import "./views/decks.js?v=20261113193704";
+import "./views/lab.js?v=20261113193704";
+import "./views/history.js?v=20261113193704";
+import { openReport } from "./views/ask.js?v=20261113193704";
+import "./views/play.js?v=20261113193704";
 
 const root = $("#view");
 // text size for the whole app (everything is sized in rem), kept per browser; Hearthstone and LoR offer the same for small screens

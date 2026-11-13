@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113191525";
-import { E } from "./engine.js?v=20261113191525";
-import { h } from "./util.js?v=20261113191525";
-import { Sfx } from "./sfx.js?v=20261113191525";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113193704";
+import { E } from "./engine.js?v=20261113193704";
+import { h } from "./util.js?v=20261113193704";
+import { Sfx } from "./sfx.js?v=20261113193704";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -225,12 +225,13 @@ export const MATS = { black: { name: "รักดำ", lac: "#120b09", edge: "r
 // what fills the air over the table when you win (seen on your own screen; earned by playing, see achieve.js)
 export const WINFX = { gold: { name: "ทองคำเปลวโปรย" }, lotus: { name: "กลีบบัวโปรย" }, lantern: { name: "โคมลอย" }, fireworks: { name: "พลุฉลอง" } };
 // the scene (สนาม, the map) round the table — not the cloth on it (ผ้าปู, the playmat above). Each viewer sees the one they chose.
-export const SCENES = { hall: { name: "โถงไม้แสงเทียน" }, pond: { name: "สวนสระบัว" }, market: { name: "ตลาดน้ำยามค่ำ" }, hell: { name: "นรกภูมิ" }, forest: { name: "ป่าหิมพานต์" }, sakura: { name: "ซากุระราตรี" },
+export const SCENES = { hall: { name: "โถงไม้แสงเทียน" }, pond: { name: "สวนสระบัว" }, market: { name: "ตลาดน้ำยามค่ำ" }, hell: { name: "นรกภูมิ" }, forest: { name: "ป่าหิมพานต์" }, deep: { name: "เมืองบาดาล" }, sakura: { name: "ซากุระราตรี" },
   azure: { name: "ลานเปลวคราม", owner: true } }; // owner: the owner's own (achieve.js opens it to him alone)
 // a scene that brings its own ground: how to build it, and the air round it (fog colour and thickness, sky and ground light, how strong)
 const GROUND = { pond: { build: () => buildPond(), air: [0x0f2a26, 0.019, 0xf2f6ff, 0x1c3320, 0.62] }, market: { build: () => buildMarket(), air: [0x04080f, 0.015, 0xaab8ff, 0x0a0a14, 0.4] },
   hell: { build: () => buildHell(), air: [0x140403, 0.02, 0xffa070, 0x2a0805, 0.5], noMotes: true },
-  forest: { build: () => buildForest(), air: [0x0b1f1a, 0.02, 0xbfe8d8, 0x10241a, 0.5], noMotes: true }, azure: { build: () => buildAzure(), air: [0x030818, 0.017, 0x9fc4ff, 0x060a1c, 0.46], noMotes: true } };
+  forest: { build: () => buildForest(), air: [0x0b1f1a, 0.02, 0xbfe8d8, 0x10241a, 0.5], noMotes: true },
+  deep: { build: () => buildDeep(), air: [0x062636, 0.022, 0x9fdcff, 0x062030, 0.55], noMotes: true }, azure: { build: () => buildAzure(), air: [0x030818, 0.017, 0x9fc4ff, 0x060a1c, 0.46], noMotes: true } };
 const avCache = new Map();
 const loadAvatar = (key, f) => {
   if (f) { if (!avCache.has(f.key)) avCache.set(f.key, f.url.then((u) => (u && THREE.GLTFLoader ? new Promise((res) => new THREE.GLTFLoader().load(u, res, undefined, () => res(null))) : null))); return avCache.get(f.key); }
@@ -1161,6 +1162,49 @@ function stepForest(S, dt, t) {
   S.water.uniforms.uT.value = t; S.fall.offset.y = (t * 0.55) % 1; S.mist.material.opacity = 0.28 + 0.06 * Math.sin(t * 2.1); S.mist.scale.setScalar((2.3 + 0.25 * Math.sin(t * 1.3)) * S.mistS);
   for (const r of S.rings) { r.age += dt; if (r.age > r.dur) r.age = 0; const u = r.age / r.dur; r.m.scale.setScalar((0.3 + u * 1.5) * S.mistS); r.m.material.opacity = (1 - u) * 0.5; }
   S.glow.material.opacity = 0.4 + 0.14 * Math.sin(t * 1.4); S.shaft.opacity = 0.2 + 0.05 * Math.sin(t * 0.5) + 0.02 * Math.sin(t * 1.7); S.spot.opacity = S.shaft.opacity * 0.9; for (const f of S.steps) f(dt, t);
+}
+// ---------- เมืองบาดาล: a sunken temple on the sea floor ----------
+// Sand with the light rippling over it, the steps of a sunken temple under the table, broken pillars at the sides, coral and
+// sea grass that sways, shoals of fish going round, bubbles rising, the sun's shafts coming down through the water.
+const DEEP = {
+  wide: { pillars: [[-10.6, -5.2, 2.6], [-12.3, -2.0, 1.4], [10.4, -6.2, 3.1], [12.2, -3.0, 1.0], [5.6, -9.4, 2.2]], fallen: [[-8.2, -8.3, 0.5]], beds: [[-13, -8.9, -7.0, 4.8], [8.9, 13, -7.0, 4.8], [-9, 9, -9.6, -7.2]], shoals: [[-9.5, -5.5], [8.5, -7.5]], shafts: [[-9, -4], [-3.5, -8.4], [6.5, -8.1], [10.8, -1.5]] },
+  tall: { pillars: [[-6.2, -8.6, 2.4], [6.2, -8.9, 2.8], [-3.3, -9.9, 1.2]], fallen: [[2.6, -9.4, 0.4]], beds: [[-7.6, 7.6, -9.6, -7.2], [-7.6, 7.6, 6.7, 9.6]], shoals: [[-2, -8.3], [1.5, 8.2]], shafts: [[-4, -8.2], [3.5, -8.5], [0, 7.9]] } };
+function buildDeep() {
+  const Q = R.Q, low = Q === "low", C = DEEP[R.zones === ZONES.tall ? "tall" : "wide"], G = -0.335, grp = new THREE.Group(); grp.name = "deep"; R.scene.add(grp);
+  const S = { grp, zk: R.zones, o: new THREE.Object3D(), tex: [], steps: [], fish: [], weeds: [], step: stepDeep }, o = S.o, rnd = lcg(523), T = (t) => { S.tex.push(t); return t; }, col = new THREE.Color();
+  const flat = (geo, mat, y, order = 0) => { const m = new THREE.Mesh(geo, mat); m.rotation.x = -Math.PI / 2; m.position.y = y; m.renderOrder = order; grp.add(m); return m; };
+  // the sea floor: sand in the blue, the light from above rippling over it (the pond's water shader, used as caustics)
+  S.floor = cellWater(low, new THREE.Color(0.02, 0.04, 0.045), new THREE.Color(0.07, 0.11, 0.1), new THREE.Color(0.2, 0.42, 0.42), 0.022, 0.32); flat(new THREE.PlaneGeometry(70, 50), S.floor, G).position.z = -2;
+  // a sunken temple's platform under the table, a step down round it
+  { const pt = T(paverTexture()); pt.wrapS = pt.wrapT = THREE.RepeatWrapping; pt.repeat.set(7, 5.5); const pm = new THREE.MeshBasicMaterial({ map: pt, color: 0x3d5a63 });
+    flat(new THREE.PlaneGeometry(MW + 1.7, MD + 1.7), pm, G + 0.008, 2).position.z = MZ; flat(new THREE.PlaneGeometry(MW + 3.4, MD + 3.4), new THREE.MeshBasicMaterial({ map: pt, color: 0x24393f }), G + 0.004, 1).position.z = MZ; }
+  // broken pillars, one fallen; stone the sea has turned green-grey
+  const stone = new THREE.MeshStandardMaterial({ color: 0x5b7472, roughness: 0.95, metalness: 0, flatShading: true });
+  { const shaft = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.42, 0.48, 1, 10), stone, C.pillars.length + C.fallen.length), base = new THREE.InstancedMesh(new THREE.BoxGeometry(1.3, 0.36, 1.3), stone, C.pillars.length); let k = 0;
+    C.pillars.forEach(([x, z, hh], i) => { o.rotation.set(0, rnd() * 3, (rnd() - 0.5) * 0.08); o.scale.set(1, hh, 1); o.position.set(x, G + 0.36 + hh / 2, z); o.updateMatrix(); shaft.setMatrixAt(k, o.matrix); shaft.setColorAt(k++, col.setRGB(0.9 + rnd() * 0.2, 1, 0.95));
+      o.rotation.set(0, rnd(), 0); o.scale.set(1, 1, 1); o.position.set(x, G + 0.18, z); o.updateMatrix(); base.setMatrixAt(i, o.matrix); base.setColorAt(i, col.setRGB(0.85, 0.95, 0.92)); });
+    for (const [x, z, a] of C.fallen) { o.rotation.set(0, a, Math.PI / 2); o.scale.set(1, 2.6, 1); o.position.set(x, G + 0.42, z); o.updateMatrix(); shaft.setMatrixAt(k, o.matrix); shaft.setColorAt(k++, col.setRGB(0.85, 0.95, 0.9)); }
+    o.rotation.set(0, 0, 0); o.scale.set(1, 1, 1); grp.add(shaft, base); }
+  // coral heads and rocks on the beds, sea grass in tufts that sways
+  const out = (x, z) => !(Math.abs(x) < MW / 2 + 1.0 && Math.abs(z - MZ) < MD / 2 + 1.0), spots = (n) => { const r = []; for (let t = 0; t < n * 8 && r.length < n; t++) { const b = C.beds[Math.floor(rnd() * C.beds.length)], x = b[0] + rnd() * (b[1] - b[0]), z = b[2] + rnd() * (b[3] - b[2]); if (out(x, z)) r.push([x, z]); } return r; };
+  { const cs = spots(low ? 8 : Q === "mid" ? 16 : 26), CO = [[1, 0.42, 0.55], [1, 0.62, 0.32], [0.72, 0.45, 1], [0.95, 0.85, 0.45], [0.4, 0.85, 0.9]];
+    const coral = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, metalness: 0, flatShading: true }), cs.length * 3); let k = 0;
+    for (const [x, z] of cs) { const c0 = CO[Math.floor(rnd() * CO.length)]; for (let j = 0; j < 3; j++) { const s = 0.18 + rnd() * 0.22; o.position.set(x + (rnd() - 0.5) * 0.6, G + s * 0.7, z + (rnd() - 0.5) * 0.5); o.rotation.set(rnd(), rnd() * 6, rnd()); o.scale.set(s, s * (1 + rnd()), s); o.updateMatrix(); coral.setMatrixAt(k, o.matrix); coral.setColorAt(k++, col.setRGB(c0[0] * 0.5, c0[1] * 0.42, c0[2] * 0.48)); } }
+    o.rotation.set(0, 0, 0); o.scale.set(1, 1, 1); grp.add(coral);
+    const lt = T(leafTexture()), wg = new THREE.PlaneGeometry(0.34, 1.6); wg.translate(0, 0.8, 0); const wm = new THREE.MeshBasicMaterial({ map: lt, color: 0x3d8a5a, alphaTest: 0.4, side: THREE.DoubleSide });
+    for (const [x, z] of spots(low ? 8 : Q === "mid" ? 16 : 28)) { const tuft = new THREE.Group(); tuft.position.set(x, G, z); for (let j = 0; j < 4; j++) { const b = new THREE.Mesh(wg, wm); b.rotation.y = (j / 4) * Math.PI + rnd() * 0.4; b.position.set((rnd() - 0.5) * 0.25, 0, (rnd() - 0.5) * 0.25); b.scale.set(1, 0.7 + rnd() * 0.8, 1); tuft.add(b); } grp.add(tuft); S.weeds.push({ g: tuft, ph: rnd() * 6.28, f: 0.6 + rnd() * 0.5 }); } }
+  // shoals of fish going round, bubbles rising, the sun's shafts
+  { const ft = T(koiTexture("#7aa8c8")); for (const [cx, cz] of C.shoals) for (let j = 0; j < (low ? 5 : 11); j++) { const f = new THREE.Sprite(new THREE.SpriteMaterial({ map: ft, color: j % 3 ? 0xcfe8ff : 0xffe0a8, transparent: true, depthWrite: false })); f.scale.set(0.62, 0.62, 1); grp.add(f); S.fish.push({ f, cx, cz, r: 1.2 + rnd() * 1.4, y: 1.0 + rnd() * 1.6, ph: rnd() * 6.28, w: (0.25 + rnd() * 0.15) * (rnd() < 0.5 ? 1 : -1) }); } }
+  { const st = T(shaftTexture()); S.shaft = new THREE.MeshBasicMaterial({ map: st, color: 0x9fe8ff, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    for (const [x, z] of C.shafts.slice(0, low ? 2 : 9)) { const m = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 6), S.shaft); m.position.set(x + 0.8, G + 2.9, z); m.rotation.z = 0.22; m.renderOrder = 6; grp.add(m); } }
+  if (!reduce) S.steps.push(lightPoints(grp, low ? 14 : Q === "mid" ? 34 : 60, 0xcff4ff, 0.14, 0.5, null));
+  return S;
+}
+function stepDeep(S, dt, t) {
+  S.floor.uniforms.uT.value = t; S.shaft.opacity = 0.14 + 0.05 * Math.sin(t * 0.6) + 0.02 * Math.sin(t * 1.9);
+  for (const w of S.weeds) { w.g.rotation.z = Math.sin(t * w.f + w.ph) * 0.14; w.g.rotation.x = Math.cos(t * w.f * 0.8 + w.ph) * 0.1; }
+  for (const f of S.fish) { const a = t * f.w + f.ph; f.f.position.set(f.cx + Math.cos(a) * f.r, f.y + Math.sin(t * 0.9 + f.ph) * 0.12, f.cz + Math.sin(a) * f.r * 0.6); const dx = -Math.sin(a) * f.w; f.f.material.rotation = (dx >= 0 ? 0 : Math.PI) + 0.15 * Math.sin(t * 3 + f.ph); }
+  for (const s of S.steps) s(dt, t);
 }
 // ---------- ลานเปลวคราม: the owner's own scene ----------
 // A terrace on still dark water that light runs across in blue lines, braziers of blue fire at its corners, clusters of
