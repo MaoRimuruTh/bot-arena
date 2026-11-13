@@ -1541,7 +1541,7 @@ Object.assign(SCRIPTS, {
   "BT05-010": { selfCost: (E, s, x, p) => (s.P[p].av.some((y) => sy(E, s, y, "เปรต")) ? -(E.def(s, x).c || 0) : 0),
     activate: { label: "หงาย LIFE เราสูงสุด 2 ใบ (คว่ำคืนเมื่อจบเทิร์น)", can: (E, s, x, L) => L.z === "av" && s.phase === "main" && s.P[L.p].life.some((y) => !y.up),
       run: (c) => { const { s, seat: p } = c; const down = s.P[p].life.filter((y) => !y.up).length; const n = Math.min(2, down) - (c.mode(["หงาย 2 ใบ", "หงาย 1 ใบ"], "น้องนาว: หงาย LIFE กี่ใบ", 0) === 1 && down >= 2 ? 1 : 0);
-        return { explain: `หงาย LIFE เรา ${n} ใบ จนจบเทิร์น`, ops: [...Array.from({ length: n }, () => ({ op: "lifeFlip", seat: p })), { op: "atEnd", turn: s.turn, ops: Array.from({ length: n }, () => ({ op: "lifeFlip", seat: p, up: false, force: true })), why: "คว่ำ LIFE ที่หงายด้วยน้องนาว" }] }; } } },
+        return { explain: `หงาย LIFE เรา ${n} ใบ จนจบเทิร์น`, ops: [...Array.from({ length: n }, () => ({ op: "lifeFlip", seat: p })), { op: "atEnd", turn: s.turn, ops: Array.from({ length: n }, () => ({ op: "lifeFlip", seat: p, up: false, ifAble: true })), why: "คว่ำ LIFE ที่หงายด้วยน้องนาว" } /* FAQ: in สาหัส they stay up */] }; } } },
   // เจนนี่ อย่าบู้บี้เลขา: nobody can summon Avatars from hell
   "BT05-012": { noHellSummon: true },
   // ลานเซลอต: จุติ scout 2: an "อัศวินโต๊ะกลม" is summoned, the rest shuffled back; red: our knights +1 this turn, blue: draw 1
@@ -2345,6 +2345,7 @@ Object.assign(SCRIPTS, {
   // พระอิศวร วีลแชร์: when our พระอิศวร is destroyed into our hell: summoned from the hand with base POWER half of a พระอิศวร in hell, then an opposing Avatar loses that much
   "BT09-001": { handDeathOk: (E, s, y, dead) => E.named(s, dead, "พระอิศวร") && dead.o === y.o && E.locate(s, dead.i)?.z === "hell" && E.avatars(s.P[y.o]) < 4,
     handDeath: (c) => { const { E, s, seat: p, self: x } = c; const god = c.choose([...s.P[p].hell].filter((y) => E.named(s, y, "พระอิศวร")).sort((a, b) => (E.def(s, b).pw || 0) - (E.def(s, a).pw || 0)), 1, "เลือก พระอิศวร ในนรก (POWER ตั้งต้นของใบนี้ = ครึ่งหนึ่งของใบที่เลือก)", { exact: true })[0]; const half = god ? Math.floor((E.def(s, god).pw || 0) / 2) : 0; const t = half ? c.choose(bestFoe(E, s, p), 1, `เลือก Avatar ฝ่ายตรงข้าม POWER -${half}`, { exact: true })[0] : null;
+      if (!t) return { explain: `อัญเชิญ ${E.name(s, x)} (ฝ่ายตรงข้ามไม่มี Avatar ให้ลด POWER: ไม่ได้รับ POWER ตั้งต้น — FAQ)`, ops: [{ op: "put", i: x.i }] };
       return { explain: `อัญเชิญ ${E.name(s, x)} POWER ตั้งต้น ${half}${t && half ? ` · ${E.name(s, t)} POWER -${half}` : ""}`, ops: [{ op: "put", i: x.i, ov: { pw: half } }, ...(t && half ? [{ op: "power", i: t.i, n: -half, temp: false }] : [])] }; } },
   // เนอร์เกิ้ล เนียร์: other แห่หัว +1 (+2 when summoned by พี่โปจิ)
   "BT09-002": { aura: (E, s, src, L) => (L.z === "av" ? [{ seat: L.p, test: (x) => x.i !== src.i && E.named(s, x, "แห่หัว"), n: cultBy(E, s, src) ? 2 : 1 }] : []) },
@@ -2815,7 +2816,7 @@ const otaField = (E, s) => [0, 1].flatMap((q) => [...s.P[q].av, ...s.P[q].mg, ..
 const unitXVI = (E, s, x) => isAv(E, s, x) && E.named(s, x, "หน่วยรบ XVI");
 const virusAv = (E, s, x) => isAv(E, s, x) && E.named(s, x, "ไวรัส");
 const odAv = (E, s, x) => isAv(E, s, x) && (E.named(s, x, "Overdose") || textHas(E, s, x, "Overdose"));
-const deathToMg = (c, needOpp = true) => { const { E, s, self: x } = c; return x && (c.t.z == null || c.t.z === "av") && E.locate(s, x.i)?.z === "hell" && (!needOpp || c.t.fromOpp) ? { explain: `${E.name(s, x)} ไปวางไว้บน Magic Zone`, ops: [{ op: "move", i: x.i, to: "mg", seat: c.seat }] } : { explain: "", ops: [] }; };
+const deathToMg = (c, needOpp = true) => { const { E, s, self: x } = c; return x && (c.t.z == null || c.t.z === "av" || c.t.z === "mg") /* FAQ เบเซอร์: from the Magic Zone too */ && E.locate(s, x.i)?.z === "hell" && (!needOpp || c.t.fromOpp) ? { explain: `${E.name(s, x)} ไปวางไว้บน Magic Zone`, ops: [{ op: "move", i: x.i, to: "mg", seat: c.seat }] } : { explain: "", ops: [] }; };
 const fromMgSummon = { label: "ทิ้งการ์ดบนมือ 2 ใบ: อัญเชิญจาก Magic Zone", can: (E, s, x, L) => L.z === "mg" && x.on == null && s.phase === "main" && s.P[L.p].hand.length >= 2 && E.avatars(s.P[L.p]) < 4,
   run: (c) => { const { E, s, seat: p, self: x } = c; const pay = c.choose([...s.P[p].hand].sort(cheapCard(E, s)), 2, "ทิ้งการ์ดบนมือ 2 ใบ", { exact: true }); return pay.length === 2 ? { explain: `ทิ้ง 2 ใบ · อัญเชิญ ${E.name(s, x)} จาก Magic Zone`, ops: [{ op: "discard", seat: p, iids: pay.map((y) => y.i) }, { op: "put", i: x.i, here: true }] } : { explain: "", ops: [] }; } };
 const modeBeser = (form) => (E, s, p) => { const P = s.P[p]; return P.mg.some((m) => m.on == null && E.def(s, m).n === "มนุษย์เครื่องใช้ไฟฟ้า เบเซอร์") && P.mg.some((m) => m.on == null && E.def(s, m).n === form) && E.avatars(P) < 4; };
@@ -2871,7 +2872,7 @@ Object.assign(SCRIPTS, {
   "BT11-024": { react: { kinds: ["attack"], can: (E, s, p, on) => on.tk === "life" && E.critical(s.P[p]), botV: () => 40 },
     handReact: (c) => ({ explain: `"ขอเทิร์นนึง" · เนรเทศ ${c.E.name(c.s, c.self)} · ยกเลิกการโจมตีและจบเทิร์นฝ่ายตรงข้าม`, ops: [{ op: "exile", i: c.self.i }, { op: "cancelAttack" }, { op: "endNow" }] }) },
   // ซัวเจ๋ง: from hell with 2+ of พระถังซัมจั๋ง / ซุนหงอคง / ตือโป๊ยก่าย, discard 1: summoned
-  "BT11-025": { activate: { label: "ทิ้ง 1 ใบ: อัญเชิญจากนรก", can: (E, s, x, L) => L.z === "hell" && s.phase === "main" && E.avatars(s.P[L.p]) < 4 && s.P[L.p].hand.length > 0 && tangIn(E, s, L.p, tang.slice(0, 3)).length >= 2,
+  "BT11-025": { activate: { label: "ทิ้ง 1 ใบ: อัญเชิญจากนรก", can: (E, s, x, L) => L.z === "hell" && s.phase === "main" && E.avatars(s.P[L.p]) < 4 && s.P[L.p].hand.length > 0 && s.P[L.p].av.filter((y) => tang.slice(0, 3).some((n) => E.named(s, y, n))).length >= 2,
     run: (c) => { const { E, s, seat: p, self: x } = c; const pay = c.choose([...s.P[p].hand].sort(cheapCard(E, s)), 1, "ทิ้งการ์ดบนมือ 1 ใบ", { exact: true })[0]; return pay ? { explain: `ทิ้ง ${E.name(s, pay)} · อัญเชิญ ${E.name(s, x)}`, ops: [{ op: "discard", seat: p, iids: [pay.i] }, { op: "put", i: x.i }] } : { explain: "", ops: [] }; } } },
   // ลุกซุเรีย: from the hand send 1-3 โอตะ to hell: summoned, +1 each · once per turn a โอตะ to hell: +2 · attacking: a โอตะ from our hell worn
   "BT11-026": { activate: { label: "ส่ง โอตะ ลงนรก", can: (E, s, x, L) => s.phase === "main" && otaField(E, s).length > 0 && ((L.z === "hand" && E.avatars(s.P[L.p]) < 4) || L.z === "av"),
@@ -3434,8 +3435,10 @@ Object.assign(SCRIPTS, {
     foePick: (c) => { const { E, s, seat: q, self: x } = c; const p = 1 - q; if (!x || (E.locate(s, x.i) || {}).z !== "mg") return { explain: "", ops: [] };
       const t = c.choose([...s.P[q].av].sort((a, b) => (E.noControl(s, b) ? 1 : 0) - (E.noControl(s, a) ? 1 : 0) || cheapCard(E, s)(a, b)), 1, "เลือก Avatar ของคุณ 1 ใบ ที่จะย้ายไปอยู่ฝ่ายตรงข้าม", { exact: true })[0];
       if (!t) return { explain: "ไม่มี Avatar ให้เลือก", ops: [{ op: "move", i: x.i, to: "hell" }] };
-      if (E.noControl(s, t)) return { explain: `เลือก ${E.name(s, t)} ซึ่งเปลี่ยนการควบคุมไม่ได้ จึงไม่เกิดผล`, ops: [{ op: "move", i: x.i, to: "hell" }] };
-      return { explain: `เลือก ${E.name(s, t)} ไปอยู่ฝ่ายตรงข้าม (สวมใส่ สิงสู่เพื่อสู่สม)`, ops: [{ op: "control", i: t.i, seat: p }, { op: "attach", i: x.i, on: t.i }] }; } },
+      // FAQ: what the player is made to do is not stopped by card abilities (รูปประจำบ้าน, ปลอกคอซื่อสัตย์); only a partner (คู่หู, the player's own state) stays
+      if (t.lk) return { explain: `เลือก ${E.name(s, t)} ซึ่งอยู่ในสถานะคู่หู จึงไม่เกิดผล`, ops: [{ op: "move", i: x.i, to: "hell" }] };
+      const collar = s.P[q].mg.concat(s.P[p].mg).some((m) => m.on === t.i && !m.mute && E.named(s, m, "ปลอกคอซื่อสัตย์")); // taken, then the collar brings it back (FAQ)
+      return { explain: `เลือก ${E.name(s, t)} ไปอยู่ฝ่ายตรงข้าม (สวมใส่ สิงสู่เพื่อสู่สม)${collar ? " · ปลอกคอซื่อสัตย์พากลับมา" : ""}`, ops: [{ op: "control", i: t.i, seat: p, player: true }, { op: "attach", i: x.i, on: t.i }, ...(collar ? [{ op: "control", i: t.i, seat: q, home: true }] : [])] }; } },
   // กาจอก: our fighting Avatar's awake opponent is destroyed
   "CC02-046": { react: { kinds: ["attack", "react"], own: true, can: (E, s, p) => { const pd = s.pend; if (!pd || pd.tk !== "av") return false; const A = E.locate(s, pd.att), T = E.locate(s, pd.ti); return !!A && !!T && ((A.p === p && T.x.a) || (T.p === p && A.x.a)); }, botV: () => 4 },
     cast: (c) => { const { E, s, seat: p } = c; const pd = s.pend; if (!pd) return { explain: "", ops: [] }; const A = E.locate(s, pd.att), T = E.locate(s, pd.ti); const foe = A && A.p !== p ? A.x : T && T.p !== p ? T.x : null; return foe && foe.a ? { explain: `${E.name(s, foe)} อยู่ในสภาพตื่น: ทำลาย`, ops: [{ op: "destroy", i: foe.i, why: "กาจอก" }] } : { explain: "", ops: [] }; } },

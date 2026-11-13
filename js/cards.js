@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261113185621";
-import { h } from "./util.js?v=20261113185621";
-import { Data } from "./fb.js?v=20261113185621";
+import { CARD_SOURCE } from "./config.js?v=20261113190617";
+import { h } from "./util.js?v=20261113190617";
+import { Data } from "./fb.js?v=20261113190617";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -77,7 +77,7 @@ export function aliasOf(text) {
     // (a closing quote is sometimes missing at the very end of the text)
     if ((m = body.match(/(?:ถือว่ามีชื่อ(?:ว่า)?|นับเป็นชื่อ|นับว่าเป็นชื่อ|นับว่าเป็น|ถือว่าเป็น)\s*((?:["“'‘][^"”'’]+(?:["”'’]|$)\s*(?:และ|,|หรือ)?\s*)+)/))) for (const q of m[1].matchAll(/["“'‘]([^"”'’]+)(?:["”'’]|$)/g)) add("an" + F, q[1]);
     else if ((m = body.match(/(?:ถือว่ามีชื่อ(?:ว่า)?|นับเป็นชื่อ|นับว่าเป็นชื่อ)\s+([^"“{\s][^#]*?)\s*(?:ด้วย)?\s*$/))) add("an" + F, m[1]);
-    for (const q of body.matchAll(/(?:นับเป็น|นับว่าเป็น|ถือว่าเป็น)\s*(?:Avatar\s*)?\{\s*[Ss]ymbol\s*:?\s*([^}]+?)\s*\}/g)) add("asy" + F, q[1]);
+    for (const q of body.matchAll(/(?:นับเป็น|นับว่าเป็น|ถือว่าเป็น|ใบนี้\s*เป็น)\s*(?:Avatar\s*)?\{\s*[Ss]ymbol\s*:?\s*([^}]+?)\s*\}/g)) add("asy" + F, q[1]);
     if ((m = body.match(/นับเป็น\s*Symbol\s+([^\s{}]+)/))) add("asy" + F, m[1]);
     if (/นับเป็นทุก\s*Symbol/.test(body)) al["allSy" + F] = true;
     for (const q of body.matchAll(/(?:ถือว่าเป็น|นับว่าเป็น|นับเป็น)\s*(?:Avatar\s*)?สี(แดง|ฟ้า|เขียว|ม่วง)/g)) add("aco" + F, q[1]);

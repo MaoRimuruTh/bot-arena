@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261113185621";
-import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261113185621";
-import { E, scriptOf } from "./engine.js?v=20261113185621";
+import { readAura } from "./auras.js?v=20261113190617";
+import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261113190617";
+import { E, scriptOf } from "./engine.js?v=20261113190617";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -552,7 +552,9 @@ function readHead(s, head, p, self, ctx, trig, body) {
       const pick = ctx.choose(pool, n, `ทิ้งการ์ดบนมือ ${n} ใบเป็นค่าใช้จ่าย`, { exact: true }); ops.push({ op: "discard", seat: p, iids: pick.map((x) => x.i) }); say.push(`ทิ้งการ์ดบนมือ ${n} ใบ`); }
     else if ((m = t.match(/^(?:ทิ้ง|ส่ง)\s*(?:การ์ด\s*)?(.+?)\s*(?:(?:จาก|บน)(?:บน)?มือ(?:เรา)?\s*(\d+)\s*ใบ|(\d+)\s*ใบ\s*(?:จาก|บน)(?:บน)?มือ(?:เรา)?)\s*(?:ลงนรก\s*)?/))) {
       const f = nameOrFilter(m[1]); const n = +(m[2] || m[3]); if (!f.name && !f.names && !f.symbol && !f.type) return null;
-      const pool = P.hand.filter((x) => x.i !== trig.i && fits(s, x, f) && (!f.type || E.def(s, x).t === f.type)).sort((a, b) => cardVal(s, a) - cardVal(s, b)); if (pool.length < n) bad("ไม่มีการ์ดบนมือที่ตรงเงื่อนไขให้ทิ้ง");
+      const alts = /หรือ/.test(m[1]) ? m[1].split(/\s*หรือ\s*/).map(nameOrFilter).filter((g) => g.name || g.names || g.symbol) : []; // "Avatar {symbol แมลง} หรือ Avatar "เหยื่อ"": either one (มาวิน เซียนเบ็ด)
+      const okX = (x) => (alts.length > 1 ? alts.some((g) => fits(s, x, g) && (!g.type || E.def(s, x).t === g.type)) : fits(s, x, f) && (!f.type || E.def(s, x).t === f.type));
+      const pool = P.hand.filter((x) => x.i !== trig.i && okX(x)).sort((a, b) => cardVal(s, a) - cardVal(s, b)); if (pool.length < n) bad("ไม่มีการ์ดบนมือที่ตรงเงื่อนไขให้ทิ้ง");
       const pick = ctx.choose(pool, n, `ทิ้งการ์ดที่ตรงเงื่อนไข ${n} ใบเป็นค่าใช้จ่าย`, { exact: true }); ops.push({ op: "discard", seat: p, iids: pick.map((x) => x.i) }); say.push(`ทิ้ง ${pick.map((x) => E.name(s, x)).join(", ")}`); }
     else if ((m = t.match(/^ธรณีสูบ\s*(?:\([^)]*\)\s*)?(\d+)\s*ใบ\s*/))) { const n = +m[1]; if (P.deck.length < n) bad("Deck เหลือไม่พอธรณีสูบ"); ops.push({ op: "mill", seat: p, n }); say.push(`ธรณีสูบ ${n} ใบ`); }
     else if ((m = t.match(/^เปลี่ยน\s*(?:Avatar|การ์ด)\s*(?:ใบนี้|ตัวนี้)\s*(?:จากสภาพตื่น)?\s*เป็น\s*(?:สภาพ)?\s*นอน\s*/))) { if (!self || !self.a) bad("Avatar ใบนี้ไม่ได้อยู่ในสภาพตื่น"); else { ops.push({ op: "wake", i: self.i, v: false }); say.push("นอน Avatar ใบนี้"); } }
