@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113182200";
-import { E } from "./engine.js?v=20261113182200";
-import { h } from "./util.js?v=20261113182200";
-import { Sfx } from "./sfx.js?v=20261113182200";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113185621";
+import { E } from "./engine.js?v=20261113185621";
+import { h } from "./util.js?v=20261113185621";
+import { Sfx } from "./sfx.js?v=20261113185621";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -63,7 +63,7 @@ function mount(container, opts = {}) {
   const FX = {}; ["magic_02", "slash_02", "circle_05", "smoke_03", "light_02", "star_06", "flare_01", "twirl_02"].forEach((n) => (FX[n] = tex("assets/fx/" + n + ".png")));
   R = { container, canvas, renderer, scene, camera, loader, FX, meshes: new Map(), dying: new Set(), texCache: new Map(), labels: new Map(), queue: Promise.resolve(), lastEv: 0, camBase: new THREE.Vector3(0, 11, 9.6), look: new THREE.Vector3(0, 0, 0.4), off: new THREE.Vector3(), alive: true, onHover: null, onClick: null, hovered: null, view: 0 };
 
-  R.sceneKey = SCENES[opts.scene] ? opts.scene : "hall";
+  R.sceneKey = SCENES[opts.scene] ? opts.scene : "hall"; R.winfx = WINFX[opts.winfx] ? opts.winfx : "gold";
   R.hemi = new THREE.HemisphereLight(0xffe2c0, 0x140a06, 0.5); scene.add(R.hemi);
   const key = new THREE.DirectionalLight(0xffe2b0, 1.1); key.position.set(4, 12, 7); key.castShadow = true; key.shadow.mapSize.set(1024, 1024);
   key.shadow.bias = -0.0005; key.shadow.normalBias = 0.02;
@@ -222,6 +222,8 @@ export const MATS = { black: { name: "รักดำ", lac: "#120b09", edge: "r
   // drawn by hand (kind "sketch"): the zones are marker lines on a flattened box, or pen lines on a ruled page — no lacquer, no gold
   box: { name: "ลังกระดาษ", lac: "#6b4b28", edge: "rgba(60,40,20,", kind: "sketch", paper: "box", ink: "#f4efe2", pens: { hell: "#ff8a70", deck: "#9be8da", dark: "#dcc2ff" } },
   note: { name: "สมุดเส้น", lac: "#dcddd6", edge: "rgba(120,130,150,", kind: "sketch", paper: "note", ink: "#1b1c24", pens: { hell: "#c23a2c", deck: "#2b4fa8", dark: "#6b3fa3" } } };
+// what fills the air over the table when you win (seen on your own screen; earned by playing, see achieve.js)
+export const WINFX = { gold: { name: "ทองคำเปลวโปรย" }, lotus: { name: "กลีบบัวโปรย" }, lantern: { name: "โคมลอย" }, fireworks: { name: "พลุฉลอง" } };
 // the scene (สนาม, the map) round the table — not the cloth on it (ผ้าปู, the playmat above). Each viewer sees the one they chose.
 export const SCENES = { hall: { name: "โถงไม้แสงเทียน" }, pond: { name: "สวนสระบัว" }, market: { name: "ตลาดน้ำยามค่ำ" }, hell: { name: "นรกภูมิ" }, forest: { name: "ป่าหิมพานต์" }, sakura: { name: "ซากุระราตรี" },
   azure: { name: "ลานเปลวคราม", owner: true } }; // owner: the owner's own (achieve.js opens it to him alone)
@@ -2051,7 +2053,8 @@ async function animateEvent(ev, prev, s, V) {
     Sfx.play("battle"); banner("BATTLE PHASE", ""); gsap.fromTo(R.div.material, { opacity: 0.9 }, { opacity: 0, duration: 1.4, ease: "power2.out" });
   } else if (ev.k === "over") {
     const won = R.watch ? ev.w != null : ev.w === V; Sfx.play(won ? "win" : "lose"); if (R.watch) banner(ev.w != null ? s.P[ev.w].name : "DRAW", ev.w != null ? "ชนะ" : ""); else banner(won ? "VICTORY" : "DEFEAT", ""); for (const p of [0, 1]) avatarDo(p, ev.w === p ? "win" : "lose"); flash(won ? "rgba(255,210,120,.5)" : "rgba(80,0,10,.6)", 0.6);
-    if (!reduce) for (let k = 0; k < (won ? 90 : 40); k++) gsap.delayedCall(Math.random() * 1.6, () => { // gold leaf rains for a win, ash and embers drift down for a loss
+    if (!reduce && won && !R.watch && R.winfx !== "gold") winFx(R.winfx);
+    else if (!reduce) for (let k = 0; k < (won ? 90 : 40); k++) gsap.delayedCall(Math.random() * 1.6, () => { // gold leaf rains for a win, ash and embers drift down for a loss
       if (!R) return; const win = won, p0 = new THREE.Vector3((Math.random() - 0.5) * 15, 6 + Math.random() * 2, (Math.random() - 0.5) * 10 - 0.5);
       const sp = sprite(win && Math.random() < 0.4 ? R.FX.star_06 : R.FX.dot, win ? [0xffd27a, 0xffe9b0, 0xd8a84a, 0xff9a4a][k % 4] : k % 3 ? 0x3a2622 : 0xff5a3a, win ? 0.28 + Math.random() * 0.2 : 0.2 + Math.random() * 0.25, p0, 0.95);
       const d = 2.2 + Math.random() * 1.6; gsap.to(sp.position, { y: 0.1, x: p0.x + (Math.random() - 0.5) * 2, z: p0.z + (Math.random() - 0.5) * 1.5, duration: d, ease: "sine.in" }); gsap.to(sp.material, { rotation: (Math.random() - 0.5) * 8, duration: d });
@@ -2060,6 +2063,28 @@ async function animateEvent(ev, prev, s, V) {
   }
 }
 const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms / ((R && R.speed) || 1)));
+// the victory effects you can earn: lotus petals drifting down, lanterns rising off the table, fireworks bursting over it
+function winFx(kind) {
+  const gone = (sp) => () => { if (R) R.scene.remove(sp); sp.material.dispose(); }, rnd = (a, b) => a + Math.random() * (b - a);
+  if (kind === "lotus") { const tex = R.petalTex || (R.petalTex = petalTexture());
+    for (let k = 0; k < 110; k++) gsap.delayedCall(Math.random() * 2.4, () => { if (!R) return; const p0 = new THREE.Vector3(rnd(-8, 8), rnd(6, 8.5), rnd(-6, 4));
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: k % 4 ? 0xffd6e4 : 0xffffff, transparent: true, depthWrite: false, rotation: Math.random() * 6 })); sp.scale.setScalar(rnd(0.22, 0.38)); sp.position.copy(p0); R.scene.add(sp);
+      const d = rnd(3.4, 5); gsap.to(sp.position, { y: 0.08, duration: d, ease: "none" }); gsap.to(sp.position, { x: p0.x + rnd(-1.5, 1.5), z: p0.z + rnd(-1, 1), duration: d, ease: "sine.inOut" }); gsap.to(sp.material, { rotation: sp.material.rotation + rnd(-6, 6), duration: d });
+      gsap.to(sp.material, { opacity: 0, duration: 0.8, delay: d - 0.3, onComplete: gone(sp) }); });
+    return; }
+  if (kind === "lantern") {
+    for (let k = 0; k < 28; k++) gsap.delayedCall(k * 0.12 + Math.random() * 0.3, () => { if (!R) return; const side = k % 2 ? 1 : -1, p0 = new THREE.Vector3(rnd(-7.5, 7.5), 0.2, k % 3 ? rnd(-5.5, -2) : rnd(2, 5)); const grp = new THREE.Group(); grp.position.copy(p0); R.scene.add(grp);
+      const body = new THREE.Sprite(new THREE.SpriteMaterial({ map: R.FX.dot, color: 0xffb05a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })); body.scale.set(0.8, 1.05, 1); grp.add(body);
+      const fl = new THREE.Sprite(new THREE.SpriteMaterial({ map: R.flameTex, color: 0xffe2a0, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })); fl.scale.set(0.3, 0.55, 1); grp.add(fl);
+      const d = rnd(5, 7); gsap.to([body.material, fl.material], { opacity: 0.95, duration: 0.6 }); gsap.to(grp.position, { y: rnd(7, 9), duration: d, ease: "sine.in" }); gsap.to(grp.position, { x: p0.x + side * rnd(0.3, 1.4), duration: d, ease: "sine.inOut" });
+      gsap.to([body.material, fl.material], { opacity: 0, duration: 1.2, delay: d - 1.2, onComplete: () => { if (R) R.scene.remove(grp); body.material.dispose(); fl.material.dispose(); } }); });
+    return; }
+  if (kind === "fireworks") { const pal = [0xffd27a, 0xff6a8a, 0x7ad4ff, 0xa8ff7a, 0xd8a0ff, 0xffffff];
+    for (let k = 0; k < 9; k++) gsap.delayedCall(k * 0.42 + Math.random() * 0.2, () => { if (!R) return; const to = new THREE.Vector3(rnd(-5.5, 5.5), rnd(2.2, 3.6), rnd(-3, 2.5)), col = pal[k % pal.length];
+      const tail = sprite(R.FX.dot, col, 0.22, new THREE.Vector3(to.x + rnd(-0.6, 0.6), 0.3, to.z + 1.2), 0.9);
+      gsap.to(tail.position, { x: to.x, y: to.y, z: to.z, duration: 0.55, ease: "power2.out", onComplete: () => { gone(tail)(); if (!R) return; burst(to, { n: 34, map: k % 2 ? R.FX.star_06 : R.FX.dot, color: col, size: 0.42, spread: 2.6, up: 0.4, dur: 1.3 }); burst(to, { n: 10, color: 0xffffff, size: 0.2, spread: 1.2, up: 0.2, dur: 0.6 }); flash("rgba(255,240,210,.07)", 0.15); } }); });
+  }
+}
 // ธรณีสูบ: the cards leave the top of that side's Deck one after another, turn face up in the air (so the table sees what
 // went) and land on its hell pile (a ไวรัส exiled by it, on the dark zone pile), under a "ธรณีสูบ N" label
 async function millFx(s, ev, V) {

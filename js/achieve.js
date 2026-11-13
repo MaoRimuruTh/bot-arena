@@ -1,18 +1,19 @@
 // Achievements: earned only by playing (nothing here can be bought), each one unlocking something for the table:
 // a 3D figure to stand by your side, a colour of lacquer for the mat, the circle that opens when you summon, or one of the
 // official box decks (คัดสรรเด็ค) that plays stronger than the Starter Decks. Worked out from your own match history.
-import { Data } from "./fb.js?v=20261113182200";
-import { lsGet } from "./util.js?v=20261113182200";
-import { stars } from "./quests.js?v=20261113182200";
-import { AVATARS, MATS, SIGILS, SCENES } from "./arena3d.js?v=20261113182200";
-import { BOX_LISTS, themeCounts } from "./boxdecks.js?v=20261113182200";
-import { Vault } from "./vault.js?v=20261113182200";
-import { isOwnerNow } from "./persona.js?v=20261113182200";
+import { Data } from "./fb.js?v=20261113185621";
+import { lsGet } from "./util.js?v=20261113185621";
+import { stars } from "./quests.js?v=20261113185621";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX } from "./arena3d.js?v=20261113185621";
+import { BOX_LISTS, themeCounts, officialStarters } from "./boxdecks.js?v=20261113185621";
+import { Vault } from "./vault.js?v=20261113185621";
+import { isOwnerNow } from "./persona.js?v=20261113185621";
 
 const real = (ms) => ms.filter((m) => m.mode !== "goldfish");
 const wins = (ms) => real(ms).filter((m) => m.result === "win").length;
 // the longest run of wins in a row (bot and friend games, oldest first)
 const streak = (ms) => { let best = 0, run = 0; for (const m of real(ms).sort((a, b) => (a.at || 0) - (b.at || 0))) { run = m.result === "win" ? run + 1 : 0; best = Math.max(best, run); } return best; };
+const gauntDone = (ms) => new Set(ms.filter((m) => m.gs && m.result === "win").map((m) => m.gs)).size; // ไต่ด่าน steps passed
 const solved = () => Object.keys(lsGet("bot.pz", {})).length;
 // wins with a deck that held at least n cards of one theme (th: counted from the deck when the game ended, see boxdecks.js)
 const themeWins = (ms, key, n) => real(ms).filter((m) => m.result === "win" && m.th && (m.th[key] || 0) >= n).length;
@@ -35,6 +36,10 @@ export const ACH = [
   { id: "stars30", name: "ตำนานสนามดวล", how: "สะสมดาวจากภารกิจประจำวัน 30 ดวง", prog: (ms) => [stars(ms), 30], gives: { sig: "pikul" } },
   { id: "decks", name: "ครบเจ็ดสาย", how: "ชนะด้วย Starter Deck ต่างกันครบ 7 เด็ค", prog: (ms) => [new Set(real(ms).filter((m) => m.result === "win" && /^starter-/.test(m.deckId || "")).map((m) => m.deckId)).size, 7], gives: { sig: "sun" } },
   // the box decks that beat the Starter Decks most of the time open up for a win with a deck of their own theme
+  // victory effects: the ladder of Starter Decks (ไต่ด่าน) and many wins
+  { id: "gaunt3", name: "ไต่ถึงกลางทาง", how: "ไต่ด่านผ่าน 3 ด่าน", prog: (ms) => [gauntDone(ms), 3], gives: { win: "lotus" } },
+  { id: "win25", name: "ผ่านศึกยี่สิบห้า", how: "ชนะบอทหรือเพื่อน 25 เกม", prog: (ms) => [wins(ms), 25], gives: { win: "lantern" } },
+  { id: "gauntAll", name: "เจ้าแห่งด่านฝึก", how: "ไต่ด่านผ่านครบทุกด่าน", prog: (ms) => [gauntDone(ms), officialStarters().length || 9], gives: { win: "fireworks" } },
   boxAch("boxKD01", "ศรัทธาแห่งสวรรค์", "เทพ", "box-kd01"),
   boxAch("boxKD02", "ลงนามด้วยเลือด", "นรก", "box-kd02"),
   boxAch("boxKD04", "กองทัพเหล็กกล้า", "หุ่นยนต์", "box-kd04"),
@@ -61,8 +66,9 @@ export const myMat = () => { const k = pick("bot.mat"); return k === "own" && Va
 // told apart keeps its trees
 export const sceneOpen = (k) => !!SCENES[k] && (k !== "sakura" || unlocked("mat", "sakura")) && (!SCENES[k].owner || isOwnerNow());
 export const sigilOpen = (k) => !!SIGILS[k] && unlocked("sig", k) && (!SIGILS[k].owner || isOwnerNow()); // the owner's own summon circle is his alone
+export const myWinFx = () => { const k = pick("bot.winfx"); return WINFX[k] && unlocked("win", k) ? k : "gold"; };
 export const myScene = () => { const k = pick("bot.scene"); return sceneOpen(k) ? k : !k && pick("bot.mat") === "sakura" && sceneOpen("sakura") ? "sakura" : "hall"; };
 export const mySleeve = () => (pick("bot.sleeve") === "own" && Vault.has("sleeve") ? "own" : "");
 export const mySigil = () => { const k = pick("bot.sig"); return sigilOpen(k) ? k : "lotus"; };
 const boxName = (id) => { const k = String(id).replace(/^box-/, "").toUpperCase(); return BOX_LISTS[k] ? `${k} ${BOX_LISTS[k].name}` : id; };
-export const rewardName = (g) => (g.av ? "อวตาร " + AVATARS[g.av].name : g.mat ? "ผ้าปู" + MATS[g.mat].name : g.sig ? "วงอัญเชิญ" + SIGILS[g.sig].name : g.deck ? "เด็คกล่องพิเศษ " + boxName(g.deck) : "");
+export const rewardName = (g) => (g.av ? "อวตาร " + AVATARS[g.av].name : g.mat ? "ผ้าปู" + MATS[g.mat].name : g.sig ? "วงอัญเชิญ" + SIGILS[g.sig].name : g.deck ? "เด็คกล่องพิเศษ " + boxName(g.deck) : g.win ? "ฉากชัยชนะ" + WINFX[g.win].name : "");
