@@ -1091,7 +1091,7 @@ Object.assign(SCRIPTS, {
     return { explain: `โจมตี Avatar {เทพ}: ทำลาย ${E.name(s, T.x)}`, ops: [{ op: "destroy", i: T.x.i, why: "ความสามารถของนนทก นิ้วเพชร" }] }; } },
   // อู๊ดลูกเสือ: when attacked, may destroy another Avatar of ours: cancel that attack (read from the card art; the data text lost a word)
   "BT01-005": { attacked: (c) => { const { E, s, seat: p, self: x } = c; if (!x || !s.pend) return { explain: "ไม่มีการโจมตีแล้ว", ops: [] };
-    const A = E.locate(s, s.pend.att); const ap = A ? E.power(s, A.x) + (s.pend.bonus || 0) : 0; const pool = [...s.P[p].av, ...s.P[p].mg.filter((y) => y.on == null && !y.fd && isAv(E, s, y))].filter((y) => y.i !== x.i).sort((a, b) => (b.tok ? 1 : 0) - (a.tok ? 1 : 0) || worth(E, s, a) - worth(E, s, b)); /* FAQ: any Avatar of ours on the field, Magic Zone too */
+    const A = E.locate(s, s.pend.att); const ap = A ? E.power(s, A.x) + (s.pend.bonus || 0) : 0; const pool = [...s.P[p].av, ...s.P[p].mg.filter((y) => !y.fd && isAv(E, s, y))].filter((y) => y.i !== x.i).sort((a, b) => (b.tok ? 1 : 0) - (a.tok ? 1 : 0) || worth(E, s, a) - worth(E, s, b)); /* FAQ: any Avatar of ours on the field, Magic Zone too */
     const cands = s.P[p].bot ? (ap >= E.power(s, x) ? pool.filter((y) => worth(E, s, y) + 1 < worth(E, s, x)) : []) : pool;
     const t = c.choose(cands, 1, "อู๊ดลูกเสือถูกโจมตี: ทำลาย Avatar ใบอื่นของเราเพื่อยกเลิกการโจมตี (ไม่ใช้ก็ได้)", { optional: true })[0];
     return t ? { explain: `ทำลาย ${E.name(s, t)} · ยกเลิกการโจมตีนั้น`, ops: [{ op: "destroy", i: t.i, why: "ค่าความสามารถของอู๊ดลูกเสือ" }, { op: "cancelAttack" }] } : { explain: "ไม่ใช้ความสามารถ", ops: [] }; } },
@@ -2383,7 +2383,7 @@ Object.assign(SCRIPTS, {
       const pair = big && big.every(Boolean) && c.mode(["อัญเชิญราชาหิมะและราชินีหิมะ", "อัญเชิญทหารหิมะ 2 ใบ"], "เพนกวินหิมะ", 0) === 0 ? big : P.deck.filter((y) => snowMan(E, s, y) && (E.def(s, y).pw || 0) === 2).slice(0, 2);
       return { explain: `เซ่นไหว้ ${E.name(s, x)} · อัญเชิญ ${pair.map((y) => E.name(s, y)).join(", ") || "-"}`, ops: [{ op: "destroy", i: x.i, why: "เซ่นไหว้" }, ...pair.map((y) => ({ op: "put", i: y.i })), { op: "shuffle", seat: p }] }; } } },
   // รัททาทุย นินจา: when our {รัททาทุย} or นินจา leaves the field: summoned from the hand by discarding exactly 3 GEM
-  "BT09-016": { handDeathOk: (E, s, y, dead) => (sy(E, s, dead, "รัททาทุย") || E.named(s, dead, "นินจา")) && E.avatars(s.P[y.o]) < 4 && !!gem3(E, s, y.o, y),
+  "BT09-016": { anyLeave: true, handDeathOk: (E, s, y, dead) => (sy(E, s, dead, "รัททาทุย") || E.named(s, dead, "นินจา")) && E.avatars(s.P[y.o]) < 4 && !!gem3(E, s, y.o, y),
     handDeath: (c) => { const { E, s, seat: p, self: x } = c; const pay = gem3(E, s, p, x); return pay ? { explain: `ทิ้ง ${pay.length} ใบ (GEM 3) · อัญเชิญ ${E.name(s, x)}`, ops: [{ op: "discard", seat: p, iids: pay.map((y) => y.i) }, { op: "put", i: x.i }] } : { explain: "", ops: [] }; } },
   // พี่โปจิ: once per turn exile an Avatar / Magic / Construct from the Deck: เนอร์เกิ้ล / แมวดำ / ปอนด์ from the Deck
   "BT09-017": { activate: { label: "เนรเทศการ์ดจาก Deck: อัญเชิญสมาชิกลัทธิแห่หัว", can: (E, s, x, L) => L.z === "av" && s.phase === "main" && E.avatars(s.P[L.p]) < 4,
