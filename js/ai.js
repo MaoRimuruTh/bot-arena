@@ -1,11 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261113234522";
-import { plain } from "./persona.js?v=20261113234522";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261113234522";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261113234522";
-import { modPowerFor } from "./auras.js?v=20261113234522";
-import { Data } from "./fb.js?v=20261113234522";
-import { lsGet, clone } from "./util.js?v=20261113234522";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261114003805";
+import { plain } from "./persona.js?v=20261114003805";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261114003805";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261114003805";
+import { modPowerFor } from "./auras.js?v=20261114003805";
+import { Data } from "./fb.js?v=20261114003805";
+import { lsGet, clone } from "./util.js?v=20261114003805";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -116,6 +116,15 @@ export const H = {
   // weights of the quick bot. In 2000-game A/B runs none of these moved the result past the noise (48.4–50.6%):
   // LIFE 1.8 or 3.2, hand 0.8 or 1.4, no LIFE left 9, threshold 0.4 or 1.6, ties not taken; so they stay as they were
   W: { life: 2.4, hand: 1.05, bare: 5, thr: 0.9, tie: 5 },
+  // battle and main-phase upgrades, each tested bot against bot with the same decks and seeds, sides swapped (BOT_UPGRADE.md):
+  // battleRoll: an attack is judged after the rest of our attacks that it opens up (clear their board, then hit LIFE);
+  // tieClear: an even fight that removes their last Avatar while another of ours can still hit LIFE;
+  // tieDoom: an even fight for an Avatar of ours that a stronger one of theirs beats next turn anyway;
+  // together 51.8% of 6000 games (51.4, 52.0, 52.0), the pro bot unchanged (49.7% of 600).
+  // mcLite: in Main Phase the two best-looking plays and going to battle are each played out once to our next turn
+  // (the pro bot's way, one play-out each) and the best is taken: 55.4% of 6000 games alone; with the three above
+  // 57.8% of 6000 games (57.9, 57.8, 57.7), 59.3% of 1000 on the ciel decks, no draws; about 18 ms a decision
+  X: { battleRoll: 1, tieClear: 1, tieDoom: 1, mcLite: 2 },
   // how good the table looks for p (used by the one-step lookahead): board, hand, LIFE still face down, Deck running out
   evalBoard(s, p) {
     if (s.phase === "over") return s.winner === p ? 999 : -999;
@@ -140,6 +149,9 @@ export const H = {
         if (t.trig.length) { const tr = t.trig[0]; E.apply(t, H.trig(t, tr), tr.seat); continue; }
         if (t.pend && t.pend.by === p) { const q = 1 - p; const m = H.pick(t, q); E.apply(t, m ? m.a : { type: "respond" }, q); continue; }
         break; }
+      if (H.X.battleRoll && a.type === "attack") { const look = H.look; H.look = 0; // the rest of our attacks, the quick way
+        try { for (let k = 0; k < 8 && t.phase === "battle" && t.active === p && !t.pend && !t.rw && !t.trig.length; k++) { const m = H.pick(t, p); if (!m || m.a.type !== "attack") break; E.apply(t, m.a, p);
+          for (let n = 0; n < 90 && t.phase !== "over"; n++) { if (t.rw) { const q = 1 - t.rw.by; E.apply(t, (q === p && H.react(t, q)) || { type: "pass" }, q); continue; } if (t.trig.length) { const tr = t.trig[0]; E.apply(t, H.trig(t, tr), tr.seat); continue; } if (t.pend && t.pend.by === p) { const q = 1 - p; const mm = H.pick(t, q); E.apply(t, mm ? mm.a : { type: "respond" }, q); continue; } break; } } } finally { H.look = look; } }
       return H.evalBoard(t, p) - before;
     } catch { return null; }
   },
@@ -151,7 +163,8 @@ export const H = {
   // 480 games, 51%, so those stay with the quick rules)
   mcPick(s, p, n = 2, wide = 10) {
     const moves = legalMoves(s, p); if (!moves.length) return null;
-    const base = H.pick(s, p), key = (a) => JSON.stringify(a), cand = [];
+    // its own first choice is the quick bot's without mcLite: with it this bot won 47.7% of 600 games, without it 49.7%
+    const mc = H.X.mcLite; H.X.mcLite = 0; let base; try { base = H.pick(s, p); } finally { H.X.mcLite = mc; } const key = (a) => JSON.stringify(a), cand = [];
     const add = (m) => { if (m && !cand.some((c) => key(c.a) === key(m.a))) cand.push(m); };
     add(base); for (const m of moves) { if (cand.length >= wide) break; if (["summon", "cast", "build", "attack", "activate"].includes(m.a.type)) add(m); }
     add(moves.find((m) => m.a.type === "battle")); add(moves.find((m) => m.a.type === "end"));
@@ -237,6 +250,9 @@ export const H = {
       if (H.look && cand.length) { const top = cand.filter((z) => z.sc > -20).slice(0, H.look);
         for (const z of top) z.lv = H.lookahead(s, p, z.m.a);
         const ranked = top.filter((z) => z.lv != null).map((z) => ({ ...z, tot: z.lv + z.sc * 0.25 + (z.bias || 0) })).sort((a, b) => b.tot - a.tot);
+        if (H.X.mcLite && ranked.length) { const bm = moves.find((m) => m.a.type === "battle"); const opts = [...ranked.slice(0, H.X.mcLite).map((z) => z.m), ...(bm ? [bm] : [])]; let best = null;
+          for (const m of opts) { const v = H.rollout(s, p, m.a, 0); if (v != null && (!best || v > best.v)) best = { v, m }; }
+          if (best) return best.m === bm ? bm : first(best.m); }
         if (ranked.length) return ranked[0].tot >= H.W.thr || (ranked[0].sc >= 1.5 && ranked[0].lv > -1) ? first(ranked[0].m) : moves.find((m) => m.a.type === "battle"); }
       if (cand.length && cand[0].sc >= 1.5) return first(cand[0].m);
       return moves.find((m) => m.a.type === "battle");
@@ -265,11 +281,13 @@ export const H = {
         }
         if (ap === tp) { const mine = E.kw(s, x, "ลูกฮึด"), theirs = E.kw(s, t, "ลูกฮึด"); // ลูกฮึด wins a tie against one without it
           if (mine && !theirs) return { m, score: 20 + tp }; if (theirs && !mine) return { m, score: -10 };
+          if (H.X.tieClear && O.av.length === 1 && P.av.some((y) => y.a && y.i !== x.i && moves.some((mm) => mm.a.type === "attack" && mm.a.i === y.i))) return { m, score: 18, force: true }; // their last one goes: another of ours hits LIFE
+          if (H.X.tieDoom && O.av.some((y) => y.i !== t.i && E.power(s, y) > ap)) return { m, score: 15, force: true }; // ours falls to a stronger one next turn anyway: take one of theirs with it
           return { m, score: tp >= ap && E.def(s, t).c >= E.def(s, x).c ? H.W.tie : -2 }; }
         return { m, score: -10 };
       }).filter((z) => z.score > 0).sort((a, b) => b.score - a.score);
       if (H.look && H.lookAtk && atk.length) { const top = atk.slice(0, H.look + 1).map((z) => ({ ...z, lv: H.lookahead(s, p, z.m.a) })).filter((z) => z.lv != null);
-        if (top.length) { top.sort((a, b) => b.lv + b.score * 0.02 - (a.lv + a.score * 0.02)); if (top[0].lv > 0.3) return top[0].m; return moves.find((m) => m.a.type === "end") || moves.find((m) => m.a.type === "attack"); } }
+        if (top.length) { top.sort((a, b) => b.lv + b.score * 0.02 - (a.lv + a.score * 0.02)); if (top[0].lv > 0.3) return top[0].m; { const f = top.find((z) => z.force && z.lv > -1.5); if (f) return f.m; } return moves.find((m) => m.a.type === "end") || moves.find((m) => m.a.type === "attack"); } }
       if (atk.length) return atk[0].m;
       return moves.find((m) => m.a.type === "end") || moves.find((m) => m.a.type === "attack"); // a forced attacker must still attack
     }
