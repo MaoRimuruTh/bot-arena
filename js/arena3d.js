@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113222034";
-import { E } from "./engine.js?v=20261113222034";
-import { h } from "./util.js?v=20261113222034";
-import { Sfx } from "./sfx.js?v=20261113222034";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113222510";
+import { E } from "./engine.js?v=20261113222510";
+import { h } from "./util.js?v=20261113222510";
+import { Sfx } from "./sfx.js?v=20261113222510";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -74,7 +74,7 @@ function mount(container, opts = {}) {
 
   // the play mat: black lacquer with gold-leaf line-work (ลายรดน้ำ), stepped corners (ย่อมุม) round every zone
   const small = innerWidth < 760; R.small = small; R.Q = Q; R.watch = !!opts.watch; /* a friend looking on: no "your turn", and the winner gets the banner */ R.matKey = [small || Q === "low", { near: MATS[opts.mat] || MATS.black, far: MATS[opts.farMat] || MATS[opts.mat] || MATS.black }]; R.zones = tallScreen(container) ? ZONES.tall : ZONES.wide; const mt = matTextures(...R.matKey, R.zones);
-  R.matMat = new THREE.MeshStandardMaterial({ map: mt.base, emissiveMap: mt.glow, emissive: new THREE.Color(0xe0982c), emissiveIntensity: 0.2, roughness: 0.62, roughnessMap: mt.rough, metalness: 0 }); R.matGlow = mt.glow;
+  R.matMat = new THREE.MeshStandardMaterial({ map: mt.base, emissiveMap: mt.glow, emissive: new THREE.Color(0xe0982c), emissiveIntensity: 0.2, roughness: Q === "high" ? 0.62 : 0.44, roughnessMap: Q === "high" ? mt.rough : null, metalness: 0 }); R.matGlow = mt.glow; // (below high nothing reflects in the mat: a constant roughness, one texture fewer)
   const top = new THREE.Mesh(new THREE.PlaneGeometry(MW, MD), R.matMat); top.rotation.x = -Math.PI / 2; top.position.set(0, 0, MZ); top.receiveShadow = true; scene.add(top);
   const lacq = new THREE.MeshStandardMaterial({ color: 0x5a1812, roughness: 0.34, metalness: 0, envMapIntensity: 0.3 }); R.lacq = lacq;
   const body = new THREE.Mesh(new THREE.BoxGeometry(MW, 0.28, MD), lacq); body.position.set(0, -0.18, MZ); body.receiveShadow = true; scene.add(body);
@@ -174,10 +174,11 @@ function mount(container, opts = {}) {
   canvas.addEventListener("click", (e) => { if (R.noClick && performance.now() - R.noClick < 600) { R.noClick = 0; return; } const p = pick(e); if (R.onClick) R.onClick(p); }); // null: the empty table (closes what is open)
   const clock = new THREE.Clock();
   // "ประหยัดเครื่อง" in Settings: the table is drawn 30 times a second instead of 60 (half the work for the phone's GPU)
-  const cap = Q === "low" ? 1000 / 30 - 3 : 0; let lastDraw = 0;
+  const cap = Q === "low" ? 1000 / 30 - 3 : 0, idleCap = Q === "mid" ? 1000 / 30 - 3 : 0; let lastDraw = 0; // mid (phones on "auto"): 30 a second while nothing on the table moves
   const tick = (now = performance.now()) => {
     if (!R || !R.alive) return;
-    if (cap && now - lastDraw < cap) { requestAnimationFrame(tick); return; } lastDraw = now;
+    const capNow = cap || (idleCap && R.hovered == null && !gsap.globalTimeline.getChildren(true, true, false).some((x) => x.isActive()) ? idleCap : 0);
+    if (capNow && now - lastDraw < capNow) { if (!cap && R.autoQ) R.autoQ.last = 0; requestAnimationFrame(tick); return; } lastDraw = now;
     const dt = Math.min(0.05, clock.getDelta()), t = clock.elapsedTime;
     if (!reduce) {
       for (const pts of [R.motes]) { const a = pts.geometry.attributes.position.array, sp = pts.userData.sp; for (let i = 0; i < sp.length; i++) { a[i * 3 + 1] += sp[i] * 60 * dt * (pts === R.motes ? 0.35 : 1); a[i * 3] += Math.sin(t + i) * 0.002; if (a[i * 3 + 1] > 9) a[i * 3 + 1] = 0; } pts.geometry.attributes.position.needsUpdate = true; }
@@ -193,8 +194,9 @@ function mount(container, opts = {}) {
     if (R.avatars) for (const a of R.avatars) { if (!a || a.loading) continue; a.mixer.update(dt * (R.speed || 1)); if (!a.acts.idle && !reduce) { a.bob.position.y = Math.max(0, Math.sin(t * 2.6 + a.ph)) * 0.025; a.bob.scale.y = 1 + Math.sin(t * 2.6 + a.ph) * 0.018; } }
     R.t = t; for (const m of R.meshes.values()) placeShadow(m); for (const m of R.dying) placeShadow(m);
     camera.position.set(R.camBase.x + Math.sin(t * 0.15) * 0.35 + R.off.x, R.camBase.y + R.off.y, R.camBase.z + Math.cos(t * 0.12) * 0.2); camera.lookAt(R.look);
-    if (R.side) for (const o of R.side.piles.values()) { if (!o.grp.visible && !o.n) { o.el.style.display = "none"; continue; } o.el.style.display = ""; const lz = (R.zones && R.zones.side && R.zones.side.piles.lz) || 0.62; const sp = toScreen(o.grp.position.clone().add(new THREE.Vector3(0, 0.2, (o.mine ? lz : -lz)))); o.el.style.left = sp.x + "px"; o.el.style.top = sp.y + "px"; }
-    for (const [i, el] of R.labels) { const m = R.meshes.get(i); if (!m) continue; const s = toScreen(m.grp.position.clone().add(new THREE.Vector3(-0.55 * m.scale, 0.1, (m.side === "me" ? 0.85 : -0.85) * m.scale))); el.style.left = s.x + "px"; el.style.top = s.y + "px"; }
+    const cr = R.canvas.getBoundingClientRect(); // the labels below read the layout once a frame and move by transform: no layout per label
+    if (R.side) for (const o of R.side.piles.values()) { if (!o.grp.visible && !o.n) { o.el.style.display = "none"; continue; } o.el.style.display = ""; const lz = (R.zones && R.zones.side && R.zones.side.piles.lz) || 0.62; const sp = toScreen(o.grp.position.clone().add(new THREE.Vector3(0, 0.2, (o.mine ? lz : -lz))), cr); o.el.style.transform = `translate(${sp.x}px,${sp.y}px) translate(-50%,-50%)`; }
+    for (const [i, el] of R.labels) { const m = R.meshes.get(i); if (!m) continue; const s = toScreen(m.grp.position.clone().add(new THREE.Vector3(-0.55 * m.scale, 0.1, (m.side === "me" ? 0.85 : -0.85) * m.scale)), cr); el.style.transform = `translate(${s.x}px,${s.y}px) translate(-50%,-50%)`; }
     if (R.composer) R.composer.render(); else renderer.render(scene, camera);
     if (R.autoQ) watchFps(R.autoQ);
     requestAnimationFrame(tick);
@@ -208,7 +210,7 @@ function unmount() {
   document.querySelectorAll(".fxcuts,.rpsduel").forEach((x) => x.remove());
   if (!R) return; R.alive = false; removeEventListener("resize", R.onResize); if (R.onVis) document.removeEventListener("visibilitychange", R.onVis); gsap.globalTimeline.timeScale(1);
   for (const el of R.labels.values()) el.remove(); if (R.side) for (const o of R.side.piles.values()) o.el.remove();
-  R.renderer.dispose(); R.canvas.remove(); R = null;
+  R.renderer.dispose(); try { R.renderer.forceContextLoss(); } catch { /* already gone */ } R.canvas.remove(); R = null; // free the GPU now, not at the next garbage collection
 }
 
 // ---------- 3D avatars: a small figure for each player who has chosen one, at the left end of the centre band ----------
@@ -1590,7 +1592,7 @@ function faceMat(d, seat) {
   if (!token && mat.map === R.backTex) resolveArt(c).then((url) => { if (!url || !R) return; R.loader.load(corsUrl(url), (t) => { if (!R) return t.dispose(); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; R.texCache.set(c.i, t); mat.map = t; mat.needsUpdate = true; }); });
   return mat;
 }
-const toScreen = (v) => { const p = v.clone().project(R.camera); const r = R.canvas.getBoundingClientRect(); return { x: r.left + (p.x * 0.5 + 0.5) * r.width, y: r.top + (-p.y * 0.5 + 0.5) * r.height }; };
+const toScreen = (v, rect) => { const p = v.clone().project(R.camera); const r = rect || R.canvas.getBoundingClientRect(); return { x: r.left + (p.x * 0.5 + 0.5) * r.width, y: r.top + (-p.y * 0.5 + 0.5) * r.height }; };
 function burst(pos, { n = 18, map, color = 0xffc35a, size = 0.5, spread = 2.4, up = 1.6, dur = 0.7 } = {}) {
   map = map || R.FX.dot;
   for (let i = 0; i < n; i++) {
@@ -1743,7 +1745,7 @@ function fitTall(camera, w, hh) {
 function swapMat() {
   if (!R || !R.matMat || !R.matKey) return; const mt = matTextures(...R.matKey, R.zones), M = R.matMat;
   for (const k of ["map", "emissiveMap", "roughnessMap"]) if (M[k] && M[k].dispose) M[k].dispose();
-  M.map = mt.base; M.emissiveMap = mt.glow; M.roughnessMap = mt.rough; if (M.metalnessMap) M.metalnessMap = mt.glow; R.matGlow = mt.glow; M.needsUpdate = true;
+  M.map = mt.base; M.emissiveMap = mt.glow; M.roughnessMap = R.Q === "high" ? mt.rough : null; if (!M.roughnessMap) mt.rough.dispose(); if (M.metalnessMap) M.metalnessMap = mt.glow; R.matGlow = mt.glow; M.needsUpdate = true;
 }
 // ---------- the side zones of a wide table ----------
 // LIFE lies sideways down its owner's left like a damage zone: face down until it is turned up, then its face shows (tap
