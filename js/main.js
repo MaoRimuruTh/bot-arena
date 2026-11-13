@@ -1,20 +1,20 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261113191423";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261113191423";
-import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261113191423";
-import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261113191423";
-import { Vault, startVault } from "./vault.js?v=20261113191423";
-import { vaultSection } from "./vaultui.js?v=20261113191423";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261113191423";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261113191423";
-import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261113191423";
-import { Views, avatarEl } from "./ui.js?v=20261113191423";
-import { Ciel } from "./ai.js?v=20261113191423";
-import "./views/library.js?v=20261113191423";
-import "./views/decks.js?v=20261113191423";
-import "./views/lab.js?v=20261113191423";
-import "./views/history.js?v=20261113191423";
-import { openReport } from "./views/ask.js?v=20261113191423";
-import "./views/play.js?v=20261113191423";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261113191525";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261113191525";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261113191525";
+import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261113191525";
+import { Vault, startVault } from "./vault.js?v=20261113191525";
+import { vaultSection } from "./vaultui.js?v=20261113191525";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261113191525";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261113191525";
+import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261113191525";
+import { Views, avatarEl } from "./ui.js?v=20261113191525";
+import { Ciel } from "./ai.js?v=20261113191525";
+import "./views/library.js?v=20261113191525";
+import "./views/decks.js?v=20261113191525";
+import "./views/lab.js?v=20261113191525";
+import "./views/history.js?v=20261113191525";
+import { openReport } from "./views/ask.js?v=20261113191525";
+import "./views/play.js?v=20261113191525";
 
 const root = $("#view");
 // text size for the whole app (everything is sized in rem), kept per browser; Hearthstone and LoR offer the same for small screens
@@ -111,6 +111,18 @@ function notifySection() {
   paint(); say();
   return [h("div", { class: "eyebrow", style: "margin-top:12px" }, "การแจ้งเตือน"), note, seg];
 }
+// the settings sheet was four phone screens long: after the profile, each titled group folds (one tap opens it; which ones were
+// open is remembered in this browser)
+function groupSettings(out) {
+  const items = out.filter((x) => x != null && x !== false), res = [], open = lsGet("bot.setOpen", {}); let cur = null;
+  for (const el of items) {
+    const isHead = el && el.classList && el.classList.contains("eyebrow");
+    if (isHead && res.length) { const title = el.textContent; const d = h("details", { class: "setgroup", open: !!open[title] }, h("summary", null, title));
+      d.addEventListener("toggle", () => { const o = lsGet("bot.setOpen", {}); if (d.open) o[title] = 1; else delete o[title]; lsSet("bot.setOpen", o); }); res.push(d); cur = d; continue; }
+    if (cur) cur.append(el); else res.push(el);
+  }
+  return res;
+}
 function settings() {
   openSheet((api) => {
     const key = h("input", { type: "password", value: Ciel.key(), placeholder: "sk-ant-…", autocomplete: "off", "aria-label": "Claude API key" });
@@ -132,7 +144,7 @@ function settings() {
         h("div", { class: "row" }, url, h("button", { class: "btn sm", onclick: () => setMeta({ cardsUrl: url.value.trim() }).then(() => { toast("บันทึกแล้ว โหลดหน้าใหม่เพื่อใช้"); }).catch(() => toast("บันทึกไม่ได้", "bad")) }, "บันทึก")));
     }
     out.push(h("div", { class: "row", style: "margin-top:12px" }, h("button", { class: "btn", onclick: () => { api.close(); signOut(); } }, "ออกจากระบบ")));
-    return out;
+    return groupSettings(out);
   }, { title: "ตั้งค่า", sub: myName(), wide: true });
 }
 // ---------- profile: nickname + picture (upload, card art, or Google) ----------

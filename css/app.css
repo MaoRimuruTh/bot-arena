@@ -778,3 +778,7 @@ body.arena-on .prompt.toss{top:50%;bottom:auto;max-height:86vh}
 @media (max-width:640px){.deckhint{flex-basis:100%;order:3}}
 @media (min-width:861px){.startbar{left:auto;right:max(24px,calc((100vw - 1240px)/2));transform:none}}
 @media (max-width:760px){body.arena-on .prompt:not(.low):not(.toss){bottom:calc(282px + env(safe-area-inset-bottom,0px));max-height:calc(100vh - 352px)}} /* phone: prompts sit above the hand (hand top = 276px up), not over it */
+.setgroup{border:1px solid var(--line-2);border-radius:12px;padding:0 12px;background:rgba(255,255,255,.02)}
+.setgroup>summary{cursor:pointer;list-style:none;min-height:44px;display:flex;align-items:center;gap:8px;font:600 .8rem var(--f-display,inherit);letter-spacing:.04em;color:var(--gold-hi)}
+.setgroup>summary::-webkit-details-marker{display:none} .setgroup>summary::after{content:"▾";margin-left:auto;transition:transform .2s} .setgroup:not([open])>summary::after{transform:rotate(-90deg)}
+.setgroup[open]{padding-bottom:12px} .setgroup[open]>*:not(summary)+*{margin-top:8px}
