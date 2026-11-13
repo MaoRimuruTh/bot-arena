@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113141419";
-import { E } from "./engine.js?v=20261113141419";
-import { h } from "./util.js?v=20261113141419";
-import { Sfx } from "./sfx.js?v=20261113141419";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113142952";
+import { E } from "./engine.js?v=20261113142952";
+import { h } from "./util.js?v=20261113142952";
+import { Sfx } from "./sfx.js?v=20261113142952";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -183,7 +183,7 @@ function mount(container, opts = {}) {
       for (const pts of [R.motes]) { const a = pts.geometry.attributes.position.array, sp = pts.userData.sp; for (let i = 0; i < sp.length; i++) { a[i * 3 + 1] += sp[i] * 60 * dt * (pts === R.motes ? 0.35 : 1); a[i * 3] += Math.sin(t + i) * 0.002; if (a[i * 3 + 1] > 9) a[i * 3 + 1] = 0; } pts.geometry.attributes.position.needsUpdate = true; }
       for (const c of R.candles) { const f = 1 + 0.07 * Math.sin(t * 13 + c.ph) + 0.05 * Math.sin(t * 7.3 + c.ph * 2) + Math.random() * 0.03; c.flame.scale.set(0.16 * (2 - f), 0.36 * f, 1); c.halo.material.opacity = 0.32 * f; c.pool.material.opacity = 0.2 * f; }
       if (R.sakura) stepSakura(R.sakura, dt, t);
-      if (R.pond) stepPond(R.pond, dt, t);
+      if (R.pond) R.pond.step(R.pond, dt, t);
       R.lifeT.rotation.y = t * 1.2; R.lifeT.position.y = 1 + Math.sin(t * 2) * 0.12; R.lifeHalo.position.copy(R.lifeT.position);
       for (const m of R.meshes.values()) {
         if (m.pulse) m.glow.material.opacity = 0.45 + Math.sin(t * 6) * 0.3;
@@ -220,7 +220,9 @@ export const MATS = { black: { name: "รักดำ", lac: "#120b09", edge: "r
   // ซากุระราตรี: night-lacquer with sakura painted in the corners (maki-e style) — and sakura trees by the table, petals drifting over it
   sakura: { name: "ซากุระราตรี", lac: "#160d22", edge: "rgba(236,140,178,", kind: "sakura" } };
 // the scene (สนาม, the map) round the table — not the cloth on it (ผ้าปู, the playmat above). Each viewer sees the one they chose.
-export const SCENES = { hall: { name: "โถงไม้แสงเทียน" }, pond: { name: "สวนสระบัว" }, sakura: { name: "ซากุระราตรี" } };
+export const SCENES = { hall: { name: "โถงไม้แสงเทียน" }, pond: { name: "สวนสระบัว" }, market: { name: "ตลาดน้ำยามค่ำ" }, sakura: { name: "ซากุระราตรี" } };
+// a scene that brings its own ground: how to build it, and the air round it (fog colour and thickness, sky and ground light, how strong)
+const GROUND = { pond: { build: () => buildPond(), air: [0x0f2a26, 0.019, 0xf2f6ff, 0x1c3320, 0.62] }, market: { build: () => buildMarket(), air: [0x04080f, 0.015, 0xaab8ff, 0x0a0a14, 0.4] } };
 const avCache = new Map();
 const loadAvatar = (key, f) => {
   if (f) { if (!avCache.has(f.key)) avCache.set(f.key, f.url.then((u) => (u && THREE.GLTFLoader ? new Promise((res) => new THREE.GLTFLoader().load(u, res, undefined, () => res(null))) : null))); return avCache.get(f.key); }
@@ -743,7 +745,7 @@ function makeBird(M) {
 }
 function buildPond() {
   const Q = R.Q, low = Q === "low", C = POND[R.zones === ZONES.tall ? "tall" : "wide"], G = -0.335, grp = new THREE.Group(); grp.name = "pond"; R.scene.add(grp);
-  const S = { grp, zk: R.zones, o: new THREE.Object3D(), tex: [], koi: [], rings: [], flies: [], birds: [] }, o = S.o, rnd = lcg(71), T = (t) => { S.tex.push(t); return t; };
+  const S = { grp, zk: R.zones, o: new THREE.Object3D(), tex: [], koi: [], rings: [], flies: [], birds: [], step: stepPond }, o = S.o, rnd = lcg(71), T = (t) => { S.tex.push(t); return t; };
   const flat = (geo, mat, y, order = 0) => { const m = new THREE.Mesh(geo, mat); m.rotation.x = -Math.PI / 2; m.position.y = y; m.renderOrder = order; grp.add(m); return m; };
   // grass as far as the eye goes (unlit, its light painted in: bright round the table, deep green toward the edges)
   { const gt = T(grassTexture()); gt.wrapS = gt.wrapT = THREE.RepeatWrapping; gt.repeat.set(7, 5); gt.anisotropy = 8;
@@ -864,25 +866,130 @@ function stepPond(S, dt, t) {
 }
 function dropPond(S) {
   R.scene.remove(S.grp); const seen = new Set(), shared = R.shade.material.map;
-  S.grp.traverse((o) => { if (!o.isMesh && !o.isSprite) return; for (const x of o.isSprite ? [o.material] : [o.geometry, o.material]) if (x && !seen.has(x)) { seen.add(x); x.dispose(); } }); // (every sprite shares one geometry)
+  S.grp.traverse((o) => { if (!o.isMesh && !o.isSprite && !o.isPoints && !o.isLine) return; for (const x of o.isSprite ? [o.material] : [o.geometry, o.material]) if (x && !seen.has(x)) { seen.add(x); x.dispose(); } }); // (every sprite shares one geometry)
   for (const t of S.tex) if (t !== shared && t !== R.FX.dot) t.dispose();
+}
+// ---------- ตลาดน้ำยามค่ำ: a floating market at night ----------
+// The table lies on a plank pier in a dark canal. Paddle boats loaded with baskets of fruit are tied up along it and one
+// drifts past behind; paper lanterns hang on cords between poles and on the boats, their light lying in long streaks on
+// the water; krathong with a candle each float by, and fireflies wander over the banks. Made here like the garden: one
+// batch per repeated thing, no lamp of its own for anything, and water that costs two texture reads.
+const MARKET = {
+  wide: { boats: [[-6.5, -7.95, 0.05, 0xc8402c], [7.0, -8.0, -0.07, 0x2f9a8c], [-10.5, -3.4, 1.42, 0xe0a63a], [10.9, -2.4, 1.72, 0x4f74c8]], drift: [-9.15, -17, 17, 0.32, 0xb04a7a],
+    cords: [[-8.45, -6.95, -2.9, -6.95, 7], [4.9, -6.95, 8.45, -6.95, 5]], lanes: [[-9.55, -7.0, 5.6, 1], [9.6, -7.0, 5.6, 1], [-15, 15, -9.0, 0]], flies: [[-11.5, -5], [10.5, -5], [-6, -8.6]] },
+  tall: { boats: [[-3.9, -8.0, 0.05, 0xc8402c], [3.7, -8.1, -0.06, 0x2f9a8c]], drift: [-9.25, -13, 13, 0.3, 0xe0a63a],
+    cords: [[-7.45, -6.95, -1.3, -6.95, 7], [1.7, -6.95, 7.45, -6.95, 7]], lanes: [[-12, 12, -8.95, 0], [-12, 12, 7.6, 0], [-12, 12, 9.2, 0]], flies: [[-5, -8.6], [5, -8.6], [0, 8]] } };
+function rippleTexture() {
+  return canvasTex(256, (g, S) => { g.fillStyle = "#000"; g.fillRect(0, 0, S, S); const rnd = lcg(41);
+    for (let k = 0; k < 150; k++) { const x = rnd() * S, y = rnd() * S, w = 10 + rnd() * 36, hh = 1.2 + rnd() * 2.4, a = 0.25 + rnd() * 0.6;
+      for (const dx of [-S, 0, S]) for (const dy of [-S, 0, S]) { const gr = g.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, w); gr.addColorStop(0, `rgba(255,255,255,${a})`); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; g.save(); g.translate(x + dx, y + dy); g.scale(1, hh / w); g.translate(-x - dx, -y - dy); g.beginPath(); g.arc(x + dx, y + dy, w, 0, 7); g.fill(); g.restore(); } } });
+}
+function plankTexture() {
+  return canvasTex(256, (g, S) => { const rnd = lcg(53), N = 8, hh = S / N; for (let j = 0; j < N; j++) { const v = 96 + Math.floor(rnd() * 34); g.fillStyle = `rgb(${v + 30},${v},${Math.floor(v * 0.66)})`; g.fillRect(0, j * hh, S, hh - 2); g.fillStyle = "#231710"; g.fillRect(0, j * hh + hh - 2, S, 2);
+      const cut = Math.floor(rnd() * S); g.fillRect(cut, j * hh, 2, hh); for (let k = 0; k < 40; k++) { g.fillStyle = rnd() < 0.5 ? "rgba(255,230,190,.07)" : "rgba(0,0,0,.1)"; g.fillRect(rnd() * S, j * hh + rnd() * (hh - 3), 8 + rnd() * 30, 1); }
+      g.fillStyle = "rgba(20,12,8,.7)"; for (const x of [cut + 7, cut - 7 + S]) { g.beginPath(); g.arc(x % S, j * hh + hh / 2, 1.6, 0, 7); g.fill(); } } });
+}
+// a paddle boat's hull: ribs from bow to stern, wide in the middle, both ends drawn up; the top strake carries the boat's colour
+function boatGeometry(L, W, H, paint) {
+  const N = 12, pos = [], col = [], idx = [], wood = new THREE.Color(0x6a4326), top = new THREE.Color(paint);
+  for (let i = 0; i <= N; i++) { const u = i / N, e = Math.abs(u - 0.5) * 2, x = (u - 0.5) * L, w = (W / 2) * Math.pow(Math.sin(Math.PI * u), 0.55), yt = H + 0.3 * Math.pow(e, 2.3), yk = 0.02 + 0.24 * Math.pow(e, 3);
+    for (const [z, y, c] of [[-w, yt, top], [-w * 0.74, (yt + yk) / 2 - 0.02, wood], [0, yk, wood], [w * 0.74, (yt + yk) / 2 - 0.02, wood], [w, yt, top]]) { pos.push(x, y, z); col.push(c.r, c.g, c.b); } }
+  for (let i = 0; i < N; i++) for (let j = 0; j < 4; j++) { const a = i * 5 + j, b = a + 5; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute("color", new THREE.Float32BufferAttribute(col, 3)); geo.setIndex(idx); geo.computeVertexNormals(); return geo;
+}
+function buildMarket() {
+  const Q = R.Q, low = Q === "low", C = MARKET[R.zones === ZONES.tall ? "tall" : "wide"], G = -0.335, grp = new THREE.Group(); grp.name = "market"; R.scene.add(grp);
+  const S = { grp, zk: R.zones, o: new THREE.Object3D(), tex: [], boats: [], step: stepMarket }, o = S.o, rnd = lcg(97), T = (t) => { S.tex.push(t); return t; }, col = new THREE.Color();
+  const flat = (geo, mat, y, order = 0) => { const m = new THREE.Mesh(geo, mat); m.rotation.x = -Math.PI / 2; m.position.y = y; m.renderOrder = order; grp.add(m); return m; };
+  // the canal: black-green water, small lights running over it, warm where the lanterns are
+  { const rt = T(rippleTexture()); rt.wrapS = rt.wrapT = THREE.RepeatWrapping;
+    S.water = new THREE.ShaderMaterial({ uniforms: { uT: { value: 0 }, uRip: { value: rt }, uA: { value: new THREE.Color(0.002, 0.006, 0.012) }, uB: { value: new THREE.Color(0.006, 0.04, 0.06) }, uGlow: { value: new THREE.Color(1.0, 0.42, 0.1) }, uBox: { value: new THREE.Vector3(MW / 2 + 0.85, MD / 2 + 0.85, MZ) }, uFogC: { value: R.scene.fog.color }, uFogD: { value: 0.015 } },
+      vertexShader: "varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }",
+      fragmentShader: `uniform float uT; uniform sampler2D uRip; uniform vec3 uA; uniform vec3 uB; uniform vec3 uGlow; uniform vec3 uBox; uniform vec3 uFogC; uniform float uFogD; varying vec3 vW;
+        void main(){ vec2 p = vW.xz; float r1 = texture2D(uRip, p * vec2(0.085, 0.16) + vec2(uT * 0.011, uT * 0.006)).r; float r2 = texture2D(uRip, p * vec2(0.15, 0.27) + vec2(-uT * 0.015, uT * 0.01)).r;
+          vec2 q = max(abs(p - vec2(0.0, uBox.z)) - uBox.xy, 0.0); float near = exp(-dot(q, q) * 0.045);
+          vec3 col = mix(uA, uB, r1 * 0.7 + near * 0.25) + uGlow * (smoothstep(0.08, 0.45, r1 * r2) * (0.03 + 0.9 * near) + r1 * near * 0.05);
+          float d = length(cameraPosition - vW); col = mix(col, uFogC, 1.0 - exp(-uFogD * uFogD * d * d));
+          gl_FragColor = vec4(col, 1.0);
+          #include <tonemapping_fragment>
+          #include <encodings_fragment>
+        }` });
+    flat(new THREE.PlaneGeometry(70, 50), S.water, G).position.z = -2; }
+  // the pier under the table, lamplight pooled at its far corners
+  { const pt = T(plankTexture()); pt.wrapS = pt.wrapT = THREE.RepeatWrapping; pt.repeat.set(5, 6); const deck = new THREE.Mesh(new THREE.BoxGeometry(MW + 1.7, 0.1, MD + 1.7), new THREE.MeshBasicMaterial({ map: pt, color: 0x9a8068 })); deck.position.set(0, G + 0.05, MZ); grp.add(deck);
+    const glow = new THREE.MeshBasicMaterial({ map: R.FX.dot, color: 0xff9a3c, transparent: true, opacity: 0.34, blending: THREE.AdditiveBlending, depthWrite: false });
+    for (const sx of [-1, 1]) { const m = flat(new THREE.PlaneGeometry(4.6, 4.6), glow, G + 0.104, 2); m.position.set(sx * (MW / 2 + 0.5), G + 0.104, MZ - MD / 2 - 0.5); } S.pool = glow;
+    const post = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.11, 0.13, 0.62, 7), new THREE.MeshStandardMaterial({ color: 0x5a3a24, roughness: 0.9, metalness: 0 }), 8); let k = 0;
+    for (const sx of [-1, 1]) for (const [fz, fx] of [[-1, 1], [1, 1], [-1, 0.33], [1, 0.33]]) { o.position.set(sx * fx * (MW / 2 + 0.78), G + 0.3, MZ + fz * (MD / 2 + 0.78)); o.rotation.set(0, 0, 0); o.scale.set(1, 1, 1); o.updateMatrix(); post.setMatrixAt(k++, o.matrix); } grp.add(post); }
+  // paper lanterns on cords between poles; their glow is one cloud of points, their light on the water one batch of streaks
+  const lamps = [], LC = [0xff4426, 0xff9a1e, 0xffc832, 0xff4f86, 0xff7a1e];
+  { const pole = new THREE.MeshStandardMaterial({ color: 0x4a2f1e, roughness: 0.9, metalness: 0 }), pg = new THREE.CylinderGeometry(0.06, 0.08, 2.3, 6), lm = new THREE.LineBasicMaterial({ color: 0x1a120c });
+    for (const [x0, z0, x1, z1, n] of C.cords) { for (const [x, z] of [[x0, z0], [x1, z1]]) { const p = new THREE.Mesh(pg, pole); p.position.set(x, G + 1.2, z); grp.add(p); }
+      const pts = []; for (let i = 0; i <= 16; i++) { const s = i / 16; pts.push(new THREE.Vector3(x0 + (x1 - x0) * s, G + 2.3 - 0.5 * 4 * s * (1 - s), z0 + (z1 - z0) * s)); } grp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lm));
+      for (let i = 0; i < n; i++) { const s = (i + 0.5) / n; lamps.push([x0 + (x1 - x0) * s, G + 2.3 - 0.5 * 4 * s * (1 - s) - 0.2, z0 + (z1 - z0) * s, LC[(i + lamps.length) % LC.length], 1]); } } }
+  // boats tied up along the pier, each with baskets of fruit and a lantern on a pole at the stern
+  const fruit = [0xff8a2a, 0xf2c43a, 0x8ac44a, 0xe2453a, 0xc86ad2], bask = new THREE.CylinderGeometry(0.2, 0.15, 0.17, 8, 1, true), ball = new THREE.SphereGeometry(0.075, 6, 5), reed = new THREE.MeshStandardMaterial({ color: 0xb8925a, roughness: 0.95, metalness: 0, side: THREE.DoubleSide }), skin = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, metalness: 0 });
+  const hat = new THREE.ConeGeometry(0.26, 0.13, 10), straw = new THREE.MeshStandardMaterial({ color: 0xd8bc7a, roughness: 0.9, metalness: 0 }), rod = new THREE.CylinderGeometry(0.02, 0.02, 0.85, 5), dark = new THREE.MeshStandardMaterial({ color: 0x2a1a12, roughness: 0.9 }), bulb = new THREE.SphereGeometry(0.13, 8, 6);
+  const boat = (x, z, ry, paint, i) => { const b = new THREE.Group(); b.position.set(x, G - 0.02, z); b.rotation.y = ry; grp.add(b);
+    const hull = new THREE.Mesh(boatGeometry(3.7, 0.86, 0.36, paint), new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, side: THREE.DoubleSide, roughness: 0.8, metalness: 0 })); b.add(hull);
+    const nb = low ? 2 : 3, bs = new THREE.InstancedMesh(bask, reed, nb), fr = new THREE.InstancedMesh(ball, skin, nb * 6); let k = 0;
+    for (let j = 0; j < nb; j++) { const bx = -0.75 + j * 0.62 + (rnd() - 0.5) * 0.1; o.position.set(bx, 0.2, (rnd() - 0.5) * 0.12); o.rotation.set(0, rnd() * 6, 0); o.scale.setScalar(0.95 + rnd() * 0.25); o.updateMatrix(); bs.setMatrixAt(j, o.matrix); const fc = fruit[(i + j) % fruit.length];
+      for (let f = 0; f < 6; f++) { const a = f * 1.05, r = f < 5 ? 0.1 : 0; o.position.set(bx + Math.cos(a) * r, 0.3 + (f < 5 ? 0 : 0.07), Math.sin(a) * r); o.scale.setScalar(0.9 + rnd() * 0.3); o.updateMatrix(); fr.setMatrixAt(k, o.matrix); fr.setColorAt(k++, col.setHex(fc).multiplyScalar(0.85 + rnd() * 0.3)); } }
+    b.add(bs, fr); const h = new THREE.Mesh(hat, straw); h.position.set(0.95, 0.33, 0.05); h.rotation.z = 0.25; b.add(h);
+    const p = new THREE.Mesh(rod, dark); p.position.set(-1.45, 0.72, 0); b.add(p); const lc = LC[(i + 1) % LC.length], l = new THREE.Mesh(bulb, new THREE.MeshBasicMaterial({ color: lc, toneMapped: false })); l.scale.set(1, 1.25, 1); l.position.set(-1.45, 1.12, 0); b.add(l);
+    const gl = sprite(R.FX.dot, lc, 1.7, new THREE.Vector3(-1.45, 1.12, 0), 0.4, b); lamps.push([x - 1.45 * Math.cos(ry), G + 1.1, z + 1.45 * Math.sin(ry), lc, 0]); const st = { b, gl, ph: i * 1.7, y0: G - 0.02 }; S.boats.push(st); return st; };
+  C.boats.slice(0, low ? 2 : 9).forEach(([x, z, ry, paint], i) => boat(x, z, ry, paint, i));
+  if (!reduce) { const [dz, x0, x1, v, paint] = C.drift; S.drift = Object.assign(boat(x0 + (x1 - x0) * 0.3, dz, 0.02, paint, 5), { x0, x1, v }); }
+  { const n = lamps.length, body = new THREE.InstancedMesh(new THREE.SphereGeometry(0.17, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }), n), pp = new Float32Array(n * 3), pc = new Float32Array(n * 3);
+    const streak = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: R.FX.dot, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false }), n);
+    lamps.forEach(([x, y, z, c, own], i) => { o.position.set(x, own ? y : -50, z); o.rotation.set(0, 0, 0); o.scale.set(1, 1.3, 1); o.updateMatrix(); body.setMatrixAt(i, o.matrix); body.setColorAt(i, col.setHex(c)); pp.set([x, own ? y : -50, z], i * 3); pc.set([col.r, col.g, col.b], i * 3);
+      o.position.set(x, G + 0.012, z - 0.75); o.rotation.set(-Math.PI / 2, 0, 0); o.scale.set(0.8, 2.6, 1); o.updateMatrix(); streak.setMatrixAt(i, o.matrix); streak.setColorAt(i, col); });
+    o.rotation.set(0, 0, 0); streak.renderOrder = 2; grp.add(body, streak); S.streak = streak.material;
+    const pgm = new THREE.BufferGeometry(); pgm.setAttribute("position", new THREE.BufferAttribute(pp, 3)); pgm.setAttribute("color", new THREE.BufferAttribute(pc, 3));
+    S.halo = new THREE.Points(pgm, new THREE.PointsMaterial({ map: R.FX.dot, size: 1.15, vertexColors: true, transparent: true, opacity: 0.36, blending: THREE.AdditiveBlending, depthWrite: false })); grp.add(S.halo); }
+  // krathong drifting with the current, a candle on each
+  { const n = low ? 5 : Q === "mid" ? 9 : 14, per = 8, pg = new THREE.BufferGeometry(); pg.setAttribute("position", new THREE.Float32BufferAttribute([0, 0, 0, 0.13, 0.2, 0.05, 0, 0.44, 0.1, -0.13, 0.2, 0.05], 3)); pg.setIndex([0, 1, 2, 0, 2, 3]); pg.computeVertexNormals();
+    const leaf = new THREE.InstancedMesh(new THREE.CircleGeometry(0.34, 10), new THREE.MeshBasicMaterial({ color: 0x2f7a44 }), n), pet = new THREE.InstancedMesh(pg, new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true, side: THREE.DoubleSide, roughness: 0.6, metalness: 0, emissive: 0x5a2410, emissiveIntensity: 0.22 }), n * per);
+    const KC = [[1, 0.3, 0.46], [1, 0.86, 0.62], [1, 0.5, 0.12]]; for (let i = 0; i < n * per; i++) { const c = KC[Math.floor(i / per) % 3]; pet.setColorAt(i, col.setRGB(c[0], c[1], c[2])); }
+    for (const m of [leaf, pet]) { m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false; grp.add(m); } leaf.renderOrder = 1;
+    const fp = new Float32Array(n * 3), fg = new THREE.BufferGeometry(); fg.setAttribute("position", new THREE.BufferAttribute(fp, 3));
+    const flame = new THREE.Points(fg, new THREE.PointsMaterial({ map: R.FX.dot, color: 0xffa040, size: 0.55, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false })); flame.frustumCulled = false; grp.add(flame);
+    S.kr = { leaf, pet, flame, fp, per, st: Array.from({ length: n }, (_, i) => ({ lane: C.lanes[i % C.lanes.length], u: rnd(), v: 0.012 + rnd() * 0.012, off: (rnd() - 0.5) * 0.7, ph: rnd() * 6.28, spin: rnd() * 6.28 })) }; }
+  // fireflies over the banks
+  if (!reduce) { const n = low ? 8 : 26, fp = new Float32Array(n * 3), fg = new THREE.BufferGeometry(); fg.setAttribute("position", new THREE.BufferAttribute(fp, 3));
+    const pts = new THREE.Points(fg, new THREE.PointsMaterial({ map: R.FX.dot, color: 0xd8ff7a, size: 0.26, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })); pts.frustumCulled = false; grp.add(pts);
+    S.fly = { pts, fp, st: Array.from({ length: n }, (_, i) => { const [cx, cz] = C.flies[i % C.flies.length]; return { cx: cx + (rnd() - 0.5) * 4, cz: cz + (rnd() - 0.5) * 3, ph: rnd() * 6.28, f: 0.25 + rnd() * 0.4 }; }) }; }
+  return S;
+}
+function stepMarket(S, dt, t) {
+  S.water.uniforms.uT.value = t; const o = S.o, G = -0.335;
+  for (const b of S.boats) { b.b.position.y = b.y0 + Math.sin(t * 1.1 + b.ph) * 0.022; b.b.rotation.x = Math.sin(t * 0.85 + b.ph) * 0.04; b.gl.material.opacity = 0.36 + 0.06 * Math.sin(t * 8 + b.ph); }
+  if (S.drift) { const d = S.drift; d.b.position.x += d.v * dt; if (d.b.position.x > d.x1) d.b.position.x = d.x0; }
+  S.streak.opacity = 0.46 + 0.07 * Math.sin(t * 2.3) + 0.04 * Math.sin(t * 5.1); S.halo.material.opacity = 0.34 + 0.04 * Math.sin(t * 6.7); S.pool.opacity = 0.32 + 0.04 * Math.sin(t * 7.9);
+  if (S.kr) { const K = S.kr; K.st.forEach((k, i) => { k.u += k.v * dt; if (k.u > 1) k.u -= 1; const [a, b, c, alongZ] = k.lane; const x = alongZ ? a + k.off + Math.sin(t * 0.4 + k.ph) * 0.15 : a + (b - a) * k.u, z = alongZ ? b + (c - b) * k.u : c + k.off * 0.5 + Math.sin(t * 0.4 + k.ph) * 0.12, y = G + 0.016 + Math.sin(t * 1.6 + k.ph) * 0.008, sp = k.spin + t * 0.12;
+      o.rotation.order = "XYZ"; o.position.set(x, y, z); o.rotation.set(-Math.PI / 2, 0, sp); o.scale.setScalar(1); o.updateMatrix(); K.leaf.setMatrixAt(i, o.matrix); o.rotation.order = "YXZ";
+      for (let j = 0; j < K.per; j++) { o.position.set(x, y + 0.01, z); o.rotation.set(0.86, sp + (j / K.per) * 6.2832, 0); o.scale.setScalar(0.74); o.updateMatrix(); K.pet.setMatrixAt(i * K.per + j, o.matrix); }
+      K.fp[i * 3] = x; K.fp[i * 3 + 1] = y + 0.24; K.fp[i * 3 + 2] = z; });
+    o.rotation.order = "XYZ"; o.rotation.set(0, 0, 0); K.leaf.instanceMatrix.needsUpdate = K.pet.instanceMatrix.needsUpdate = true; K.flame.geometry.attributes.position.needsUpdate = true; K.flame.material.opacity = 0.8 + 0.15 * Math.sin(t * 11); }
+  if (S.fly) { const F = S.fly; F.st.forEach((f, i) => { F.fp[i * 3] = f.cx + Math.sin(t * f.f + f.ph) * 1.6 + Math.sin(t * f.f * 2.3 + f.ph) * 0.4; F.fp[i * 3 + 1] = 0.35 + Math.sin(t * f.f * 1.7 + f.ph * 2) * 0.3 + 0.3; F.fp[i * 3 + 2] = f.cz + Math.cos(t * f.f * 0.8 + f.ph) * 1.3; });
+    F.pts.geometry.attributes.position.needsUpdate = true; F.pts.material.opacity = 0.55 + 0.4 * Math.abs(Math.sin(t * 1.3)); }
 }
 // the table's surroundings are the scene the viewer chose (สนาม), whatever cloth lies on the table
 function decor() {
   if (!R) return; const want = R.sceneKey;
   if (R.sakura && (want !== "sakura" || R.sakura.zk !== R.zones)) { dropSakura(R.sakura); R.sakura = null; }
   if (want === "sakura" && !R.sakura) R.sakura = buildSakura();
-  if (R.pond && (want !== "pond" || R.pond.zk !== R.zones)) { dropPond(R.pond); R.pond = null; }
-  if (want === "pond" && !R.pond) R.pond = buildPond();
+  if (R.pond && (R.pond.key !== want || R.pond.zk !== R.zones)) { dropPond(R.pond); R.pond = null; }
+  if (GROUND[want] && !R.pond) { R.pond = GROUND[want].build(); R.pond.key = want; }
   hallShow();
 }
-// the candle-lit hall (teak table, candles, brass and garland) gives way to a scene that brings its own ground
+// the candle-lit hall (teak table, candles, brass and garland) gives way to a scene that brings its own ground (GROUND)
 function hallShow() {
-  if (!R) return; const on = R.sceneKey !== "pond";
+  if (!R) return; const gr = GROUND[R.sceneKey], on = !gr, air = gr ? gr.air : [0x0b0605, 0.026, 0xffe2c0, 0x140a06, 0.5];
   if (R.wood) R.wood.visible = on; if (R.shade) R.shade.visible = on && !R.shadeOff; for (const c of R.candles || []) c.grp.visible = on;
   const pr = R.scene.getObjectByName("props"); if (pr) pr.visible = on; if (R.motes) R.motes.visible = on || R.Q !== "low";
-  R.scene.fog.color.setHex(on ? 0x0b0605 : 0x0f2a26); R.scene.fog.density = on ? 0.026 : 0.019;
-  if (R.hemi) { R.hemi.color.setHex(on ? 0xffe2c0 : 0xf2f6ff); R.hemi.groundColor.setHex(on ? 0x140a06 : 0x1c3320); R.hemi.intensity = on ? 0.5 : 0.62; }
+  R.scene.fog.color.setHex(air[0]); R.scene.fog.density = air[1];
+  if (R.hemi) { R.hemi.color.setHex(air[2]); R.hemi.groundColor.setHex(air[3]); R.hemi.intensity = air[4]; }
 }
 const rgbaOf = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
 // the gold line-work of our half of the wide table, gold on black, for the playmat editor to lay over a picture ("screen")
