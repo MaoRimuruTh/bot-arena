@@ -789,3 +789,15 @@ body.arena-on .prompt.toss{top:50%;bottom:auto;max-height:86vh}
 .sheet:focus{outline:none}
 .ptrack li{color:#9c8a72}
 .pill .cost{text-shadow:0 0 2px rgba(0,0,0,.95),0 1px 1px rgba(0,0,0,.9)}
+
+/* ---- Thai design pass (see THAI_DESIGN.md) ----
+   reading text in looped Thai (หัวกลม: ข/ช, ด/ต, บ/ป keep apart at small sizes); headings, numbers and Latin stay in Chakra Petch.
+   gold is leaf, not light: the resting glows go, a hover or a selection still glows.
+   Thai is never tracked or upper-cased: tracking pulls the vowels and tone marks away from their consonants. */
+:root{--f-body:"IBM Plex Sans Thai Looped","IBM Plex Sans Thai","Noto Sans Thai Looped",system-ui,sans-serif}
+.eyebrow{letter-spacing:0;text-transform:none}
+.logo i{box-shadow:none}
+.nav a[aria-current="page"]::after{box-shadow:none}
+.btn.gold{box-shadow:0 0 0 1px rgba(255,230,160,.35) inset,0 2px 0 rgba(0,0,0,.35)}
+.phases span.on{box-shadow:none}
+.gate b.big{text-shadow:0 2px 0 rgba(0,0,0,.5)}

@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113215711";
-import { E } from "./engine.js?v=20261113215711";
-import { h } from "./util.js?v=20261113215711";
-import { Sfx } from "./sfx.js?v=20261113215711";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261113220801";
+import { E } from "./engine.js?v=20261113220801";
+import { h } from "./util.js?v=20261113220801";
+import { Sfx } from "./sfx.js?v=20261113220801";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -510,14 +510,17 @@ function stepPath(g, x0, y0, x1, y1, st) {
   g.lineTo(x0 + 2 * st, y1); g.lineTo(x0 + 2 * st, y1 - st); g.lineTo(x0 + st, y1 - st); g.lineTo(x0 + st, y1 - 2 * st); g.lineTo(x0, y1 - 2 * st);
   g.lineTo(x0, y0 + 2 * st); g.lineTo(x0 + st, y0 + 2 * st); g.lineTo(x0 + st, y0 + st); g.lineTo(x0 + 2 * st, y0 + st); g.closePath();
 }
-// ประจำยาม: the four-petal flower that sits on Thai borders and door panels
+// ประจำยาม: a four-petalled flower seen from above, the knot that sits on Thai bands and door panels. Its grammar: four plump
+// petals that swell from the heart and close to a point (not thin rays: thin rays read as a sparkle), a vein cut through each,
+// small pointed sepals on the diagonals between them, and a round heart (เกสร) with a ring cut round it.
+// ground: the colour the cuts are made in (the lacquer under the gold); without it the flower is drawn solid.
 function prajamyam(g, cx, cy, r, ground) {
-  g.beginPath();
-  for (let k = 0; k < 4; k++) { const a = (k * Math.PI) / 2 - Math.PI / 2; const P = (d, da) => [cx + Math.cos(a + da) * d, cy + Math.sin(a + da) * d];
-    g.moveTo(cx, cy); g.quadraticCurveTo(...P(r * 0.72, -0.62), ...P(r, 0)); g.quadraticCurveTo(...P(r * 0.72, 0.62), cx, cy); }
-  g.fill();
-  for (let k = 0; k < 4; k++) { const a = (k * Math.PI) / 2 + Math.PI / 4; g.beginPath(); g.arc(cx + Math.cos(a) * r * 0.62, cy + Math.sin(a) * r * 0.62, r * 0.09, 0, 7); g.fill(); }
-  if (ground) { const f = g.fillStyle; g.fillStyle = ground; g.beginPath(); g.moveTo(cx, cy - r * 0.2); g.lineTo(cx + r * 0.2, cy); g.lineTo(cx, cy + r * 0.2); g.lineTo(cx - r * 0.2, cy); g.closePath(); g.fill(); g.fillStyle = f; }
+  const leaf = (a, d0, d1, w) => { const L = d1 - d0, P = (d, s) => [cx + Math.cos(a) * d - Math.sin(a) * s, cy + Math.sin(a) * d + Math.cos(a) * s];
+    g.beginPath(); g.moveTo(...P(d0, 0)); g.bezierCurveTo(...P(d0 + L * 0.16, w * 1.2), ...P(d0 + L * 0.64, w * 0.92), ...P(d1, 0)); g.bezierCurveTo(...P(d0 + L * 0.64, -w * 0.92), ...P(d0 + L * 0.16, -w * 1.2), ...P(d0, 0)); g.fill(); };
+  for (let k = 0; k < 4; k++) { const a = (k * Math.PI) / 2 - Math.PI / 2; leaf(a, r * 0.06, r, r * 0.4); leaf(a + Math.PI / 4, r * 0.12, r * 0.62, r * 0.11); }
+  g.beginPath(); g.arc(cx, cy, r * 0.24, 0, 7); g.fill();
+  if (ground) { const f = g.fillStyle; g.fillStyle = ground; for (let k = 0; k < 4; k++) leaf((k * Math.PI) / 2 - Math.PI / 2, r * 0.36, r * 0.8, r * 0.085);
+    g.beginPath(); g.arc(cx, cy, r * 0.15, 0, 7); g.fill(); g.fillStyle = f; g.beginPath(); g.arc(cx, cy, r * 0.085, 0, 7); g.fill(); }
 }
 // frame-rate watch for the automatic quality (two slow two-second spells in a row lower it one step; it never goes back up)
 function watchFps(A) {
@@ -1354,18 +1357,34 @@ function matTextures(small, mats = {}, Z = ZONES.wide) {
   const scrawl = (c, x0, y0, x1, y1, w, n = 2) => { const r = c.sk.rnd; c.lineCap = "round"; for (let k = 0; k < n; k++) { const j = () => (r() - 0.5) * w * 2.4, o = () => r() * w * 3.2; c.lineWidth = w * (0.7 + r() * 0.55);
     for (const [ax, ay, bx, by] of [[x0 - o(), y0 + j(), x1 + o(), y0 + j()], [x1 + j(), y0 - o(), x1 + j(), y1 + o()], [x1 + o(), y1 + j(), x0 - o(), y1 + j()], [x0 + j(), y1 + o(), x0 + j(), y0 - o()]]) { c.beginPath(); c.moveTo(ax, ay); c.quadraticCurveTo((ax + bx) / 2 + j() * 1.4, (ay + by) / 2 + j() * 1.4, bx, by); c.stroke(); } } };
   const orn = (c, ...a) => { if (!c.sk) prajamyam(c, ...a); };
-  const frame = (c, x0, z0, x1, z1, st, w = 0.035) => { if (c.sk) return scrawl(c, X(x0), Y(z0), X(x1), Y(z1), U(w * 1.1), w > 0.03 ? 3 : 2); c.lineWidth = U(w); stepPath(c, X(x0), Y(z0), X(x1), Y(z1), U(st)); c.stroke(); c.lineWidth = U(w * 0.38); stepPath(c, X(x0) + U(0.1), Y(z0) + U(0.1), X(x1) - U(0.1), Y(z1) - U(0.1), U(st * 0.8)); c.stroke(); };
+  // a zone is a panel (ลูกฟัก): a firm rule with a hairline inside it, and in each inner corner a corner piece (ลายเข้ามุม: a
+  // triangle with a hollowed side, a bead beyond it). Only the shared Land Magic Zone keeps stepped corners (ย่อมุม, the corner of a
+  // throne base) — one stepped frame reads as a centrepiece, a dozen read as pixels. A stepped frame's hairline follows it step for step.
+  const frame = (c, x0, z0, x1, z1, st, w = 0.035, stepped = false) => { if (c.sk) return scrawl(c, X(x0), Y(z0), X(x1), Y(z1), U(w * 1.1), w > 0.03 ? 3 : 2); const d = U(0.1);
+    if (stepped) { c.lineWidth = U(w); stepPath(c, X(x0), Y(z0), X(x1), Y(z1), U(st)); c.stroke(); c.lineWidth = U(w * 0.38); stepPath(c, X(x0) + d, Y(z0) + d, X(x1) - d, Y(z1) - d, U(st)); c.stroke(); return; }
+    c.lineWidth = U(w); c.strokeRect(X(x0), Y(z0), X(x1) - X(x0), Y(z1) - Y(z0)); c.lineWidth = U(w * 0.38); c.strokeRect(X(x0) + d, Y(z0) + d, X(x1) - X(x0) - 2 * d, Y(z1) - Y(z0) - 2 * d);
+    if (st < 0.1) return; // the small boxes (LIFE, the piles) stay plain
+    const k = U(st * 1.3); for (const [sx, sy, px, py] of [[1, 1, X(x0) + d, Y(z0) + d], [-1, 1, X(x1) - d, Y(z0) + d], [1, -1, X(x0) + d, Y(z1) - d], [-1, -1, X(x1) - d, Y(z1) - d]]) {
+      c.beginPath(); c.moveTo(px, py); c.lineTo(px + sx * k, py); c.quadraticCurveTo(px + sx * k * 0.36, py + sy * k * 0.36, px, py + sy * k); c.closePath(); c.fill();
+      c.beginPath(); c.arc(px + sx * k * 0.5, py + sy * k * 0.5, Math.max(1, k * 0.085), 0, 7); c.fill(); } };
   const label = (c, text, x, z, flip, align = "left", size = 0.19) => { c.save(); c.translate(X(x), Y(z)); if (flip) c.rotate(Math.PI); if (c.sk) c.rotate((c.sk.rnd() - 0.5) * 0.07); c.font = c.sk ? `600 ${U(size * 1.12)}px "Mali", "IBM Plex Sans Thai", sans-serif` : `600 ${U(size)}px "Chakra Petch", "IBM Plex Sans Thai", sans-serif`; c.textAlign = align; c.textBaseline = "middle"; c.globalAlpha = c.sk ? 0.92 : 0.8; c.fillText(text, 0, 0); c.restore(); };
   const inLabel = (c, text, x0, z0, x1, z1, flip) => (flip ? label(c, text, x1 - 0.32, z1 - 0.3, true) : label(c, text, x0 + 0.32, z0 + 0.3, false));
   const draw = () => gild((c, ground) => {
-    // the mat's border: a double rule with a row of saw teeth (ฟันปลา) between
+    // the mat's border: a stepped double rule (ย่อมุม; the inner rule follows the outer one step for step) and, between the two, a
+    // row of กรวยเชิง along the two long edges — tall leaves with rounded shoulders and a vein cut through, standing on the outer rule and
+    // pointing in, a bead between each two (the short sides stay plain rules, as on a lacquer panel: กรวยเชิง hang from a band, they do not climb a post)
     const e = 0.2; if (c.sk) { scrawl(c, X(-MW / 2 + e + 0.1), Y(MZ - MD / 2 + e + 0.1), X(MW / 2 - e - 0.1), Y(MZ + MD / 2 - e - 0.1), U(0.03), 2); } else {
-    c.lineWidth = U(0.045); stepPath(c, X(-MW / 2 + e), Y(MZ - MD / 2 + e), X(MW / 2 - e), Y(MZ + MD / 2 - e), U(0.22)); c.stroke();
-    c.lineWidth = U(0.016); stepPath(c, X(-MW / 2 + e + 0.24), Y(MZ - MD / 2 + e + 0.24), X(MW / 2 - e - 0.24), Y(MZ + MD / 2 - e - 0.24), U(0.17)); c.stroke();
-    const tooth = 0.17, th = 0.1; const side = (x0, z0, x1, z1, nx, nz) => { const L = Math.hypot(x1 - x0, z1 - z0), n = Math.floor(L / tooth), dx = (x1 - x0) / n, dz = (z1 - z0) / n;
-      c.beginPath(); for (let k = 0; k < n; k++) { const ax = x0 + dx * k, az = z0 + dz * k; c.moveTo(X(ax), Y(az)); c.lineTo(X(ax + dx / 2 + nx * th), Y(az + dz / 2 + nz * th)); c.lineTo(X(ax + dx), Y(az + dz)); } c.fill(); };
-    const i0 = e + 0.07, xa = -MW / 2 + i0 + 0.5, xb = MW / 2 - i0 - 0.5, za = MZ - MD / 2 + i0 + 0.5, zb = MZ + MD / 2 - i0 - 0.5;
-    side(xa, MZ - MD / 2 + i0, xb, MZ - MD / 2 + i0, 0, 1); side(xa, MZ + MD / 2 - i0, xb, MZ + MD / 2 - i0, 0, -1); side(-MW / 2 + i0, za, -MW / 2 + i0, zb, 1, 0); side(MW / 2 - i0, za, MW / 2 - i0, zb, -1, 0); }
+    const e1 = e + 0.24, bst = U(0.2);
+    c.lineWidth = U(0.045); stepPath(c, X(-MW / 2 + e), Y(MZ - MD / 2 + e), X(MW / 2 - e), Y(MZ + MD / 2 - e), bst); c.stroke();
+    c.lineWidth = U(0.016); stepPath(c, X(-MW / 2 + e1), Y(MZ - MD / 2 + e1), X(MW / 2 - e1), Y(MZ + MD / 2 - e1), bst); c.stroke();
+    const kw = 0.13, kh = 0.15, pitch = 0.19, kz = e + 0.04;
+    const row = (x0, z0, x1, z1, nx, nz) => { const L = Math.hypot(x1 - x0, z1 - z0), n = Math.floor(L / pitch), ux = (x1 - x0) / L, uz = (z1 - z0) / L, s0 = (L - n * pitch) / 2;
+      for (let k = 0; k < n; k++) { const s = s0 + (k + 0.5) * pitch, mx = x0 + ux * s, mz = z0 + uz * s, P = (al, out) => [X(mx + ux * al + nx * out), Y(mz + uz * al + nz * out)];
+        c.beginPath(); c.moveTo(...P(-kw / 2, 0)); c.bezierCurveTo(...P(-kw / 2, kh * 0.5), ...P(-kw * 0.1, kh * 0.62), ...P(0, kh)); c.bezierCurveTo(...P(kw * 0.1, kh * 0.62), ...P(kw / 2, kh * 0.5), ...P(kw / 2, 0)); c.closePath(); c.fill();
+        if (ground) { const f = c.fillStyle; c.fillStyle = ground; c.beginPath(); c.moveTo(...P(0, kh * 0.16)); c.quadraticCurveTo(...P(kw * 0.17, kh * 0.4), ...P(0, kh * 0.7)); c.quadraticCurveTo(...P(-kw * 0.17, kh * 0.4), ...P(0, kh * 0.16)); c.fill(); c.fillStyle = f; }
+        if (k < n - 1) { c.beginPath(); c.arc(...P(pitch / 2, kh * 0.2), U(0.017), 0, 7); c.fill(); } } };
+    const xa = -MW / 2 + e + 0.55, xb = MW / 2 - e - 0.55;
+    row(xa, MZ - MD / 2 + kz, xb, MZ - MD / 2 + kz, 0, 1); row(xa, MZ + MD / 2 - kz, xb, MZ + MD / 2 - kz, 0, -1); }
     // zones, mine near and the opponent's far (their labels face them)
     for (const [zs, flip] of [[1, false], [-1, true]]) {
       const zc = zs > 0 ? 2.15 : -2.55, zo = zs > 0 ? 4.17 : -4.5; const gnd = ground === LAC ? (zs > 0 ? NEAR.lac : FAR.lac) : ground;
@@ -1384,7 +1403,7 @@ function matTextures(small, mats = {}, Z = ZONES.wide) {
         frame(c, tx - pw, tz - pd, tx + pw, tz + pd, 0.06, c.sk ? 0.03 : 0.02); label(c, name, tx, tz, flip, "center", Pl.short ? 0.13 : 0.15); c.restore(); }
     }
     // Land Magic Zone, shared: in the middle of the table on a wide screen (its centre band of ประจำยาม runs out to both sides), at the left on an upright phone
-    const Ld = Z.land, [b0, b1] = Z.band; frame(c, Ld.x0, MZ - Ld.dz, Ld.x1, MZ + Ld.dz, 0.13, 0.03); label(c, "Land Magic", Ld.lx, Ld.lz, false, Ld.align);
+    const Ld = Z.land, [b0, b1] = Z.band; frame(c, Ld.x0, MZ - Ld.dz, Ld.x1, MZ + Ld.dz, 0.13, 0.03, true); label(c, "Land Magic", Ld.lx, Ld.lz, false, Ld.align);
     if (c.sk) { const r = c.sk.rnd, gp = Ld.center ? [Ld.x0 - 0.12, Ld.x1 + 0.12] : null; c.lineCap = "round"; c.lineWidth = U(0.024); // on paper: two plain strokes for the band, no ornaments
       for (const dz of [-0.24, 0.24]) for (const [a, b] of gp ? [[b0, gp[0]], [gp[1], b1]] : [[b0, b1]]) { c.beginPath(); c.moveTo(X(a - 0.1 * r()), Y(MZ + dz) + (r() - 0.5) * U(0.05)); c.quadraticCurveTo(X((a + b) / 2), Y(MZ + dz) + (r() - 0.5) * U(0.1), X(b + 0.1 * r()), Y(MZ + dz) + (r() - 0.5) * U(0.05)); c.stroke(); } return; }
     const gap = Ld.center ? [Ld.x0 - 0.12, Ld.x1 + 0.12] : null; c.lineWidth = U(0.022);
@@ -1470,6 +1489,12 @@ function sigilTexture(kind = "lotus") {
   g.fillStyle = "#000"; g.fillRect(0, 0, 512, 512); g.strokeStyle = g.fillStyle = "#fff"; g.shadowColor = "#fff"; g.shadowBlur = 10;
   const ring = (r, w) => { g.lineWidth = w; g.beginPath(); g.arc(C, C, r, 0, Math.PI * 2); g.stroke(); };
   const at = (a, d) => [C + Math.cos(a) * d, C + Math.sin(a) * d];
+  // a petal pointing out from the heart at angle a, from d0 to d1, w wide: plump near its base, closing to a point, a vein cut through it
+  // (in black: the glow is white on black); edge: a black outline first, so a petal laid over another stays separate
+  const petal = (a, d0, d1, w, edge) => { const L = d1 - d0, P = (d, s) => [C + Math.cos(a) * d - Math.sin(a) * s, C + Math.sin(a) * d + Math.cos(a) * s];
+    const path = () => { g.beginPath(); g.moveTo(...P(d0, -w * 0.5)); g.bezierCurveTo(...P(d0 + L * 0.3, -w * 1.1), ...P(d0 + L * 0.78, -w * 0.62), ...P(d1, 0)); g.bezierCurveTo(...P(d0 + L * 0.78, w * 0.62), ...P(d0 + L * 0.3, w * 1.1), ...P(d0, w * 0.5)); g.closePath(); };
+    g.save(); g.shadowBlur = 0; if (edge) { path(); g.strokeStyle = "#000"; g.lineWidth = 5; g.stroke(); } g.restore(); path(); g.fill();
+    g.save(); g.shadowBlur = 0; g.fillStyle = "#000"; g.beginPath(); g.moveTo(...P(d0 + L * 0.18, 0)); g.quadraticCurveTo(...P(d0 + L * 0.48, w * 0.3), ...P(d0 + L * 0.8, 0)); g.quadraticCurveTo(...P(d0 + L * 0.48, -w * 0.3), ...P(d0 + L * 0.18, 0)); g.fill(); g.restore(); };
   ring(238, 7); ring(222, 2);
   if (kind === "azure") { // เปลวคราม: twelve tongues of flame leaning the same way round a drop at the heart, sparks between the rings
     ring(150, 4); ring(64, 3);
@@ -1477,11 +1502,14 @@ function sigilTexture(kind = "lotus") {
     for (let k = 0; k < 24; k++) { g.beginPath(); g.arc(...at((k / 24) * Math.PI * 2 + 0.13, k % 2 ? 108 : 124), k % 2 ? 3 : 5, 0, 7); g.fill(); }
     for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2; g.lineWidth = 2.5; g.beginPath(); g.moveTo(...at(a, 70)); g.quadraticCurveTo(...at(a + 0.35, 88), ...at(a + 0.5, 100)); g.stroke(); }
     g.beginPath(); g.moveTo(C, C - 44); g.bezierCurveTo(C + 34, C - 4, C + 30, C + 34, C, C + 36); g.bezierCurveTo(C - 30, C + 34, C - 34, C - 4, C, C - 44); g.fill();
-  } else if (kind === "sun") { // สุริยะ: long and short rays round an eight-point ceiling star (ดาวเพดาน)
-    ring(140, 4);
-    for (let k = 0; k < 32; k++) { const a = (k / 32) * Math.PI * 2, L = k % 2 ? 182 : 214, w = k % 2 ? 0.05 : 0.07; g.beginPath(); g.moveTo(...at(a - w, 150)); g.lineTo(...at(a, L)); g.lineTo(...at(a + w, 150)); g.closePath(); g.fill(); }
-    g.lineWidth = 4; for (const r0 of [0, Math.PI / 4]) { g.beginPath(); for (let k = 0; k < 4; k++) { const p = at(r0 + (k * Math.PI) / 2, 118); k ? g.lineTo(...p) : g.moveTo(...p); } g.closePath(); g.stroke(); }
-    ring(46, 3); g.beginPath(); g.arc(C, C, 18, 0, 7); g.fill();
+  } else if (kind === "sun") { // ดาวเพดาน: the gilded star of a temple ceiling — eight long petals with eight short ones between, round a heart
+    // of beads, and a ring of small leaves (กระจัง) pointing out from it
+    ring(150, 4); ring(140, 1.5);
+    for (let k = 0; k < 32; k++) petal((k / 32) * Math.PI * 2, 156, k % 2 ? 186 : 210, k % 2 ? 8 : 11);
+    for (let k = 0; k < 8; k++) petal((k / 8) * Math.PI * 2 + Math.PI / 8, 34, 100, 15);
+    for (let k = 0; k < 8; k++) petal((k / 8) * Math.PI * 2, 30, 134, 22, true);
+    g.beginPath(); g.arc(C, C, 34, 0, 7); g.fill(); g.save(); g.shadowBlur = 0; g.fillStyle = "#000"; g.beginPath(); g.arc(C, C, 24, 0, 7); g.fill(); g.restore();
+    g.beginPath(); g.arc(C, C, 14, 0, 7); g.fill(); for (let k = 0; k < 8; k++) { g.beginPath(); g.arc(...at((k / 8) * Math.PI * 2 + Math.PI / 8, 29), 3, 0, 7); g.fill(); }
   } else if (kind === "naga") { // เกล็ดนาค: a band of overlapping scales, a coil of dots, a small flower at the heart
     ring(146, 4);
     for (const [r, n, off] of [[214, 36, 0], [190, 36, 0.5], [166, 36, 0]]) for (let k = 0; k < n; k++) { const a = ((k + off) / n) * Math.PI * 2; g.lineWidth = 2.5; g.beginPath(); g.arc(...at(a, r), 13, a + Math.PI * 0.5, a + Math.PI * 1.5, false); g.stroke(); }
@@ -1493,7 +1521,7 @@ function sigilTexture(kind = "lotus") {
     g.lineWidth = 4; for (const r0 of [Math.PI / 4, 0]) { g.beginPath(); for (let k = 0; k < 4; k++) { const p = at(r0 + (k * Math.PI) / 2, 146); k ? g.lineTo(...p) : g.moveTo(...p); } g.closePath(); g.stroke(); }
     const h = 146 / Math.SQRT2, s3 = (2 * h) / 3; g.lineWidth = 2;
     for (let k = 1; k < 3; k++) { g.beginPath(); g.moveTo(C - h + k * s3, C - h); g.lineTo(C - h + k * s3, C + h); g.moveTo(C - h, C - h + k * s3); g.lineTo(C + h, C - h + k * s3); g.stroke(); }
-    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) { g.beginPath(); g.arc(C - h + s3 * (i + 0.5), C - h + s3 * (j + 0.5), (i + j) % 2 ? 9 : 15, 0, 7); (i + j) % 2 ? g.fill() : g.stroke(); }
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) { g.beginPath(); g.arc(C - h + s3 * (i + 0.5), C - h + s3 * (j + 0.5), (i + j) % 2 ? 7 : 0, 0, 7); if ((i + j) % 2) g.fill(); else prajamyam(g, C - h + s3 * (i + 0.5), C - h + s3 * (j + 0.5), i === 1 && j === 1 ? 30 : 19, "#000"); } // small ประจำยาม in the corners and the heart, beads between
   } else if (kind === "pikul") { // ดอกพิกุล: a ring of small eight-petalled pikul flowers round one large one
     ring(146, 4); ring(132, 1.5);
     const pikul = (cx, cy, r, w) => { g.lineWidth = w; for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2, P = (d, da) => [cx + Math.cos(a + da) * d, cy + Math.sin(a + da) * d];
@@ -1501,13 +1529,13 @@ function sigilTexture(kind = "lotus") {
       g.beginPath(); g.arc(cx, cy, r * 0.2, 0, 7); g.fill(); };
     for (let k = 0; k < 12; k++) { const a = (k / 12) * Math.PI * 2; pikul(...at(a, 186), 30, 2.5); g.beginPath(); g.arc(...at(a + Math.PI / 12, 186), 4, 0, 7); g.fill(); }
     pikul(C, C, 112, 4); ring(52, 2);
-  } else { // บัวประจำยาม: sixteen lotus petals round a four-petal flower
-    ring(146, 4); ring(132, 1.5);
-    for (let k = 0; k < 16; k++) { const a = (k / 16) * Math.PI * 2, P = (d, da) => [C + Math.cos(a + da) * d, C + Math.sin(a + da) * d];
-      g.lineWidth = 3; g.beginPath(); g.moveTo(...P(152, -0.16)); g.quadraticCurveTo(...P(196, -0.13), ...P(214, 0)); g.quadraticCurveTo(...P(196, 0.13), ...P(152, 0.16)); g.stroke();
-      g.beginPath(); g.arc(...P(230, Math.PI / 16), 4, 0, 7); g.fill(); }
-    for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; g.lineWidth = 2; g.beginPath(); g.moveTo(C + Math.cos(a) * 60, C + Math.sin(a) * 60); g.lineTo(C + Math.cos(a) * 128, C + Math.sin(a) * 128); g.stroke(); }
-    prajamyam(g, C, C, 92, "#000");
+  } else { // บัวประจำยาม: a lotus seen from above — two rings of plump petals (the inner ring sits between the outer one's petals,
+    // each petal outlined so it stays separate), a vein cut through each, round a ประจำยาม
+    ring(146, 4);
+    for (let k = 0; k < 16; k++) petal((k / 16) * Math.PI * 2, 150, 216, 25);
+    for (let k = 0; k < 16; k++) petal(((k + 0.5) / 16) * Math.PI * 2, 150, 196, 20, true);
+    for (let k = 0; k < 16; k++) { g.beginPath(); g.arc(...at(((k + 0.5) / 16) * Math.PI * 2, 230), 4, 0, 7); g.fill(); }
+    ring(132, 1.5); prajamyam(g, C, C, 108, "#000");
   }
   return new THREE.CanvasTexture(c);
 }
@@ -1540,7 +1568,7 @@ const FOIL = { SR: 0.3, PR: 0.45, UR: 0.55, CBR: 0.6, SCR: 0.8, USEC: 1 };
 function backTexture() {
   const c = document.createElement("canvas"); c.width = 256; c.height = 348; const g = c.getContext("2d");
   const gr = g.createLinearGradient(0, 0, 256, 348); gr.addColorStop(0, "#4a120d"); gr.addColorStop(1, "#7a2018"); g.fillStyle = gr; g.fillRect(0, 0, 256, 348);
-  g.strokeStyle = g.fillStyle = GOLD; g.lineWidth = 6; stepPath(g, 12, 12, 244, 336, 14); g.stroke(); g.lineWidth = 2; stepPath(g, 24, 24, 232, 324, 11); g.stroke();
+  g.strokeStyle = g.fillStyle = GOLD; g.lineWidth = 6; stepPath(g, 12, 12, 244, 336, 14); g.stroke(); g.lineWidth = 2; stepPath(g, 24, 24, 232, 324, 14); g.stroke();
   prajamyam(g, 128, 160, 46, "#5c1710"); for (const y of [64, 256]) prajamyam(g, 128, y, 16, "#5c1710");
   g.font = '700 30px "Chakra Petch", sans-serif'; g.textAlign = "center"; g.fillText("BoT", 128, 300);
   const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return t;
