@@ -1698,6 +1698,8 @@ SCRIPTS["BT05-026"] = { milled: helaCall, millBy: "godAv", handed: helaCall, han
     run: (c) => { const { E, s, seat: p } = c; const P = s.P[p]; const max = Math.min(5, P.deck.length); const opts = Array.from({ length: max }, (_, k) => `ธรณีสูบ ${max - k} ใบ`);
       const n = max - c.mode(opts, "ธรณีสูบกี่ใบ", P.deck.length > 20 ? 0 : Math.max(0, max - 1)); const t = c.choose(P.av.filter((y) => purpleGod(E, s, y)).sort(strongFirst(E, s)), 1, "เลือก Avatar {เทพ} สีม่วงฝ่ายเรา", { exact: true })[0];
       return t ? { explain: `ธรณีสูบ ${n} ใบ · ${E.name(s, t)} POWER +${n} จนจบเทิร์น`, ops: [{ op: "mill", seat: p, n }, { op: "power", i: t.i, n, temp: true }] } : { explain: "ไม่มี Avatar {เทพ} สีม่วง", ops: [] }; } } };
+// เจ๊หมวย เจ้าของร้านหม่าล่า: "เมื่อ Avatar ใบนี้ ถูกเล็งเป็นเป้าหมายโจมตี : POWER -3" — like every "เมื่อ Avatar ใบนี้ …: POWER" line, the -3 is her own (no duration printed: it stays, FAQ ลงกาโพรเทคชั่น)
+SCRIPTS["BT05-032"] = { attacked: (c) => (c.self ? { explain: `${c.E.name(c.s, c.self)} POWER -3`, ops: [{ op: "power", i: c.self.i, n: -3, temp: false }] } : { explain: "", ops: [] }) };
 function blackCode(E, s, p) { const P = s.P[p]; const a = P.av.find((y) => E.named(s, y, "คุณเชิดชัย Super Air")), b = P.av.find((y) => isPlane(E, s, y)); if (!a || !b) return [];
   const rest = uniq(E, s, P.av.filter((y) => y !== a && y !== b && superAir(E, s, y) && E.name(s, y) !== E.name(s, a) && E.name(s, y) !== E.name(s, b))).slice(0, 2); return rest.length === 2 ? [a, b, ...rest] : []; }
 
