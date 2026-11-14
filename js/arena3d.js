@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261114123802";
-import { E } from "./engine.js?v=20261114123802";
-import { h } from "./util.js?v=20261114123802";
-import { Sfx } from "./sfx.js?v=20261114123802";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261114124106";
+import { E } from "./engine.js?v=20261114124106";
+import { h } from "./util.js?v=20261114124106";
+import { Sfx } from "./sfx.js?v=20261114124106";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -222,7 +222,9 @@ function unmount() {
 
 // ---------- 3D avatars: a small figure for each player who has chosen one, at the left end of the centre band ----------
 // Original designs made in Blender (tools/avatars). A model with idle / hit / win / lose clips plays them; one without gets the same moves from code.
-export const AVATARS = { chang: { name: "ช้างน้อย", file: "chang.glb", h: 1.25 }, naga: { name: "ลูกพญานาค", file: "naga.glb", h: 1.3 }, maew: { name: "แมววิเชียรมาศ", file: "maew.glb", h: 1.2 }, suea: { name: "เสือน้อย", file: "suea.glb", h: 1.25 }, kai: { name: "ไก่ชนน้อย", file: "kai.glb", h: 1.2 } };
+// statue: a scanned sculpture (CC0, Poly Haven; see assets/models/LICENSE.md) in assets/models, with a lighter "lo" file for phones and low quality
+export const AVATARS = { chang: { name: "ช้างไม้แกะ", file: "chang.glb", lo: "chang_lo.glb", statue: true, h: 1.05 }, naga: { name: "ลูกพญานาค", file: "naga.glb", h: 1.3 }, maew: { name: "แมวศิลา", file: "maew.glb", lo: "maew_lo.glb", statue: true, h: 1.2 }, suea: { name: "เสือน้อย", file: "suea.glb", h: 1.25 }, kai: { name: "ไก่ชนน้อย", file: "kai.glb", h: 1.2 },
+  singha: { name: "สิงห์สำริด", file: "singha.glb", lo: "singha_lo.glb", statue: true, sway: true, h: 1.3 } };
 // lacquer colours for the mat (the gold line-work stays); the edge colour washes in on the opponent's side
 export const MATS = { black: { name: "รักดำ", lac: "#120b09", edge: "rgba(150,34,24," }, red: { name: "รักแดง", lac: "#3a0d09", edge: "rgba(190,60,30," },
   navy: { name: "กรมท่า", lac: "#0b1324", edge: "rgba(60,90,170," }, jade: { name: "เขียวหยก", lac: "#0a1c15", edge: "rgba(40,140,100," }, violet: { name: "ม่วงไพลิน", lac: "#190e22", edge: "rgba(130,70,170," }, gold: { name: "ทองคำเปลว", lac: "#21160a", edge: "rgba(214,166,64," }, indigo: { name: "ครามจันทร์", lac: "#0f1030", edge: "rgba(110,110,210," },
@@ -267,8 +269,9 @@ const loadAvatar = (key, f) => {
   if (f && f.stand) { if (!avCache.has(f.key)) avCache.set(f.key, f.bmp.then((bm) => (bm ? standeeScene(bm) : null))); return avCache.get(f.key); }
   if (f) { if (!avCache.has(f.key)) avCache.set(f.key, f.url.then((u) => (u && THREE.GLTFLoader ? new Promise((res) => new THREE.GLTFLoader().load(u, res, undefined, () => res(null))) : null))); return avCache.get(f.key); }
   const a = AVATARS[key]; if (!a || !THREE.GLTFLoader) return Promise.resolve(null);
-  if (!avCache.has(key)) avCache.set(key, new Promise((res) => new THREE.GLTFLoader().load(`assets/avatars/${a.file}?v=${ENV_V}`, res, undefined, () => res(null))));
-  return avCache.get(key);
+  const lo = a.lo && (R.small || R.Q === "low"), file = lo ? a.lo : a.file, ck = key + (lo ? ":lo" : ""); // a phone or low quality gets the lighter scan
+  if (!avCache.has(ck)) avCache.set(ck, new Promise((res) => new THREE.GLTFLoader().load(`assets/${a.statue ? "models" : "avatars"}/${file}?v=${ENV_V}`, res, undefined, () => res(null))));
+  return avCache.get(ck);
 };
 // mine stands between the centre band and my Avatar Zone, the opponent's between the band and theirs; both turn a little toward the board
 // (a phone shows less of the mat's sides, so there they stand further in and a little smaller)
@@ -290,6 +293,8 @@ function buildAvatar(slot, g, mine) {
   const model = THREE.SkeletonUtils ? THREE.SkeletonUtils.clone(g.scene) : g.scene.clone(true);
   model.traverse((o) => { if (!o.isMesh) return; o.material = o.material.clone(); o.castShadow = true; if (o.isSkinnedMesh) o.frustumCulled = false; }); // a raised arm can reach past the bounds of the pose it was made in
   if (slot.own) dressFigure(model, slot.own.finish);
+  const av = slot.own ? null : AVATARS[slot.key]; if (av && av.sway && R.Q !== "low" && !reduce) maneSway(model); // the lion's carved mane stirs in the wind
+  if (av && av.statue) model.traverse((o) => { if (o.isMesh) { o.material.metalness = Math.min(o.material.metalness, 0.45); o.material.envMapIntensity = 1.4; } }); // a scanned bronze is all metal: in a dim hall it would read black, so it keeps some of its own colour
   model.traverse((o) => { if (o.isMesh && R.env && R.Q !== "high" && o.material.metalness > 0.5) o.material.envMap = R.env; });
   const box = new THREE.Box3().setFromObject(model), size = box.getSize(new THREE.Vector3()), k = (((slot.own ? slot.own.h : (AVATARS[slot.key] || {}).h) || 1.25) * (R.small ? 0.82 : 1)) / Math.max(0.01, size.y);
   model.scale.setScalar(k); model.position.set((-(box.min.x + box.max.x) / 2) * k, -box.min.y * k, (-(box.min.z + box.max.z) / 2) * k);
@@ -304,7 +309,7 @@ function buildAvatar(slot, g, mine) {
   // a move that has ended hands back to idle; one that ended a lost game stays slumped, and an emote made after it goes back to slumping
   mixer.addEventListener("finished", (e) => { if (e.action === acts.lose) return; e.action.fadeOut(0.25); if (onceActs(acts).some((w) => acts[w] !== e.action && acts[w].isRunning())) return; // a newer move is already playing
     const back = slot.mood === "lose" && acts.lose ? acts.lose : acts.idle; if (back) back.reset().fadeIn(0.25).play(); });
-  Object.assign(slot, { loading: false, grp, bob, spin, model, mixer, acts, ph: Math.random() * 6, top: (model.position.y + size.y * k) }); placeAvatar(slot, mine);
+  Object.assign(slot, { loading: false, grp, bob, spin, model, mixer, acts, statue: !!(av && av.statue), ph: Math.random() * 6, top: (model.position.y + size.y * k) }); placeAvatar(slot, mine);
   R.scene.add(grp); if (!reduce) gsap.from(spin.position, { y: 1.4, duration: 0.6, ease: "bounce.out" });
 }
 // what a player's avatar does: hop (their turn starts), hit (they lose a LIFE), win, lose, rest (back to standing)
@@ -319,6 +324,7 @@ function avatarDo(p, what) {
   const act = a.acts[what];
   if (act) { if (a.acts.idle) a.acts.idle.fadeOut(0.08); for (const w of onceActs(a.acts)) if (w !== what) a.acts[w].stop(); act.reset().setEffectiveWeight(1).fadeIn(0.06).play(); return; }
   if (reduce) return;
+  if (what === "hit" && a.statue) { gsap.timeline().to(s.rotation, { z: 0.12, duration: 0.05 }).to(s.rotation, { z: -0.09, duration: 0.08 }).to(s.rotation, { z: 0, duration: 0.5, ease: "elastic.out(1, 0.3)" }); return; } // a statue rocks on its base; it does not squash
   if (what === "hit") gsap.timeline().to(s.scale, { x: 1.16, y: 0.8, z: 1.16, duration: 0.07 }).to(s.scale, { x: 0.95, y: 1.08, z: 0.95, duration: 0.14 }).to(s.scale, { x: 1, y: 1, z: 1, duration: 0.22 }).fromTo(s.rotation, { x: -0.3 }, { x: 0, duration: 0.5, ease: "elastic.out(1, 0.35)" }, 0);
   if (what === "win") gsap.timeline().to(s.position, { y: 0.32, duration: 0.18, ease: "power2.out" }).to(s.position, { y: 0, duration: 0.18, ease: "power2.in" }).to(s.position, { y: 0.2, duration: 0.16, ease: "power2.out" }).to(s.position, { y: 0, duration: 0.16, ease: "power2.in" }).to(s.rotation, { y: Math.PI * 2, duration: 0.5, ease: "power2.inOut" }, 0).set(s.rotation, { y: 0 });
   if (what === "lose") gsap.timeline().to(s.scale, { y: 0.88, x: 1.04, z: 1.04, duration: 0.6, ease: "power2.out" }).to(s.rotation, { x: 0.22, duration: 0.6, ease: "power2.out" }, 0);
@@ -389,13 +395,24 @@ function drawBubble(k) {
 
 // the owner's own figure (a print model has no colours of its own): a finish for the whole figure, and a round lacquer
 // base with a gold rim for it to stand on
+// the lion's mane: vertices out at the rim of the bust (away from the face and above the plinth) ripple a little, more at the tips
+function maneSway(model) {
+  model.traverse((o) => { if (!o.isMesh) return; const g = o.geometry; g.computeBoundingBox(); const b = g.boundingBox, c = b.getCenter(new THREE.Vector3()), z = b.getSize(new THREE.Vector3());
+    const m = (o.material = o.material.clone()), uC = { value: c }, uZ = { value: z }; m.onBeforeCompile = (sh) => { sh.uniforms.uT = R.uT; sh.uniforms.uC = uC; sh.uniforms.uZ = uZ;
+      sh.vertexShader = "uniform float uT; uniform vec3 uC, uZ;\n" + sh.vertexShader.replace("#include <begin_vertex>", `#include <begin_vertex>
+        vec2 rq = vec2((position.x - uC.x) / (uZ.x * 0.5), (position.y - uC.y) / (uZ.y * 0.5)); float r = length(rq);
+        float w = smoothstep(0.42, 1.0, r) * smoothstep(-0.55, -0.2, rq.y); float ph = dot(position, vec3(7.0, 5.0, 3.0)) / max(uZ.y, 1e-4);
+        float amp = uZ.y * 0.012 * w * w; transformed.x += amp * sin(uT * 1.6 + ph) * sign(rq.x); transformed.z += amp * 0.8 * sin(uT * 1.15 + ph * 1.3); transformed.y += amp * 0.4 * sin(uT * 2.1 + ph * 0.7);`); };
+    m.customProgramCacheKey = () => "mane" + m.uuid; });
+}
 const FINISH = {
+  resin: () => new THREE.MeshPhysicalMaterial({ color: 0xc8b49c, roughness: 0.58, metalness: 0, clearcoat: 0.25, clearcoatRoughness: 0.55, sheen: new THREE.Color(0x4a4036) }), // a sculptor's resin proof: warm, matt, every carved line reads
   porcelain: () => new THREE.MeshPhysicalMaterial({ color: 0xf2eee8, roughness: 0.3, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.15 }),
   gold: () => new THREE.MeshStandardMaterial({ color: 0xe2ad4a, roughness: 0.25, metalness: 1 }),
   slime: () => new THREE.MeshPhysicalMaterial({ color: 0x7cc6ff, roughness: 0.1, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.05, transparent: true, opacity: 0.88, emissive: 0x0f3f74, emissiveIntensity: 0.6 }),
   sakura: () => new THREE.MeshPhysicalMaterial({ color: 0xf6c0d3, roughness: 0.38, metalness: 0, clearcoat: 0.7, clearcoatRoughness: 0.3, emissive: 0x3a0f1e, emissiveIntensity: 0.3 }),
 };
-export const FIG_FINISH = { porcelain: "พอร์ซเลนขาว", gold: "ทองคำ", slime: "สไลม์ใส", sakura: "ซากุระ", file: "สีจากไฟล์" };
+export const FIG_FINISH = { resin: "เรซินปั้น", porcelain: "พอร์ซเลนขาว", gold: "ทองคำ", slime: "สไลม์ใส", sakura: "ซากุระ", file: "สีจากไฟล์" };
 function dressFigure(model, finish) {
   let plain = true; model.traverse((o) => { if (!o.isMesh) return; if (o.geometry && !o.geometry.attributes.normal) o.geometry.computeVertexNormals();
     if (o.material && (o.material.map || o.material.vertexColors || o.material.name || (o.geometry && o.geometry.attributes.color))) plain = false; });

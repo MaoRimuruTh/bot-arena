@@ -1,13 +1,13 @@
 // Achievements: earned only by playing (nothing here can be bought), each one unlocking something for the table:
 // a 3D figure to stand by your side, a colour of lacquer for the mat, the circle that opens when you summon, or one of the
 // official box decks (คัดสรรเด็ค) that plays stronger than the Starter Decks. Worked out from your own match history.
-import { Data } from "./fb.js?v=20261114123802";
-import { lsGet } from "./util.js?v=20261114123802";
-import { stars } from "./quests.js?v=20261114123802";
-import { AVATARS, MATS, SIGILS, SCENES, WINFX } from "./arena3d.js?v=20261114123802";
-import { BOX_LISTS, themeCounts, officialStarters } from "./boxdecks.js?v=20261114123802";
-import { Vault } from "./vault.js?v=20261114123802";
-import { isOwnerNow } from "./persona.js?v=20261114123802";
+import { Data } from "./fb.js?v=20261114124106";
+import { lsGet } from "./util.js?v=20261114124106";
+import { stars } from "./quests.js?v=20261114124106";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX } from "./arena3d.js?v=20261114124106";
+import { BOX_LISTS, themeCounts, officialStarters } from "./boxdecks.js?v=20261114124106";
+import { Vault } from "./vault.js?v=20261114124106";
+import { isOwnerNow } from "./persona.js?v=20261114124106";
 
 const real = (ms) => ms.filter((m) => m.mode !== "goldfish");
 const wins = (ms) => real(ms).filter((m) => m.result === "win").length;
@@ -26,6 +26,7 @@ export const ACH = [
   { id: "win10", name: "นักสู้แห่งโต๊ะสัก", how: "ชนะบอทหรือเพื่อน 10 เกม", prog: (ms) => [wins(ms), 10], gives: { mat: "red" } },
   { id: "pro", name: "ปราบมือโปร", how: "ชนะบอทมือโปร 1 เกม", test: (ms) => ms.some((m) => m.brain === "hard" && m.result === "win"), gives: { mat: "jade" } },
   { id: "pro5", name: "นักมวยรุ่นเยาว์", how: "ชนะบอทมือโปร 5 เกม", prog: (ms) => [ms.filter((m) => m.brain === "hard" && m.result === "win").length, 5], gives: { av: "suea" } },
+  { id: "pro10", name: "ราชสีห์สำริด", how: "ชนะบอทมือโปร 10 เกม", prog: (ms) => [ms.filter((m) => m.brain === "hard" && m.result === "win").length, 10], gives: { av: "singha" } },
   { id: "clean", name: "ไร้รอยขีดข่วน", how: "ชนะโดยที่ LIFE ของเราไม่ถูกหงายเลยสักใบ", test: (ms) => real(ms).some((m) => m.result === "win" && m.lifeLost === 0), gives: { mat: "violet" } },
   { id: "friend3", name: "เพื่อนร่วมสนาม", how: "ดวลกับเพื่อนครบ 3 เกม", prog: (ms) => [ms.filter((m) => m.mode === "friend").length, 3], gives: { av: "maew" } },
   { id: "puzzle5", name: "นักไขปริศนา", how: "ไขโจทย์ปริศนาสำเร็จ 5 ข้อ", prog: () => [solved(), 5], gives: { mat: "gold" } },
