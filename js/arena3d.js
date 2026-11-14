@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261114102919";
-import { E } from "./engine.js?v=20261114102919";
-import { h } from "./util.js?v=20261114102919";
-import { Sfx } from "./sfx.js?v=20261114102919";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261114105139";
+import { E } from "./engine.js?v=20261114105139";
+import { h } from "./util.js?v=20261114105139";
+import { Sfx } from "./sfx.js?v=20261114105139";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -2485,7 +2485,7 @@ function update(s, V, opts = {}) {
   R.queue = R.queue.then(async () => {
     if (!R || (R.token || 0) !== token) return;
     if (opts.reset || R.view !== V) { R.lastEv = s.evc || 0; R.view = V; }
-    R.sig = [0, 1].map((p) => { const k = s.P[p] && SIGILS[s.P[p].sig] ? s.P[p].sig : "lotus", lk = SIGILS[k].owner ? null : lookOf(s, p); return lk ? "g_" + lk : k; }); // a geometric look summons in its own circle (the owner's own one stays) syncAvatars(s, V);
+    R.sig = [0, 1].map((p) => { const k = s.P[p] && SIGILS[s.P[p].sig] ? s.P[p].sig : "lotus", lk = SIGILS[k].owner ? null : lookOf(s, p); return lk ? "g_" + lk : k; }); /* a geometric look summons in its own circle (the owner's own one stays) */ syncAvatars(s, V);
     applyMats(s, V); if (opts.reset) for (const p of [0, 1]) avatarDo(p, s.phase === "over" ? (s.winner === p ? "win" : "lose") : "rest");
     const evs = (s.ev || []).filter((e) => e.id > R.lastEv); R.lastEv = s.evc || R.lastEv;
     const drops = new Set(evs.filter((e) => e.k === "summon").map((e) => e.i)), burned = new Set(evs.filter((e) => e.k === "destroy").map((e) => e.i));

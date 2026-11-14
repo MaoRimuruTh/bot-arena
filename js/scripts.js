@@ -1380,7 +1380,11 @@ const truthSpill = (c, top, taken = []) => { const { E, s, seat: p } = c; const 
   for (const y of top) if (!taken.includes(y) && oldMan(E, s, y) && room > 0) { ops.push({ op: "put", i: y.i }); say.push(`${E.name(s, y)} ถูกสอดแนม: อัญเชิญลงสนาม`); room--; } return { ops, say, used: top.filter((y) => ops.some((o) => o.i === y.i)) }; };
 // leave the scouted cards on top or put them at the bottom (bots keep good ones on top)
 const topOrBottom = (c, cards, label) => { if (!cards.length) return []; const { E, s, seat: p } = c; const good = cards.filter((y) => worth(E, s, y) >= 4).length * 2 >= cards.length;
-  const m = c.mode([`วาง ${cards.length} ใบไว้บนสุดของ Deck`, `วาง ${cards.length} ใบไว้ใต้ Deck`], label, good ? 0 : 1); return [{ op: "scoutRest", seat: p, ids: cards.map((y) => y.i), rest: m === 0 ? "top" : "bottom" }]; };
+  const m = c.mode([`วาง ${cards.length} ใบไว้บนสุดของ Deck`, `วาง ${cards.length} ใบไว้ใต้ Deck`], label, good ? 0 : 1);
+  // every card using this says "เรียง": on top, the player sets the order (the bot puts its best card first)
+  let order = null; if (m === 0 && cards.length > 1) { const left = [...cards]; order = []; while (left.length > 1) { let b = 0; for (let k = 1; k < left.length; k++) if (worth(E, s, left[k]) > worth(E, s, left[b])) b = k;
+    const k = c.mode(left.map((y) => E.name(s, y)), `เรียงการ์ดบน Deck: เลือกใบที่ ${order.length + 1} จากบนสุด`, b); order.push(left.splice(Math.max(0, Math.min(left.length - 1, k | 0)), 1)[0].i); } order.push(left[0].i); }
+  return [{ op: "scoutRest", seat: p, ids: cards.map((y) => y.i), rest: m === 0 ? "top" : "bottom", ...(order ? { order } : {}) }]; };
 const isPrime = (n) => { if (n < 2) return false; for (let k = 2; k * k <= n; k++) if (n % k === 0) return false; return true; };
 Object.assign(SCRIPTS, {
   // จอมหักกระดูก: โล่มนุษย์ · when it fights an opposing Avatar, that Avatar's POWER becomes its printed POWER until the fight ends

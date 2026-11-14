@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261114102919";
-import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261114102919";
-import { E, scriptOf } from "./engine.js?v=20261114102919";
+import { readAura } from "./auras.js?v=20261114105139";
+import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261114105139";
+import { E, scriptOf } from "./engine.js?v=20261114105139";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -84,6 +84,12 @@ function filterOf(t) {
 const seatOf = (t, p) => (/ผู้เล่นทุกคน|ทั้งสองฝ่าย|ทุกฝ่าย|ทั้ง\s*2\s*ฝ่าย/.test(t) ? [p, 1 - p] : /ฝ่ายตรงข้าม|อีกฝ่าย/.test(t) ? [1 - p] : [p]);
 const num = (t, re, d = 1) => { const m = t.match(re); return m ? +m[1] : d; };
 const val = (s, x) => E.power(s, x) + (E.def(s, x).c || 0) * 0.5 + (E.def(s, x).o1 ? 6 : 0);
+// "เรียงลำดับตามใจชอบ": the player picks which card goes on top, then the next …; bots put their best card on top
+function orderTop(s, xs, ctx) { const left = [...xs], out = [];
+  while (left.length > 1) { let best = 0; for (let k = 1; k < left.length; k++) if (val(s, left[k]) > val(s, left[best])) best = k;
+    const k = ctx.mode(left.map((x) => E.name(s, x)), `เรียงการ์ดบน Deck: เลือกใบที่ ${out.length + 1} จากบนสุด`, best); out.push(left.splice(Math.max(0, Math.min(left.length - 1, k | 0)), 1)[0]); }
+  return [...out, ...left].map((x) => x.i); }
+const wantsOrder = (t) => /เรียง/.test(t) && !/ตำแหน่งเดิม|ตามเดิม/.test(t);
 const fits = (s, x, f) => { let d = E.def(s, x); const so = E.syNow ? E.syNow(s, x) : E.syOver(s, x); if (so) { d = { ...d, sy: so }; delete d.al; } return fitsD(d, f, () => E.power(s, x), hasFieldAlias(d) && E.onField(s, x), () => E.costNow(s, x), () => E.gemNow(s, x)); };
 function fitsD(d, f, pw = () => d.pw || 0, on = false, cst = () => d.c || 0, gm = () => d.g || 0) {
   const nm = nameText(d, on); const syt = syText(d, on); const anySy = allSy(d, on);
@@ -208,7 +214,7 @@ function readScout(s, body, p, self, ctx, trig) {
   else { const cut = pick.split(SC_TAIL); pick = cut[0]; rest = cut.slice(1).join(" "); }
   pick = pick.replace(/[\s:,.]+$/, "").replace(/\s*(?:และ|แล้ว)?\s*(?:นำ|ส่ง|ทิ้ง|ให้)?\s*$/, "").trim();
   ops.push({ op: "scoutShow", seat, ids });
-  if (!pick) { ops.push({ op: "scoutRest", seat, ids, rest: where }); say.push(`สอดแนม ${n} ใบ`); tail(rest); return { ops, say }; }
+  if (!pick) { ops.push({ op: "scoutRest", seat, ids, rest: where, ...(where === "top" && wantsOrder(t) ? { order: orderTop(s, top, ctx) } : {}) }); say.push(`สอดแนม ${n} ใบ`); tail(rest); return { ops, say }; }
   if (!/^(?:สามารถ\s*)?(?:เลือก|นำ|อัญเชิญ|ก่อสร้าง|เนรเทศ|ทิ้ง|ส่ง)/.test(pick) || /อีก\s*\d+\s*ใบ|และ\/หรือ|อย่างละ|ฝ่ายตรงข้าม|อีกฝ่าย|POWER\s*[+\-]|เท่ากับ/.test(pick)) return null;
   const to = dest(pick); if (!to) return null;
   if (to === "hand" && !/สามารถ/.test(pick) && E.deckHandBlocked(s, p, s.cards[trig.c])) missed(ctx); // FAQ แมวนิค: no taking cards from the Deck into the hand
@@ -224,7 +230,7 @@ function readScout(s, body, p, self, ctx, trig) {
     if (F.list[0].other && self && x.i === self.i) return "ใบเดียวกับที่ใช้"; return F.list.length === 1 ? whyD(d, { ...F.list[0], strict: true }, undefined, false, undefined, () => E.gemNow(s, x)) : null; });
   const got = want > 0 ? ctx.choose(cands, want, `สอดแนม ${n} ใบ: เลือกการ์ดที่จะ${TO_TH[to]}${want > 1 ? ` (${optional ? "สูงสุด " : ""}${want} ใบ)` : ""}`, { optional, reveal: ids, why }) : [];
   for (const x of got) ops.push(moveOp(x, to));
-  ops.push({ op: "scoutRest", seat, ids, rest: where });
+  ops.push({ op: "scoutRest", seat, ids, rest: where, ...(where === "top" && wantsOrder(t) ? { order: orderTop(s, top.filter((x) => !got.includes(x)), ctx) } : {}) });
   say.push(got.length ? `สอดแนม ${n} ใบ · ${TO_TH[to]} ${got.map((x) => E.name(s, x)).join(", ")}` : `สอดแนม ${n} ใบ ไม่ได้การ์ดที่ตรงเงื่อนไข`);
   tail(rest); return { ops, say };
 }
@@ -375,7 +381,11 @@ function sentence(s, t, p, self, ctx) {
       const why = whyMap(top.map((x) => x.i), cands, (i) => { const x = top.find((y) => y.i === i); return f.other && self && x.i === self.i ? "ใบเดียวกับที่ใช้" : whyX(s, x, f); });
       const got = ctx.choose(cands, 1, `สอดแนม ${n} ใบ: เลือกการ์ดที่จะ${to === "av" ? "อัญเชิญ" : "นำขึ้นมือ"}`, { optional: /สามารถ/.test(t), reveal: top.map((x) => x.i), why })[0];
       ops.push({ op: "scout", seat: p, n, to, ...(got ? { take: got.i } : { none: true }) }); say.push(got ? `สอดแนม ${n} ใบ ได้ ${E.name(s, got)}` : `สอดแนม ${n} ใบ ไม่ได้การ์ดที่ตรงเงื่อนไข`); }
-  } else if (/สอดแนม/.test(t)) { if (/นำ|เลือก|อัญเชิญ|ขึ้นมือ/.test(t) || !/เรียง|ตามใจ/.test(t)) return false; say.push("สอดแนม (ดูการ์ดบนสุดของ Deck แล้วเรียงตามเดิม)"); }
+  } else if (/สอดแนม/.test(t)) { if (/นำ|เลือก|อัญเชิญ|ขึ้นมือ/.test(t) || !/เรียง|ตามใจ/.test(t)) return false;
+    // "สอดแนม … 3 ใบของเรา เรียงลำดับตามใจชอบ" (แบงค์ ผู้รู้ความจริง): look at them and put them back on top in the order we choose
+    const sm = t.match(/สอดแนม[^\d]*(\d+)\s*ใบ/); const seat = OPP.test(t) ? 1 - p : p; const top = sm ? s.P[seat].deck.slice(0, +sm[1]) : [];
+    if (!top.length) say.push("Deck หมด ไม่มีการ์ดให้สอดแนม");
+    else { const order = wantsOrder(t) ? orderTop(s, top, ctx) : top.map((x) => x.i); ops.push({ op: "scoutShow", seat, ids: top.map((x) => x.i) }, { op: "scoutRest", seat, ids: top.map((x) => x.i), rest: "top", order }); say.push(`สอดแนม ${top.length} ใบ แล้วเรียงไว้บน Deck ตามที่เลือก`); } }
   else if (/จั่วการ์ด/.test(t)) {
     const dm = t.match(/จั่วการ์ด\s*(?:จาก\s*Deck\s*(?:เรา\s*)?)?(คนละ\s*)?(\d+)\s*ใบ/); if (!dm) return false; const n = +dm[2];
     const seats = dm[1] || /แต่ละฝ่าย/.test(t) ? [p, 1 - p] : seatOf(t.split("จั่ว")[0], p); for (const q of seats) ops.push({ op: "draw", seat: q, n });
@@ -428,7 +438,9 @@ function sentence(s, t, p, self, ctx) {
       const opp = OPP.test(t) || (v < 0 && !/ฝ่ายเรา|ของเรา|Zone\s*เรา/.test(t));
       const csOnly = /Construct/.test(t.split("POWER")[0]) && !/Avatar/.test(t.split("POWER")[0]); // "Construct ทุกใบ บน Construct Zone … POWER+1" (ไม่นะ ทองเหม็น!)
       const cands = (csOnly ? (opp ? O.cs : P.cs) : opp ? O.av.filter((x) => !E.noAim(s, x)) : P.av).filter((x) => csOnly || typed(x, f)).sort(opp ? (a, b) => (v < 0 ? val(s, b) - val(s, a) : val(s, a) - val(s, b)) : (a, b) => (b.a ? 1 : 0) - (a.a ? 1 : 0) || E.power(s, b) - E.power(s, a));
-      tgt = /ทุกใบ|ทั้งหมด/.test(t) ? cands : ctx.choose(cands, 1, `เลือก Avatar ${opp ? "ฝ่ายตรงข้าม" : "ฝ่ายเรา"} ที่จะ POWER ${v > 0 ? "+" : ""}${v}`);
+      // "… บนสนามทุกใบ" naming no side: every one on the field, ours and theirs (FAQ โรงบาล / สละเพื่อนเพื่อช่วยเพื่อน: a card that names no player affects the other side too; the same wording on a Land already counts both sides)
+      const bothSides = !csOnly && /ทุกใบ|ทั้งหมด/.test(t) && /บนสนาม/.test(t) && !OPP.test(t) && !/ฝ่ายเรา|ของเรา|Zone\s*เรา|สนาม\s*เรา|ผู้เล่น/.test(t);
+      tgt = bothSides ? [...P.av, ...O.av].filter((x) => typed(x, f)) : /ทุกใบ|ทั้งหมด/.test(t) ? cands : ctx.choose(cands, 1, `เลือก Avatar ${opp ? "ฝ่ายตรงข้าม" : "ฝ่ายเรา"} ที่จะ POWER ${v > 0 ? "+" : ""}${v}`);
     }
     if (!tgt.length) { missed(ctx); say.push("ไม่มีเป้าหมาย POWER"); }
     for (const x of tgt) ops.push({ op: "power", i: x.i, n: v, temp });

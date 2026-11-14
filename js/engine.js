@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261114102919";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261114102919";
-import { SCRIPTS } from "./scripts.js?v=20261114102919";
-import { newId, clone } from "./util.js?v=20261114102919";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261114105139";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261114105139";
+import { SCRIPTS } from "./scripts.js?v=20261114105139";
+import { newId, clone } from "./util.js?v=20261114105139";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -1163,7 +1163,9 @@ export const E = {
         const P = s.P[seat]; let left = (o.ids || []).map((i) => P.deck.find((x) => x.i === i)).filter(Boolean); if (!left.length) return;
         { const src = s.cards[o.src || s.cur] || null; for (const x of [...left]) { const sc = scriptOf(s, x); if (src && x.o === by && sc && sc.scoutedPut && sc.scoutedPut(E, s, x, src) && E.avatars(P) < 4 && P.av.length < 6 && E.fits6(s, by, x)) { left = left.filter((y) => y !== x); E.log(s, by, `${E.name(s, x)} ถูกสอดแนมด้วย ${src.n}: อัญเชิญลง Avatar Zone`); E.op(s, { op: "put", i: x.i }, by); continue; }
           if (src && x.o === by && sc && sc.scoutedBy && sc.scoutedBy(E, s, x, src)) { P.deck.splice(P.deck.indexOf(x), 1); P.hand.push(x); left = left.filter((y) => y !== x); E.log(s, by, `${E.name(s, x)} ถูกสอดแนมด้วย ${src.n}: นำขึ้นมือ`); E.handed(s, x); } } if (!left.length) return; }
-        if (o.rest === "top") { E.log(s, by, `การ์ดที่เหลือ ${left.length} ใบ วางไว้บน Deck ตามเดิม`); return; }
+        if (o.rest === "top") { const ord = (o.order || []).map((i) => left.find((x) => x.i === i)).filter(Boolean); // "เรียงลำดับตามใจชอบ": back on top in the chosen order
+          if (ord.length > 1) { const rest = left.filter((x) => !ord.includes(x)); for (const x of left) P.deck.splice(P.deck.indexOf(x), 1); P.deck.unshift(...ord, ...rest); E.log(s, by, `เรียงการ์ด ${left.length} ใบ ไว้บน Deck${seat === by ? `: ${ord.map((x) => E.name(s, x)).join(" → ")}` : ""}`); return; }
+          E.log(s, by, `การ์ดที่เหลือ ${left.length} ใบ วางไว้บน Deck ตามเดิม`); return; }
         for (const x of left) P.deck.splice(P.deck.indexOf(x), 1);
         if (o.rest === "hell") { P.hell.push(...left); E.anyHell(s, left); E.log(s, by, `การ์ดที่เหลือ ${left.length} ใบ ลงนรก: ${left.map((x) => E.name(s, x)).join(", ")}`); for (const x of left) E.dumped(s, x); }
         else if (o.rest === "dark") { P.dark.push(...left); E.log(s, by, `การ์ดที่เหลือ ${left.length} ใบ ถูกเนรเทศ`); }
