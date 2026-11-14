@@ -1,24 +1,24 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261114214910";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261114214910";
-import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn, foilSetting } from "./arena3d.js?v=20261114214910";
-import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261114214910";
-import { Vault, startVault } from "./vault.js?v=20261114214910";
-import { vaultSection } from "./vaultui.js?v=20261114214910";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261114214910";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261114214910";
-import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261114214910";
-import { Sfx } from "./sfx.js?v=20261114214910";
-import { Music, MUSIC_STYLES } from "./music.js?v=20261114214910";
-import { Views, avatarEl } from "./ui.js?v=20261114214910";
-import { Ciel } from "./ai.js?v=20261114214910";
-import "./views/library.js?v=20261114214910";
-import "./views/decks.js?v=20261114214910";
-import "./views/lab.js?v=20261114214910";
-import "./views/rules.js?v=20261114214910";
-import "./views/unlocks.js?v=20261114214910";
-import "./views/history.js?v=20261114214910";
-import { openReport } from "./views/ask.js?v=20261114214910";
-import "./views/play.js?v=20261114214910";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261114222637";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261114222637";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn, foilSetting } from "./arena3d.js?v=20261114222637";
+import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261114222637";
+import { Vault, startVault } from "./vault.js?v=20261114222637";
+import { vaultSection } from "./vaultui.js?v=20261114222637";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261114222637";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261114222637";
+import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261114222637";
+import { Sfx } from "./sfx.js?v=20261114222637";
+import { Music, MUSIC_STYLES } from "./music.js?v=20261114222637";
+import { Views, avatarEl } from "./ui.js?v=20261114222637";
+import { Ciel } from "./ai.js?v=20261114222637";
+import "./views/library.js?v=20261114222637";
+import "./views/decks.js?v=20261114222637";
+import "./views/lab.js?v=20261114222637";
+import "./views/rules.js?v=20261114222637";
+import "./views/unlocks.js?v=20261114222637";
+import "./views/history.js?v=20261114222637";
+import { openReport } from "./views/ask.js?v=20261114222637";
+import "./views/play.js?v=20261114222637";
 
 const root = $("#view");
 // text size for the whole app (everything is sized in rem), kept per browser; Hearthstone and LoR offer the same for small screens
@@ -126,6 +126,12 @@ function soundSection() {
     h("label", { class: "chk" }, h("input", { type: "checkbox", checked: Music.menu, onchange: (e) => Music.setMenu(e.target.checked) }), h("span", null, "เปิดเพลงเบาๆ ที่หน้าเมนูด้วย"))];
 }
 // notices while the app is in the background (your turn, a friend joining, a new room)
+// ผู้ช่วยในเกม: hints that are off unless the player wants them
+function helpSection() {
+  return [h("div", { class: "eyebrow", style: "margin-top:12px" }, "ผู้ช่วยในเกม"),
+    h("label", { class: "chk" }, h("input", { type: "checkbox", checked: lsGet("bot.mullHint", false), onchange: (e) => lsSet("bot.mullHint", e.target.checked) }), h("span", null, "บอกคำแนะนำจากคู่มือเปลี่ยนมือตอนเริ่มเกม")),
+    h("div", { class: "tiny muted" }, "มาจากบอทเล่นกันเอง ใช้ได้กับเด็คในเกม และเด็คของคุณที่กดจำลองไว้ในห้องทดลองแล้ว")];
+}
 function notifySection() {
   const note = h("div", { class: "small muted" });
   const say = () => { note.textContent = !notifySupported() ? "เบราว์เซอร์นี้แจ้งเตือนไม่ได้ (บน iPhone/iPad ต้องติดตั้งเป็นแอปบนหน้าจอโฮมก่อน)" : notifyBlocked() ? "เบราว์เซอร์บล็อกการแจ้งเตือนของเว็บนี้อยู่ เปิดได้ที่การตั้งค่าเว็บไซต์ของเบราว์เซอร์" : notifyOn() ? "เปิดอยู่: แจ้งเมื่อถึงตาเรา เพื่อนเข้าห้อง มีห้องใหม่ และเกมจบ ขณะแอปเปิดค้างไว้เบื้องหลัง" : "ปิดอยู่: แท็บจะขึ้นจุด ● อย่างเดียวเมื่อถึงตาเรา"; };
@@ -150,7 +156,7 @@ function settings() {
   openSheet((api) => {
     const key = h("input", { type: "password", value: Ciel.key(), placeholder: "sk-ant-…", autocomplete: "off", "aria-label": "Claude API key" });
     const model = h("select", { "aria-label": "โมเดลหลัก" }, ["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-5-5"].map((m) => h("option", { value: m, selected: m === Ciel.model() }, m)));
-    const out = [...profileSection(api), ...avatarSection(), ...vaultSection(), ...gfxSection(), ...soundSection(), ...notifySection(), ...appSection(api), h("div", { class: "eyebrow", style: "margin-top:12px" }, "เจอปัญหา?"), h("div", { class: "row" }, h("button", { class: "btn", onclick: () => { api.close(); openReport(); } }, "แจ้งปัญหา")), h("div", { class: "eyebrow", style: "margin-top:12px" }, "ชิเอล (Claude API)"),
+    const out = [...profileSection(api), ...avatarSection(), ...vaultSection(), ...gfxSection(), ...soundSection(), ...helpSection(), ...notifySection(), ...appSection(api), h("div", { class: "eyebrow", style: "margin-top:12px" }, "เจอปัญหา?"), h("div", { class: "row" }, h("button", { class: "btn", onclick: () => { api.close(); openReport(); } }, "แจ้งปัญหา")), h("div", { class: "eyebrow", style: "margin-top:12px" }, "ชิเอล (Claude API)"),
       h("div", { class: "small muted" }, "ใส่ API key ของคุณเองเพื่อให้ชิเอลคิดเป็นบอท อ่านเอฟเฟกต์การ์ด และจัดเด็ค key เก็บเฉพาะในเบราว์เซอร์นี้ ไม่ส่งขึ้นฐานข้อมูล ค่าใช้จ่ายคิดกับบัญชี API ของคุณ ถ้าไม่ใส่ ยังเล่นกับบอทพื้นฐานได้"),
       key, h("div", { class: "row" }, h("span", { class: "small muted" }, "โมเดลจัดเด็ค/อ่านการ์ด"), model),
       h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => { const v = key.value.trim(); if (v) lsSet("bot.apiKey", v); else lsDel("bot.apiKey"); lsSet("bot.model", model.value); toast(v ? "บันทึก key ของชิเอลแล้ว" : "ลบ key แล้ว"); meArea(); api.close(); } }, "บันทึก"), Ciel.on() ? h("button", { class: "btn danger sm", onclick: () => { lsDel("bot.apiKey"); meArea(); api.close(); toast("ลบ key แล้ว"); } }, "ลบ key") : null)];

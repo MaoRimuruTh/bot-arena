@@ -1163,3 +1163,29 @@ kbd{font:600 .8rem/1.6 var(--f-mono,ui-monospace,monospace);padding:2px 8px;bord
 /* ev_: weekly special rules panel */
 .weekly .wk-name{font-size:1.05rem}
 .mturn .mrule{display:block;max-width:132px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.68rem;color:var(--gold)}
+
+/* ตารางพบกัน + คู่มือเปลี่ยนมือ (js/matchups.js) */
+.mmwrap{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch;border:1px solid var(--line-2);border-radius:10px}
+.mmgrid{border-collapse:collapse;font-size:.72rem;min-width:100%}
+.mmgrid th,.mmgrid td{border:1px solid var(--line-2);padding:3px 4px;text-align:center;white-space:nowrap}
+.mmgrid thead th{position:sticky;top:0;background:var(--panel,#1b1414);font-weight:600;vertical-align:bottom;height:96px}
+.mmgrid thead th span{display:inline-block;writing-mode:vertical-rl;transform:rotate(180deg);max-height:92px;overflow:hidden;text-overflow:ellipsis}
+.mmgrid th.rh{position:sticky;left:0;background:var(--panel,#1b1414);text-align:left;z-index:1;max-width:9.5em;overflow:hidden;text-overflow:ellipsis}
+.mmgrid thead th.rh{z-index:2;writing-mode:horizontal-tb}
+.mmgrid td{min-width:3.1em;cursor:default}
+.mmgrid td b{display:block;font:700 .78rem var(--f-mono)}
+.mmgrid td small{display:none;font-size:.6rem;opacity:.85}
+.mmgrid td.open small,.mmgrid td:focus small{display:block}
+.mmgrid td.na{opacity:.4}
+.mmrank{margin:0;padding:0;list-style:none;display:grid;gap:4px;max-height:260px;overflow:auto}
+.mmrank li{display:flex;align-items:center;gap:10px;padding:4px 8px;border:1px solid var(--line-2);border-radius:8px}
+.mmrank li>span:first-child{min-width:1.6em;opacity:.7}
+.mmtab{border-collapse:collapse;width:100%;font-size:.8rem}
+.mmtab th,.mmtab td{padding:5px 7px;border-bottom:1px solid var(--line-2);text-align:left}
+.mmtab td.num,.mmtab th:nth-child(n+2){text-align:right}
+.mmtab td.mmv{text-align:right;font-weight:700;white-space:nowrap}
+.mmv.keep{color:#8ee3b2}.mmv.mull{color:#ffb0b2}.mmv.even,.mmv.few{opacity:.7;font-weight:500}
+.mmside{gap:6px}
+.mmown .trk{height:6px;border-radius:4px;background:var(--line-2);overflow:hidden;margin:4px 0}.mmown .trk i{display:block;height:100%;background:var(--gold)}
+.mmhint{border-left:3px solid var(--gold);padding:4px 8px;background:rgba(255,255,255,.04);border-radius:6px}
+@media (max-width:640px){.mmgrid thead th{height:84px}.mmgrid th.rh{max-width:7.5em}.mmtab{font-size:.74rem}.mmtab th,.mmtab td{padding:4px 5px}}

@@ -3,8 +3,8 @@
 // The rule is an engine option (s.rule, read by the engine's newGame / startTurn / cost) and travels with the game, its
 // replay and a friend room. Wins under the week's rule earn stars: shown on the history page, cosmetic only, earned only by
 // playing (at most STAR_CAP a week), never bought.
-import { h, lsGet, lsSet } from "./util.js?v=20261114214910";
-import { Data } from "./fb.js?v=20261114214910";
+import { h, lsGet, lsSet } from "./util.js?v=20261114222637";
+import { Data } from "./fb.js?v=20261114222637";
 
 export const RULES = [
   { id: "hand6", name: "มือเปิดอิ่ม", desc: "ทุกคนเริ่มเกมด้วยการ์ดบนมือ 6 ใบ แทน 5 ใบ" },

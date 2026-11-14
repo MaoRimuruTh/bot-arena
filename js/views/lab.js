@@ -1,10 +1,11 @@
-import { h, busy, lsGet, lsSet } from "../util.js?v=20261114214910";
-import { card, deckEntries, deckToList, validateDeck, TYPE_TH } from "../cards.js?v=20261114214910";
-import { E } from "../engine.js?v=20261114214910";
-import { H } from "../ai.js?v=20261114214910";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261114214910";
-import { allDecks } from "./decks.js?v=20261114214910";
-import { deckLocked } from "../achieve.js?v=20261114214910";
+import { h, busy, lsGet, lsSet } from "../util.js?v=20261114222637";
+import { card, deckEntries, deckToList, validateDeck, TYPE_TH } from "../cards.js?v=20261114222637";
+import { E } from "../engine.js?v=20261114222637";
+import { H } from "../ai.js?v=20261114222637";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261114222637";
+import { allDecks } from "./decks.js?v=20261114222637";
+import { deckLocked } from "../achieve.js?v=20261114222637";
+import { openMatrix, openMull } from "../matchups.js?v=20261114222637";
 
 // exact hypergeometric: P(at least one of k copies within m cards from a deck of N)
 function atLeastOne(N, k, m) { if (k <= 0) return 0; if (m >= N) return 1; let p = 1; for (let i = 0; i < m; i++) p *= (N - k - i) / (N - i); return 1 - Math.max(0, p); }
@@ -21,7 +22,8 @@ export function openingOdds(d, ids) {
 // pro: both sides choose like บอทมือโปร in their Main and Battle Phase, with one play-out per option instead of two (won
 // 57% of 200 games against the normal bot; a game takes about 340 ms instead of 37 ms on a computer)
 // spy (optional): called after every action with (state, action, seat), for tools that follow a game closely (js/decktools.js)
-export function simGame(dA, dB, seed, dummy, pro, spy) {
+// mull0 (optional): (state) => the card ids seat 0 sends back at the mulligan, instead of the bot's own choice (js/matchups.js)
+export function simGame(dA, dB, seed, dummy, pro, spy, mull0) {
   const decks = [{ ...deckToList(dA), name: dA.name, id: dA.id }, { ...deckToList(dB), name: dB.name, id: dB.id }];
   const s = E.newGame({ players: [{ name: "A", bot: true }, { name: "B", bot: true }], decks, seed, first: dummy ? 0 : seed & 1, mode: "sim" });
   const played = new Set(); let seen = s.evc || 0;
@@ -30,7 +32,7 @@ export function simGame(dA, dB, seed, dummy, pro, spy) {
     for (const e of s.ev || []) if (e.id > seen) { seen = e.id; if ((e.k === "summon" || e.k === "cast") && e.p === 0) { const L = E.locate(s, e.i); if (L) played.add(E.def(s, L.x).n); } }
     for (const x of s.P[0].cs) played.add(E.def(s, x).n); // Constructs are built without an event
   };
-  for (const p of [0, 1]) act({ type: "mull", iids: dummy && p === 1 ? [] : H.mulligan(s, p) }, p);
+  for (const p of [0, 1]) act({ type: "mull", iids: p === 0 && mull0 ? mull0(s) : dummy && p === 1 ? [] : H.mulligan(s, p) }, p);
   for (let step = 0; step < 4000 && s.phase !== "over"; step++) {
     try {
       if (s.rw) { const q = 1 - s.rw.by; act((dummy && q === 1 ? null : H.react(s, q)) || { type: "pass" }, q); continue; }
@@ -86,6 +88,9 @@ Views.lab = {
     const sel = (key, extra = []) => h("select", { "aria-label": key === "a" ? "เด็คที่ทดสอบ" : "เด็คคู่แข่ง", onchange: (e) => { LabState[key] = e.target.value; lsSet("bot.lab", LabState); draw(); } },
       [...extra.map(([v, t]) => h("option", { value: v, selected: v === LabState[key] }, t)), ...decks.map((d) => h("option", { value: d.id, selected: d.id === LabState[key] }, d.name + (d.ciel ? " (ชิเอลจัด)" : d.starter ? " (ทางการ)" : "")))]);
     const oddsBox = h("div", { class: "panel stack" }); const handBox = h("div", { class: "panel stack" }); const simBox = h("div", { class: "panel stack" });
+    const mmBox = h("div", { class: "panel stack" }, h("div", { class: "eyebrow" }, "ตารางพบกันและคู่มือเปลี่ยนมือ"),
+      h("div", { class: "small muted" }, "เด็คไหนชนะเด็คไหน (แยกเล่นก่อน/หลัง) และมือเปิดแบบไหนควรเก็บหรือเปลี่ยน จากบอทเล่นกันเองหลายพันเกม"),
+      h("div", { class: "row wrap" }, h("button", { class: "btn gold sm", onclick: () => openMatrix() }, "ตารางพบกัน"), h("button", { class: "btn sm", onclick: () => openMull(decks.find((x) => x.id === LabState.a)) }, "คู่มือเปลี่ยนมือของเด็คนี้")));
     const draw = () => {
       const d = decks.find((x) => x.id === LabState.a);
       const avs = deckEntries(d).filter((e) => e.c.t === "A").sort((a, b) => (b.c.pw || 0) - (a.c.pw || 0)).slice(0, 12);
@@ -117,7 +122,7 @@ Views.lab = {
           showSim(out, A, opps, res); btn.disabled = false;
         } }, "เริ่มจำลอง")), h("div", { class: "simout" }));
     root.replaceChildren(h("div", { class: "pagehead" }, h("div", null, h("h1", null, "ห้องทดลอง"), h("div", { class: "muted small" }, "ลองมือเปิด ดูโอกาสจั่ว และจำลองเกมก่อนลงสนามจริง")), h("div", { class: "row" }, h("span", { class: "small muted" }, "เด็ค"), sel("a"))),
-      h("div", { class: "setup" }, h("div", { class: "stack" }, handBox, oddsBox), simBox));
+      h("div", { class: "setup" }, h("div", { class: "stack" }, handBox, mmBox, oddsBox), simBox));
     draw();
   },
 };

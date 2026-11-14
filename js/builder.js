@@ -1,9 +1,9 @@
 // Ciel's free deck builder (no API key): builds a legal 50 + 5 LIFE deck around a set of core
 // cards (favourites or aces) by picking supporting cards that share their symbols, names and
 // colours, keeping a playable Cost curve and enough GEM.
-import { CARDS, card, baseId, isBase, limitOf, limitKey, banMax, validateDeck } from "./cards.js?v=20261114214910";
-import { SCRIPTS } from "./scripts.js?v=20261114214910";
-import { readable } from "./effects.js?v=20261114214910";
+import { CARDS, card, baseId, isBase, limitOf, limitKey, banMax, validateDeck } from "./cards.js?v=20261114222637";
+import { SCRIPTS } from "./scripts.js?v=20261114222637";
+import { readable } from "./effects.js?v=20261114222637";
 
 let scripted = null;
 const isScripted = (c) => { if (!scripted || scripted.n !== CARDS.length) { const s = new Set(); for (const p of Object.keys(SCRIPTS)) { const x = CARDS.find((y) => y.p === p); if (x) s.add(baseId(x.i)); } scripted = { n: CARDS.length, s }; } return scripted.s.has(baseId(c.i)); };
