@@ -1,10 +1,10 @@
-import { h, openSheet, fmtDate, busy } from "../util.js?v=20261114181128";
-import { Data, Me } from "../fb.js?v=20261114181128";
-import { Views, avatarEl } from "../ui.js?v=20261114181128";
-import { ladder, ladderNow, ladderFresh } from "../ladder.js?v=20261114181128";
-import { stars } from "../quests.js?v=20261114181128";
-import { hasReplay, openReplay } from "./play.js?v=20261114181128";
-import { ACH, progress, rewardName } from "../achieve.js?v=20261114181128";
+import { h, openSheet, fmtDate, busy } from "../util.js?v=20261114182056";
+import { Data, Me } from "../fb.js?v=20261114182056";
+import { Views, avatarEl } from "../ui.js?v=20261114182056";
+import { ladder, ladderNow, ladderFresh } from "../ladder.js?v=20261114182056";
+import { stars } from "../quests.js?v=20261114182056";
+import { hasReplay, openReplay, coachGame } from "./play.js?v=20261114182056";
+import { ACH, progress, rewardName } from "../achieve.js?v=20261114182056";
 
 const MODE_TH = { bot: "บอท", friend: "เพื่อน", solo: "สองฝั่ง", goldfish: "ซ้อมมือเดียว" };
 Views.history = {
@@ -22,7 +22,7 @@ Views.history = {
         h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "ดาวภารกิจ"), h("b", { style: "color:var(--gold)" }, "★ " + stars()))),
       h("div", { class: "setup", style: "margin-top:18px" },
         h("div", { class: "stack", style: "gap:8px" }, all.slice(0, 100).map((m) => h("button", { class: "mrow", onclick: () => openSheet((api) => [h("div", { class: "small muted" }, `${fmtDate(m.at)} · ${MODE_TH[m.mode] || ""} · ${m.first ? "เล่นก่อน" : "เล่นหลัง"} · ${m.turns} เทิร์น`), h("div", null, m.reason || ""),
-            hasReplay(m.id) ? h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => { api.close(); openReplay(m.id); } }, "ดูรีเพลย์")) : m.rp ? h("div", { class: "tiny muted" }, "รีเพลย์ของเกมนี้เก็บไว้ในเครื่องที่เล่น") : null, h("div", { class: "glog", style: "max-height:none" }, (m.log || []).map((l) => h("div", null, l)))], { title: `${m.deckName} vs ${m.oppDeck}` }) },
+            hasReplay(m.id) ? h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => { api.close(); openReplay(m.id); } }, "ดูรีเพลย์"), m.mode !== "goldfish" ? h("button", { class: "btn", onclick: () => { api.close(); coachGame(m.id, `${m.deckName} vs ${m.oppDeck || m.opp || ""}`); } }, "วิเคราะห์เกมนี้") : null) : m.rp ? h("div", { class: "tiny muted" }, "รีเพลย์ของเกมนี้เก็บไว้ในเครื่องที่เล่น") : null, h("div", { class: "glog", style: "max-height:none" }, (m.log || []).map((l) => h("div", null, l)))], { title: `${m.deckName} vs ${m.oppDeck}` }) },
           h("span", { class: "chip " + (m.mode === "goldfish" ? "gold" : m.result === "win" ? "good" : m.result === "loss" ? "bad" : "") }, m.mode === "goldfish" ? (m.result === "win" ? "ซ้อม T" + m.turns : "ซ้อม") : m.result === "win" ? "ชนะ" : m.result === "loss" ? "แพ้" : "เสมอ"),
           h("div", { class: "grow", style: "min-width:0" }, h("b", null, m.mode === "goldfish" ? `${m.deckName} · ซ้อมมือเดียว` : `${m.deckName} vs ${m.oppDeck || m.opp}`), h("div", { class: "tiny muted" }, `${m.opp} · ${MODE_TH[m.mode] || ""} · ${m.turns} เทิร์น${m.undo ? ` · ย้อนตา ${m.undo} ครั้ง` : ""} · ${m.reason || ""}`)),
           h("span", { class: "tiny muted" }, fmtDate(m.at))))),
