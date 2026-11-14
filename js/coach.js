@@ -3,9 +3,9 @@
 // quick way, the other side's hand dealt again from its unseen cards) and the tables are compared with the bot's own
 // evaluation (H.evalBoard). Only differences well past the spread of those play-outs are called mistakes or good plays;
 // the rest are "พอ ๆ กัน". It runs a decision at a time, yielding to the page, so the screen never freezes.
-import { E, legalMoves } from "./engine.js?v=20261114182056";
-import { H } from "./ai.js?v=20261114182056";
-import { h, clone, openSheet, lsGet, lsSet } from "./util.js?v=20261114182056";
+import { E, legalMoves } from "./engine.js?v=20261114184824";
+import { H } from "./ai.js?v=20261114184824";
+import { h, clone, openSheet, lsGet, lsSet } from "./util.js?v=20261114184824";
 
 const DECIDE = new Set(["summon", "cast", "build", "attack", "activate", "battle", "end", "respond", "pass", "discard"]);
 const N = 4; // play-outs per choice

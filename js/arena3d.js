@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261114182056";
-import { E } from "./engine.js?v=20261114182056";
-import { h } from "./util.js?v=20261114182056";
-import { Sfx } from "./sfx.js?v=20261114182056";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261114184824";
+import { E } from "./engine.js?v=20261114184824";
+import { h } from "./util.js?v=20261114184824";
+import { Sfx } from "./sfx.js?v=20261114184824";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -76,7 +76,8 @@ function mount(container, opts = {}) {
 
   // the play mat: black lacquer with gold-leaf line-work (ลายรดน้ำ), stepped corners (ย่อมุม) round every zone
   const small = innerWidth < 760; R.small = small; R.Q = Q; R.watch = !!opts.watch; /* a friend looking on: no "your turn", and the winner gets the banner */ R.matKey = [small || Q === "low", { near: MATS[opts.mat] || MATS.black, far: MATS[opts.farMat] || MATS[opts.mat] || MATS.black }]; R.zones = tallScreen(container) ? ZONES.tall : ZONES.wide; const mt = matTextures(...R.matKey, R.zones);
-  R.matMat = new THREE.MeshStandardMaterial({ map: mt.base, emissiveMap: mt.glow, emissive: new THREE.Color(mt.emis), emissiveIntensity: 0.2, roughness: Q === "high" ? 0.62 : 0.44, roughnessMap: Q === "high" ? mt.rough : null, metalness: 0 }); R.matGlow = mt.glow; // (below high nothing reflects in the mat: a constant roughness, one texture fewer)
+  R.matMat = new THREE.MeshStandardMaterial({ map: mt.base, emissiveMap: mt.glow, emissive: new THREE.Color(mt.emis), emissiveIntensity: 0.2, roughness: Q === "high" ? 1 : 0.8, roughnessMap: Q === "high" ? mt.rough : null, metalness: 0 }); R.matGlow = mt.glow; // (below high nothing reflects in the mat: a constant roughness, one texture fewer)
+  clothMat(R.matMat, mt, Q); // a fine weave and a soft sheen: the mat is cloth, not a sheet of plastic
   const top = new THREE.Mesh(new THREE.PlaneGeometry(MW, MD), R.matMat); top.rotation.x = -Math.PI / 2; top.position.set(0, 0, MZ); top.receiveShadow = true; scene.add(top);
   const lacq = new THREE.MeshStandardMaterial({ color: 0x5a1812, roughness: 0.34, metalness: 0, envMapIntensity: 0.3 }); R.lacq = lacq;
   const body = new THREE.Mesh(new THREE.BoxGeometry(MW, 0.28, MD), lacq); body.position.set(0, -0.18, MZ); body.receiveShadow = true; scene.add(body);
@@ -124,7 +125,7 @@ function mount(container, opts = {}) {
     // with something to reflect, the gold leaf on the mat becomes real metal (without it, metal would look dark)
     Object.assign(R.matMat, { metalness: 0.7, metalnessMap: R.matGlow, envMapIntensity: 2.4 });
     // the lacquer between the gold keeps only a faint reflection of the hall, so the hall's columns never streak across the mat
-    R.matMat.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace("#include <lights_fragment_maps>", "#include <lights_fragment_maps>\n\tradiance *= mix(0.22, 1.0, metalnessFactor);"); };
+    R.matMat.userData.metal = true; // (clothMat's shader then dims the hall's reflection between the gold)
     R.matMat.needsUpdate = true;
   }, undefined, () => {});
 
@@ -235,17 +236,20 @@ export const MATS = { black: { name: "รักดำ", lac: "#120b09", edge: "r
   note: { name: "สมุดเส้น", lac: "#dcddd6", edge: "rgba(120,130,150,", kind: "sketch", paper: "note", ink: "#1b1c24", pens: { hell: "#c23a2c", deck: "#2b4fa8", dark: "#6b3fa3" } },
   // geometric (paintGeo): night glass with a circle of light under each Avatar Zone, or graphite with a carbon weave — clean lines in place of gold leaf
   glass: { name: "กระจกดารา", lac: "#060b1e", edge: "rgba(70,160,255,", kind: "glass", deep: ["#071028", "#0b1636"], ink: "#b4e4ff", glow: "#4aa6ff" },
-  pro: { name: "กราไฟต์", lac: "#15181e", edge: "rgba(90,130,255,", kind: "pro", deep: ["#121419", "#1a1d24"], ink: "#e9edf5", glow: "#7d9cff", acc: "#4f7dff" } };
+  pro: { name: "กราไฟต์", lac: "#15181e", edge: "rgba(90,130,255,", kind: "pro", deep: ["#121419", "#1a1d24"], ink: "#e9edf5", glow: "#7d9cff", acc: "#4f7dff" },
+  // printed art on cloth (paintGeo): a dusk sky, its stars over the middle of the table and its low sun, cloud banks and far peaks toward each owner's edge
+  dusk: { name: "ฟ้าสนธยา", lac: "#1c1430", edge: "rgba(240,140,110,", kind: "dusk", look: "glass", deep: ["#1b1533", "#5a2f52"], ink: "#fff3e6", glow: "#ffb48a" } };
 // what fills the air over the table when you win (seen on your own screen; earned by playing, see achieve.js)
 export const WINFX = { gold: { name: "ทองคำเปลวโปรย" }, lotus: { name: "กลีบบัวโปรย" }, lantern: { name: "โคมลอย" }, fireworks: { name: "พลุฉลอง" } };
 // the scene (สนาม, the map) round the table — not the cloth on it (ผ้าปู, the playmat above). Each viewer sees the one they chose.
 export const SCENES = { hall: { name: "โถงไม้แสงเทียน" }, pond: { name: "สวนสระบัว" }, market: { name: "ตลาดน้ำยามค่ำ" }, hell: { name: "นรกภูมิ" }, forest: { name: "ป่าหิมพานต์" }, deep: { name: "เมืองบาดาล" }, sakura: { name: "ซากุระราตรี" },
-  astral: { name: "หอดาราผลึก" }, studio: { name: "สตูดิโอกราไฟต์" }, azure: { name: "ลานเปลวคราม", owner: true } }; // owner: the owner's own (achieve.js opens it to him alone)
+  astral: { name: "หอดาราผลึก" }, studio: { name: "สตูดิโอกราไฟต์" }, cliff: { name: "ระเบียงเหนือเมฆ" }, azure: { name: "ลานเปลวคราม", owner: true } }; // owner: the owner's own (achieve.js opens it to him alone)
 // a scene that brings its own ground: how to build it, and the air round it (fog colour and thickness, sky and ground light, how strong)
 const GROUND = { pond: { build: () => buildPond(), air: [0x0f2a26, 0.019, 0xf2f6ff, 0x1c3320, 0.62] }, market: { build: () => buildMarket(), air: [0x04080f, 0.015, 0xaab8ff, 0x0a0a14, 0.4] },
   hell: { build: () => buildHell(), air: [0x140403, 0.02, 0xffa070, 0x2a0805, 0.5], noMotes: true },
   forest: { build: () => buildForest(), air: [0x0b1f1a, 0.02, 0xbfe8d8, 0x10241a, 0.5], noMotes: true },
   deep: { build: () => buildDeep(), air: [0x062636, 0.022, 0x9fdcff, 0x062030, 0.55], noMotes: true }, astral: { build: () => buildAstral(), air: [0x040918, 0.016, 0xb4d2ff, 0x070b20, 0.5], noMotes: true },
+  cliff: { build: () => buildCliff(), air: [0x3a2a4a, 0.012, 0xffc9a8, 0x2c2444, 0.62], noMotes: true },
   studio: { build: () => buildStudio(), air: [0x0b0d12, 0.02, 0xdfe6ff, 0x101318, 0.55], noMotes: true },
   azure: { build: () => buildAzure(), air: [0x030818, 0.017, 0x9fc4ff, 0x060a1c, 0.46], noMotes: true } };
 const avCache = new Map();
@@ -747,6 +751,34 @@ function grassTexture() {
     for (let k = 0; k < 3200; k++) { const x = rnd() * S, y = rnd() * S, l = 3 + rnd() * 7; g.strokeStyle = rnd() < 0.5 ? "rgba(160,216,100,.36)" : "rgba(22,84,46,.36)"; g.lineWidth = 1; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (rnd() - 0.5) * 4, y - l); g.stroke(); }
     for (let k = 0; k < 70; k++) { g.fillStyle = rnd() < 0.6 ? "rgba(255,255,242,.85)" : "rgba(255,226,120,.85)"; g.beginPath(); g.arc(rnd() * S, rnd() * S, 1.4, 0, 7); g.fill(); } });
 }
+// ---------- scanned stone (CC0, Poly Haven; see assets/scan/LICENSE.md) ----------
+// A scene sets out its paving and its rocks at once, in a drawn texture and low-poly shapes; when the scanned files arrive they take
+// their place: the paving becomes real flagstones (lit, with depth, where the quality allows; the drawn pattern below it), the rocks
+// real rocks in the same spots, sizes and tints (still one instanced draw). The files load once and are shared between games.
+const SCAN = {}, SCAN_V = 1; // (bump SCAN_V when a file in assets/scan changes)
+const scanTex = (f, srgb) => SCAN[f] || (SCAN[f] = new Promise((ok) => R.loader.load(`assets/scan/${f}?v=${SCAN_V}`, (t) => { if (srgb) t.encoding = THREE.sRGBEncoding; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; ok(t); }, undefined, () => ok(null))));
+function scanPaver(mesh) { // mesh: a band of drawn paving (an unlit material, its map repeated)
+  const k = R, rich = R.Q !== "low" && !R.small, M0 = mesh.material, rep = M0.map.repeat.clone();
+  Promise.all([scanTex(rich ? "paver_d.jpg" : "paver_d_lo.jpg", true), rich ? scanTex("paver_n.jpg", false) : null]).then(([d, n]) => {
+    if (!d || R !== k || !mesh.parent) return; d.repeat.copy(rep).multiplyScalar(0.5); if (n) n.repeat.copy(d.repeat);
+    if (!rich) { M0.map = d; M0.needsUpdate = true; return; } // phones and low quality: the scanned stone, still unlit
+    // lit, so the key light picks out each slab's edges; a little of the scene's own tint glows in it, so dark scenes stay as dark as they were
+    const c = M0.color.clone(); mesh.material = new THREE.MeshStandardMaterial({ map: d, normalMap: n, normalScale: new THREE.Vector2(1.2, 1.2), roughness: 0.9, metalness: 0, color: c.clone().multiplyScalar(0.55), emissive: c.multiplyScalar(0.3), emissiveMap: d }); M0.dispose(); });
+  return mesh;
+}
+function scanRocks(rk, file, base = false) { // rk: instanced low-poly stones (an icosahedron round the centre, or a cone standing on y=0 when base)
+  if (R.Q === "low" || !THREE.GLTFLoader) return; const k = R;
+  const p = SCAN[file] || (SCAN[file] = new Promise((ok) => new THREE.GLTFLoader().load(`assets/scan/${file}?v=${SCAN_V}`, (g) => { let m = null; g.scene.updateMatrixWorld(true); g.scene.traverse((o) => { if (o.isMesh && !m) m = o; }); ok(m); }, undefined, () => ok(null))));
+  p.then((m) => { if (!m || R !== k || !rk.parent) return;
+    // the scan fitted to the shape it replaces: round the centre in a box of half-size 1, or standing on y=0, 1 high and 1 across each way
+    const geo = new THREE.BufferGeometry(), src = m.geometry, pos = src.attributes.position, n = pos.count, P = new Float32Array(n * 3), v = new THREE.Vector3(), lo = new THREE.Vector3(1e9, 1e9, 1e9), hi = new THREE.Vector3(-1e9, -1e9, -1e9);
+    for (let i = 0; i < n; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld); P.set([v.x, v.y, v.z], i * 3); lo.min(v); hi.max(v); }
+    const c = lo.clone().add(hi).multiplyScalar(0.5), h = hi.clone().sub(lo).multiplyScalar(0.5);
+    for (let i = 0; i < n; i++) { P[i * 3] = (P[i * 3] - c.x) / h.x; P[i * 3 + 2] = (P[i * 3 + 2] - c.z) / h.z; P[i * 3 + 1] = base ? (P[i * 3 + 1] - lo.y) / (2 * h.y) : (P[i * 3 + 1] - c.y) / h.y; }
+    geo.setAttribute("position", new THREE.BufferAttribute(P, 3)); geo.setAttribute("uv", src.attributes.uv); if (src.index) geo.setIndex(src.index); geo.computeVertexNormals(); geo.computeBoundingSphere();
+    const old = rk.material, sm = m.material; rk.geometry.dispose(); rk.geometry = geo; for (const ch of rk.children) if (ch.userData.ink) ch.geometry = geo; // (an ink outline follows its rock)
+    rk.material = new THREE.MeshStandardMaterial({ map: sm.map, normalMap: sm.normalMap, roughness: 0.93, metalness: 0, color: old.color.clone().multiplyScalar(1.8), emissive: old.emissive, emissiveIntensity: old.emissiveIntensity }); });
+}
 function paverTexture() {
   return canvasTex(256, (g, S) => { g.fillStyle = "#4a4658"; g.fillRect(0, 0, S, S); const rnd = lcg(29), N = 4, c = S / N;
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const v = 138 + Math.floor(rnd() * 34), x = i * c + 3, y = j * c + 3, w = c - 6; g.fillStyle = `rgb(${v},${v - 5},${v + 12})`; roundRect(g, x, y, x + w, y + w, 7); g.fill();
@@ -837,7 +869,7 @@ function buildPond() {
     for (let k = 0; k < tp.count; k++) { const d = Math.hypot(tp.getX(k) / 1.3, tp.getY(k) + 1.5), v = 0.3 + 0.62 * Math.exp(-(Math.max(0, d - 7) ** 2) / 120); tc[k * 3] = v * 0.93; tc[k * 3 + 1] = v; tc[k * 3 + 2] = v * 0.95; }
     tg.setAttribute("color", new THREE.BufferAttribute(tc, 3)); const m = flat(tg, new THREE.MeshBasicMaterial({ map: gt, vertexColors: true }), G); m.position.z = -2; }
   // the table stands on a terrace of stone slabs
-  { const pt = T(paverTexture()); pt.wrapS = pt.wrapT = THREE.RepeatWrapping; pt.repeat.set(7, 5.5); flat(new THREE.PlaneGeometry(MW + 1.7, MD + 1.7), new THREE.MeshBasicMaterial({ map: pt, color: 0xc9c6d2 }), G + 0.006, 1).position.z = MZ;
+  { const pt = T(paverTexture()); pt.wrapS = pt.wrapT = THREE.RepeatWrapping; pt.repeat.set(7, 5.5); scanPaver(flat(new THREE.PlaneGeometry(MW + 1.7, MD + 1.7), new THREE.MeshBasicMaterial({ map: pt, color: 0xc9c6d2 }), G + 0.006, 1)).position.z = MZ;
     flat(new THREE.PlaneGeometry(MW + 3.2, MD + 3.2), new THREE.MeshBasicMaterial({ map: R.shade.material.map, transparent: true, opacity: 0.5, depthWrite: false }), G + 0.004, 1).position.z = MZ; }
   // the pond: a sandy bank, then water whose light ripples run across it
   const out = new THREE.CatmullRomCurve3(C.water.map(([x, z]) => new THREE.Vector3(x, 0, z)), true, "centripetal").getPoints(80).map((p) => [p.x, p.z]); S.poly = out;
@@ -896,7 +928,7 @@ function buildPond() {
   { const spots = []; for (let i = 0; i < out.length; i += low ? 9 : 5) { const [x, z] = out[i], dx = x - cx, dz = z - cz, d = Math.hypot(dx, dz) || 1; if (z < -13.4 || x > 13.6) continue; spots.push([x + (dx / d) * (0.25 + rnd() * 0.35), z + (dz / d) * (0.25 + rnd() * 0.35), 0.28 + rnd() * 0.42]); }
     const [tx, tz] = C.tree; spots.push([tx + 0.95, tz + 1.2, 0.42], [tx - 0.9, tz + 1.5, 0.34], [tx + 1.2, tz - 1.1, 0.26], [C.rockBird[0], C.rockBird[1], 0.55], [C.rockBird[0] + 0.8, C.rockBird[1] + 0.35, 0.3], ...C.isles.map(([ix, iz, irx, irz], i) => [ix + (i ? 0.75 : -0.8) * irx, iz + irz * 0.55, 0.3]));
     const rk = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), stone, spots.length), col = new THREE.Color(); spots.forEach(([x, z, s], i) => { const sy = s * (0.55 + rnd() * 0.3); o.position.set(x, G + sy * 0.5, z); o.rotation.set(rnd() * 0.5, rnd() * 6.28, rnd() * 0.5); o.scale.set(s * (0.9 + rnd() * 0.5), sy, s * (0.8 + rnd() * 0.4)); o.updateMatrix(); rk.setMatrixAt(i, o.matrix); const v = 0.82 + rnd() * 0.3; rk.setColorAt(i, col.setRGB(v, v * 0.97, v * 1.06)); });
-    o.rotation.set(0, 0, 0); rk.castShadow = Q === "high"; grp.add(rk); S.rock = [C.rockBird[0], G + 0.55 * 0.7, C.rockBird[1]];
+    o.rotation.set(0, 0, 0); rk.castShadow = Q === "high"; grp.add(rk); scanRocks(rk, "rock_a.glb"); S.rock = [C.rockBird[0], G + 0.55 * 0.7, C.rockBird[1]];
     const path = []; for (let i = 0; i + 1 < C.stones.length; i++) { const [xa, za] = C.stones[i], [xb, zb] = C.stones[i + 1], L = Math.hypot(xb - xa, zb - za), n = Math.max(1, Math.round(L / 1.2)); for (let j = 0; j < n; j++) path.push([xa + ((xb - xa) * j) / n, za + ((zb - za) * j) / n]); }
     const st = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.45, 0.5, 0.05, 7), stone, path.length); path.forEach(([x, z], i) => { o.position.set(x + (rnd() - 0.5) * 0.16, G + 0.027, z + (rnd() - 0.5) * 0.16); o.rotation.set(0, rnd() * 6.28, 0); o.scale.set(0.85 + rnd() * 0.3, 1, 0.8 + rnd() * 0.3); o.updateMatrix(); st.setMatrixAt(i, o.matrix); const v = 0.95 + rnd() * 0.2; st.setColorAt(i, col.setRGB(v, v, v * 1.04)); });
     o.rotation.set(0, 0, 0); grp.add(st); S.path = path; }
@@ -1074,7 +1106,7 @@ function buildHell() {
         ${FOG} }` });
   flat(new THREE.PlaneGeometry(70, 50), S.ground, G).position.z = -2;
   // the dark stone the table lies on, lit along its far edge by the river
-  { const pt = T(paverTexture()); pt.wrapS = pt.wrapT = THREE.RepeatWrapping; pt.repeat.set(7, 5.5); flat(new THREE.PlaneGeometry(MW + 1.7, MD + 1.7), new THREE.MeshBasicMaterial({ map: pt, color: 0x5c4444 }), G + 0.006, 1).position.z = MZ;
+  { const pt = T(paverTexture()); pt.wrapS = pt.wrapT = THREE.RepeatWrapping; pt.repeat.set(7, 5.5); scanPaver(flat(new THREE.PlaneGeometry(MW + 1.7, MD + 1.7), new THREE.MeshBasicMaterial({ map: pt, color: 0x5c4444 }), G + 0.006, 1)).position.z = MZ;
     const gt = T(canvasTex(64, (g, s) => { const gr = g.createLinearGradient(0, 0, 0, s); gr.addColorStop(0, "rgba(255,120,30,.95)"); gr.addColorStop(1, "rgba(255,90,20,0)"); g.fillStyle = gr; g.fillRect(0, 0, s, s); }));
     S.rim = new THREE.MeshBasicMaterial({ map: gt, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false }); const m = flat(new THREE.PlaneGeometry(MW + 6, 2.6), S.rim, G + 0.01, 2); m.position.set(0, G + 0.01, MZ - MD / 2 - 0.05); }
   // the river of lava and its dark bank
@@ -1095,7 +1127,7 @@ function buildHell() {
     const n = low ? 10 : Q === "mid" ? 18 : 30; for (let t = 0; t < n * 8 && spots.length < 200 && t < 400; t++) { const b = C.beds[Math.floor(rnd() * C.beds.length)], x = b[0] + rnd() * (b[1] - b[0]), z = b[2] + rnd() * (b[3] - b[2]); if (dry(x, z) && spots.filter((s) => s[4]).length < n) spots.push([x, z, 0.22 + rnd() * 0.3, 0.6 + rnd() * 1.7, 1]); }
     const geo = new THREE.ConeGeometry(1, 1, 5); geo.translate(0, 0.5, 0); const sp = new THREE.InstancedMesh(geo, rock, spots.length);
     spots.forEach(([x, z, r, hh], i) => { o.position.set(x, G, z); o.rotation.set((rnd() - 0.5) * 0.3, rnd() * 6.28, (rnd() - 0.5) * 0.3); o.scale.set(r, hh, r); o.updateMatrix(); sp.setMatrixAt(i, o.matrix); const v = 0.75 + rnd() * 0.5; sp.setColorAt(i, col.setRGB(v, v * 0.9, v * 0.9)); });
-    o.rotation.set(0, 0, 0); sp.castShadow = Q === "high"; grp.add(sp); }
+    o.rotation.set(0, 0, 0); sp.castShadow = Q === "high"; grp.add(sp); scanRocks(sp, "rock_b.glb", true); }
   // the ruined gate: two pillars in the lava, half a lintel left on one, chains hanging from it
   { const [x0, x1, gz] = C.gate, box = new THREE.BoxGeometry(1, 1, 1), parts = [[x0, 1.3, gz, 0.72, 2.9, 0.72, 0], [x1, 0.95, gz, 0.72, 2.2, 0.72, 0.05], [x0, 2.85, gz, 0.95, 0.24, 0.95, 0], [x0 + 1.25, 3.12, gz, 3.0, 0.5, 0.78, -0.07], [x1 + 0.7, 0.16, gz + 0.5, 0.8, 0.5, 0.6, 0.5], [x0 - 0.1, 0.1, gz + 0.62, 0.5, 0.3, 0.4, 0.2], [x1, 2.12, gz, 0.9, 0.2, 0.9, 0.12]];
     const gm = new THREE.InstancedMesh(box, new THREE.MeshStandardMaterial({ color: 0x2a2023, roughness: 0.95, metalness: 0, flatShading: true, emissive: 0x4a0e03, emissiveIntensity: 0.5 }), parts.length);
@@ -1162,7 +1194,7 @@ function buildForest() {
   { const gt = T(grassTexture()); gt.wrapS = gt.wrapT = THREE.RepeatWrapping; gt.repeat.set(7, 5); gt.anisotropy = 8; const tg = new THREE.PlaneGeometry(70, 50, 28, 20), tp = tg.attributes.position, tc = new Float32Array(tp.count * 3);
     for (let k = 0; k < tp.count; k++) { const d = Math.hypot(tp.getX(k) / 1.3, tp.getY(k) + 1.5), v = 0.11 + 0.27 * Math.exp(-(Math.max(0, d - 7) ** 2) / 120); tc[k * 3] = v * 0.55; tc[k * 3 + 1] = v; tc[k * 3 + 2] = v * 0.86; }
     tg.setAttribute("color", new THREE.BufferAttribute(tc, 3)); flat(tg, new THREE.MeshBasicMaterial({ map: gt, vertexColors: true }), G).position.z = -2;
-    const pt = T(paverTexture()); pt.wrapS = pt.wrapT = THREE.RepeatWrapping; pt.repeat.set(7, 5.5); flat(new THREE.PlaneGeometry(MW + 1.7, MD + 1.7), new THREE.MeshBasicMaterial({ map: pt, color: 0x4f6f62 }), G + 0.006, 1).position.z = MZ;
+    const pt = T(paverTexture()); pt.wrapS = pt.wrapT = THREE.RepeatWrapping; pt.repeat.set(7, 5.5); scanPaver(flat(new THREE.PlaneGeometry(MW + 1.7, MD + 1.7), new THREE.MeshBasicMaterial({ map: pt, color: 0x4f6f62 }), G + 0.006, 1)).position.z = MZ;
     flat(new THREE.PlaneGeometry(MW + 3.2, MD + 3.2), new THREE.MeshBasicMaterial({ map: R.shade.material.map, transparent: true, opacity: 0.55, depthWrite: false }), G + 0.004, 1).position.z = MZ; }
   // the spring and the fall that feeds it, rocks behind
   const out = new THREE.CatmullRomCurve3(C.pool.map(([x, z]) => new THREE.Vector3(x, 0, z)), true, "centripetal").getPoints(48).map((p) => [p.x, p.z]); S.poly = out;
@@ -1173,7 +1205,7 @@ function buildForest() {
   { const spots = [[-1.5, -0.2, 0.9, 1.9], [-0.5, -0.45, 1.0, 2.6], [0.6, -0.4, 0.95, 2.3], [1.6, -0.15, 0.8, 1.6], [-2.4, 0.1, 0.6, 1.0], [2.5, 0.2, 0.55, 0.9]].map(([x, z, s, hh]) => [fx + x * fh, fz + z * fh, s * fh, hh * fh]);
     for (const b of C.beds) for (let k = 0; k < (low ? 1 : 3); k++) { const x = b[0] + rnd() * (b[1] - b[0]), z = b[2] + rnd() * (b[3] - b[2]); if (!inPoly(x, z, out)) spots.push([x, z, 0.3 + rnd() * 0.35, 0.25 + rnd() * 0.3]); }
     const rk = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), stone, spots.length); spots.forEach(([x, z, s, hh], i) => { o.position.set(x, G + hh * 0.45, z); o.rotation.set(rnd() * 0.4, rnd() * 6.28, rnd() * 0.4); o.scale.set(s, hh, s * 0.8); o.updateMatrix(); rk.setMatrixAt(i, o.matrix); const v = 0.75 + rnd() * 0.4; rk.setColorAt(i, col.setRGB(v * 0.9, v, v * 0.92)); });
-    o.rotation.set(0, 0, 0); grp.add(rk);
+    o.rotation.set(0, 0, 0); grp.add(rk); scanRocks(rk, "rock_a.glb");
     const ft = T(fallTexture()); ft.wrapS = ft.wrapT = THREE.RepeatWrapping; ft.repeat.set(1, 1.6); S.fall = ft;
     const fm = new THREE.Mesh(new THREE.PlaneGeometry(1.15 * fh, 3.6 * fh), new THREE.MeshBasicMaterial({ map: ft, color: 0xbff4ff, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false })); fm.position.set(fx, G + 1.8 * fh, fz + 0.62 * fh); fm.rotation.x = -0.12; grp.add(fm);
     S.mist = sprite(R.FX.dot, 0xbfeee6, 2.4 * fh, new THREE.Vector3(fx, G + 0.3 * fh, fz + 0.9 * fh), 0.32, grp); S.mistS = fh;
@@ -1229,7 +1261,7 @@ function buildDeep() {
   S.floor = cellWater(low, new THREE.Color(0.02, 0.04, 0.045), new THREE.Color(0.07, 0.11, 0.1), new THREE.Color(0.2, 0.42, 0.42), 0.022, 0.32); flat(new THREE.PlaneGeometry(70, 50), S.floor, G).position.z = -2;
   // a sunken temple's platform under the table, a step down round it
   { const pt = T(paverTexture()); pt.wrapS = pt.wrapT = THREE.RepeatWrapping; pt.repeat.set(7, 5.5); const pm = new THREE.MeshBasicMaterial({ map: pt, color: 0x3d5a63 });
-    flat(new THREE.PlaneGeometry(MW + 1.7, MD + 1.7), pm, G + 0.008, 2).position.z = MZ; flat(new THREE.PlaneGeometry(MW + 3.4, MD + 3.4), new THREE.MeshBasicMaterial({ map: pt, color: 0x24393f }), G + 0.004, 1).position.z = MZ; }
+    scanPaver(flat(new THREE.PlaneGeometry(MW + 1.7, MD + 1.7), pm, G + 0.008, 2)).position.z = MZ; flat(new THREE.PlaneGeometry(MW + 3.4, MD + 3.4), new THREE.MeshBasicMaterial({ map: pt, color: 0x24393f }), G + 0.004, 1).position.z = MZ; }
   // broken pillars, one fallen; stone the sea has turned green-grey
   const stone = new THREE.MeshStandardMaterial({ color: 0x5b7472, roughness: 0.95, metalness: 0, flatShading: true });
   { const shaft = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.42, 0.48, 1, 10), stone, C.pillars.length + C.fallen.length), base = new THREE.InstancedMesh(new THREE.BoxGeometry(1.3, 0.36, 1.3), stone, C.pillars.length); let k = 0;
@@ -1269,7 +1301,7 @@ function buildAzure() {
   const S = { grp, zk: R.zones, o: new THREE.Object3D(), tex: [], wisps: [], steps: [], step: stepAzure }, o = S.o, rnd = lcg(307), T = (t) => { S.tex.push(t); return t; }, col = new THREE.Color();
   const flat = (geo, mat, y, order = 0) => { const m = new THREE.Mesh(geo, mat); m.rotation.x = -Math.PI / 2; m.position.y = y; m.renderOrder = order; grp.add(m); return m; };
   S.water = cellWater(Q !== "high", new THREE.Color(0.001, 0.004, 0.02), new THREE.Color(0.003, 0.02, 0.075), new THREE.Color(0.16, 0.5, 1.0), 0.017, 0.9, 1); flat(new THREE.PlaneGeometry(70, 50), S.water, G).position.z = -2;
-  { const pt = T(paverTexture()); pt.wrapS = pt.wrapT = THREE.RepeatWrapping; pt.repeat.set(7, 5.5); flat(new THREE.PlaneGeometry(MW + 1.7, MD + 1.7), new THREE.MeshBasicMaterial({ map: pt, color: 0x3a4764 }), G + 0.008, 2).position.z = MZ;
+  { const pt = T(paverTexture()); pt.wrapS = pt.wrapT = THREE.RepeatWrapping; pt.repeat.set(7, 5.5); scanPaver(flat(new THREE.PlaneGeometry(MW + 1.7, MD + 1.7), new THREE.MeshBasicMaterial({ map: pt, color: 0x3a4764 }), G + 0.008, 2)).position.z = MZ;
     S.halo = new THREE.MeshBasicMaterial({ map: R.FX.dot, color: 0x2a8cff, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false }); flat(new THREE.PlaneGeometry(MW + 9, MD + 9), S.halo, G + 0.004, 1).position.z = MZ; }
   // crystal: three shards to a cluster, lit from inside
   { const spots = []; const n = low ? 6 : Q === "mid" ? 11 : 18; for (let t = 0; t < n * 8 && spots.length < n; t++) { const b = C.beds[Math.floor(rnd() * C.beds.length)], x = b[0] + rnd() * (b[1] - b[0]), z = b[2] + rnd() * (b[3] - b[2]); if (!(Math.abs(x) < MW / 2 + 1.0 && Math.abs(z - MZ) < MD / 2 + 1.0)) spots.push([x, z]); }
@@ -1329,7 +1361,7 @@ function buildAstral() {
   const S = { grp, zk: R.zones, o: new THREE.Object3D(), tex: [], steps: [], C, step: stepAstral }, o = S.o, rnd = lcg(523), T = (t) => { S.tex.push(t); return t; };
   const flat = (geo, mat, y, order = 0) => { const m = new THREE.Mesh(geo, mat); m.rotation.x = -Math.PI / 2; m.position.y = y; m.renderOrder = order; grp.add(m); return m; };
   S.water = cellWater(Q !== "high", new THREE.Color(0.002, 0.003, 0.02), new THREE.Color(0.01, 0.018, 0.07), new THREE.Color(0.3, 0.55, 1.0), 0.016, 0.16, 0); flat(new THREE.PlaneGeometry(70, 50), S.water, G).position.z = -2;
-  { const pt = T(paverTexture()); pt.wrapS = pt.wrapT = THREE.RepeatWrapping; pt.repeat.set(7, 5.5); flat(new THREE.PlaneGeometry(MW + 1.7, MD + 1.7), new THREE.MeshBasicMaterial({ map: pt, color: 0x2c3858 }), G + 0.008, 2).position.z = MZ; }
+  { const pt = T(paverTexture()); pt.wrapS = pt.wrapT = THREE.RepeatWrapping; pt.repeat.set(7, 5.5); scanPaver(flat(new THREE.PlaneGeometry(MW + 1.7, MD + 1.7), new THREE.MeshBasicMaterial({ map: pt, color: 0x2c3858 }), G + 0.008, 2)).position.z = MZ; }
   // the great circle round the table, and the two small ones at its sides (one picture, two materials; the small ones one batch)
   const ct = T(astralCircleTexture(Q === "high" ? 1024 : 512)); // (phones: 512, 1.4 MB instead of 5.6)
   S.ring = new THREE.MeshBasicMaterial({ map: ct, color: 0x3d94ff, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
@@ -1395,6 +1427,65 @@ function buildStudio() {
   P.forEach(([x, z], i) => { o.position.set(x, G + 1.6, z); o.rotation.set(0, Math.atan2(-x, MZ - z), 0); o.updateMatrix(); pm.setMatrixAt(i, o.matrix); o.translateZ(0.3); o.updateMatrix(); em.setMatrixAt(i, o.matrix); }); grp.add(pm, em);
   return S;
 }
+// ---------- ระเบียงเหนือเมฆ: a stone terrace high above a sea of clouds at dusk ----------
+// The table stands on scanned flagstones (CC0; drawn paving until they load) with a balustrade of turned stone along the far side and
+// the two flanks; past it the ground falls away to a sea of cloud lit peach and violet by a sun just below the horizon, and a few
+// rocks (scanned too) drift in the air. The clouds are one shader on one plane, the balusters one instanced batch.
+const CLIFF = { wide: { x: 10.7, z: -8.9 }, tall: { x: 8.8, z: -10.4 } }; // (the flanks stay clear of the mat, 7.7 either side of the middle)
+function buildCliff() {
+  const Q = R.Q, low = Q === "low", C = CLIFF[R.zones === ZONES.tall ? "tall" : "wide"], G = -0.335, grp = new THREE.Group(); grp.name = "cliff"; R.scene.add(grp);
+  const S = { grp, zk: R.zones, o: new THREE.Object3D(), tex: [], isles: [], lamps: [], step: stepCliff }, o = S.o, T = (t) => { S.tex.push(t); return t; }, rnd = lcg(733);
+  const flat = (geo, mat, y, order = 0) => { const m = new THREE.Mesh(geo, mat); m.rotation.x = -Math.PI / 2; m.position.y = y; m.renderOrder = order; grp.add(m); return m; };
+  // the sea of cloud below: slow layered noise, peach toward the sun, violet in the hollows, fading into the haze far off
+  S.sea = new THREE.ShaderMaterial({ uniforms: { uT: { value: 0 }, uFogC: { value: R.scene.fog.color } }, depthWrite: false,
+    vertexShader: "varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }",
+    fragmentShader: `uniform float uT; uniform vec3 uFogC; varying vec3 vW;
+      float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float n(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h(i), h(i + vec2(1, 0)), f.x), mix(h(i + vec2(0, 1)), h(i + vec2(1, 1)), f.x), f.y); }
+      float fbm(vec2 p){ float s = 0.0, a = 0.5; for (int k = 0; k < ${low ? 3 : 5}; k++) { s += a * n(p); p = p * 2.03 + vec2(1.7, 9.2); a *= 0.5; } return s; }
+      void main(){ vec2 p = vW.xz * 0.06 + vec2(uT * 0.012, uT * 0.004); float c = fbm(p), d = fbm(p * 1.9 - vec2(uT * 0.01, 0.0));
+        float puff = smoothstep(0.35, 0.8, c * 0.7 + d * 0.45); vec3 sun = normalize(vec3(-0.6, 0.0, -1.0));
+        float toward = clamp(dot(normalize(vec3(vW.x, 0.0, vW.z - 4.0)), sun) * 0.5 + 0.5, 0.0, 1.0);
+        vec3 hollow = vec3(0.09, 0.07, 0.17), lit = mix(vec3(0.42, 0.3, 0.48), vec3(0.85, 0.52, 0.38), toward);
+        vec3 col = mix(hollow, lit, puff) + vec3(1.0, 0.62, 0.38) * pow(toward, 6.0) * 0.35 * puff;
+        float dist = length(cameraPosition - vW); col = mix(col, uFogC, 1.0 - exp(-0.00012 * dist * dist));
+        gl_FragColor = vec4(col, 1.0);
+        #include <tonemapping_fragment>
+        #include <encodings_fragment>
+      }` });
+  flat(new THREE.PlaneGeometry(240, 170), S.sea, G - 7).position.z = -40;
+  // the sun's glow on the clouds, low on the left beyond the balustrade
+  sprite(R.FX.light_02, 0xff8a4c, 46, new THREE.Vector3(-22, G - 3, -46), 0.3, grp); sprite(R.FX.light_02, 0xffc890, 16, new THREE.Vector3(-20, G - 2, -42), 0.22, grp);
+  // the terrace: flagstones from the balustrade to past the near edge of the screen, its far rim a step of stone
+  { const pt = T(paverTexture()); pt.wrapS = pt.wrapT = THREE.RepeatWrapping; const w = 2 * C.x + 0.6, d = 19 - C.z; /* from the balustrade to past the near edge of a phone's view */ pt.repeat.set(w / 2.45, d / 2.45);
+    const fl = scanPaver(flat(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ map: pt, color: 0xb7a39a }), G, 0)); fl.position.z = C.z + d / 2; }
+  const stone = new THREE.MeshStandardMaterial({ color: 0x2e2826, roughness: 0.9, metalness: 0 }); // (a linear colour: with the sRGB output and the strong dusk light, a lighter stone washed out to white)
+  // the balustrade: turned balusters (one batch), a rail on top, a plinth under them; along the far side and both flanks
+  { const prof = [[0, 0], [0.13, 0], [0.13, 0.06], [0.08, 0.1], [0.07, 0.18], [0.12, 0.3], [0.13, 0.38], [0.09, 0.48], [0.06, 0.56], [0.08, 0.6], [0.11, 0.64], [0, 0.64]].map(([r, y]) => new THREE.Vector2(r, y));
+    const bg = new THREE.LatheGeometry(prof, Q === "high" ? 10 : 7), runs = [[-C.x, C.z, C.x, C.z], [-C.x, C.z, -C.x, 7], [C.x, C.z, C.x, 7]], step = low ? 0.62 : 0.42, spots = [];
+    for (const [x0, z0, x1, z1] of runs) { const L = Math.hypot(x1 - x0, z1 - z0), n = Math.floor(L / step); for (let k = 1; k < n; k++) spots.push([x0 + ((x1 - x0) * k) / n, z0 + ((z1 - z0) * k) / n]); }
+    const bm = new THREE.InstancedMesh(bg, stone, spots.length); spots.forEach(([x, z], i) => { o.position.set(x, G + 0.12, z); o.rotation.set(0, 0, 0); o.scale.set(1.15, 1.15, 1.15); o.updateMatrix(); bm.setMatrixAt(i, o.matrix); }); bm.castShadow = Q === "high"; grp.add(bm);
+    const box = new THREE.BoxGeometry(1, 1, 1), rails = new THREE.InstancedMesh(box, stone, runs.length * 2);
+    runs.forEach(([x0, z0, x1, z1], i) => { const L = Math.hypot(x1 - x0, z1 - z0) + 0.36, a = Math.atan2(x1 - x0, z1 - z0);
+      for (const [y, hh, ww] of [[0.06, 0.12, 0.34], [0.86, 0.1, 0.3]]) { o.position.set((x0 + x1) / 2, G + y, (z0 + z1) / 2); o.rotation.set(0, a, 0); o.scale.set(ww, hh, L); o.updateMatrix(); rails.setMatrixAt(i * 2 + (y > 0.5 ? 1 : 0), o.matrix); } });
+    o.rotation.set(0, 0, 0); grp.add(rails); }
+  // stone lanterns at the two far corners, a flame in each
+  for (const sx of [-1, 1]) { const x = sx * (C.x - 0.05), z = C.z, post = new THREE.Mesh(new THREE.LatheGeometry([[0, 0], [0.26, 0], [0.26, 0.12], [0.14, 0.2], [0.12, 1.1], [0.24, 1.18], [0.24, 1.26], [0.19, 1.3], [0.19, 1.62], [0.3, 1.66], [0.05, 1.92], [0, 1.95]].map(([r, y]) => new THREE.Vector2(r, y)), low ? 6 : 10), stone);
+    post.position.set(x, G, z); grp.add(post);
+    const f = new THREE.Sprite(new THREE.SpriteMaterial({ map: R.flameTex, color: 0xffc080, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); f.position.set(x, G + 1.47, z); f.scale.set(0.2, 0.34, 1); grp.add(f);
+    const hl = sprite(R.FX.dot, 0xff9a40, 2.2, new THREE.Vector3(x, G + 1.45, z), 0.42, grp); S.lamps.push({ f, hl, ph: sx * 1.7 }); }
+  // rocks adrift beyond the balustrade, bobbing slowly
+  { const n = low ? 3 : 6, spots = [[-15, -16, 2.2, 0.6], [12, -19, 2.8, -0.4], [-6, -24, 1.5, -1.6], [18, -12, 1.6, -1.1], [-21, -10, 1.3, 0.2], [4, -30, 3.2, -2.4]].slice(0, n);
+    const geo = new THREE.IcosahedronGeometry(1, 1), mat = new THREE.MeshStandardMaterial({ color: 0x8c7c88, roughness: 0.95, metalness: 0, emissive: 0x2a1a30, emissiveIntensity: 0.5 }), im = new THREE.InstancedMesh(geo, mat, n);
+    im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); grp.add(im); scanRocks(im, "rock_b.glb");
+    spots.forEach(([x, z, s, y], i) => S.isles.push({ x, z, s, y: G + y, ph: rnd() * 6.28, ry: rnd() * 6.28 })); S.isleMesh = im; stepCliff(S, 0, 0); }
+  return S;
+}
+function stepCliff(S, dt, t) {
+  S.sea.uniforms.uT.value = t; const o = S.o, im = S.isleMesh;
+  S.isles.forEach((r, i) => { o.position.set(r.x, r.y + Math.sin(t * 0.35 + r.ph) * 0.35, r.z); o.rotation.set(0.2, r.ry + t * 0.03, 0.1); o.scale.set(r.s, r.s * 0.75, r.s); o.updateMatrix(); im.setMatrixAt(i, o.matrix); }); im.instanceMatrix.needsUpdate = true;
+  for (const l of S.lamps) { const f = 1 + 0.1 * Math.sin(t * 11 + l.ph) + 0.06 * Math.sin(t * 6.3 + l.ph * 2); l.f.scale.set(0.2 * (2 - f), 0.34 * f, 1); l.hl.material.opacity = 0.4 * f; }
+}
 function stepStudio(S, dt, t) { S.pool.opacity = 0.13 + 0.025 * Math.sin(t * 0.5); S.strip.opacity = 0.72 + 0.12 * Math.sin(t * 0.8); }
 // the table's surroundings are the scene the viewer chose (สนาม), whatever cloth lies on the table
 // ---------- ink outlines on a scene's props (see INK) ----------
@@ -1441,6 +1532,53 @@ export function matLines() {
 }
 // where a player's playmat lies on the mat canvas: [left, top, right, bottom] in canvas pixels
 const matRect = (near, X, Y) => (near ? [X(-PM.x), Y(MZ + PM.z0), X(PM.x), Y(MZ + MD / 2 - PM.z1)] : [X(-PM.x), Y(MZ - MD / 2 + PM.z1), X(PM.x), Y(MZ - PM.z0)]);
+// ---------- the mat as a cloth playmat ----------
+// a plain weave drawn once as a tiling normal map (no download), sampled many times across the mat by the mat's own shader; each half
+// shows it as strongly as its kind of mat would (cloth fully, cardboard less, a ruled page or night glass hardly), and cloth catches a
+// soft sheen at grazing angles. Below "high" the mat has no roughness map: the weave alone breaks up the light.
+const WEAVE_REP = 22; // tiles across the mat's width (8 threads each): a thread about 0.09 across, a few pixels on screen (finer shimmers into moiré)
+let weaveTex = null;
+function weaveTexture() {
+  if (weaveTex) return weaveTex; const N = 64, T = 8, c = document.createElement("canvas"); c.width = c.height = N; const g = c.getContext("2d"), im = g.createImageData(N, N), H = new Float32Array(N * N);
+  const rnd = lcg(4242);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const tx = Math.floor(x / T), ty = Math.floor(y / T), fx = ((x % T) + 0.5) / T, fy = ((y % T) + 0.5) / T, up = (tx + ty) % 2 === 0;
+    // a thread is round across its width and arches over the thread it crosses: warp up on one cell, weft up on the next
+    const warp = Math.sin(Math.PI * fx) * (up ? 0.75 + 0.25 * Math.sin(Math.PI * fy) : 0.38), weft = Math.sin(Math.PI * fy) * (up ? 0.38 : 0.75 + 0.25 * Math.sin(Math.PI * fx));
+    H[y * N + x] = Math.max(warp, weft) + (rnd() - 0.5) * 0.05; } // and a little fuzz of fibres
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const h = (i, j) => H[((j + N) % N) * N + ((i + N) % N)], dx = h(x + 1, y) - h(x - 1, y), dy = h(x, y + 1) - h(x, y - 1), k = 2.2;
+    let nx = -dx * k, ny = dy * k, nz = 1; const l = Math.hypot(nx, ny, nz); nx /= l; ny /= l; nz /= l; const o = (y * N + x) * 4;
+    im.data[o] = (nx * 0.5 + 0.5) * 255; im.data[o + 1] = (ny * 0.5 + 0.5) * 255; im.data[o + 2] = (nz * 0.5 + 0.5) * 255; im.data[o + 3] = 255; }
+  g.putImageData(im, 0, 0); weaveTex = new THREE.CanvasTexture(c); weaveTex.wrapS = weaveTex.wrapT = THREE.RepeatWrapping; weaveTex.anisotropy = 4; return weaveTex;
+}
+// how much weave each kind of mat shows: cloth (lacquer colours, sakura, a player's own picture) fully, a carbon weave a little less,
+// cardboard half, a ruled page or night glass hardly
+const weaveOf = (m) => (m.img || !m.kind || m.kind === "sakura" ? 1 : m.kind === "pro" ? 0.7 : m.kind === "sketch" ? (m.paper === "box" ? 0.5 : 0.15) : m.kind === "glass" ? 0.3 : 1);
+function clothMat(M, mt, Q) {
+  if (Q !== "low") { M.normalMap = weaveTexture(); M.normalScale = new THREE.Vector2(0.35, 0.35); } // (low quality: the stitched edge and the sheen only, no extra texture read over most of the screen)
+  M.userData.weave = { rep: { value: WEAVE_REP }, k: { value: new THREE.Vector3(...mt.weave) } };
+  M.onBeforeCompile = (sh) => {
+    sh.uniforms.weaveRep = M.userData.weave.rep; sh.uniforms.weaveK = M.userData.weave.k;
+    const maps = THREE.ShaderChunk.normal_fragment_maps.replace("texture2D( normalMap, vUv )", `texture2D( normalMap, vUv * vec2( weaveRep, weaveRep * ${(MD / MW).toFixed(4)} ) )`).replace("mapN.xy *= normalScale;", "mapN.xy *= normalScale * clothK;");
+    sh.fragmentShader = "uniform float weaveRep;\nuniform vec3 weaveK;\n" + sh.fragmentShader
+      .replace("#include <normal_fragment_maps>", "float clothK = vUv.y > weaveK.z ? weaveK.x : weaveK.y;\n" + maps)
+      // cloth's sheen: the fibres catch the light toward the edge of view (a soft rim, strongest on the far side of the table)
+      .replace("#include <tonemapping_fragment>", "\tgl_FragColor.rgb += vec3( 1.0, 0.95, 0.88 ) * 0.075 * clothK * pow( 1.0 - clamp( dot( normal, normalize( vViewPosition ) ), 0.0, 1.0 ), 3.0 );\n#include <tonemapping_fragment>");
+    // with the hall to reflect (high quality), only the gold leaf reflects it fully
+    if (M.userData.metal) sh.fragmentShader = sh.fragmentShader.replace("#include <lights_fragment_maps>", "#include <lights_fragment_maps>\n\tradiance *= mix(0.22, 1.0, metalnessFactor);");
+  };
+  M.customProgramCacheKey = () => "cloth" + (M.userData.metal ? 1 : 0); M.needsUpdate = true;
+}
+// the bound edge round the whole mat: a dark binding with a row of stitches (in each half's own thread colour), matt in the roughness map
+function binding(g, rq, FAR, NEAR, CW, CH, yMid, U) {
+  const b = U(0.13), sx = U(0.075);
+  for (const [m, y0, y1] of [[FAR, 0, yMid], [NEAR, yMid, CH]]) { if (m.kind === "sketch") continue;
+    const thread = m.kind === "glass" ? "rgba(150,205,255,.62)" : m.kind === "pro" ? "rgba(205,214,232,.55)" : m.kind === "sakura" ? "rgba(240,180,206,.55)" : "rgba(222,184,116,.58)";
+    for (const [c, band, st] of [[g, "rgba(10,9,13,.92)", thread], [rq, "#e6e6e6", null]]) { c.save(); c.beginPath(); c.rect(0, y0, CW, y1 - y0); c.clip();
+      c.lineWidth = b * 2; c.strokeStyle = band; c.strokeRect(0, 0, CW, CH);
+      if (st) { c.lineWidth = Math.max(1, U(0.01)); c.strokeStyle = "rgba(255,255,255,.08)"; c.strokeRect(b, b, CW - 2 * b, CH - 2 * b); // the binding's turned edge
+        c.setLineDash([U(0.07), U(0.042)]); c.lineCap = "round"; c.lineWidth = Math.max(1, U(0.017)); c.strokeStyle = st; c.strokeRect(sx, sx, CW - 2 * sx, CH - 2 * sx); c.setLineDash([]); }
+      c.restore(); } }
+}
 const roundRect = (c, x0, y0, x1, y1, r) => { c.beginPath(); c.moveTo(x0 + r, y0); c.arcTo(x1, y0, x1, y1, r); c.arcTo(x1, y1, x0, y1, r); c.arcTo(x0, y1, x0, y0, r); c.arcTo(x0, y0, x1, y0, r); c.closePath(); };
 // the playmat: a soft shadow on the lacquer round it, the picture covering it (cropped to fit, never stretched) under the
 // owner's veil, a dark bound edge with a row of stitches, and cloth's matt finish in the roughness map
@@ -1489,7 +1627,7 @@ function paintPaper(g, rq, m, near, CW, CH, yMid, U) {
 // ---------- geometric mats (กระจกดารา, กราไฟต์): clean lines in place of gold leaf ----------
 // A mat of this kind draws its own ground (paintGeo) and its line-work in its own ink, with a glow in its own colour; the
 // frames are chamfered (cut corners) with corner brackets, the knots are small diamonds — no Thai ornament on these.
-const GEO = { glass: 1, pro: 1 };
+const GEO = { glass: 1, pro: 1, dusk: 1 };
 function chamfer(c, x0, y0, x1, y1, k) { c.beginPath(); c.moveTo(x0 + k, y0); c.lineTo(x1 - k, y0); c.lineTo(x1, y0 + k); c.lineTo(x1, y1 - k); c.lineTo(x1 - k, y1); c.lineTo(x0 + k, y1); c.lineTo(x0, y1 - k); c.lineTo(x0, y0 + k); c.closePath(); }
 // a zone: a chamfered rule with a fainter one inside it, and (big zones) an L-bracket outside each corner, like a viewfinder's marks
 function geoFrame(c, x0, y0, x1, y1, st, w, d, plain) {
@@ -1544,6 +1682,12 @@ function paintGeo(g, q, m, near, CW, CH, yMid, U) {
     for (let k = 0; k < (W * H) / 1300; k++) { const x = r() * W, y = r() * H, a = 0.12 + r() * 0.55, big = r() < 0.06, s = big ? 1.5 : 0.5 + r() * 0.7; g.fillStyle = `rgba(222,238,255,${a})`; g.beginPath(); g.arc(x, y, s, 0, 7); g.fill();
       if (big) { q.fillStyle = `rgba(170,215,255,${a * 0.7})`; q.beginPath(); q.arc(x, y, s * 1.5, 0, 7); q.fill(); g.strokeStyle = `rgba(205,232,255,${a * 0.55})`; g.lineWidth = 1; g.beginPath(); g.moveTo(x - s * 4, y); g.lineTo(x + s * 4, y); g.moveTo(x, y - s * 4); g.lineTo(x, y + s * 4); g.stroke(); } }
     lightCircle(g, W / 2, U(2.35), U(2.2), "rgba(150,212,255,.2)"); lightCircle(q, W / 2, U(2.35), U(2.2), "rgba(80,160,255,.14)");
+  } else if (m.kind === "dusk") { // a dusk sky printed on the cloth, its horizon at the owner's edge: stars, a low sun, cloud banks lit from below, two ranges of peaks
+    const sky = g.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, "#1b1533"); sky.addColorStop(0.45, "#3b2550"); sky.addColorStop(0.78, "#7a3f5c"); sky.addColorStop(1, "#b5625a"); g.fillStyle = sky; g.fillRect(-2, -2, W + 4, H + 4);
+    for (let k = 0; k < (W * H) / 1600; k++) { const y = Math.pow(r(), 1.6) * H * 0.62, x = r() * W, a = (0.1 + r() * 0.5) * (1 - y / (H * 0.62)); g.fillStyle = `rgba(255,240,228,${a})`; g.beginPath(); g.arc(x, y, 0.5 + r() * 0.8, 0, 7); g.fill(); }
+    const sx = W * 0.74, sy = H * 0.9; for (const [c, rad, col] of [[g, 0.34, "rgba(255,170,110,.42)"], [g, 0.09, "rgba(255,226,180,.9)"], [q, 0.2, "rgba(255,160,100,.35)"]]) { const gg = c.createRadialGradient(sx, sy, 0, sx, sy, W * rad); gg.addColorStop(0, col); gg.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = gg; c.fillRect(0, 0, W, H); }
+    for (let k = 0; k < 9; k++) { const cx = r() * W, cy = H * (0.5 + r() * 0.32), rx = W * (0.12 + r() * 0.16), ry = H * (0.02 + r() * 0.035); g.save(); g.translate(cx, cy); g.scale(1, ry / rx); const gg = g.createRadialGradient(0, 0, 0, 0, 0, rx); gg.addColorStop(0, `rgba(255,${180 + Math.round(r() * 40)},${160 + Math.round(r() * 30)},.22)`); gg.addColorStop(1, "rgba(255,190,170,0)"); g.fillStyle = gg; g.fillRect(-rx, -rx, rx * 2, rx * 2); g.restore(); }
+    for (const [base, amp, col, seed] of [[0.86, 0.1, "rgba(62,34,72,.88)", 3], [0.95, 0.07, "rgba(34,20,46,.95)", 9]]) { const rr = lcg(seed * 131); g.fillStyle = col; g.beginPath(); g.moveTo(-2, H + 2); let y = H * base; for (let x = -2; x <= W + 8; x += W / 60) { y = Math.min(H * (base + amp * 0.3), Math.max(H * (base - amp), y + (rr() - 0.5) * H * amp * 0.55)); g.lineTo(x, y); } g.lineTo(W + 8, H + 2); g.closePath(); g.fill(); }
   } else { // graphite: a carbon weave (one small tile, repeated), a cool sheen across, and a slim bar of the owner's colour along their edge
     const s = Math.max(3, Math.round(U(0.075))), t = document.createElement("canvas"); t.width = t.height = s * 2; const tc = t.getContext("2d");
     for (const [i, j] of [[0, 0], [1, 1], [1, 0], [0, 1]]) { const across = (i + j) % 2 === 0, gg = tc.createLinearGradient(i * s, j * s, across ? i * s : i * s + s, across ? j * s + s : j * s); gg.addColorStop(0, "rgba(0,0,0,.16)"); gg.addColorStop(0.5, "rgba(255,255,255,.07)"); gg.addColorStop(1, "rgba(0,0,0,.16)"); tc.fillStyle = gg; tc.fillRect(i * s, j * s, s, s); }
@@ -1641,6 +1785,7 @@ function matTextures(small, mats = {}, Z = ZONES.wide) {
     for (let x = b0 + 0.4; x <= b1 - 0.25; x += 0.9) if (!gap || x < gap[0] - 0.15 || x > gap[1] + 1.4) orn(c, X(x), Y(MZ), U(0.14), ground); // (none under the "Land Magic" label)
     for (const x of [b0, b1]) orn(c, X(x), Y(MZ), U(0.3), ground);
   });
+  binding(g, rq, FAR, NEAR, CW, CH, yMid, U); // a bound edge with a row of stitches all round, as on a real playmat
   const under = NEAR.kind === "sketch" || FAR.kind === "sketch" ? mk() : null; if (under) under.getContext("2d").drawImage(base, 0, 0); // paper shows a second drawing of the lines, so they are redrawn from here
   draw();
   const repaint = () => { if (!R) return; if (under) g.drawImage(under, 0, 0); draw(); tb.needsUpdate = tg.needsUpdate = tr.needsUpdate = true; };
@@ -1648,7 +1793,7 @@ function matTextures(small, mats = {}, Z = ZONES.wide) {
   // the labels need the display font: redraw once it has loaded
   if (document.fonts && document.fonts.status !== "loaded") document.fonts.ready.then(repaint);
   if (document.fonts && (NEAR.kind === "sketch" || FAR.kind === "sketch") && !document.fonts.check('600 20px "Mali"', "นรกAa")) document.fonts.load('600 20px "Mali"', "นรกAa").then(repaint).catch(() => {});
-  return { base: tb, glow: tg, rough: tr, emis: tint ? 0xffffff : 0xe0982c };
+  return { base: tb, glow: tg, rough: tr, emis: tint ? 0xffffff : 0xe0982c, weave: [weaveOf(FAR), weaveOf(NEAR), 1 - yMid / CH] };
 }
 // dark teak planks: grain running along each plank, a seam between them, each plank a slightly different tone
 function woodTexture(small) {
@@ -1816,7 +1961,7 @@ const FOIL = { SR: 0.3, PR: 0.45, UR: 0.55, CBR: 0.6, SCR: 0.8, USEC: 1 };
 // the look of a player's things on the table (card back, summon circle): their mat's, when it is a geometric one; otherwise, for
 // the player at this screen, their page theme (ui-glass / ui-pro); otherwise null, and the Thai ones are used
 function lookOf(s, p) {
-  const m = s && s.P && matOf(s.P[p]); if (m && GEO[m.kind]) return m.kind;
+  const m = s && s.P && matOf(s.P[p]); if (m && GEO[m.kind]) return m.look || m.kind; // (a printed mat borrows a look: ฟ้าสนธยา the night-glass one)
   if (R && p === R.view) { const cl = document.documentElement.classList; if (cl.contains("ui-glass")) return "glass"; if (cl.contains("ui-pro")) return "pro"; }
   return null;
 }
@@ -2041,7 +2186,7 @@ function fitTall(camera, w, hh) {
 function swapMat() {
   if (!R || !R.matMat || !R.matKey) return; const mt = matTextures(...R.matKey, R.zones), M = R.matMat;
   for (const k of ["map", "emissiveMap", "roughnessMap"]) if (M[k] && M[k].dispose) M[k].dispose();
-  M.map = mt.base; M.emissiveMap = mt.glow; M.emissive.setHex(mt.emis); M.roughnessMap = R.Q === "high" ? mt.rough : null; if (!M.roughnessMap) mt.rough.dispose(); if (M.metalnessMap) M.metalnessMap = mt.glow; R.matGlow = mt.glow; M.needsUpdate = true;
+  M.map = mt.base; M.emissiveMap = mt.glow; M.emissive.setHex(mt.emis); M.roughnessMap = R.Q === "high" ? mt.rough : null; if (!M.roughnessMap) mt.rough.dispose(); if (M.metalnessMap) M.metalnessMap = mt.glow; R.matGlow = mt.glow; if (M.userData.weave) M.userData.weave.k.value.set(...mt.weave); M.needsUpdate = true;
 }
 // ---------- the side zones of a wide table ----------
 // LIFE lies sideways down its owner's left like a damage zone: face down until it is turned up, then its face shows (tap

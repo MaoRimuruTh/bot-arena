@@ -14,7 +14,7 @@ const doc = await io.read(IN);
 const tris = () => doc.getRoot().listMeshes().reduce((s, m) => s + m.listPrimitives().reduce((a, p) => a + (p.getIndices() ? p.getIndices().getCount() : p.getAttribute('POSITION').getCount()) / 3, 0), 0);
 const t0 = tris();
 await doc.transform(weld(), dedup());
-const want = +TRIS; if (t0 > want) await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio: want / t0, error: 0.002, lockBorder: false }));
+const want = +TRIS; if (t0 > want) await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio: want / t0, error: +(process.env.ERR || 0.002), lockBorder: false }));
 // textures: each by its slot, resized; jpeg keeps them small (the scans' maps are jpeg already)
 const sizeOf = (slot) => (/normal/i.test(slot) ? +TN : /occlusion|metallicRoughness/i.test(slot) ? +TA : +TD);
 for (const tex of doc.getRoot().listTextures()) {
