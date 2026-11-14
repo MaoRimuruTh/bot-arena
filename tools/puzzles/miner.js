@@ -21,7 +21,7 @@ function botWins(t, p) {
   return t.phase === "over" && t.winner === p;
 }
 export async function mine(games, seed0) {
-  const decks = allDecks().filter((d) => d.starter);
+  const decks = allDecks().filter((d) => d.starter && !/^ciel-/.test(d.id || ""));
   const found = []; let tried = 0, checked = 0;
   for (let g = 0; g < games; g++) {
     const seed = seed0 + g * 7919; const dA = decks[seed % decks.length], dB = decks[(seed >> 3) % decks.length];

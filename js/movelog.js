@@ -6,8 +6,8 @@
 // numbers are part of the state and start from the shared fair seed (commit-reveal).
 // An effect's result must be the one the rules engine gives for the choices made (picks are sent with the move); only
 // an effect the engine cannot read at all may carry a result worked out elsewhere (Ciel reading the card).
-import { E } from "./engine.js?v=20261115013301";
-import { resolveEffect } from "./effects.js?v=20261115013301";
+import { E } from "./engine.js?v=20261115014158";
+import { resolveEffect } from "./effects.js?v=20261115014158";
 
 export const MV_KEEP = 80; // moves kept in the game (the database rules hold the same number); a player who was away for more than this many moves starts checking again from where the game is
 const cp = (o) => JSON.parse(JSON.stringify(o));
