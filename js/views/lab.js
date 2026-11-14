@@ -1,11 +1,11 @@
-import { h, busy, lsGet, lsSet } from "../util.js?v=20261115014158";
-import { card, deckEntries, deckToList, validateDeck, TYPE_TH } from "../cards.js?v=20261115014158";
-import { E } from "../engine.js?v=20261115014158";
-import { H } from "../ai.js?v=20261115014158";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261115014158";
-import { allDecks } from "./decks.js?v=20261115014158";
-import { deckLocked } from "../achieve.js?v=20261115014158";
-import { openMatrix, openMull } from "../matchups.js?v=20261115014158";
+import { h, busy, lsGet, lsSet } from "../util.js?v=20261115015105";
+import { card, deckEntries, deckToList, validateDeck, TYPE_TH } from "../cards.js?v=20261115015105";
+import { E } from "../engine.js?v=20261115015105";
+import { H } from "../ai.js?v=20261115015105";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261115015105";
+import { allDecks } from "./decks.js?v=20261115015105";
+import { deckLocked } from "../achieve.js?v=20261115015105";
+import { openMatrix, openMull } from "../matchups.js?v=20261115015105";
 
 // exact hypergeometric: P(at least one of k copies within m cards from a deck of N)
 function atLeastOne(N, k, m) { if (k <= 0) return 0; if (m >= N) return 1; let p = 1; for (let i = 0; i < m; i++) p *= (N - k - i) / (N - i); return 1 - Math.max(0, p); }

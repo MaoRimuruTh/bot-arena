@@ -9,6 +9,9 @@ const { allDecks } = await import(new URL(`../../js/views/decks.js?v=${V}`, impo
 
 const { solveTurn, firstMoves } = await import(new URL(`../../js/puzzles.js?v=${V}`, import.meta.url).href);
 const clone = (s) => { const t = JSON.parse(JSON.stringify({ ...s, cards: null, log: [], ev: [] })); t.cards = s.cards; return t; };
+// solve the way the app opens a puzzle: the solver's seat is a player, not a bot (some options are players-only,
+// e.g. โอตะ "ลงจากการสวมใส่"), so the stored length is the one the app finds
+const asPlayer = (t, p) => { const u = clone(t); u.mode = "bot"; u.P[p].bot = false; u.P[1 - p].bot = true; return u; };
 // the bot's own play of this turn: does a plain greedy turn already win?
 function botWins(t, p) {
   for (let n = 0; n < 200 && t.phase !== "over" && t.active === p; n++) {
@@ -40,10 +43,10 @@ export async function mine(games, seed0) {
             tried++;
             const t = clone(s); t.P[1 - p].hand = []; t.log = [];
             let line = null, nodes = 0;
-            try { const r = solveTurn(t, p, 7, 20000); line = r.line; nodes = r.nodes; } catch (e) { line = null; nodes = -1; }
+            try { const r = solveTurn(asPlayer(t, p), p, 7, 20000); line = r.line; nodes = r.nodes; } catch (e) { line = null; nodes = -1; }
             checked++;
             if (line && line.length >= 2) {
-              const easy = botWins(clone(t), p), fm = firstMoves(t, p, 7, 20000);
+              const easy = botWins(clone(t), p), fm = firstMoves(asPlayer(t, p), p, 7, 20000);
               found.push({ seed, turn: s.turn, p, down, len: line.length, easy, good: fm.good, all: fm.all, nodes, decks: [s.P[0].deckName, s.P[1].deckName], line: line.map((x) => x.d), acts: line.map((x) => x.a), state: JSON.stringify({ ...t, cards: Object.fromEntries(Object.entries(t.cards).filter(([k]) => k.startsWith("tok:"))), log: [], ev: [] }) });
             }
           }
