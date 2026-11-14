@@ -1,11 +1,11 @@
-import { h, openSheet, fmtDate, busy } from "../util.js?v=20261115005244";
-import { Data, Me } from "../fb.js?v=20261115005244";
-import { Views, avatarEl } from "../ui.js?v=20261115005244";
-import { ladder, ladderNow, ladderFresh } from "../ladder.js?v=20261115005244";
-import { stars } from "../quests.js?v=20261115005244";
-import { weeklyStars } from "../weekly.js?v=20261115005244";
-import { hasReplay, openReplay, coachGame, shareReplay } from "./play.js?v=20261115005244";
-import { ACH, progress, rewardName } from "../achieve.js?v=20261115005244";
+import { h, openSheet, fmtDate, busy } from "../util.js?v=20261115012727";
+import { Data, Me } from "../fb.js?v=20261115012727";
+import { Views, avatarEl } from "../ui.js?v=20261115012727";
+import { ladder, ladderNow, ladderFresh } from "../ladder.js?v=20261115012727";
+import { stars } from "../quests.js?v=20261115012727";
+import { weeklyStars } from "../weekly.js?v=20261115012727";
+import { hasReplay, openReplay, coachGame, shareReplay } from "./play.js?v=20261115012727";
+import { ACH, progress, rewardName } from "../achieve.js?v=20261115012727";
 
 const MODE_TH = { bot: "บอท", friend: "เพื่อน", solo: "สองฝั่ง", goldfish: "ซ้อมมือเดียว" };
 const RULE_TH = { hand6: "มือเปิดอิ่ม", life4: "ศึกชีวิตสั้น", draw1: "สายน้ำไหลหลาก", cheap: "ตลาดนัดลดราคา" }; // weekly special rules (js/weekly.js)
@@ -36,7 +36,7 @@ Views.history = {
 };
 // win rates split the way the trackers of other games split them: going first or second, who the opponent was, and the
 // opponent decks met most (each row: games, win %), from the games kept in this history (practice against the dummy left out)
-const BRAIN_TH = { easy: "บอทมือใหม่", basic: "บอท", hard: "บอทมือโปร", ciel: "ชิเอล" };
+const BRAIN_TH = { easy: "บอทมือใหม่", basic: "บอท", hard: "บอทมือโปร", deep: "บอทโปร+", ciel: "ชิเอล" };
 function splitPanel(ms) {
   if (ms.length < 3) return null; const rate = (l) => `${l.length} เกม · ชนะ ${Math.round((l.filter((m) => m.result === "win").length / l.length) * 100)}%`;
   const group = (key) => { const by = {}; for (const m of ms) { const k = key(m); if (k) (by[k] = by[k] || []).push(m); } return Object.entries(by).sort((a, b) => b[1].length - a[1].length); };

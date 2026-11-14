@@ -1,8 +1,8 @@
 // Daily quests: three a day, the same three for everyone, picked by the date. Worked out from your match history and
 // the puzzles you have solved, so nothing extra is stored. Every quest done is a star; stars open things to wear,
 // like the achievements do (see achieve.js). Played for, never bought.
-import { Data } from "./fb.js?v=20261115005244";
-import { lsGet } from "./util.js?v=20261115005244";
+import { Data } from "./fb.js?v=20261115012727";
+import { lsGet } from "./util.js?v=20261115012727";
 
 const real = (m) => m.mode === "bot" || m.mode === "friend"; // practice against the dummy and two-sided games do not count
 const won = (m) => real(m) && m.result === "win";
@@ -15,7 +15,7 @@ export const QUESTS = [
   { id: "fast", t: "ชนะภายในเทิร์นที่ 12 ของเกม", n: 1, f: (ms) => ms.filter((m) => won(m) && m.turns <= 12).length },
   { id: "clean", t: "ชนะโดย LIFE ของเราถูกหงายไม่เกิน 2 ใบ", n: 1, f: (ms) => ms.filter((m) => won(m) && m.lifeLost != null && m.lifeLost <= 2).length },
   { id: "fish", t: "ซ้อมมือเดียวจนจบ 1 เกม", n: 1, f: (ms) => ms.filter((m) => m.mode === "goldfish").length },
-  { id: "strong", t: "ชนะบอทระดับปกติขึ้นไป", n: 1, f: (ms) => ms.filter((m) => won(m) && m.mode === "bot" && ["basic", "hard", "ciel"].includes(m.brain)).length },
+  { id: "strong", t: "ชนะบอทระดับปกติขึ้นไป", n: 1, f: (ms) => ms.filter((m) => won(m) && m.mode === "bot" && ["basic", "hard", "deep", "ciel"].includes(m.brain)).length },
   { id: "second", t: "ชนะเกมที่เราได้เล่นทีหลัง", n: 1, f: (ms) => ms.filter((m) => won(m) && m.first === false).length },
 ];
 export const dayOf = (t) => new Date(t).toLocaleDateString("sv"); // YYYY-MM-DD in the player's own time zone

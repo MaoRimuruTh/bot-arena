@@ -1,11 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261115005244";
-import { plain } from "./persona.js?v=20261115005244";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261115005244";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261115005244";
-import { modPowerFor } from "./auras.js?v=20261115005244";
-import { Data } from "./fb.js?v=20261115005244";
-import { lsGet, clone } from "./util.js?v=20261115005244";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261115012727";
+import { plain } from "./persona.js?v=20261115012727";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261115012727";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261115012727";
+import { modPowerFor } from "./auras.js?v=20261115012727";
+import { Data } from "./fb.js?v=20261115012727";
+import { lsGet, clone } from "./util.js?v=20261115012727";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -162,16 +162,40 @@ export const H = {
   // (for its own Main and Battle Phase: playing out its answers to attacks and React moments too made no difference in
   // 480 games, 51%, so those stay with the quick rules)
   mcPick(s, p, n = 2, wide = 10) {
+    const c = H.mcCands(s, p, wide); if (!c) return null; const { base, cand } = c;
+    if (cand.length < 2) return base || cand[0] || null;
+    let best = null;
+    for (const m of cand) {
+      let sum = 0, got = 0; for (let k = 0; k < n; k++) { const v = H.rollout(s, p, m.a, k); if (v != null) { sum += v; got++; } }
+      if (!got) continue; const avg = sum / got + (m === base ? 0.3 : 0); if (!best || avg > best.v) best = { v: avg, m };
+    }
+    return best ? best.m : base;
+  },
+  // the options mcPick plays out: its own first choice, the first others the rules allow, going to battle, ending the turn
+  mcCands(s, p, wide = 10) {
     const moves = legalMoves(s, p); if (!moves.length) return null;
     // its own first choice is the quick bot's without mcLite: with it this bot won 47.7% of 600 games, without it 49.7%
     const mc = H.X.mcLite; H.X.mcLite = 0; let base; try { base = H.pick(s, p); } finally { H.X.mcLite = mc; } const key = (a) => JSON.stringify(a), cand = [];
     const add = (m) => { if (m && !cand.some((c) => key(c.a) === key(m.a))) cand.push(m); };
     add(base); for (const m of moves) { if (cand.length >= wide) break; if (["summon", "cast", "build", "attack", "activate"].includes(m.a.type)) add(m); }
     add(moves.find((m) => m.a.type === "battle")); add(moves.find((m) => m.a.type === "end"));
+    return { base, cand };
+  },
+  // the โปร+ level (คิดลึก, opt-in): mcPick with its play-outs to the end of our next turn and our own side using the
+  // one-step lookahead in them (deep). Against the pro bot at one play-out each it won 51.3% of 4000 games (52.0, 50.6),
+  // at about three times the thinking. It gives the page a breath every `slice` ms of thinking (the board and the
+  // "thinking" line stay live) and starts no new play-out once `budget` ms of thinking or `wall` ms in all have gone by,
+  // its own first choice always played out first (on a slow phone it then plays much like the pro bot's first choice)
+  async mcPickAsync(s, p, n = 1, { deep = false, budget = 400, wall = 1500, slice = 40, wide = 10 } = {}) {
+    const c = H.mcCands(s, p, wide); if (!c) return null; const { base, cand } = c;
     if (cand.length < 2) return base || cand[0] || null;
-    let best = null;
+    const w0 = performance.now(); let used = 0, since = slice + 1, best = null;
     for (const m of cand) {
-      let sum = 0, got = 0; for (let k = 0; k < n; k++) { const v = H.rollout(s, p, m.a, k); if (v != null) { sum += v; got++; } }
+      if (best && (used > budget || performance.now() - w0 > wall)) break;
+      let sum = 0, got = 0;
+      for (let k = 0; k < n; k++) { if (since > slice) { await new Promise((r) => setTimeout(r, 0)); since = 0; }
+        const t = performance.now(); H._deep = deep ? 1 : 0; let v = null; try { v = H.rollout(s, p, m.a, k); } finally { H._deep = 0; } const dt = performance.now() - t; used += dt; since += dt;
+        if (v != null) { sum += v; got++; } }
       if (!got) continue; const avg = sum / got + (m === base ? 0.3 : 0); if (!best || avg > best.v) best = { v: avg, m };
     }
     return best ? best.m : base;
@@ -181,18 +205,19 @@ export const H = {
   rollout(s, p, a, k) {
     let t; try { t = clone({ ...s, cards: null, log: [], ev: [] }); } catch { return null; } t.cards = s.cards; t.seed = (t.seed + 7919 * (k + 1)) | 0;
     const O = t.P[1 - p], pool = E.shuffle(t, [...O.hand, ...O.deck]); O.hand = pool.slice(0, O.hand.length); O.deck = pool.slice(O.hand.length); E.shuffle(t, t.P[p].deck);
-    const T = t.turn, look = H.look; H.look = 0;
+    const T = t.turn, look = H.look, mcl = H.X.mcLite, deep = !!H._deep; H.look = 0; if (deep) H.X.mcLite = 0;
     try {
       E.apply(t, a, p);
-      for (let i = 0; i < 400 && t.phase !== "over" && !(t.turn > T && t.active === p && t.phase === "main"); i++) { // to our next Main Phase
+      for (let i = 0; i < 400 && t.phase !== "over" && !(deep ? t.turn > T + 2 : t.turn > T && t.active === p && t.phase === "main"); i++) { // to our next Main Phase
         if (t.rw) { const q = 1 - t.rw.by; E.apply(t, H.react(t, q) || { type: "pass" }, q); continue; }
         if (t.trig.length) { const tr = t.trig[0]; E.apply(t, H.trig(t, tr), tr.seat); continue; }
         const q = t.pend ? 1 - t.pend.by : t.active;
         if (t.phase === "end" && t.need) { E.apply(t, { type: "discard", iids: H.discard(t, q) }, q); continue; }
+        if (deep) H.look = q === p ? 1 : 0; // โปร+: to the end of our next turn, our own side with the one-step lookahead
         const m = H.pick(t, q); try { E.apply(t, m ? m.a : t.pend ? { type: "respond" } : { type: "end" }, q); } catch { E.apply(t, { type: "end" }, q); }
       }
       return H.evalBoard(t, p);
-    } catch { return null; } finally { H.look = look; }
+    } catch { return null; } finally { H.look = look; H.X.mcLite = mcl; }
   },
   // what a card in hand is worth when it is paid away as GEM: its script's word (keepV) when it has one
   keep(s, p, x) { const sk = x && scriptOf(s, x); if (sk && sk.keepV) { const v = sk.keepV(E, s, x, p); if (v != null) return v; } return H.value(s, x); },

@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261115005244";
-import { fxText, kwGloss } from "../fxtext.js?v=20261115005244";
-import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261115005244";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261115005244";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261115005244";
-import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261115005244";
-import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor, myWinFx } from "../achieve.js?v=20261115005244";
-import { themeCounts, officialStarters } from "../boxdecks.js?v=20261115005244";
-import { ladder, ladderReset } from "../ladder.js?v=20261115005244";
-import { notify } from "../notify.js?v=20261115005244";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261115005244";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261115005244";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261115005244";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261115005244";
-import { Music, MUSIC_STYLES } from "../music.js?v=20261115005244";
-import { Sfx } from "../sfx.js?v=20261115005244";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar, shareReplayDoc, loadSharedReplay } from "../fb.js?v=20261115005244";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261115005244";
-import { readAura, traits } from "../auras.js?v=20261115005244";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261115005244";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261115012727";
+import { fxText, kwGloss } from "../fxtext.js?v=20261115012727";
+import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261115012727";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261115012727";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261115012727";
+import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261115012727";
+import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor, myWinFx } from "../achieve.js?v=20261115012727";
+import { themeCounts, officialStarters } from "../boxdecks.js?v=20261115012727";
+import { ladder, ladderReset } from "../ladder.js?v=20261115012727";
+import { notify } from "../notify.js?v=20261115012727";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261115012727";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261115012727";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261115012727";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261115012727";
+import { Music, MUSIC_STYLES } from "../music.js?v=20261115012727";
+import { Sfx } from "../sfx.js?v=20261115012727";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar, shareReplayDoc, loadSharedReplay } from "../fb.js?v=20261115012727";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261115012727";
+import { readAura, traits } from "../auras.js?v=20261115012727";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261115012727";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -26,13 +26,13 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(s.id ? [`รีเพลย์ในเครื่องนี้: ${s.id}-${V}`] : []), "บันทึก 40 บรรทัดล่าสุด:\n" + s.log.slice(-40).map((l) => "· " + l.m).join("\n"), // so a report can be traced back to its game
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261115005244";
-import { customMat, customSleeve, customFig, customStand, setOnReady, onVault } from "../vault.js?v=20261115005244";
-import { openGlossSheet } from "../glossary.js?v=20261115005244";
-import { weekRule, weeklyPanel, weeklyWinNote, isoWeek, ruleChip, hudLine, eventPicker, eventOpt, seriesNext, seriesChip, seriesText, seriesAfter, seriesWinner } from "../weekly.js?v=20261115005244";
-import { openCoach } from "../coach.js?v=20261115005244";
-import { mullHint } from "../matchups.js?v=20261115005244";
-import { openSandbox, openFishRuns } from "../sandbox.js?v=20261115005244";
+import { allDecks, deckById } from "./decks.js?v=20261115012727";
+import { customMat, customSleeve, customFig, customStand, setOnReady, onVault } from "../vault.js?v=20261115012727";
+import { openGlossSheet } from "../glossary.js?v=20261115012727";
+import { weekRule, weeklyPanel, weeklyWinNote, isoWeek, ruleChip, hudLine, eventPicker, eventOpt, seriesNext, seriesChip, seriesText, seriesAfter, seriesWinner } from "../weekly.js?v=20261115012727";
+import { openCoach } from "../coach.js?v=20261115012727";
+import { mullHint } from "../matchups.js?v=20261115012727";
+import { openSandbox, openFishRuns } from "../sandbox.js?v=20261115012727";
 // the players' own mat picture, card sleeve and figure (vault.js): the table asks for them, and redraws when one loads or changes
 Arena.setCustom({ mat: customMat, sleeve: customSleeve, fig: customFig, stand: customStand, skins: (s) => setGameSkins(s && s.P, Me.uid) }); setOnReady((o) => Arena.customReady(o)); onVault(() => Arena.refreshCustom());
 { let sig = ""; Data.listeners.add(() => { const sh = Data.meta && Data.meta.show, now = sh ? Object.entries(sh).map(([k, x]) => k + ":" + (x && x.v) + ":" + (x && x.finish)).join() : ""; if (now !== sig) { sig = now; Arena.refreshCustom(); } }); }
@@ -86,7 +86,7 @@ Views.play = {
       const body = h("div", { class: "stack" }); let go = null;
       if (Setup.mode === "bot") {
         body.append(h("div", { class: "stack", style: "gap:4px" }, h("span", { class: "small muted" }, "เด็คของบอท"), deckShelf(decks, "opp", draw, true)),
-          h("div", { class: "row" }, h("span", { class: "small muted" }, "สมองบอท"), h("div", { class: "seg", role: "group", "aria-label": "สมองบอท" }, [["easy", "ง่าย"], ["basic", "ปกติ"], ["hard", "เก่ง"], ["ciel", "ชิเอล"]].map(([k, t]) => h("button", { "aria-pressed": Setup.brain === k ? "true" : "false", onclick: () => { Setup.brain = k; save(); draw(); } }, t)))),
+          h("div", { class: "row" }, h("span", { class: "small muted" }, "สมองบอท"), h("div", { class: "seg", role: "group", "aria-label": "สมองบอท" }, [["easy", "ง่าย"], ["basic", "ปกติ"], ["hard", "เก่ง"], ["deep", "โปร+"], ["ciel", "ชิเอล"]].map(([k, t]) => h("button", { "aria-pressed": Setup.brain === k ? "true" : "false", onclick: () => { Setup.brain = k; save(); draw(); } }, t)))),
           h("div", { class: "tiny muted" }, Setup.brain === "ciel" ? (Ciel.on() ? "ชิเอลคิดทุกจังหวะและอ่านเอฟเฟกต์การ์ดให้ (ใช้ API key ของคุณ)" : "ยังไม่ได้ใส่ API key จะใช้บอทระดับปกติแทน") : BOT_LEVEL[Setup.brain] ? BOT_LEVEL[Setup.brain].about : BOT_LEVEL.basic.about),
         );
         { const o = Setup.opp !== "random" && deckById(Setup.opp); go = { t: "เริ่มดวล", fn: () => startLocal("bot"), need: true, vs: (o && !deckLocked(o) ? o.name : "Starter Deck แบบสุ่ม") + " · " + (Setup.brain === "ciel" && Ciel.on() ? "ชิเอล" : (BOT_LEVEL[Setup.brain] || BOT_LEVEL.basic).name) }; }
@@ -552,7 +552,10 @@ function autoRespond(s, p) {
 // H.mcPick). In 300 games with the same decks the pro bot beat the normal one 65%; normal beat easy 19-5 in 24.
 const BOT_LEVEL = { easy: { name: "บอทมือใหม่", look: 0, rnd: 0.35, about: "บอทมือใหม่ เล่นถูกกติกาแต่ตัดสินใจไม่ค่อยดี บางทีก็มั่ว และไม่ใช้ React" },
   basic: { name: "บอท", look: 4, rnd: 0, about: "บอทระดับปกติ คิดล่วงหน้าหนึ่งจังหวะ ข้ามเอฟเฟกต์ข้อความของตัวเอง" },
-  hard: { name: "บอทมือโปร", look: 4, rnd: 0, mc: 2, about: "บอทมือโปร ลองเล่นแต่ละทางเลือกล่วงหน้าจนถึงตาถัดไปของมัน (เดามือเราจากการ์ดที่ยังไม่เห็น ไม่แอบดู) แล้วเลือกทางที่ดีที่สุด และหาทางปิดเกมเมื่อเรา LIFE เหลือน้อย" } };
+  hard: { name: "บอทมือโปร", look: 4, rnd: 0, mc: 2, about: "บอทมือโปร ลองเล่นแต่ละทางเลือกล่วงหน้าจนถึงตาถัดไปของมัน (เดามือเราจากการ์ดที่ยังไม่เห็น ไม่แอบดู) แล้วเลือกทางที่ดีที่สุด และหาทางปิดเกมเมื่อเรา LIFE เหลือน้อย" },
+  // opt-in top level: the pro bot thinking deeper (H.mcPickAsync deep, one play-out per option); 51.3% of 4000 games
+  // against the pro bot, about three times the thinking per move, so it is a choice and not the default
+  deep: { name: "บอทโปร+ (คิดลึก)", look: 4, rnd: 0, mc: 1, deep: true, about: "บอทโปร+ (คิดลึก) เล่นแต่ละทางเลือกล่วงหน้าไปจนจบตาถัดไปของมัน เก่งกว่าบอทมือโปร · บอทจะคิดนานขึ้นทุกตา" } };
 // bot / auto driver
 async function drive() {
   if (!G || G.driving || !G.s || G.replay) return; const s = G.s;
@@ -589,7 +592,9 @@ async function drive() {
       if (rx) m = { a: rx, say: "ใช้ React ตอบโต้!" };
       else if (lv && lv.rnd && !s.pend && Math.random() < lv.rnd) { const ms = legalMoves(s, p).filter((x) => x.a.type !== "concede"); if (ms.length) m = ms[Math.floor(Math.random() * ms.length)]; }
       else if (G.brain === "ciel") { G.thinking = "ชิเอลกำลังคิด…"; draw(); m = lethalMove(s, p) || (await cielPick(s, p)); }
-      else m = (G.brain === "hard" && lethalMove(s, p)) || (lv && lv.mc && !s.pend && s.active === p && ["main", "battle"].includes(s.phase) ? H.mcPick(s, p, lv.mc) : H.pick(s, p));
+      else if (lv && lv.deep && !s.pend && s.active === p && ["main", "battle"].includes(s.phase)) { m = lethalMove(s, p);
+        if (!m) { G.thinking = "บอทโปร+ กำลังคิด…"; draw(); m = await H.mcPickAsync(s, p, lv.mc, { deep: true, budget: 400 }); } }
+      else m = ((G.brain === "hard" || G.brain === "deep") && lethalMove(s, p)) || (lv && lv.mc && !s.pend && s.active === p && ["main", "battle"].includes(s.phase) ? H.mcPick(s, p, lv.mc) : H.pick(s, p));
       if (m && m.say) G.say = m.say;
       a = m ? m.a : s.pend ? { type: "respond" } : { type: "end" };
     }
@@ -673,7 +678,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261115005244").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261115012727").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", mat: botMat(), bot: true });
