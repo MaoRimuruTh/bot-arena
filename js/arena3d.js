@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261115015105";
-import { E } from "./engine.js?v=20261115015105";
-import { h } from "./util.js?v=20261115015105";
-import { Sfx } from "./sfx.js?v=20261115015105";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261115021802";
+import { E } from "./engine.js?v=20261115021802";
+import { h } from "./util.js?v=20261115021802";
+import { Sfx } from "./sfx.js?v=20261115021802";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -226,7 +226,7 @@ function unmount() {
 // ---------- 3D avatars: a small figure for each player who has chosen one, at the left end of the centre band ----------
 // Every figure is a scanned sculpture (CC0, see assets/models/LICENSE.md). A model with idle / hit / win / lose clips plays them; one without gets the same moves from code.
 // statue: a scanned sculpture (CC0, Poly Haven; see assets/models/LICENSE.md) in assets/models, with a lighter "lo" file for phones and low quality
-export const AVATARS = { chang: { name: "ช้างไม้แกะ", file: "chang.glb", lo: "chang_lo.glb", statue: true, h: 1.05 }, naga: { name: "วาฬสำริด", file: "naga.glb", lo: "naga_lo.glb", statue: true, h: 1.15 }, maew: { name: "แมวศิลา", file: "maew.glb", lo: "maew_lo.glb", statue: true, h: 1.2 }, suea: { name: "ม้าศึกพอร์ซเลน", file: "suea.glb", lo: "suea_lo.glb", statue: true, h: 1.25 }, kai: { name: "กระทิงสำริด", file: "kai.glb", lo: "kai_lo.glb", statue: true, h: 1.15 },
+export const AVATARS = { chang: { name: "ช้างไม้แกะ", file: "chang.glb", lo: "chang_lo.glb", statue: true, h: 1.05 }, naga: { name: "วาฬสำริด", file: "naga.glb", lo: "naga_lo.glb", statue: true, h: 1.15 }, maew: { name: "แมวศิลา", file: "maew.glb", lo: "maew_lo.glb", statue: true, h: 1.2 }, suea: { name: "ม้าศึกพอร์ซเลน", file: "suea.glb", lo: "suea_lo.glb", statue: true, h: 1.25 }, kai: { name: "กระทิงสำริด", file: "kai.glb", lo: "kai_lo.glb", statue: true, lift: 1.75, rim: 0.3, h: 1.15 },
   singha: { name: "สิงห์สำริด", file: "singha.glb", lo: "singha_lo.glb", statue: true, sway: true, h: 1.3 } };
 // lacquer colours for the mat (the gold line-work stays); the edge colour washes in on the opponent's side
 export const MATS = { black: { name: "รักดำ", lac: "#120b09", edge: "rgba(150,34,24," }, red: { name: "รักแดง", lac: "#3a0d09", edge: "rgba(190,60,30," },
@@ -281,13 +281,16 @@ const loadAvatar = (key, f) => {
 };
 // mine stands between the centre band and my Avatar Zone, the opponent's between the band and theirs; both turn a little toward the board
 // (a phone shows less of the mat's sides, so there they stand further in and a little smaller)
-const avSpot = (mine) => { const x = R.small ? -3.55 : -4.75; return mine ? { x, z: 0.6, ry: 0.5 } : { x, z: -1.0, ry: 0.3 }; };
+// (an upright phone has its Land Magic Zone at the left end of the band, so there the figures stand in the free middle of the band instead,
+// one at each end, each nearer its owner; nothing is played on the band itself)
+const avSpot = (mine) => { if (R.zones === ZONES.tall) return mine ? { x: -1.4, z: MZ + 0.5, ry: 0.5 } : { x: 1.2, z: MZ - 0.55, ry: 0.3 };
+  const x = R.small ? -3.55 : -4.75; return mine ? { x, z: 0.6, ry: 0.5 } : { x, z: -1.0, ry: 0.3 }; };
 function syncAvatars(s, V) {
   R.avatars = R.avatars || [null, null];
   for (const p of [0, 1]) {
     const f = s.P[p] && s.P[p].av3 === "own" && custom.fig ? custom.fig(s.P[p]) : s.P[p] && s.P[p].av3 === "stand" && custom.stand ? custom.stand(s.P[p]) : null; // the owner's own figure or picture standee
     const key = f ? f.key + ":" + f.finish : (s.P[p] && AVATARS[s.P[p].av3]) ? s.P[p].av3 : ""; const cur = R.avatars[p];
-    if (cur && cur.key === key) { if (cur.grp && cur.mine !== (p === V)) placeAvatar(cur, p === V); continue; }
+    if (cur && cur.key === key) { if (cur.grp) placeAvatar(cur, p === V); continue; } // placed again each time: a turned phone moves the figures with its table
     if (cur && cur.grp) R.scene.remove(cur.grp);
     R.avatars[p] = null; if (!key) continue;
     const slot = { key, loading: true, own: f }; R.avatars[p] = slot;
@@ -300,9 +303,9 @@ function buildAvatar(slot, g, mine) {
   model.traverse((o) => { if (!o.isMesh) return; o.material = o.material.clone(); o.castShadow = true; if (o.isSkinnedMesh) o.frustumCulled = false; }); // a raised arm can reach past the bounds of the pose it was made in
   if (slot.own) dressFigure(model, slot.own.finish);
   const av = slot.own ? null : AVATARS[slot.key]; if (av && av.sway && R.Q !== "low" && !reduce) maneSway(model); // the lion's carved mane stirs in the wind
-  if (av && av.statue) model.traverse((o) => { if (o.isMesh) { o.material.metalness = Math.min(o.material.metalness, 0.45); o.material.envMapIntensity = 1.4; } }); // a scanned bronze is all metal: in a dim hall it would read black, so it keeps some of its own colour
+  if (av && av.statue) { model.traverse((o) => { if (o.isMesh) { o.material.metalness = Math.min(o.material.metalness, 0.45); o.material.envMapIntensity = 1.4; } }); statueRim(model, av.lift || 1, av.rim || 0.15); } // a scanned bronze is all metal: in a dim hall it would read black, so it keeps some of its own colour
   model.traverse((o) => { if (o.isMesh && R.env && R.Q !== "high" && o.material.metalness > 0.5) o.material.envMap = R.env; });
-  const box = new THREE.Box3().setFromObject(model), size = box.getSize(new THREE.Vector3()), k = (((slot.own ? slot.own.h : (AVATARS[slot.key] || {}).h) || 1.25) * (R.small ? 0.82 : 1)) / Math.max(0.01, size.y);
+  const box = new THREE.Box3().setFromObject(model), size = box.getSize(new THREE.Vector3()), k = (((slot.own ? slot.own.h : (AVATARS[slot.key] || {}).h) || 1.25) * (R.zones === ZONES.tall ? 0.74 : R.small ? 0.82 : 1)) / Math.max(0.01, size.y);
   model.scale.setScalar(k); model.position.set((-(box.min.x + box.max.x) / 2) * k, -box.min.y * k, (-(box.min.z + box.max.z) / 2) * k);
   // layers: grp places it, bob breathes for a model without an idle clip, spin takes the moves made in code, the model plays its own clips
   const spin = new THREE.Group(), bob = new THREE.Group(), grp = new THREE.Group(); spin.add(model); bob.add(spin); grp.add(bob);
@@ -402,6 +405,14 @@ function drawBubble(k) {
 // the owner's own figure (a print model has no colours of its own): a finish for the whole figure, and a round lacquer
 // base with a gold rim for it to stand on
 // the lion's mane: vertices out at the rim of the bust (away from the face and above the plinth) ripple a little, more at the tips
+// a statue on a dark table: a soft rim of warm light round its edges, the way a museum spot picks out a bronze, so its outline reads on any
+// mat; lift brightens a dark finish (the bull). It wraps whatever the material already does (the lion's mane sway).
+function statueRim(model, lift, rim) {
+  model.traverse((o) => { if (!o.isMesh) return; const m = o.material, prev = m.onBeforeCompile; if (lift !== 1) m.color.multiplyScalar(lift);
+    m.onBeforeCompile = (sh, r) => { if (prev) prev.call(m, sh, r); sh.fragmentShader = sh.fragmentShader.replace("#include <tonemapping_fragment>",
+      `float rimF = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 3.0); gl_FragColor.rgb += vec3(1.0, 0.9, 0.76) * rimF * ${rim.toFixed(3)};\n#include <tonemapping_fragment>`); };
+    m.customProgramCacheKey = () => "rim" + m.uuid; });
+}
 function maneSway(model) {
   model.traverse((o) => { if (!o.isMesh) return; const g = o.geometry; g.computeBoundingBox(); const b = g.boundingBox, c = b.getCenter(new THREE.Vector3()), z = b.getSize(new THREE.Vector3());
     const m = (o.material = o.material.clone()), uC = { value: c }, uZ = { value: z }; m.onBeforeCompile = (sh) => { sh.uniforms.uT = R.uT; sh.uniforms.uC = uC; sh.uniforms.uZ = uZ;
