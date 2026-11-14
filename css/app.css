@@ -1137,3 +1137,29 @@ kbd{font:600 .8rem/1.6 var(--f-mono,ui-monospace,monospace);padding:2px 8px;bord
 .clockpick label{flex-wrap:wrap;gap:8px}
 .rpbar .rpturn{max-width:8em;min-height:32px}
 @media (max-width:760px){body.arena-on .rpbar{flex-wrap:wrap;justify-content:center;max-width:calc(100vw - 24px)}.faqhit{grid-template-columns:56px minmax(0,1fr)}.faqhit-img{width:56px}}
+
+/* สนามซ้อม (js/sandbox.js): the set-up sheet and the training-dummy runs */
+.sbbox{border:1px solid var(--line-2);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.sbseg{flex-wrap:wrap;max-width:100%}
+.sbseg button{padding:7px 10px;font-size:.84rem}
+.sbsel{background:var(--panel-solid);color:var(--fg);border:1px solid var(--line-2);border-radius:9px;padding:6px 8px;min-height:38px;max-width:100%}
+.sblist{display:flex;flex-direction:column;gap:6px;max-height:42vh;overflow:auto}
+.sbrow{display:flex;align-items:center;gap:8px;min-width:0;border:1px solid var(--line-2);border-radius:10px;padding:4px 6px}
+.sbrow .sbsel{flex:none;width:118px}
+.sbname{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sbimg{width:38px;height:53px;object-fit:cover;border-radius:4px;flex:none;background:rgba(255,255,255,.05)}
+.sbgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
+.sbpick{display:flex;flex-direction:column;align-items:center;gap:4px;border:1px solid var(--line-2);border-radius:10px;background:rgba(255,255,255,.03);padding:6px 4px;cursor:pointer;color:var(--fg);min-width:0}
+.sbpick .sbimg{width:62px;height:86px}
+.sbpick span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sbprog{height:6px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden}
+.sbprog i{display:block;height:100%;background:var(--gold)}
+.sbbars{display:flex;flex-direction:column;gap:4px}
+.sbbar{display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:8px}
+.sbbar i{display:block;height:10px;border-radius:3px;background:var(--gold)}
+.undotag{color:var(--muted);font-size:.78rem}
+@media (max-width:640px){.sbrow .sbsel{width:104px}.sblist{max-height:36vh}}
+
+/* ev_: weekly special rules panel */
+.weekly .wk-name{font-size:1.05rem}
+.mturn .mrule{display:block;max-width:132px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.68rem;color:var(--gold)}

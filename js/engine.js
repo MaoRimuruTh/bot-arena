@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261114205606";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261114205606";
-import { SCRIPTS } from "./scripts.js?v=20261114205606";
-import { newId, clone } from "./util.js?v=20261114205606";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261114214910";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261114214910";
+import { SCRIPTS } from "./scripts.js?v=20261114214910";
+import { newId, clone } from "./util.js?v=20261114214910";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -124,6 +124,7 @@ export const E = {
     if (x.hcm && x.hcm.t === s.turn) c += x.hcm.n; // "Cost -1 ในเทิร์นนี้" on a card in the hand (พี่เจมส์)
     if (s.grule && s.grule[p] && s.grule[p].cd) { const nn = (t) => normName(String(t || "")).replace(/ซัก/g, "สัก"); for (const r of s.grule[p].cd) if (nn(E.def(s, x).n).includes(nn(r.name))) c = Math.max(c - r.n, Math.min(c, r.min)); } // for the rest of the game (ตัวอะไรสักอย่างฯ)
     if (!noHell) c -= E.hellGem(s, p, x).n;
+    if (s.rule === "cheap" && E.def(s, x).t === "A" && c > 1) c -= 1; // ตลาดนัดลดราคา (weekly rule)
     return Math.max(0, c);
   },
   untargetable(s, x) { const L = E.locate(s, x.i); const sc = scriptOf(s, x); return !!(L && sc && sc.untargetable && sc.untargetable(E, s, x, L)); },
@@ -331,17 +332,21 @@ export const E = {
   // a "โดนใจ" (collaboration) card: the mark printed on the card, not a word in its text (older saved games: looked up again)
   collab(s, x) { const d = E.def(s, x); if (!d) return false; if (d.fl) return d.fl === "dj"; const c = d.im != null ? card(d.im) : null; return !!(c && c.fl === "dj"); },
   // toss: true starts with the players settling who chooses to go first (a die each, or a coin): phase "toss", then "mull"
-  newGame({ players, decks, seed, first, mode, id, toss }) {
+  // rule: a weekly special rule (js/weekly.js) for both players: "hand6" opening hand 6, "life4" four LIFE, "draw1" one more
+  // card each Draw Phase, "cheap" every Avatar Cost −1 (not below 1 unless it was 0)
+  newGame({ players, decks, seed, first, mode, id, toss, rule }) {
     first = first === 1 ? 1 : 0;
     const s = { v: 1, id: id || newId(), mode, seed: seed | 0, turn: 0, active: first, first, phase: toss ? "toss" : "mull", land: null, cards: {}, nextI: 1, log: [], trig: [], pend: null, need: 0,
       winner: null, reason: "", mull: [false, false], mu: [{}, {}], played: [{}, {}], startedAt: Date.now(), P: [] };
+    if (rule) s.rule = String(rule);
     for (let p = 0; p < 2; p++) {
       const pl = players[p];
       const P = { uid: pl.uid || null, name: pl.name, ava: pl.ava || "", av3: pl.av3 || "", sig: pl.sig || "", mat: pl.mat || "", sleeve: pl.sleeve || "", skins: pl.skins || null, bot: !!pl.bot, deckName: decks[p].name || "", deckId: decks[p].id || null, deck: [], hand: [], av: [], mg: [], cs: [], hell: [], dark: [], life: [] };
       const mk = (id) => { s.cards[id] = s.cards[id] || E.cardDef(id); return { i: s.nextI++, c: String(id), o: p, a: true }; };
       P.deck = E.shuffle(s, decks[p].main.map(mk));
       P.life = E.shuffle(s, decks[p].life.map(mk)).map((x) => ({ ...x, up: false }));
-      for (let k = 0; k < 5 && P.deck.length; k++) P.hand.push(P.deck.shift());
+      if (s.rule === "life4") P.life = P.life.slice(0, 4); // the fifth (after the shuffle) sits this game out
+      for (let k = 0; k < (s.rule === "hand6" ? 6 : 5) && P.deck.length; k++) P.hand.push(P.deck.shift());
       s.P.push(P);
     }
     if (toss) { s.toss = { vote: [null, null], m: null, roll: [null, null], n: 0, win: null }; E.log(s, null, "ก่อนเริ่มเกม: เลือกทอยเต๋าหรือโยนเหรียญ ผู้ชนะได้เลือกว่าจะเริ่มก่อนหรือทีหลัง"); }
@@ -368,7 +373,7 @@ export const E = {
     for (const x of s.P[p].mg) if (x.on == null && x.a === false) x.a = true; // an Avatar on the Magic Zone that lent its POWER (สามัคคี from there) wakes with the rest
     for (const q of [0, 1]) for (const x of s.P[q].av) if (x.tn) { delete x.tn[p]; if (!Object.keys(x.tn).length) delete x.tn; } // "until our next Draw Phase" bonuses end
     // Rule Book (Draw Phase): up to 3 cards in hand, else 1; the very first turn of the player who starts draws 2
-    const P = s.P[p]; const n = s.turn === 1 ? 2 : P.hand.length < 3 ? 3 - P.hand.length : 1;
+    const P = s.P[p]; const n = (s.turn === 1 ? 2 : P.hand.length < 3 ? 3 - P.hand.length : 1) + (s.rule === "draw1" ? 1 : 0);
     E.log(s, p, `เทิร์น ${s.turn} · ${P.name} จั่ว ${n} ใบ`);
     if (s.love && s.love.length) for (const lv of [...s.love]) { if (lv.seat !== p || --lv.n > 0) continue; s.love.splice(s.love.indexOf(lv), 1); const L = E.locate(s, lv.i); if (L && L.z === "hell") { delete L.x.hlock; E.moveTo(s, lv.i, "hand"); E.log(s, p, `${E.name(s, L.x)} กลับขึ้นมือ (หมอเลิฟ)`); } }
     const swap = fieldCards(s).find(({ x, L }) => L.p === p && !x.mute && (scriptOf(s, x) || {}).replacesDraw && (L.z !== "mg" || x.on != null));

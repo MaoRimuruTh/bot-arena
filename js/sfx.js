@@ -1,7 +1,7 @@
 // Sound effects synthesized with Web Audio — no audio files to download or license.
 // Everything goes through one chain: effects bus (with a glue compressor and a small room) and the
 // music bus (which dips under big hits) meet in a limiter, so stacked sounds never clip.
-import { lsGet, lsSet } from "./util.js?v=20261114205606";
+import { lsGet, lsSet } from "./util.js?v=20261114214910";
 
 let ctx = null, master = null, out = null, duckG = null, noiseBuf = null, room = null; // master is the effects bus
 let pv = 1, gk = 1; // this sound's small random pitch (so repeats don't sound like a machine) and its level trim

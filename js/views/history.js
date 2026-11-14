@@ -1,12 +1,14 @@
-import { h, openSheet, fmtDate, busy } from "../util.js?v=20261114205606";
-import { Data, Me } from "../fb.js?v=20261114205606";
-import { Views, avatarEl } from "../ui.js?v=20261114205606";
-import { ladder, ladderNow, ladderFresh } from "../ladder.js?v=20261114205606";
-import { stars } from "../quests.js?v=20261114205606";
-import { hasReplay, openReplay, coachGame } from "./play.js?v=20261114205606";
-import { ACH, progress, rewardName } from "../achieve.js?v=20261114205606";
+import { h, openSheet, fmtDate, busy } from "../util.js?v=20261114214910";
+import { Data, Me } from "../fb.js?v=20261114214910";
+import { Views, avatarEl } from "../ui.js?v=20261114214910";
+import { ladder, ladderNow, ladderFresh } from "../ladder.js?v=20261114214910";
+import { stars } from "../quests.js?v=20261114214910";
+import { weeklyStars } from "../weekly.js?v=20261114214910";
+import { hasReplay, openReplay, coachGame, shareReplay } from "./play.js?v=20261114214910";
+import { ACH, progress, rewardName } from "../achieve.js?v=20261114214910";
 
 const MODE_TH = { bot: "บอท", friend: "เพื่อน", solo: "สองฝั่ง", goldfish: "ซ้อมมือเดียว" };
+const RULE_TH = { hand6: "มือเปิดอิ่ม", life4: "ศึกชีวิตสั้น", draw1: "สายน้ำไหลหลาก", cheap: "ตลาดนัดลดราคา" }; // weekly special rules (js/weekly.js)
 Views.history = {
   render(root) {
     const all = Data.matches, ms = all.filter((m) => m.mode !== "goldfish"), fish = all.filter((m) => m.mode === "goldfish"); // practice against the dummy is kept out of the win rates
@@ -19,12 +21,14 @@ Views.history = {
     root.replaceChildren(head,
       h("div", { class: "statrow" }, h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "เกมทั้งหมด"), h("b", null, ms.length)), h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "ชนะ"), h("b", { style: "color:#8ee3b2" }, ms.length ? Math.round((w / ms.length) * 100) + "%" : "-")),
         h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "เทิร์นเฉลี่ย"), h("b", null, ms.length ? (ms.reduce((a, m) => a + (m.turns || 0), 0) / ms.length).toFixed(1) : "-")),
-        h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "ดาวภารกิจ"), h("b", { style: "color:var(--gold)" }, "★ " + stars()))),
+        h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "ดาวภารกิจ"), h("b", { style: "color:var(--gold)" }, "★ " + stars())),
+        h("div", { class: "stat", title: "ดาวจากการชนะกติกาประจำสัปดาห์ (สัปดาห์ละไม่เกิน 5 ดวง) ใช้แต่งโปรไฟล์อย่างเดียว" }, h("span", { class: "eyebrow" }, "ดาวกติกาสัปดาห์"), h("b", { style: "color:var(--gold)" }, "✦ " + weeklyStars(all).total))),
       h("div", { class: "setup", style: "margin-top:18px" },
-        h("div", { class: "stack", style: "gap:8px" }, all.slice(0, 100).map((m) => h("button", { class: "mrow", onclick: () => openSheet((api) => [h("div", { class: "small muted" }, `${fmtDate(m.at)} · ${MODE_TH[m.mode] || ""} · ${m.first ? "เล่นก่อน" : "เล่นหลัง"} · ${m.turns} เทิร์น`), h("div", null, m.reason || ""),
-            hasReplay(m.id) ? h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => { api.close(); openReplay(m.id); } }, "ดูรีเพลย์"), m.mode !== "goldfish" ? h("button", { class: "btn", onclick: () => { api.close(); coachGame(m.id, `${m.deckName} vs ${m.oppDeck || m.opp || ""}`); } }, "วิเคราะห์เกมนี้") : null) : m.rp ? h("div", { class: "tiny muted" }, "รีเพลย์ของเกมนี้เก็บไว้ในเครื่องที่เล่น") : null, h("div", { class: "glog", style: "max-height:none" }, (m.log || []).map((l) => h("div", null, l)))], { title: `${m.deckName} vs ${m.oppDeck}` }) },
+        h("div", { class: "stack", style: "gap:8px" }, all.slice(0, 100).map((m) => h("button", { class: "mrow", onclick: () => openSheet((api) => [h("div", { class: "small muted" }, `${fmtDate(m.at)} · ${MODE_TH[m.mode] || ""}${m.rule ? " · กติกา" + (RULE_TH[m.rule] || "พิเศษ") : ""} · ${m.first ? "เล่นก่อน" : "เล่นหลัง"} · ${m.turns} เทิร์น`), h("div", null, m.reason || ""),
+            hasReplay(m.id) ? h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => { api.close(); openReplay(m.id); } }, "ดูรีเพลย์"), m.mode !== "goldfish" ? h("button", { class: "btn", onclick: () => { api.close(); coachGame(m.id, `${m.deckName} vs ${m.oppDeck || m.opp || ""}`); } }, "วิเคราะห์เกมนี้") : null,
+              h("button", { class: "btn", onclick: () => { api.close(); shareReplay(m.id, `${m.deckName} vs ${m.oppDeck || m.opp || ""}`); } }, "แชร์รีเพลย์")) : m.rp ? h("div", { class: "tiny muted" }, "รีเพลย์ของเกมนี้เก็บไว้ในเครื่องที่เล่น") : null, h("div", { class: "glog", style: "max-height:none" }, (m.log || []).map((l) => h("div", null, l)))], { title: `${m.deckName} vs ${m.oppDeck}` }) },
           h("span", { class: "chip " + (m.mode === "goldfish" ? "gold" : m.result === "win" ? "good" : m.result === "loss" ? "bad" : "") }, m.mode === "goldfish" ? (m.result === "win" ? "ซ้อม T" + m.turns : "ซ้อม") : m.result === "win" ? "ชนะ" : m.result === "loss" ? "แพ้" : "เสมอ"),
-          h("div", { class: "grow", style: "min-width:0" }, h("b", null, m.mode === "goldfish" ? `${m.deckName} · ซ้อมมือเดียว` : `${m.deckName} vs ${m.oppDeck || m.opp}`), h("div", { class: "tiny muted" }, `${m.opp} · ${MODE_TH[m.mode] || ""} · ${m.turns} เทิร์น${m.undo ? ` · ย้อนตา ${m.undo} ครั้ง` : ""} · ${m.reason || ""}`)),
+          h("div", { class: "grow", style: "min-width:0" }, h("b", null, m.mode === "goldfish" ? `${m.deckName} · ซ้อมมือเดียว` : `${m.deckName} vs ${m.oppDeck || m.opp}`), h("div", { class: "tiny muted" }, `${m.opp} · ${MODE_TH[m.mode] || ""} · ${m.turns} เทิร์น${m.undo ? ` · ย้อนตา ${m.undo} ครั้ง${m.noRw ? " (ไม่นับรางวัล)" : ""}` : ""} · ${m.reason || ""}`)),
           h("span", { class: "tiny muted" }, fmtDate(m.at))))),
         h("div", { class: "stack" }, ladderPanel(), splitPanel(ms), achPanel(all), fishPanel(fish), h("div", { class: "panel stack" }, h("div", { class: "eyebrow" }, "อัตราชนะแยกเด็ค"), h("div", { class: "bars" }, Object.entries(byDeck).sort((a, b) => b[1].n - a[1].n).map(([k, v]) => h("div", { class: "bar" }, h("span", null, `${k} (${v.n})`), h("div", { class: "trk" }, h("i", { style: `width:${(v.w / v.n) * 100}%` })), h("span", { class: "num small" }, Math.round((v.w / v.n) * 100) + "%"))))))));
   },

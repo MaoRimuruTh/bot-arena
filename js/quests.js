@@ -1,8 +1,8 @@
 // Daily quests: three a day, the same three for everyone, picked by the date. Worked out from your match history and
 // the puzzles you have solved, so nothing extra is stored. Every quest done is a star; stars open things to wear,
 // like the achievements do (see achieve.js). Played for, never bought.
-import { Data } from "./fb.js?v=20261114205606";
-import { lsGet } from "./util.js?v=20261114205606";
+import { Data } from "./fb.js?v=20261114214910";
+import { lsGet } from "./util.js?v=20261114214910";
 
 const real = (m) => m.mode === "bot" || m.mode === "friend"; // practice against the dummy and two-sided games do not count
 const won = (m) => real(m) && m.result === "win";
@@ -29,7 +29,7 @@ export function questsFor(day) {
 const solvedOn = () => Object.values(lsGet("bot.pz", {})).map(dayOf);
 // how a day went: each of its quests with how far along it is
 export function dayQuests(day, ms = Data.matches) {
-  const today = ms.filter((m) => m.at && dayOf(m.at) === day), pz = solvedOn().filter((d) => d === day).length;
+  const today = ms.filter((m) => m.at && !m.noRw && dayOf(m.at) === day), pz = solvedOn().filter((d) => d === day).length;
   return questsFor(day).map((q) => { const have = q.f(today, pz); return { q, have: Math.min(have, q.n), done: have >= q.n }; });
 }
 // every star earned so far: the quests done on each day anything was played

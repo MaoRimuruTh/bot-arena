@@ -1,13 +1,13 @@
 // Achievements: earned only by playing (nothing here can be bought), each one unlocking something for the table:
 // a 3D figure to stand by your side, a colour of lacquer for the mat, the circle that opens when you summon, or one of the
 // official box decks (คัดสรรเด็ค) that plays stronger than the Starter Decks. Worked out from your own match history.
-import { Data } from "./fb.js?v=20261114205606";
-import { lsGet } from "./util.js?v=20261114205606";
-import { stars } from "./quests.js?v=20261114205606";
-import { AVATARS, MATS, SIGILS, SCENES, WINFX } from "./arena3d.js?v=20261114205606";
-import { BOX_LISTS, themeCounts, officialStarters } from "./boxdecks.js?v=20261114205606";
-import { Vault } from "./vault.js?v=20261114205606";
-import { isOwnerNow } from "./persona.js?v=20261114205606";
+import { Data } from "./fb.js?v=20261114214910";
+import { lsGet } from "./util.js?v=20261114214910";
+import { stars } from "./quests.js?v=20261114214910";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX } from "./arena3d.js?v=20261114214910";
+import { BOX_LISTS, themeCounts, officialStarters } from "./boxdecks.js?v=20261114214910";
+import { Vault } from "./vault.js?v=20261114214910";
+import { isOwnerNow } from "./persona.js?v=20261114214910";
 
 const real = (ms) => ms.filter((m) => m.mode !== "goldfish");
 const wins = (ms) => real(ms).filter((m) => m.result === "win").length;
@@ -45,7 +45,8 @@ export const ACH = [
   boxAch("boxKD02", "ลงนามด้วยเลือด", "นรก", "box-kd02"),
   boxAch("boxKD04", "กองทัพเหล็กกล้า", "หุ่นยนต์", "box-kd04"),
 ];
-export const progress = (a, ms = Data.matches) => { if (a.prog) { const [have, need] = a.prog(ms); return { have: Math.min(have, need), need, done: have >= need }; } const done = !!a.test(ms); return { have: done ? 1 : 0, need: 1, done }; };
+// a game with take-backs (noRw, set from now on when a bot game used ↶) counts for nothing here; older records keep counting
+export const progress = (a, ms = Data.matches) => { ms = ms.filter((m) => !m.noRw); if (a.prog) { const [have, need] = a.prog(ms); return { have: Math.min(have, need), need, done: have >= need }; } const done = !!a.test(ms); return { have: done ? 1 : 0, need: 1, done }; };
 export const earned = (ms = Data.matches) => new Set(ACH.filter((a) => progress(a, ms).done).map((a) => a.id));
 // is this figure / mat colour open to you? (anything no achievement gives is free)
 const giver = (kind, key) => ACH.find((a) => a.gives && a.gives[kind] === key);

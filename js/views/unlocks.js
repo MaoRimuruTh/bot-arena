@@ -1,11 +1,11 @@
 // ปลดล็อค: everything the table can open up, and how. Only what play earns is here (nothing is bought, nothing is the owner's
 // own): each card says what it opens, what to do for it, and how far along you are. Grouped by what it opens; a filter keeps
 // the list short on a phone; the three nearest to done are pulled to the top.
-import { h, busy } from "../util.js?v=20261114205606";
-import { Data } from "../fb.js?v=20261114205606";
-import { Views } from "../ui.js?v=20261114205606";
-import { MATS } from "../arena3d.js?v=20261114205606";
-import { ACH, progress, rewardName } from "../achieve.js?v=20261114205606";
+import { h, busy } from "../util.js?v=20261114214910";
+import { Data } from "../fb.js?v=20261114214910";
+import { Views } from "../ui.js?v=20261114214910";
+import { MATS } from "../arena3d.js?v=20261114214910";
+import { ACH, progress, rewardName } from "../achieve.js?v=20261114214910";
 
 const KINDS = [["av", "อวตาร 3 มิติ", "ยืนข้างแถบกลางสนามฝั่งคุณ"], ["mat", "ผ้าปูโต๊ะ", "ผ้าปูฝั่งคุณ คู่แข่งก็เห็น"], ["sig", "วงอัญเชิญ", "วงที่เปิดใต้การ์ดตอนเราอัญเชิญ"],
   ["win", "ฉากเมื่อชนะ", "สิ่งที่ลอยเต็มจอตอนเราชนะ"], ["deck", "เด็คกล่องพิเศษ", "เด็คกล่องที่เก่งกว่า Starter Deck"]];

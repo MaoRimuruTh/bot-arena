@@ -1,4 +1,4 @@
-import { firebaseConfig, FB_VERSION } from "./config.js?v=20261114205606";
+import { firebaseConfig, FB_VERSION } from "./config.js?v=20261114214910";
 const base = `https://www.gstatic.com/firebasejs/${FB_VERSION}/`;
 const { initializeApp } = await import(base + "firebase-app.js");
 const A = await import(base + "firebase-auth.js");
@@ -96,5 +96,8 @@ export const newGameId = () => F.doc(F.collection(db, "games")).id;
 export const watchLobby = (cb) => F.onSnapshot(F.query(F.collection(db, "games"), F.where("status", "in", ["waiting", "seeding"])), (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() }))), () => cb([]));
 // finished games (any approved member may read them): the friends' ladder is worked out from these, read once when needed
 export const finishedGames = () => F.getDocs(F.query(F.collection(db, "games"), F.where("status", "==", "over"))).then((s) => s.docs.map((d) => ({ id: d.id, ...d.data() })), () => []);
+// a replay shared with the friends: one document (the set-up and every action as JSON), readable by approved members only
+export const shareReplayDoc = (id, body) => F.setDoc(F.doc(db, "replays", id), body);
+export const loadSharedReplay = (id) => F.getDoc(F.doc(db, "replays", id)).then((s) => (s.exists() ? s.data() : null));
 // games being played right now, so friends can watch (hands stay hidden) or a player can get back into their own game
 export const watchPlaying = (cb) => F.onSnapshot(F.query(F.collection(db, "games"), F.where("status", "==", "playing")), (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() }))), () => cb([]));
