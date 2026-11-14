@@ -2,10 +2,10 @@
 // mode), every hand can be looked at, any card from a Deck, a zone or the card library goes into any zone, LIFE turns up or
 // down, and every change can be taken back. Also: a training-dummy run (ซ้อมมือเดียว) played N times by the quick bot, to
 // see how fast a Deck wins. Nothing here is saved to the match history and nothing here counts for unlocks.
-import { h, openSheet, toast } from "./util.js?v=20261114222637";
-import { CARDS, card, artImg, isBase, TYPE_TH } from "./cards.js?v=20261114222637";
-import { E } from "./engine.js?v=20261114222637";
-import { simGame } from "./views/lab.js?v=20261114222637";
+import { h, openSheet, toast } from "./util.js?v=20261115005244";
+import { CARDS, card, artImg, isBase, TYPE_TH } from "./cards.js?v=20261115005244";
+import { E } from "./engine.js?v=20261115005244";
+import { simGame } from "./views/lab.js?v=20261115005244";
 
 // where a card can go, in the words of the table
 export const SB_ZONES = [["hand", "มือ"], ["top", "บนสุดของ Deck"], ["bottom", "ใต้สุดของ Deck"], ["av", "Avatar Zone"], ["mg", "Magic Zone"], ["cs", "Construct Zone"], ["hell", "นรก"], ["lifeDown", "LIFE (คว่ำ)"], ["lifeUp", "LIFE (หงาย)"], ["dark", "มิติมืด"]];
