@@ -1,17 +1,18 @@
-import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261114185840";
-import { plain, isOwnerNow } from "../persona.js?v=20261114185840";
-import { fxText } from "../fxtext.js?v=20261114185840";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, limitKey, banlist, banMax, banPair, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261114185840";
-import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261114185840";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261114185840";
-import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261114185840";
-import { filterBar, filterCards } from "./library.js?v=20261114185840";
-import { openingOdds, simGame } from "./lab.js?v=20261114185840";
-import { freeBuild } from "../builder.js?v=20261114185840";
-import { deckCode, deckText, parseDeck, printCard } from "../deckcode.js?v=20261114185840";
-import { CIEL_DECKS } from "../cieldecks.js?v=20261114185840";
-import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261114185840";
-import { deckLocked, deckLockAch } from "../achieve.js?v=20261114185840";
+import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261114195747";
+import { plain, isOwnerNow } from "../persona.js?v=20261114195747";
+import { fxText } from "../fxtext.js?v=20261114195747";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, limitKey, banlist, banMax, banPair, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261114195747";
+import { Data, Me, saveDeck, deleteDeck, saveSkins } from "../fb.js?v=20261114195747";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261114195747";
+import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261114195747";
+import { filterBar, filterCards } from "./library.js?v=20261114195747";
+import { openingOdds, simGame } from "./lab.js?v=20261114195747";
+import { freeBuild } from "../builder.js?v=20261114195747";
+import { deckCode, deckText, parseDeck, printCard } from "../deckcode.js?v=20261114195747";
+import { CIEL_DECKS } from "../cieldecks.js?v=20261114195747";
+import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261114195747";
+import { deckLocked, deckLockAch } from "../achieve.js?v=20261114195747";
+import { noteBase, noteVersion, openVersions, openCardStats } from "../decktools.js?v=20261114195747";
 
 // Ciel's theme decks: print codes → card ids (resolved once the card data is loaded). They are Ciel's decks for Rimuru,
 // so only the owner's account sees them: other accounts get none (not in the deck list, the duel setup, the lab or the bot's picks)
@@ -60,14 +61,14 @@ function flushSave(d) {
   clearTimeout(Save.t); Save.t = null; Save.pending = null;
   return (Save.p = (Save.p || Promise.resolve()).then(async () => {
     Save.state = "saving"; saveLabel();
-    try { const fresh = !d.id; d.id = await saveDeck(d); if (fresh) { d.owner = Me.uid; if (d === Editing && /^#decks\/(new|edit)/.test(location.hash)) history.replaceState(null, "", "#decks/edit/" + d.id); } Save.state = "saved"; }
+    try { const fresh = !d.id; d.id = await saveDeck(d); if (fresh) { d.owner = Me.uid; if (d === Editing && /^#decks\/(new|edit)/.test(location.hash)) history.replaceState(null, "", "#decks/edit/" + d.id); } Save.state = "saved"; noteVersion(d); }
     catch (e) { console.warn(e); Save.state = "error"; }
     saveLabel();
   }));
 }
 function queueSave(d) { if (Save.t && Save.pending && Save.pending !== d) flushSave(Save.pending); Save.state = "dirty"; saveLabel(); clearTimeout(Save.t); Save.pending = d; Save.t = setTimeout(() => flushSave(d), 700); }
 const sameDeck = (u, d) => u.d === d || (!!u.id && u.id === d.id);
-function remember(d) { Save.undo.push({ d, id: d.id, main: { ...d.main }, life: [...(d.life || [])], ace: [...(d.ace || [])] }); if (Save.undo.length > 40) Save.undo.shift(); }
+function remember(d) { noteBase(d); Save.undo.push({ d, id: d.id, main: { ...d.main }, life: [...(d.life || [])], ace: [...(d.ace || [])] }); if (Save.undo.length > 40) Save.undo.shift(); }
 const canUndo = (d) => Save.undo.some((u) => sameDeck(u, d));
 function undoLast(d) { for (let k = Save.undo.length - 1; k >= 0; k--) { const u = Save.undo[k]; if (!sameDeck(u, d)) continue; Save.undo.splice(k, 1); d.main = u.main; d.life = u.life; d.ace = u.ace; queueSave(d); return true; } return false; }
 // one change to a deck's cards: how = +1 / -1, or "all" to take every copy out. Saved automatically.
@@ -223,6 +224,7 @@ Views.decks = {
           h("h1", null, d.name), h("div", { class: "muted small" }, [ace ? "เอซ: " + ace.n : null, `${deckCount(d)} + LIFE ${(d.life || []).length}`, d.ciel ? "ชิเอลแนะนำ" : d.box ? "คัดสรรเด็ค กล่องพิเศษ" : d.starter ? "เด็คทางการ" : d.owner === Me.uid ? "เด็คของคุณ" : "ของ " + (d.ownerName || "เพื่อน"), ms.length ? `ชนะ ${w}/${ms.length} เกม` : null].filter(Boolean).join(" · ")),
           h("div", { class: "row" }, h("a", { class: "btn gold", href: "#play/deck/" + d.id }, "ลงสนามกับเด็คนี้"), h("button", { class: "btn ciel", onclick: () => openAnalysis(d) }, "ชิเอลวิเคราะห์"),
             h("a", { class: "btn", href: "#decks/edit/" + d.id }, mine ? "เพิ่ม / แก้ไขการ์ด" : "คัดลอกไปแก้"), h("button", { class: "btn", onclick: () => openShopping(d) }, "รายการต้องซื้อ"), h("button", { class: "btn", onclick: () => openSkins(d) }, "✦ เลือกสกินทั้งเด็ค"),
+            v.ok ? h("button", { class: "btn", onclick: () => openCardStats(d) }, "สถิติรายใบ") : null, mine ? h("button", { class: "btn", onclick: () => openVersions(d) }, "รุ่นของเด็ค / เทียบรุ่น") : null,
             mine ? h("button", { class: "btn", onclick: () => openDeckMenu(d) }, "⋯ เปลี่ยนชื่อ / สำเนา / ลบ") : null))),
       mine ? h("div", { class: "edstrip" }, h("span", { class: "small grow" }, "แก้เด็คได้จากหน้านี้เลย: ", h("b", null, "−"), " ลด 1 ใบ · ", h("b", null, "+"), " เพิ่ม 1 ใบ · ", h("b", null, "✕"), " เอาออกทั้งหมด"), saveStatus(),
         h("button", { class: "btn sm", disabled: !canUndo(d), onclick: () => { if (undoLast(d)) again(); } }, "↶ เลิกทำ"), h("a", { class: "btn sm gold", href: "#decks/edit/" + d.id }, "+ เพิ่มการ์ดใหม่")) : null,

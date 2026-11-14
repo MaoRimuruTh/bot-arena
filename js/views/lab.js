@@ -1,10 +1,10 @@
-import { h, busy, lsGet, lsSet } from "../util.js?v=20261114185840";
-import { card, deckEntries, deckToList, validateDeck, TYPE_TH } from "../cards.js?v=20261114185840";
-import { E } from "../engine.js?v=20261114185840";
-import { H } from "../ai.js?v=20261114185840";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261114185840";
-import { allDecks } from "./decks.js?v=20261114185840";
-import { deckLocked } from "../achieve.js?v=20261114185840";
+import { h, busy, lsGet, lsSet } from "../util.js?v=20261114195747";
+import { card, deckEntries, deckToList, validateDeck, TYPE_TH } from "../cards.js?v=20261114195747";
+import { E } from "../engine.js?v=20261114195747";
+import { H } from "../ai.js?v=20261114195747";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261114195747";
+import { allDecks } from "./decks.js?v=20261114195747";
+import { deckLocked } from "../achieve.js?v=20261114195747";
 
 // exact hypergeometric: P(at least one of k copies within m cards from a deck of N)
 function atLeastOne(N, k, m) { if (k <= 0) return 0; if (m >= N) return 1; let p = 1; for (let i = 0; i < m; i++) p *= (N - k - i) / (N - i); return 1 - Math.max(0, p); }
@@ -20,12 +20,13 @@ export function openingOdds(d, ids) {
 // so the games show how fast deck A can win on its own
 // pro: both sides choose like บอทมือโปร in their Main and Battle Phase, with one play-out per option instead of two (won
 // 57% of 200 games against the normal bot; a game takes about 340 ms instead of 37 ms on a computer)
-export function simGame(dA, dB, seed, dummy, pro) {
+// spy (optional): called after every action with (state, action, seat), for tools that follow a game closely (js/decktools.js)
+export function simGame(dA, dB, seed, dummy, pro, spy) {
   const decks = [{ ...deckToList(dA), name: dA.name, id: dA.id }, { ...deckToList(dB), name: dB.name, id: dB.id }];
   const s = E.newGame({ players: [{ name: "A", bot: true }, { name: "B", bot: true }], decks, seed, first: dummy ? 0 : seed & 1, mode: "sim" });
   const played = new Set(); let seen = s.evc || 0;
   const act = (a, p) => {
-    E.apply(s, a, p);
+    E.apply(s, a, p); if (spy) spy(s, a, p);
     for (const e of s.ev || []) if (e.id > seen) { seen = e.id; if ((e.k === "summon" || e.k === "cast") && e.p === 0) { const L = E.locate(s, e.i); if (L) played.add(E.def(s, L.x).n); } }
     for (const x of s.P[0].cs) played.add(E.def(s, x).n); // Constructs are built without an event
   };

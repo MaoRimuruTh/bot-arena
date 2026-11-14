@@ -1085,3 +1085,20 @@ html.ui-pro .feed{background:rgba(14,16,20,.6)}
 .coachrow .btn { align-self: flex-start; margin-top: 4px; }
 .coachtrk { height: 8px; border-radius: 99px; background: rgba(127,127,127,.2); overflow: hidden; }
 .coachtrk > i { display: block; height: 100%; background: var(--gold, #d8b45a); transition: width .2s; }
+
+/* deck tools (js/decktools.js): versions, A/B and card stats */
+.dvtrk{height:8px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden;min-width:80px}
+.dvtrk i{display:block;height:100%;border-radius:4px;background:var(--gold);transition:width .2s}
+.dvvers{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto}
+.dvver{display:grid;grid-template-columns:auto auto minmax(0,1fr);gap:4px 10px;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--line)}
+.dvver .chip{margin:2px 4px 2px 0}
+.dvverdict{padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+.stat b.up,.dvtab .up{color:var(--good)} .stat b.down,.dvtab .down{color:var(--bad)}
+.dvtab{overflow-x:auto;max-width:100%}
+.dvtab table{border-collapse:collapse;width:100%;font-size:.85rem;min-width:520px}
+.dvtab th{text-align:left;font-weight:600;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.dvtab td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.05);white-space:nowrap}
+.dvtab td:first-child{white-space:normal;min-width:120px}
+.dvtab td.num{font-variant-numeric:tabular-nums}
+.dvtab td.dim{opacity:.42}
+@media (max-width:600px){.dvver{grid-template-columns:auto minmax(0,1fr)} .dvver>.small{grid-column:1/-1}}
