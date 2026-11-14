@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261114105139";
-import { E } from "./engine.js?v=20261114105139";
-import { h } from "./util.js?v=20261114105139";
-import { Sfx } from "./sfx.js?v=20261114105139";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261114111245";
+import { E } from "./engine.js?v=20261114111245";
+import { h } from "./util.js?v=20261114111245";
+import { Sfx } from "./sfx.js?v=20261114111245";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -44,6 +44,8 @@ export const Arena = {
 export const gfxSetting = () => { try { return localStorage.getItem("bot.gfx") || "auto"; } catch { return "auto"; } };
 export const animSetting = () => { try { return +(localStorage.getItem("bot.anim") || 1) || 1; } catch { return 1; } };
 // a short buzz on phones that have one (Android; iPhones have none for web pages): our LIFE is hit, our turn begins
+// "ประกายการ์ดหายาก" in Settings: auto (default), "1" on, "0" off
+export const foilSetting = () => { try { return localStorage.getItem("bot.foil") || "auto"; } catch { return "auto"; } };
 export const buzzOn = () => { try { return localStorage.getItem("bot.buzz") !== "0"; } catch { return true; } };
 let quiet = false; // watching someone's game or a replay: no buzz
 function buzz(pattern) { try { if (!quiet && buzzOn() && navigator.vibrate) navigator.vibrate(pattern); } catch { /* not on this device */ } }
@@ -150,6 +152,9 @@ function mount(container, opts = {}) {
   // automatic quality: if the table keeps running under ~28 frames a second, give up the glow first, then resolution
   R.autoQ = gfxSetting() === "auto" ? { t0: performance.now(), born: performance.now(), sum: 0, n: 0, slow: 0, last: 0 } : null;
   R.onVis = () => { if (R && R.autoQ) R.autoQ.last = 0; }; document.addEventListener("visibilitychange", R.onVis);
+  // holo foil on rare cards: "auto" turns it on only where it is safe (high quality, a mouse or trackpad screen, not a phone low on battery)
+  const fo = foilSetting(), touch = matchMedia && matchMedia("(pointer: coarse)").matches; R.uT = { value: 0 }; R.uFoilK = { value: fo === "1" || (fo === "auto" && Q === "high" && !touch) ? 1 : 0 };
+  if (fo === "auto" && R.uFoilK.value && navigator.getBattery) navigator.getBattery().then((b) => { const f = () => { if (R && R.uFoilK && !R.foilDown) R.uFoilK.value = b.charging || b.level > 0.2 ? 1 : 0; }; f(); b.addEventListener("levelchange", f); b.addEventListener("chargingchange", f); }).catch(() => { /* no battery info */ });
   // where each hand card sat on the screen when it was touched: a card played from the hand flies out from that spot (handStart)
   R.handAt = new Map(); R.onHand = (e) => { const c = e.target && e.target.closest && e.target.closest(".hcard"); if (!c || !R) return; if (R.handAt.size > 12) R.handAt.clear(); R.handAt.set(+c.dataset.i, c.getBoundingClientRect()); }; document.addEventListener("pointerdown", R.onHand, true);
   const ray = new THREE.Raycaster(); const ptr = new THREE.Vector2();
@@ -194,7 +199,7 @@ function mount(container, opts = {}) {
       }
     }
     if (R.avatars) for (const a of R.avatars) { if (!a || a.loading) continue; a.mixer.update(dt * (R.speed || 1)); if (!a.acts.idle && !reduce) { a.bob.position.y = Math.max(0, Math.sin(t * 2.6 + a.ph)) * 0.025; a.bob.scale.y = 1 + Math.sin(t * 2.6 + a.ph) * 0.018; } }
-    R.t = t; for (const m of R.meshes.values()) placeShadow(m); for (const m of R.dying) placeShadow(m);
+    R.t = t; R.uT.value = t; for (const m of R.meshes.values()) placeShadow(m); for (const m of R.dying) placeShadow(m);
     camera.position.set(R.camBase.x + Math.sin(t * 0.15) * 0.35 + R.off.x, R.camBase.y + R.off.y, R.camBase.z + Math.cos(t * 0.12) * 0.2); camera.lookAt(R.look);
     const cr = R.canvas.getBoundingClientRect(); // the labels below read the layout once a frame and move by transform: no layout per label
     if (R.side) for (const o of R.side.piles.values()) { if (!o.grp.visible && !o.n) { o.el.style.display = "none"; continue; } o.el.style.display = ""; const lz = (R.zones && R.zones.side && R.zones.side.piles.lz) || 0.62; const sp = toScreen(o.grp.position.clone().add(new THREE.Vector3(0, 0.2, (o.mine ? lz : -lz))), cr); o.el.style.transform = `translate(${sp.x}px,${sp.y}px) translate(-50%,-50%)`; }
@@ -539,6 +544,7 @@ function watchFps(A) {
   A.t0 = now; A.sum = 0; A.n = 0;
 }
 function lowerQuality() {
+  if (R.uFoilK && R.uFoilK.value) { R.uFoilK.value = 0; R.foilDown = true; console.info("3D: rare-card foil off to keep the table smooth"); return; } // the cheapest thing to give up goes first
   if (R.composer) { const c = R.composer; R.composer = null; try { for (const p of c.passes) if (p.dispose) p.dispose(); c.renderTarget1.dispose(); c.renderTarget2.dispose(); } catch { /* freed anyway */ } console.info("3D: glow off to keep the table smooth"); return; }
   const pr = R.renderer.getPixelRatio(); if (pr > 1) { R.renderer.setPixelRatio(Math.max(1, pr - 0.25)); R.resize(); console.info("3D: resolution", Math.max(1, pr - 0.25)); return; }
   R.autoQ = null; // nothing left to lower
@@ -1357,12 +1363,29 @@ function buildStudio() {
 }
 function stepStudio(S, dt, t) { S.pool.opacity = 0.13 + 0.025 * Math.sin(t * 0.5); S.strip.opacity = 0.72 + 0.12 * Math.sin(t * 0.8); }
 // the table's surroundings are the scene the viewer chose (สนาม), whatever cloth lies on the table
+// ---------- ink outlines on a scene's props (see INK) ----------
+// w: the line's width in the prop's own units; col: the ink; min: skip props smaller than this (crumbs, berries, petals)
+// kept only where the outline measurably sharpened the props (edge strength at their silhouettes +25-45%): สวนสระบัว's tree and ป่าหิมพานต์ gained too little
+const INK = { hell: { w: 0.035, col: 0x0a0405 }, deep: { w: 0.035, col: 0x04101a }, market: { w: 0.035, col: 0x0a0a12, hi: true } }; // hi: "high" only (14 outlines)
+function inkProps(S, cfg) {
+  const list = [];
+  S.grp.traverse((o) => { const m = o.material, g = o.geometry; if (!o.isMesh || o.userData.ink || !m || Array.isArray(m) || !m.isMeshStandardMaterial || m.transparent || m.side !== THREE.FrontSide || m.alphaTest > 0 || !g.attributes.position) return;
+    if (!g.boundingSphere) g.computeBoundingSphere(); if (g.boundingSphere.radius * Math.max(o.scale.x, o.scale.y, o.scale.z) < (cfg.min || 0.12)) return; list.push(o); });
+  for (const o of list) { // pushed out from the prop's centre, not along its normals: boxes and faceted rocks have split normals, and their outline would crack at every edge
+    const g = o.geometry, c = g.boundingSphere.center, mat = new THREE.MeshBasicMaterial({ color: cfg.col, side: THREE.BackSide });
+    mat.onBeforeCompile = (sh) => { sh.uniforms.uInkC = { value: c.clone() }; sh.uniforms.uInkW = { value: cfg.w }; // (uniforms, so every outline shares one shader program)
+      sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nuniform vec3 uInkC; uniform float uInkW;").replace("#include <begin_vertex>", "#include <begin_vertex>\ntransformed += normalize(position - uInkC + 1e-5) * uInkW;"); };
+    const ol = o.isInstancedMesh ? new THREE.InstancedMesh(g, mat, o.count) : new THREE.Mesh(g, mat);
+    if (o.isInstancedMesh) ol.instanceMatrix = o.instanceMatrix; ol.frustumCulled = o.frustumCulled; ol.renderOrder = o.renderOrder; ol.userData.ink = true; o.add(ol);
+  }
+  return list.length;
+}
 function decor() {
   if (!R) return; const want = R.sceneKey;
   if (R.sakura && (want !== "sakura" || R.sakura.zk !== R.zones)) { dropSakura(R.sakura); R.sakura = null; }
   if (want === "sakura" && !R.sakura) R.sakura = buildSakura();
   if (R.pond && (R.pond.key !== want || R.pond.zk !== R.zones)) { dropPond(R.pond); R.pond = null; }
-  if (GROUND[want] && !R.pond) { R.pond = GROUND[want].build(); R.pond.key = want; }
+  if (GROUND[want] && !R.pond) { R.pond = GROUND[want].build(); R.pond.key = want; const ink = INK[want]; if (ink && R.Q !== "low" && (!ink.hi || R.Q === "high")) R.pond.inked = inkProps(R.pond, ink); }
   hallShow();
 }
 // the candle-lit hall (teak table, candles, brass and garland) gives way to a scene that brings its own ground (GROUND)
@@ -1727,16 +1750,24 @@ const sigilTex = (kind) => (R.sigilTexs[kind] = R.sigilTexs[kind] || sigilTextur
 // a white hit flash, and the burn that eats the card from its edges when it is destroyed
 const FACE_HOOK = function (sh) {
   Object.assign(sh.uniforms, this.userData.u);
-  sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vNw;").replace("#include <project_vertex>", "#include <project_vertex>\nvNw = normalize(mat3(modelMatrix) * normal);");
+  sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vNw;").replace("#include <project_vertex>", "#include <project_vertex>\nvNw = normalize(mat3(modelMatrix) * normal); vWp = (modelMatrix * vec4(transformed, 1.0)).xyz;").replace("varying vec3 vNw;", "varying vec3 vNw; varying vec3 vWp;");
   sh.fragmentShader = sh.fragmentShader.replace("#include <common>", `#include <common>
-uniform float uBurn, uSweep, uSheen, uFoil, uFlash; uniform vec3 uEdge, uTint; varying vec3 vNw;
+uniform float uBurn, uSweep, uSheen, uFoil, uFlash, uT, uFoilK; uniform vec3 uEdge, uTint; varying vec3 vNw; varying vec3 vWp;
 float h21(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), f.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), f.x), f.y); }
 float fbm(vec2 p) { float v = 0.0, a = 0.5; for (int k = 0; k < 4; k++) { v += a * vn(p); p = p * 2.03 + 1.7; a *= 0.5; } return v / 0.9375; }
 vec3 hue(float x) { return clamp(abs(mod(x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0); }`).replace("gl_FragColor = vec4( outgoingLight, diffuseColor.a );", `vec3 col = outgoingLight;
   float sw = vUv.x * 0.8 - vUv.y - uSweep; float band = exp(-sw * sw * 36.0);
   col += band * uSheen * mix(vec3(1.0, 0.97, 0.9), uTint, 0.4);
-  if (uFoil > 0.0) { vec3 N = normalize(vNw); col += hue(fract(vUv.x * 1.2 + vUv.y * 0.8 + N.x * 2.2 + N.z * 2.6 + uSweep * 0.35)) * uFoil * (0.06 + 0.35 * band); }
+  float fk = uFoil * uFoilK;
+  if (fk > 0.0) { // the rainbow slides with the angle the card is seen from, strongest on the art's light parts; four-point glints wink in and out
+    vec3 N = normalize(vNw), Vd = normalize(cameraPosition - vWp); float ang = dot(Vd.xz, vec2(2.6, 1.8)) + N.x * 2.2 + N.z * 2.6, lum = dot(outgoingLight, vec3(0.3, 0.59, 0.11));
+    col += hue(fract(vUv.x * 1.2 + vUv.y * 0.8 + ang + uSweep * 0.35)) * fk * (0.09 + 0.4 * band) * (0.5 + 0.9 * lum);
+    vec2 gq = vUv * vec2(9.0, 12.0), gc = floor(gq), gf = fract(gq) - 0.5; float r = h21(gc);
+    float tw = step(1.0 - 0.16 * fk, h21(gc + 7.3)) * pow(max(0.0, sin(r * 63.0 + ang * 30.0 + uT * (1.4 + r * 2.0))), 6.0);
+    float st = max(0.0, 1.0 - length(gf) * 2.2) + max(0.0, 1.0 - abs(gf.x) * 9.0) * max(0.0, 1.0 - abs(gf.y) * 2.4) * 0.6 + max(0.0, 1.0 - abs(gf.y) * 9.0) * max(0.0, 1.0 - abs(gf.x) * 2.4) * 0.6;
+    col += vec3(1.0, 0.96, 0.85) * tw * st * fk * 3.2;
+  } else if (uFoil > 0.0) { col += hue(fract(vUv.x * 1.2 + vUv.y * 0.8 + uSweep * 0.35)) * uFoil * 0.35 * band; } // foil off: rare cards still catch a rainbow when the light sweeps them
   col = mix(col, vec3(1.0), uFlash);
   if (uBurn > 0.0) {
     vec2 q = min(vUv, 1.0 - vUv); float e = fbm(vUv * vec2(4.5, 6.0)) * 0.6 + clamp(min(q.x * 2.4, q.y * 1.8), 0.0, 1.0) * 0.4 - uBurn * 1.1 + 0.04;
@@ -1802,7 +1833,7 @@ function faceMat(d, seat) {
   // card faces are unlit so the official art keeps its real colours (no light/bloom wash-out); FACE_HOOK adds the sheen and the burn
   // (seat: the card's owner, whose skin it shows; a Token with a printed card of its own shows that card, any other is drawn here)
   const token = d.im == null, c = token ? null : skinOf(card(d.im), seat);
-  const u = { uBurn: { value: 0 }, uSweep: { value: -2 }, uSheen: { value: 0 }, uFoil: { value: (c && FOIL[c.r]) || 0 }, uFlash: { value: 0 }, uEdge: { value: new THREE.Color(0xff8a2a) }, uTint: { value: new THREE.Color(d.co ? colorHex(d.co) : 0xffd9a0) } };
+  const u = { uBurn: { value: 0 }, uSweep: { value: -2 }, uSheen: { value: 0 }, uFoil: { value: (c && FOIL[c.r]) || 0 }, uFlash: { value: 0 }, uT: R.uT, uFoilK: R.uFoilK, uEdge: { value: new THREE.Color(0xff8a2a) }, uTint: { value: new THREE.Color(d.co ? colorHex(d.co) : 0xffd9a0) } };
   const mat = new THREE.MeshBasicMaterial({ map: token ? tokenTexture(d) : R.texCache.get(c.i) || R.backTex, color: 0xdedede, toneMapped: false });
   mat.userData.u = u; mat.userData.own = token; mat.onBeforeCompile = FACE_HOOK;
   if (!token && mat.map === R.backTex) resolveArt(c).then((url) => { if (!url || !R) return; R.loader.load(corsUrl(url), (t) => { if (!R) return t.dispose(); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; R.texCache.set(c.i, t); mat.map = t; mat.needsUpdate = true; }); });
@@ -2087,7 +2118,7 @@ function label(s, m, x, instant) {
   if (!instant && !reduce && was != null && +was !== p) { const dv = p - +was; popText(m.grp.position.clone().setY(0.9), (dv > 0 ? "+" : "−") + Math.abs(dv), dv > 0 ? "#5ef0a0" : "#ff4d55", 0.8); el._pk = { k: 1.8 }; gsap.to(el._pk, { k: 1, duration: 0.4, ease: "back.out(3)" }); } // a POWER change: the new number punches in el.className = "pwl" + (m.side === "opp" ? " opp" : "") + (p > b ? " up" : p < b ? " down" : "") + (x.a === false ? " sleep" : "");
 }
 function sync(s, V, drops, burned, instant) {
-  const want = layout(s, V); let k = 0, hold = 0;
+  const want = layout(s, V); let k = 0, hold = 0, nw = 0;
   for (const [i, m] of R.meshes) if (!want.has(i)) { // left the field
     R.meshes.delete(i); const el = R.labels.get(i); if (el) { el.remove(); R.labels.delete(i); }
     hold = Math.max(hold, leave(s, V, m, burned.has(i)) || 0); // the others close ranks once it has gone
@@ -2095,12 +2126,12 @@ function sync(s, V, drops, burned, instant) {
   for (const [i, L] of want) {
     let m = R.meshes.get(i); const fresh = !m;
     if (fresh) { m = makeMesh(s, L); R.meshes.set(i, m); }
-    m.side = L.side; m.zone = L.zone; m.scale = L.scale;
+    m.side = L.side; m.zone = L.zone; m.scale = L.scale; const was = fresh || !m.want ? null : m.want.rotY;
     m.want = { pos: L.pos, rotY: (L.side === "opp" ? Math.PI : 0) + (L.x.a === false && (L.zone === "av" || (L.zone === "mg" && L.x.on == null)) ? -Math.PI / 2 : 0), scale: L.scale };
     if (fresh) {
       const co = E.def(s, L.x).co, cHex = co ? colorHex(co) : L.side === "me" ? 0xffc35a : 0xff4a52;
       if (reduce || instant) settle(m, 0.05 * k++); else if (drops.has(i)) summonIn(m, L, co, cHex); else placeIn(m, L);
-    } else if (!m.busy) home(m, 0.4, hold);
+    } else if (!m.busy) { if (was != null && L.x.a !== false && Math.abs(was - m.want.rotY) > 1 && !reduce && !instant) wake(m, hold + 0.08 * nw++); else home(m, 0.4, hold); }
     label(s, m, L.x, instant);
   }
 }
@@ -2109,6 +2140,19 @@ function home(m, d = 0.4, delay = 0) {
   const w = m.want; if (!w) return; const o = { delay, overwrite: "auto" };
   gsap.to(m.grp.position, { x: w.pos.x, y: m.sel ? m.restY + 0.4 : w.pos.y, z: w.pos.z, duration: d, ease: "power2.out", ...o });
   gsap.to(m.grp.rotation, { x: 0, y: w.rotY, z: 0, duration: d + 0.05, ease: "power2.inOut", ...o }); gsap.to(m.grp.scale, { x: w.scale, y: w.scale, z: w.scale, duration: d * 0.75, ...o });
+}
+// woken: up with a hop, square again with a little overshoot, the light runs across it, then down with a small squash and a puff of dust
+function wake(m, delay) {
+  const w = m.want, g = m.grp, s = w.scale; m.busy = true;
+  gsap.timeline({ delay, onComplete: () => done(m) })
+    .to(g.position, { x: w.pos.x, z: w.pos.z, y: w.pos.y + 0.45, duration: 0.18, ease: "power2.out" }, 0)
+    .to(g.rotation, { x: 0, y: w.rotY, z: 0, duration: 0.32, ease: "back.out(2)" }, 0)
+    .to(g.scale, { x: s * 1.06, y: s * 1.06, z: s * 1.06, duration: 0.18, ease: "power2.out" }, 0)
+    .add(() => { if (R) sweep(m, 0.9, 0.5); }, 0.1)
+    .to(g.position, { y: w.pos.y, duration: 0.2, ease: "power2.in" }, 0.2)
+    .to(g.scale, { x: s * 1.05, y: s, z: s * 0.95, duration: 0.05, ease: "power2.out" }, 0.4)
+    .add(() => { if (R) dust(w.pos, s * 0.6, 5); }, 0.4)
+    .to(g.scale, { x: s, z: s, duration: 0.3, ease: "elastic.out(1.1,0.4)" }, 0.45);
 }
 function done(m) { m.busy = false; if (!R) return; home(m, 0.3); if (!m.pulse) gsap.to(m.glow.material, { opacity: m.sel ? GLOW.sel : GLOW.rest, duration: 0.4 }); }
 function settle(m, delay) { // the table as it stands (resuming a game): cards just come down into place

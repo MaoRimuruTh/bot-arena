@@ -1,23 +1,23 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261114105139";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261114105139";
-import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261114105139";
-import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261114105139";
-import { Vault, startVault } from "./vault.js?v=20261114105139";
-import { vaultSection } from "./vaultui.js?v=20261114105139";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261114105139";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261114105139";
-import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261114105139";
-import { Sfx } from "./sfx.js?v=20261114105139";
-import { Music, MUSIC_STYLES } from "./music.js?v=20261114105139";
-import { Views, avatarEl } from "./ui.js?v=20261114105139";
-import { Ciel } from "./ai.js?v=20261114105139";
-import "./views/library.js?v=20261114105139";
-import "./views/decks.js?v=20261114105139";
-import "./views/lab.js?v=20261114105139";
-import "./views/unlocks.js?v=20261114105139";
-import "./views/history.js?v=20261114105139";
-import { openReport } from "./views/ask.js?v=20261114105139";
-import "./views/play.js?v=20261114105139";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261114111245";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261114111245";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn, foilSetting } from "./arena3d.js?v=20261114111245";
+import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261114111245";
+import { Vault, startVault } from "./vault.js?v=20261114111245";
+import { vaultSection } from "./vaultui.js?v=20261114111245";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261114111245";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261114111245";
+import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261114111245";
+import { Sfx } from "./sfx.js?v=20261114111245";
+import { Music, MUSIC_STYLES } from "./music.js?v=20261114111245";
+import { Views, avatarEl } from "./ui.js?v=20261114111245";
+import { Ciel } from "./ai.js?v=20261114111245";
+import "./views/library.js?v=20261114111245";
+import "./views/decks.js?v=20261114111245";
+import "./views/lab.js?v=20261114111245";
+import "./views/unlocks.js?v=20261114111245";
+import "./views/history.js?v=20261114111245";
+import { openReport } from "./views/ask.js?v=20261114111245";
+import "./views/play.js?v=20261114111245";
 
 const root = $("#view");
 // text size for the whole app (everything is sized in rem), kept per browser; Hearthstone and LoR offer the same for small screens
@@ -106,6 +106,7 @@ function gfxSection() {
   return [h("div", { class: "eyebrow", style: "margin-top:12px" }, "ภาพและความเร็ว"),
     h("div", { class: "small muted" }, "สวยสุด: แสงฟุ้ง เงา และทองสะท้อนแสงทุกเครื่อง · ประหยัดเครื่อง: เหมาะกับมือถือรุ่นเก่า วาดภาพ 30 เฟรมต่อวินาที แบตอยู่นานขึ้น · อัตโนมัติ: เริ่มตามขนาดจอ แล้วลดแสงฟุ้งและความละเอียดลงเองถ้าเครื่องเล่นไม่ลื่น · แบบเรียบ 2D: ไม่มีโต๊ะ 3 มิติ การ์ดบนสนามวางเป็นแถว เบาเครื่องที่สุด"),
     seg("คุณภาพภาพ", gfxSetting(), [["auto", "อัตโนมัติ"], ["high", "สวยสุด"], ["low", "ประหยัดเครื่อง"], ["flat", "แบบเรียบ 2D"]], "bot.gfx", (t) => `ภาพ: ${t} มีผลตอนเปิดสนามครั้งถัดไป`),
+    seg("ประกายการ์ดหายาก", foilSetting(), [["auto", "อัตโนมัติ"], ["1", "เปิด"], ["0", "ปิด"]], "bot.foil", (t) => `ประกายการ์ดหายาก: ${t}${t === "อัตโนมัติ" ? " (เปิดเฉพาะภาพสวยสุดบนคอมพิวเตอร์)" : ""} มีผลตอนเปิดสนามครั้งถัดไป`),
     seg("ความเร็วแอนิเมชัน", animSetting(), [[1, "ปกติ"], [1.6, "เร็ว"], [2.5, "เร็วมาก"]], "bot.anim", (t) => `แอนิเมชัน: ${t} มีผลตอนเปิดสนามครั้งถัดไป`),
     seg("ขนาดตัวหนังสือ", textSize(), [[1, "ปกติ"], [1.12, "ใหญ่"], [1.25, "ใหญ่มาก"]], "bot.fs", (t) => { applyTextSize(); return `ตัวหนังสือ: ${t}`; }),
     // phones that can buzz (Android): a short buzz when our LIFE is hit and when our turn begins
