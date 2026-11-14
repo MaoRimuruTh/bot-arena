@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261114195913";
-import { E } from "./engine.js?v=20261114195913";
-import { h } from "./util.js?v=20261114195913";
-import { Sfx } from "./sfx.js?v=20261114195913";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261114205606";
+import { E } from "./engine.js?v=20261114205606";
+import { h } from "./util.js?v=20261114205606";
+import { Sfx } from "./sfx.js?v=20261114205606";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -184,8 +184,9 @@ function mount(container, opts = {}) {
   const clock = new THREE.Clock();
   // "ประหยัดเครื่อง" in Settings: the table is drawn 30 times a second instead of 60 (half the work for the phone's GPU)
   const cap = Q === "low" ? 1000 / 30 - 3 : 0, idleCap = Q === "mid" ? 1000 / 30 - 3 : 0; let lastDraw = 0; // mid (phones on "auto"): 30 a second while nothing on the table moves
+  const liveR = R; // this table's own loop: a newer table mounted in the same frame must not keep this loop drawing
   const tick = (now = performance.now()) => {
-    if (!R || !R.alive) return;
+    if (!R || R !== liveR || !R.alive) return;
     const capNow = cap || (idleCap && R.hovered == null && !gsap.globalTimeline.getChildren(true, true, false).some((x) => x.isActive()) ? idleCap : 0);
     if (capNow && now - lastDraw < capNow) { if (!cap && R.autoQ) R.autoQ.last = 0; requestAnimationFrame(tick); return; } lastDraw = now;
     const dt = Math.min(0.05, clock.getDelta()), t = clock.elapsedTime;

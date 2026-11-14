@@ -1102,3 +1102,38 @@ html.ui-pro .feed{background:rgba(14,16,20,.6)}
 .dvtab td.num{font-variant-numeric:tabular-nums}
 .dvtab td.dim{opacity:.42}
 @media (max-width:600px){.dvver{grid-template-columns:auto minmax(0,1fr)} .dvver>.small{grid-column:1/-1}}
+
+/* ---- qr: กฎและคำศัพท์ (#rules), keyword sheets, keys, the friend-room clock, replay turn list ---- */
+.gl-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.gl-search{flex:1 1 260px;min-width:0;min-height:44px;font-size:16px}
+.gl-seg{flex-wrap:wrap}
+.gl-group{display:grid;gap:10px}
+.gl-group h2,.gl-faq h2{font-size:1.05rem;margin:6px 0 0}
+.gl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:10px;align-items:start}
+.gl-item>summary{display:flex;flex-direction:column;gap:2px;cursor:pointer;min-height:44px;justify-content:center}
+.gl-item.on{outline:2px solid var(--gold)}
+.gl-entry{display:grid;gap:6px;margin-top:8px}
+.gl-entry p{margin:0}
+.gl-s{font-weight:600}
+.gl-meta{gap:8px;flex-wrap:wrap;align-items:center}
+.gl-faq{display:grid;gap:8px}
+.faqhits{gap:10px}
+.faqhit{display:grid;grid-template-columns:72px minmax(0,1fr);gap:12px;align-items:start}
+.faqhit-img{padding:0;border:0;background:none;cursor:pointer;border-radius:6px;overflow:hidden;width:72px;min-height:44px}
+.faqhit-img .cimg{width:100%;display:block}
+.faqhit-img.none{height:100px;background:var(--line)}
+.faqhit-body{min-width:0;max-width:80ch}
+.faqhit h3{margin:0 0 6px;font-size:1rem}
+.faqhit .faq-q{display:grid;gap:2px;padding:6px 0;border-top:1px solid var(--line)}
+.faqhit mark{background:rgba(216,168,74,.32);color:inherit;border-radius:3px;padding:0 1px}
+.fx .kw,.fx .tg,.fx .sy.mk,.kwgloss dt{cursor:help}
+.fx .kw{text-decoration:underline dotted;text-underline-offset:3px}
+dl.keys{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 14px;align-items:center;margin:0}
+dl.keys dd{margin:0}
+kbd{font:600 .8rem/1.6 var(--f-mono,ui-monospace,monospace);padding:2px 8px;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;background:var(--panel-2,transparent);white-space:nowrap}
+.chip.clk{font-variant-numeric:tabular-nums}
+.chip.clk.low{background:rgba(255,107,111,.2);color:#ffb0b2}
+.clockpick select{min-height:40px;max-width:100%}
+.clockpick label{flex-wrap:wrap;gap:8px}
+.rpbar .rpturn{max-width:8em;min-height:32px}
+@media (max-width:760px){body.arena-on .rpbar{flex-wrap:wrap;justify-content:center;max-width:calc(100vw - 24px)}.faqhit{grid-template-columns:56px minmax(0,1fr)}.faqhit-img{width:56px}}
