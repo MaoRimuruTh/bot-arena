@@ -1,9 +1,9 @@
 // Ciel's free deck builder (no API key): builds a legal 50 + 5 LIFE deck around a set of core
 // cards (favourites or aces) by picking supporting cards that share their symbols, names and
 // colours, keeping a playable Cost curve and enough GEM.
-import { CARDS, card, baseId, isBase, limitOf, limitKey, banMax, validateDeck } from "./cards.js?v=20261115012727";
-import { SCRIPTS } from "./scripts.js?v=20261115012727";
-import { readable } from "./effects.js?v=20261115012727";
+import { CARDS, card, baseId, isBase, limitOf, limitKey, banMax, validateDeck } from "./cards.js?v=20261115013301";
+import { SCRIPTS } from "./scripts.js?v=20261115013301";
+import { readable } from "./effects.js?v=20261115013301";
 
 let scripted = null;
 const isScripted = (c) => { if (!scripted || scripted.n !== CARDS.length) { const s = new Set(); for (const p of Object.keys(SCRIPTS)) { const x = CARDS.find((y) => y.p === p); if (x) s.add(baseId(x.i)); } scripted = { n: CARDS.length, s }; } return scripted.s.has(baseId(c.i)); };
@@ -30,6 +30,22 @@ export function lifeScore(c, main) {
   if (/วานร/.test(x)) return count((d) => d.t === "A" && /วานร/.test(d.n)) >= 10 ? 4.6 : 0;
   return 1;
 }
+// weekly rule ห้ามการ์ดซ้ำ: the same Deck with one copy of each card it has (the Only #1 kept), then filled to 50 with the
+// best cards of its own family (symbols, names, the cards its text asks for, its two main colours), one copy each. A new
+// Deck object (never saved over the player's Deck); its LIFE is the Deck's own five when it has them.
+export function singletonDeck(d) {
+  const ents = Object.entries((d && d.main) || {}).filter(([, n]) => n > 0).map(([i, n]) => ({ c: card(+i), n })).filter((e) => e.c).sort((a, b) => b.n - a.n);
+  const core = [], seen = new Set(); let o1 = false;
+  for (const { c } of ents) { if (c.t === "L" || c.t === "T") continue; const k = limitKey(c); if (seen.has(k) || (banMax(c) ?? 1) < 1) continue; if (c.o1) { if (o1) continue; o1 = true; } seen.add(k); core.push(c.i); }
+  const cnt = {}; for (const { c, n } of ents) if (c.co && c.t !== "L") cnt[c.co] = (cnt[c.co] || 0) + n;
+  const colors = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k]) => k);
+  const life = ((d && d.life) || []).filter((i) => card(i));
+  const coreSet = new Set(core), issues = (v) => v.items.filter((x) => !x.ok && !/^Main Deck/.test(x.msg)).map((x) => x.msg).join("|"), exclude = new Set(); let r = null;
+  // a filler card with its own Deck rule ("ใส่ ... ต้องใส่ ...", "ไม่สามารถใส่ ...", the official limits' conditions) can break the Deck: try, and leave out the fillers that a problem names (removing them changes it)
+  for (let k = 0; k < 12; k++) { r = freeBuild({ core: [...core, ...life], colors, max1: true, keepAll: true, exclude, name: `${(d && d.name) || "เด็ค"} (ไม่ซ้ำ)` }); const v = validateDeck(r.deck); if (v.ok) break; const n0 = issues(v); let hit = 0;
+    for (const i of Object.keys(r.deck.main)) { if (coreSet.has(+i)) continue; const m = { ...r.deck.main }; delete m[i]; if (issues(validateDeck({ ...r.deck, main: m })) !== n0) { exclude.add(limitKey(card(+i))); hit++; } } if (!hit) break; }
+  return { ...r.deck, ...(d && d.starter ? { starter: true } : {}), ...(d && d.box ? { box: true } : {}), id: (d && d.id) || null, life: life.length === 5 ? [...life] : r.deck.life, ace: (d && d.ace && d.ace.length ? d.ace : r.deck.ace), single: true, kept: core.length };
+}
 export function pickLife(main, first = []) {
   const life = [], names = new Set();
   const take = (c) => { if (c && c.t === "L" && life.length < 5 && !names.has(c.n)) { names.add(c.n); life.push(c.i); } };
@@ -39,7 +55,8 @@ export function pickLife(main, first = []) {
   return life;
 }
 
-export function freeBuild({ core = [], colors = [], style = "win", name = "" } = {}) {
+// max1: one copy of each card (weekly rule ห้ามการ์ดซ้ำ); keepAll: keep every core card even off the two main colours; exclude: names (limitKey) not to add
+export function freeBuild({ core = [], colors = [], style = "win", name = "", max1 = false, keepAll = false, exclude = null } = {}) {
   const cores = [...new Set(core.map((i) => baseId(+i)))].map(card).filter(Boolean);
   const notes = [];
   // colours: what was asked, else the two most common among the core cards
@@ -47,8 +64,8 @@ export function freeBuild({ core = [], colors = [], style = "win", name = "" } =
   if (!cols.length) { const cnt = {}; for (const c of cores) if (c.co && c.t !== "L") cnt[c.co] = (cnt[c.co] || 0) + (c.t === "A" ? 2 : 1); cols = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k]) => k); }
   const okColor = (c) => !c.co || !cols.length || cols.includes(c.co);
   const coreMain = cores.filter((c) => c.t !== "L" && c.t !== "T");
-  const offColor = coreMain.filter((c) => !okColor(c)); if (offColor.length) notes.push(`ไม่ได้ใส่ ${offColor.map((c) => c.n).join(", ")} เพราะคนละสีกับเด็ค`);
-  const keep = coreMain.filter(okColor);
+  const offColor = keepAll ? [] : coreMain.filter((c) => !okColor(c)); if (offColor.length) notes.push(`ไม่ได้ใส่ ${offColor.map((c) => c.n).join(", ")} เพราะคนละสีกับเด็ค`);
+  const keep = keepAll ? coreMain : coreMain.filter(okColor);
   // what the core cares about: symbols, name words, quoted names / symbols in their text
   const syms = new Set(keep.filter((c) => c.t === "A").map((c) => c.sy).filter(Boolean));
   const refs = new Set(); const refSy = new Set();
@@ -77,10 +94,10 @@ export function freeBuild({ core = [], colors = [], style = "win", name = "" } =
     if (/ใช้เป็น\s*Cost[^#\n]*ได้เฉพาะ|ไม่สามารถลงสนามจากบนมือ|ลงสนามจากบนมือไม่ได้/.test(d) && syn(c) < 3) v -= 5;
     return v;
   };
-  const pool = CARDS.filter((c) => isBase(c) && !["L", "T"].includes(c.t) && c.fl !== "le" && okColor(c) && !(c.gc && cols.length && !cols.includes(c.gc)));
+  const pool = CARDS.filter((c) => isBase(c) && !["L", "T"].includes(c.t) && c.fl !== "le" && okColor(c) && !(c.gc && cols.length && !cols.includes(c.gc)) && !(exclude && exclude.has(limitKey(c))));
   const scored = pool.map((c) => ({ c, s: score(c), y: syn(c) })).sort((a, b) => b.s - a.s);
   const main = {}; const byName = {}; let total = 0;
-  const room = (c) => Math.min(Math.min(limitOf(c), banMax(c) ?? 99) - (byName[limitKey(c)] || 0), 50 - total); // within the official limits (การ์ดบาป) too
+  const room = (c) => Math.min(Math.min(max1 ? 1 : limitOf(c), banMax(c) ?? 99) - (byName[limitKey(c)] || 0), 50 - total); // within the official limits (การ์ดบาป) too
   const add = (c, n) => { const k = Math.max(0, Math.min(n, room(c))); if (!k) return 0; main[c.i] = (main[c.i] || 0) + k; byName[limitKey(c)] = (byName[limitKey(c)] || 0) + k; total += k; return k; };
   // exactly one Only #1: the best one among the core, else the best that fits
   const o1core = keep.filter((c) => c.o1).sort((a, b) => (b.c || 0) - (a.c || 0));
@@ -101,7 +118,7 @@ export function freeBuild({ core = [], colors = [], style = "win", name = "" } =
   const have = (k) => Object.entries(main).reduce((a, [i, n]) => { const c = card(+i); return a + (c.t === "A" && Math.min(6, c.c || 0) === k ? n : 0); }, 0);
   for (const k of [2, 1, 3, 4, 0, 5, 6]) for (const e of scored) { if (have(k) >= want[k] || total >= 50) break; if (e.c.t !== "A" || e.c.o1 || Math.min(6, e.c.c || 0) !== k) continue; add(e.c, Math.min(want[k] - have(k), e.s >= 4 ? 4 : 3)); }
   for (const p of STAPLES) { if (total >= 50) break; const c = CARDS.find((x) => x.p === p); if (c && okColor(c) && !byName[limitKey(c)]) add(card(baseId(c.i)), 2); }
-  for (const e of scored) { if (total >= 50) break; if (e.c.t !== "M" || e.c.st === "L" && Object.keys(main).some((i) => card(+i).st === "L")) continue; if (e.s < 0.5) continue; add(e.c, e.s >= 4 ? 3 : 2); }
+  for (const e of scored) { if (total >= 50) break; if (e.c.o1) continue; if (e.c.t !== "M" || e.c.st === "L" && Object.keys(main).some((i) => card(+i).st === "L")) continue; if (e.s < 0.5) continue; add(e.c, e.s >= 4 ? 3 : 2); }
   for (const e of scored) { if (total >= 50) break; if (e.c.o1) continue; add(e.c, 2); }
   // LIFE: favourites first, then readable LIFE cards that suit the colours / symbols
   const life = pickLife(main, cores.filter((c) => c.t === "L"));

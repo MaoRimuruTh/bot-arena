@@ -1,6 +1,6 @@
 // Card text made readable: one block per ability, the ability type and keywords as coloured tags,
 // reminder text dimmed, and the data's markup ({symbol X}, {only}, {red …}) drawn instead of printed.
-import { h } from "./util.js?v=20261115012727";
+import { h } from "./util.js?v=20261115013301";
 
 // what each keyword means (from the reminder text printed on the cards / Rule Book 3.2)
 export const KW_HELP = {

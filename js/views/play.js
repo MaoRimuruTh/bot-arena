@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261115012727";
-import { fxText, kwGloss } from "../fxtext.js?v=20261115012727";
-import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261115012727";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261115012727";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261115012727";
-import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261115012727";
-import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor, myWinFx } from "../achieve.js?v=20261115012727";
-import { themeCounts, officialStarters } from "../boxdecks.js?v=20261115012727";
-import { ladder, ladderReset } from "../ladder.js?v=20261115012727";
-import { notify } from "../notify.js?v=20261115012727";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261115012727";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261115012727";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261115012727";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261115012727";
-import { Music, MUSIC_STYLES } from "../music.js?v=20261115012727";
-import { Sfx } from "../sfx.js?v=20261115012727";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar, shareReplayDoc, loadSharedReplay } from "../fb.js?v=20261115012727";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261115012727";
-import { readAura, traits } from "../auras.js?v=20261115012727";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261115012727";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261115013301";
+import { fxText, kwGloss } from "../fxtext.js?v=20261115013301";
+import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261115013301";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261115013301";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261115013301";
+import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261115013301";
+import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor, myWinFx } from "../achieve.js?v=20261115013301";
+import { themeCounts, officialStarters } from "../boxdecks.js?v=20261115013301";
+import { ladder, ladderReset } from "../ladder.js?v=20261115013301";
+import { notify } from "../notify.js?v=20261115013301";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261115013301";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261115013301";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261115013301";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261115013301";
+import { Music, MUSIC_STYLES } from "../music.js?v=20261115013301";
+import { Sfx } from "../sfx.js?v=20261115013301";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar, shareReplayDoc, loadSharedReplay } from "../fb.js?v=20261115013301";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261115013301";
+import { readAura, traits } from "../auras.js?v=20261115013301";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261115013301";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -26,13 +26,14 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(s.id ? [`รีเพลย์ในเครื่องนี้: ${s.id}-${V}`] : []), "บันทึก 40 บรรทัดล่าสุด:\n" + s.log.slice(-40).map((l) => "· " + l.m).join("\n"), // so a report can be traced back to its game
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261115012727";
-import { customMat, customSleeve, customFig, customStand, setOnReady, onVault } from "../vault.js?v=20261115012727";
-import { openGlossSheet } from "../glossary.js?v=20261115012727";
-import { weekRule, weeklyPanel, weeklyWinNote, isoWeek, ruleChip, hudLine, eventPicker, eventOpt, seriesNext, seriesChip, seriesText, seriesAfter, seriesWinner } from "../weekly.js?v=20261115012727";
-import { openCoach } from "../coach.js?v=20261115012727";
-import { mullHint } from "../matchups.js?v=20261115012727";
-import { openSandbox, openFishRuns } from "../sandbox.js?v=20261115012727";
+import { allDecks, deckById } from "./decks.js?v=20261115013301";
+import { customMat, customSleeve, customFig, customStand, setOnReady, onVault } from "../vault.js?v=20261115013301";
+import { openGlossSheet } from "../glossary.js?v=20261115013301";
+import { weekRule, weeklyPanel, weeklyWinNote, isoWeek, ruleChip, hudLine, eventPicker, eventOpt, seriesNext, seriesChip, seriesText, seriesAfter, seriesWinner } from "../weekly.js?v=20261115013301";
+import { openCoach } from "../coach.js?v=20261115013301";
+import { mullHint } from "../matchups.js?v=20261115013301";
+import { logged, check as checkMoves, idleReason, pickMap } from "../movelog.js?v=20261115013301";
+import { openSandbox, openFishRuns } from "../sandbox.js?v=20261115013301";
 // the players' own mat picture, card sleeve and figure (vault.js): the table asks for them, and redraws when one loads or changes
 Arena.setCustom({ mat: customMat, sleeve: customSleeve, fig: customFig, stand: customStand, skins: (s) => setGameSkins(s && s.P, Me.uid) }); setOnReady((o) => Arena.customReady(o)); onVault(() => Arena.refreshCustom());
 { let sig = ""; Data.listeners.add(() => { const sh = Data.meta && Data.meta.show, now = sh ? Object.entries(sh).map(([k, x]) => k + ":" + (x && x.v) + ":" + (x && x.finish)).join() : ""; if (now !== sig) { sig = now; Arena.refreshCustom(); } }); }
@@ -92,7 +93,7 @@ Views.play = {
         { const o = Setup.opp !== "random" && deckById(Setup.opp); go = { t: "เริ่มดวล", fn: () => startLocal("bot"), need: true, vs: (o && !deckLocked(o) ? o.name : "Starter Deck แบบสุ่ม") + " · " + (Setup.brain === "ciel" && Ciel.on() ? "ชิเอล" : (BOT_LEVEL[Setup.brain] || BOT_LEVEL.basic).name) }; }
       } else if (Setup.mode === "weekly") {
         const r = weekRule();
-        body.append(weeklyPanel(), h("div", { class: "stack", style: "gap:4px" }, h("span", { class: "small muted" }, "เด็คของบอท"), deckShelf(decks, "opp", draw, true)));
+        body.append(weeklyPanel(), ...(r.id === "nodup" ? [singlePanel(deckById(Setup.deck), draw)] : []), h("div", { class: "stack", style: "gap:4px" }, h("span", { class: "small muted" }, "เด็คของบอท"), deckShelf(decks, "opp", draw, true)));
         { const o = Setup.opp !== "random" && deckById(Setup.opp); go = { t: "เริ่มดวลกติกาพิเศษ", fn: () => startLocal("bot", r.id), need: true, vs: (o && !deckLocked(o) ? o.name : "Starter Deck แบบสุ่ม") + " · " + r.name }; }
       } else if (Setup.mode === "learn") {
         body.append(h("div", { class: "small" }, "เกมสอนเล่นใช้ Starter Deck 01 สู้กับบอทที่ใช้ Starter Deck 02 ระหว่างเล่นจะมีคำอธิบายขึ้นทีละเรื่องเมื่อถึงจังหวะนั้นในเกม เช่น การจ่าย GEM การโจมตี และ LIFE"),
@@ -240,6 +241,7 @@ function questPanel() {
 }
 // ---------- start / resume ----------
 const pickOpp = () => { const o = Setup.opp !== "random" && deckById(Setup.opp); if (o && !deckLocked(o)) return o; const st = allDecks().filter((d) => d.starter && !d.box); return st[Math.floor(Math.random() * st.length)]; };
+import { dupNames, ruleDeck, singlePanel, botSingle, NODUP_NEED } from "../weekly.js?v=20261115013301";
 const pack = (d) => ({ ...deckToList(d), name: d.name, id: d.id });
 // ไต่ด่าน: the official Starter Decks one after another, the bot growing stronger; a step is passed by a win recorded with its number
 function gauntletSteps() { const lv = (k, n) => (k < 2 ? "easy" : k < Math.ceil(n * 0.6) ? "basic" : "hard"); const list = officialStarters().filter((d) => validateDeck(d).ok);
@@ -252,7 +254,8 @@ const goalLine = (d) => { const gs = boxGoalsFor(d); return gs.length ? h("div",
 const botMat = () => (myMat() === "red" ? "black" : "red");
 function startLocal(mode, rule) { // rule: this week's special rule (the weekly mode), for both sides
   // goldfish (ซ้อมมือเดียว): the other side is a training dummy that never plays a card, so the game shows how fast this deck can win
-  const fish = mode === "goldfish"; const me = deckById(Setup.deck), op = fish ? me : pickOpp(); if (!me || !op) return toast("เลือกเด็คก่อน");
+  const fish = mode === "goldfish"; let me = deckById(Setup.deck), op = fish ? me : pickOpp(); if (!me || !op) return toast("เลือกเด็คก่อน");
+  if (rule === "nodup" && !fish) { me = ruleDeck(rule, me); if (!me) return toast(NODUP_NEED, "bad"); op = botSingle(op); } // ห้ามการ์ดซ้ำ: the week's one-copy Decks (the saved ones stay as they are)
   const botName = Setup.brain === "ciel" && Ciel.on() ? "ชิเอล" : (BOT_LEVEL[Setup.brain] || BOT_LEVEL.basic).name;
   const init = { players: [{ uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), skins: skinsFor(me) }, fish ? { name: "หุ่นซ้อม", bot: true, mat: botMat() } : mode === "bot" ? { name: botName, bot: true, av3: myFigure() ? "chang" : "", mat: botMat() } : { uid: Me.uid, name: "ฝั่งที่ 2", mat: botMat(), skins: skinsFor(op) }], decks: [pack(me), pack(op)], seed: (Math.random() * 2 ** 31) | 0, first: 0, toss: !fish, mode: fish ? "bot" : mode };
   if (rule && !fish) init.rule = rule; // kept in the replay's set-up too
@@ -299,7 +302,7 @@ function resume(saved) {
   if (G.mode === "friend") return openOnline(G.id, G.V);
   go();
 }
-function persist() { if (!G || G.replay || G.watch) return; if (G.mode === "friend") lsSet(SAVE, { mode: "friend", id: G.id, V: G.V, s: G.s }); else lsSet(SAVE, { s: G.s, V: G.V, mode: G.mode, brain: G.brain, id: G.id, learn: G.learn || null, rec: G.rec || null, puzzle: G.puzzle || null, gs: G.gs || null, sandbox: G.sandbox || null }); }
+function persist() { if (!G || G.replay || G.watch) return; if (G.mode === "friend") lsSet(SAVE, { mode: "friend", id: G.id, V: G.V, s: G.s, ck: G.ck || null, tamper: G.tamper || null }); else lsSet(SAVE, { s: G.s, V: G.V, mode: G.mode, brain: G.brain, id: G.id, learn: G.learn || null, rec: G.rec || null, puzzle: G.puzzle || null, gs: G.gs || null, sandbox: G.sandbox || null }); }
 function stopGame(clear) {
   if (!G) return; if (G.unsub) G.unsub(); if (clear) { if (!G.watch) lsDel(SAVE); } else persist(); // a watcher never touches their own saved game
   if (G.mode === "friend" && !G.watch && G.s && G.s.phase === "over") trimGame(G.id, G.s);
@@ -330,6 +333,7 @@ async function startFair(id, g) {
     const h = lsOr("bot.h." + id);
     if (!h) { toast("เครื่องนี้ไม่มีรหัสสับเด็คของห้องนี้ (เปิดห้องจากเครื่องอื่นหรือเปล่า) ยกเลิกห้องแล้วเปิดใหม่นะ", "bad"); return; }
     if (await sha256(h) !== g.hc) { toast("รหัสสับเด็คของห้องนี้ไม่ตรงกับที่ล็อกไว้ ยกเลิกห้องแล้วเปิดใหม่นะ", "bad"); return; }
+    if (g.rule === "nodup" && (dupNames(g.guestDeck).length || dupNames(g.hostDeck).length)) { toast("ห้องนี้ห้ามการ์ดซ้ำ แต่มีเด็คที่มีการ์ดซ้ำ ยกเลิกห้องแล้วเปิดใหม่นะ", "bad"); return; }
     await F.runTransaction(db, async (tx) => { const snap = await tx.get(gameRef(id)); const d = snap.data(); if (!d || d.status !== "seeding" || d.state) return;
       const st = JSON.stringify(fairStart({ ...d, h }, id)); tx.update(gameRef(id), { h, init: st, state: st, status: "playing", updatedAt: Date.now() }); });
   } catch (e) { console.warn(e); toast("เริ่มเกมไม่ได้ ลองเปิดห้องใหม่อีกครั้ง", "bad"); } finally { fairBusy = null; }
@@ -349,18 +353,21 @@ async function checkFair(id, g, V) {
   if (why && GG && G === GG && !GG.tamper) { GG.tamper = "seed: " + why; console.warn("fair shuffle check:", why); toast("⚠ " + why + " เกมนี้จะถูกบันทึกว่าน่าสงสัย", "bad"); }
 }
 async function createRoom(extra = {}) { // extra: a tournament match ({ tour, vs, vsName }) only that friend may join
-  const me = deckById(Setup.deck); if (!me) return;
+  const ev = extra.tour ? {} : eventOpt(); let me = deckById(Setup.deck); if (!me) return;
+  if (ev.rule === "nodup") { me = ruleDeck("nodup", me); if (!me) return toast(NODUP_NEED, "bad"); }
   if (extra.tour && biasedDeck(me)) { toast(BIASED_TOUR, "bad"); return; }
   const id = newGameId(); const hc = await lockSeed(id);
-  await F.setDoc(gameRef(id), { status: "waiting", hc, host: Me.uid, hostName: myName(), hostAva: myAvatar(), hostAv3: myFigure(), hostSig: mySigil(), hostMat: myMat(), hostSleeve: mySleeve(), hostSkins: skinsFor(me), hostDeck: pack(me), seats: [Me.uid], createdAt: Date.now(), updatedAt: Date.now(), ...clockOpt(), ...(extra.tour ? {} : eventOpt()), ...extra });
+  await F.setDoc(gameRef(id), { status: "waiting", hc, host: Me.uid, hostName: myName(), hostAva: myAvatar(), hostAv3: myFigure(), hostSig: mySigil(), hostMat: myMat(), hostSleeve: mySleeve(), hostSkins: skinsFor(me), hostDeck: pack(me), seats: [Me.uid], createdAt: Date.now(), updatedAt: Date.now(), ...clockOpt(), ...ev, ...extra });
   toast("สร้างห้องแล้ว รอเพื่อนเข้าร่วม"); openOnline(id, 0);
 }
 async function joinRoom(r) {
-  const me = deckById(Setup.deck); if (!me) return;
+  let me = deckById(Setup.deck); if (!me) return;
+  if (r.rule === "nodup") { me = ruleDeck("nodup", me); if (!me) return toast(NODUP_NEED, "bad"); }
   if (r.tour && biasedDeck(me)) { toast(BIASED_TOUR, "bad"); return; }
   try {
     await F.runTransaction(db, async (tx) => {
       const snap = await tx.get(gameRef(r.id)); const g = snap.data(); if (!g || g.status !== "waiting") throw new Error("ห้องนี้เริ่มไปแล้ว"); if (g.vs && g.vs !== Me.uid) throw new Error("ห้องนี้เป็นแมตช์ทัวร์ของเพื่อนคนอื่น");
+      if (g.rule === "nodup") { if (dupNames(g.hostDeck).length) throw new Error("ห้องนี้ห้ามการ์ดซ้ำ แต่เด็คของเจ้าของห้องมีการ์ดซ้ำ"); if (dupNames(pack(me)).length) throw new Error(NODUP_NEED); } // both Decks checked under ห้ามการ์ดซ้ำ
       if (g.hc) { // a fair shuffle: our random part and our Deck go in now; the host shows its secret next and starts the game
         lsPut("bot.hc." + r.id, g.hc);
         tx.update(gameRef(r.id), { status: "seeding", guest: Me.uid, guestName: myName(), seats: [g.host, Me.uid], j: rndHex(4), guestDeck: pack(me), guestAva: myAvatar(), guestAv3: myFigure(), guestSig: mySigil(), guestMat: myMat(), guestSleeve: mySleeve(), guestSkins: skinsFor(me), updatedAt: Date.now() }); return; }
@@ -372,13 +379,47 @@ async function joinRoom(r) {
 }
 // rematch with the same friend: open a room only they may join, and leave a note on the finished game for them
 async function friendRematch() {
-  const g = G, s = g.s, V = g.V, opp = s.P[1 - V]; const deck = deckById(s.P[V].deckId) || deckById(Setup.deck); if (!deck) return toast("เลือกเด็คก่อน");
+  const g = G, s = g.s, V = g.V, opp = s.P[1 - V]; let deck = deckById(s.P[V].deckId) || deckById(Setup.deck); if (!deck) return toast("เลือกเด็คก่อน"); if (s.rule === "nodup") { deck = ruleDeck("nodup", deck); if (!deck) return toast(NODUP_NEED, "bad"); }
   const id = newGameId(); const hc = await lockSeed(id);
-  try { await F.setDoc(gameRef(id), { status: "waiting", hc, host: Me.uid, hostName: myName(), hostAva: myAvatar(), hostAv3: myFigure(), hostSig: mySigil(), hostMat: myMat(), hostSleeve: mySleeve(), hostSkins: skinsFor(deck), hostDeck: pack(deck), seats: [Me.uid], createdAt: Date.now(), updatedAt: Date.now(), ...(g.clock && g.clock.sec ? { clock: g.clock } : {}), ...(s.rule ? { rule: s.rule } : {}), ...(g.series ? { series: seriesNext(g.series, s) } : {}), vs: opp.uid, vsName: opp.name });
+  try { await F.setDoc(gameRef(id), { status: "waiting", hc, host: Me.uid, hostName: myName(), hostAva: myAvatar(), hostAv3: myFigure(), hostSig: mySigil(), hostMat: myMat(), hostSleeve: mySleeve(), hostSkins: skinsFor(deck), hostDeck: pack(deck), seats: [Me.uid], createdAt: Date.now(), updatedAt: Date.now(), ...(g.clock && g.clock.sec ? { clock: g.clock } : {}), ...(s.rule ? { rule: s.rule } : {}), ...(g.series ? { series: seriesWinner(seriesAfter(g.series, s)) ? { of: g.series.of || 3, prev: [] } : { of: g.series.of || 3, prev: [...(g.seriesPrev || []), g.id].slice(-4) } } : {}), vs: opp.uid, vsName: opp.name });
     await F.updateDoc(gameRef(g.id), { rematch: { id, by: V } }); } catch { return toast("เปิดห้องไม่ได้", "bad"); }
   stopGame(true); openOnline(id, 0); toast(`เปิดห้องแล้ว รอ ${opp.name} รับคำท้า`);
 }
 function acceptRematch() { const id = G && G.offer; if (!id) return; stopGame(true); joinRoom({ id }); }
+// a state that does not come out of the logged moves: noted on the game for everyone to see (a disputed game counts for
+// nothing in the ladder or a series), and the player may end it as a no-contest
+function flagTamper(why, id) {
+  if (!G || G.watch) return; G.tamper = "moves: " + why; console.warn("move check:", why); persist();
+  F.updateDoc(gameRef(id), { ["bad" + G.V]: String(why).slice(0, 200) }).catch((e) => console.warn(e));
+  confirmBox(`สถานะเกมที่ได้รับไม่ตรงกับการเดินที่บันทึกไว้ (${why}) เกมนี้ถูกบันทึกว่าน่าสงสัยแล้ว จะจบเกมนี้แบบไม่มีผลไหม? ไม่มีใครได้หรือเสียอะไร`, "จบเกมแบบไม่มีผล", () => noContest(id), true);
+}
+async function noContest(id) {
+  if (!G || G.id !== id) return;
+  try { await F.updateDoc(gameRef(id), { nc: { by: G.V, at: Date.now() }, status: "over" }); } catch (e) { console.warn(e); endNoContest(""); }
+}
+// a no-contest: no winner, no reward; the record says why, for both players
+function endNoContest(note) {
+  if (!G) return; const already = G.saved; G.saved = true; const s = G.s, V = G.V;
+  if (s && !already) { const P = s.P[V], O = s.P[1 - V];
+    saveMatch(s.id + "-" + V, { uid: Me.uid, mode: "friend", nc: 1, noRw: 1, flag: "tamper", deckId: P.deckId, deckName: P.deckName, opp: O.name, oppDeck: O.deckName, result: "draw", turns: s.turn, reason: "จบแบบไม่มีผล: สถานะเกมตรวจไม่ผ่าน", first: s.first === V, at: Date.now(), lifeLost: P.life.filter((x) => x.up).length, rp: 0, undo: 0, brain: null }).catch((e) => console.warn(e)); }
+  toast(note || "จบเกมแบบไม่มีผลแล้ว ไม่มีใครได้หรือเสียอะไร", note ? "bad" : undefined);
+  stopGame(true); location.hash = "#play";
+}
+// a best-of-3 series: its score comes only from the earlier games of the series as they stand in the game list (each a
+// finished game between the same two friends, linked in order, and neither player disputed it); nobody types it in
+function seriesFrom(g, id) {
+  const sr = g.series; if (!sr) { G.series = null; return; }
+  const prev = Array.isArray(sr.prev) ? sr.prev.slice(0, 4) : [], key = id + "|" + prev.join(",");
+  G.seriesPrev = prev; if (G.seriesKey === key) return; G.seriesKey = key; G.series = { of: sr.of || 3, w: {}, n: 1 };
+  if (!prev.length || !g.seats || g.seats.length < 2) return;
+  const same = (a) => Array.isArray(a) && a.length === 2 && [...a].sort().join() === [...g.seats].sort().join();
+  Promise.all(prev.map((pid) => F.getDoc(gameRef(pid)).then((d) => (d.exists() ? d.data() : null)).catch(() => null))).then((docs) => {
+    if (!G || G.seriesKey !== key) return; const w = {};
+    docs.forEach((d, k) => { if (!d || d.status !== "over" || d.nc || d.bad0 || d.bad1 || !d.result || !same(d.seats) || !d.series) return;
+      if (JSON.stringify((d.series.prev || []).slice(0, 4)) !== JSON.stringify(prev.slice(0, k))) return; // linked in order
+      if (d.result.w) w[d.result.w] = (w[d.result.w] || 0) + 1; });
+    G.series = { of: sr.of || 3, w, n: 1 }; if (G.s) draw(); });
+}
 // a friend's update must keep every card: each card that was in the game is still there, is the same card and belongs to
 // the same player; a card that was not there before is only ever a token (a forged state that adds, swaps or deletes cards
 // is caught here; it cannot catch everything, see the security notes)
@@ -386,17 +427,22 @@ const zcards = (s) => { const m = new Map(); for (const P of s.P) for (const z o
 const cardsSane = (a, b) => { const A = zcards(a), B = zcards(b); for (const [i, x] of A) { const y = B.get(i); if (!y && x.tok) continue; if (!y) return "gone #" + i + " " + (a.cards[x.c] || {}).n; if (y.c !== x.c) return "changed #" + i + " " + (a.cards[x.c] || {}).n + " -> " + (b.cards[y.c] || {}).n; if ((y.o ?? null) !== (x.o ?? null)) return "owner #" + i; } for (const [i, y] of B) if (!A.has(i) && !y.tok) return "new #" + i + " " + (b.cards[y.c] || {}).n; return ""; };
 function openOnline(id, V, watch) {
   G = { s: null, V, mode: "friend", id, saved: !!watch, waiting: true, watch: !!watch };
+  { const sv = watch ? null : lsGet(SAVE, null); if (sv && sv.mode === "friend" && sv.id === id && sv.V === V) { G.ck = sv.ck || null; G.tamper = sv.tamper || null; } } // what this side already checked
   go();
   G.unsub = F.onSnapshot(gameRef(id), (snap) => {
     if (!G) return; const g = snap.data();
     if (!g) { toast("ห้องถูกปิดแล้ว"); stopGame(true); location.hash = "#play"; return; }
-    G.updatedAt = g.updatedAt || G.updatedAt; if (g.clock && g.clock.sec) G.clock = g.clock; G.series = g.series || null;
+    G.updatedAt = g.updatedAt || G.updatedAt; if (g.clock && g.clock.sec) G.clock = g.clock; seriesFrom(g, id);
+    if (g.nc && !G.watch && !G.ncDone) { G.ncDone = true; endNoContest(g.nc.by === G.V ? "" : "เพื่อนขอจบเกมนี้แบบไม่มีผล เพราะสถานะเกมตรวจไม่ผ่าน"); return; }
     G.emoSeen = G.emoSeen || {};
     for (const p of [0, 1]) { const e = g["emo" + p]; if (e && e.at > (G.emoSeen[p] || 0)) { G.emoSeen[p] = e.at; if ((G.watch || p !== G.V) && Date.now() - e.at < 15000 && G.s) showEmote(p, e.k); } }
     if (g.rematch && g.rematch.by !== G.V && !G.watch && G.offer !== g.rematch.id) { G.offer = g.rematch.id; notify("เพื่อนขอดวลอีกครั้ง", `${G.s ? G.s.P[g.rematch.by].name : "เพื่อน"} เปิดห้องรอแล้ว`, "bot-game"); toast("เพื่อนขอดวลอีกครั้ง"); draw(); }
     if (!g.state && g.status === "seeding" && g.host === Me.uid && !G.watch) startFair(id, g);
     if (!g.state) { G.sawWaiting = true; return; } if (g.trimmed || g.state === G.lastState) return; G.lastState = g.state;
-    const s = JSON.parse(g.state); const first = !G.s, was = G.s;
+    let vst = null; // the move log: each new move is played again here; a state that does not come out of its moves never goes on the table
+    if (!G.watch && g.n != null) { let r = null; try { r = checkMoves(G.ck, g); } catch (e) { console.warn(e); r = { ck: G.ck, why: "ตรวจการเดินไม่ได้" }; }
+      if (r.why) { if (!String(G.tamper || "").startsWith("moves")) flagTamper(r.why, id); if (G.s) return; vst = G.ck ? JSON.stringify(G.ck.s) : null; if (!vst) return; } else G.ck = r.ck; }
+    const s = JSON.parse(vst || g.state); const first = !G.s, was = G.s;
     if (first && !G.watch) checkFair(id, g, G.V);
     if (was && !G.tamper) { let why = ""; try { why = cardsSane(was, s); } catch (e) { console.warn(e); } if (why) { G.tamper = why; console.warn("game state check:", why); toast("⚠ สถานะเกมที่ได้รับไม่ตรงกับการเล่นปกติ (การ์ดถูกเพิ่ม เปลี่ยน หรือหายไป) เกมนี้จะถูกบันทึกว่าน่าสงสัย", "bad"); } }
     G.s = s; persist();
@@ -456,7 +502,7 @@ const oppIdle = () => { if (!G || G.mode !== "friend" || G.watch || !G.s || G.s.
 async function claimIdle() {
   const V = G.V;
   try { await F.runTransaction(db, async (tx) => { const snap = await tx.get(gameRef(G.id)); const g = snap.data(); if (Date.now() - (g.updatedAt || 0) < IDLE_MS) throw new Error("คู่แข่งเพิ่งเล่น"); const s = JSON.parse(g.state); if (s.phase === "over") return;
-    E.lose(s, 1 - V, `${s.P[1 - V].name} ไม่ได้เล่นนานเกิน 4 นาที`); tx.update(gameRef(G.id), { state: JSON.stringify(s), status: "over", ...overSummary(s), updatedAt: Date.now() }); }); }
+    E.lose(s, 1 - V, idleReason(s, V)); tx.update(gameRef(G.id), { state: JSON.stringify(s), ...logged(g, JSON.stringify({ type: "__idle" }), V, V), status: "over", ...overSummary(s), updatedAt: Date.now() }); }); }
   catch (e) { toast(e.message || "ทำไม่ได้", "bad"); }
 }
 
@@ -467,7 +513,7 @@ async function doAct(a, p) {
   if (G.mode === "friend") {
     G.lock = true;
     try {
-      await F.runTransaction(db, async (tx) => { const snap = await tx.get(gameRef(G.id)); const s = JSON.parse(snap.data().state); E.apply(s, a, p); tx.update(gameRef(G.id), { state: JSON.stringify(s), status: s.phase === "over" ? "over" : "playing", ...overSummary(s), updatedAt: Date.now() }); });
+      await F.runTransaction(db, async (tx) => { const snap = await tx.get(gameRef(G.id)); const g = snap.data(); const s = JSON.parse(g.state); const aj = JSON.stringify(a); E.apply(s, a, p); tx.update(gameRef(G.id), { state: JSON.stringify(s), ...logged(g, aj, p, G.V), status: s.phase === "over" ? "over" : "playing", ...overSummary(s), updatedAt: Date.now() }); });
       G.pick = null; G.att = null; G.host = null; G.payFor = null; G.payVia = null; G.callVia = null; G.castFor = null; return true;
     } catch (e) { toast(e.message || "ทำไม่ได้", "bad"); return false; }
     finally { if (G) G.lock = false; }
@@ -628,9 +674,10 @@ function humanTrig(s, p) {
         modes: run.map((x) => `${(s.cards[x.c] || {}).n || "การ์ด"} · ${WHEN_TH[x.when] || "ความสามารถ"}`) }; draw(); } return; } }
   let r = null; try { r = resolveEffect(s, t, G.tpicks, true); } catch (e) { console.warn(e); }
   if (r && r.ask) { if (!G.ask || G.ask.idx !== r.ask.idx) { G.ask = r.ask; G.askSel = []; draw(); } return; }
+  const pk = r && r.ops && G.mode === "friend" ? pickMap(G.tpicks) : null; // the choices that gave this result (checked by the friend's app)
   if (!(r && r.ops)) { try { r = resolveEffect(s, t); } catch (e) { console.warn(e); r = null; } } // the card's choices made the automatic way
   G.ask = null;
-  if (r && r.ops) { doAct({ type: "trig", id: t.id, explain: r.explain, ops: r.ops }, p).then((ok) => { if (!ok) trigFailed(s, t, p); }); return; }
+  if (r && r.ops) { doAct({ type: "trig", id: t.id, explain: r.explain, ops: r.ops, ...(pk ? { pk } : {}) }, p).then((ok) => { if (!ok) trigFailed(s, t, p); }); return; }
   // the rules engine could not work this one out: Ciel reads it when she is on, otherwise it is skipped (and noted, to be fixed)
   noteUnread(s, t);
   if (Ciel.on()) { G.tbusy = true; G.thinking = "ชิเอลกำลังอ่านเอฟเฟกต์ " + ((s.cards[t.c] || {}).n || ""); draw();
@@ -657,12 +704,12 @@ function finish() {
   for (const V of seats) {
     const P = s.P[V], O = s.P[1 - V]; const rp = keepReplay(s.id + "-" + V);
     const th = themeCounts(deckById(P.deckId));
-    const rec = { id: s.id + "-" + V, mode: G.fish ? "goldfish" : G.mode, brain: G.brain || null, lifeLost: P.life.filter((x) => x.up).length, deckId: P.deckId, th, result: s.winner === V ? "win" : s.winner == null ? "draw" : "loss", turns: s.turn, first: s.first === V, at: Date.now(), ...(G.undos ? { undo: G.undos, noRw: 1 } : {}) };
+    const rec = { id: s.id + "-" + V, mode: G.fish ? "goldfish" : G.mode, brain: G.brain || null, lifeLost: P.life.filter((x) => x.up).length, deckId: P.deckId, th, result: s.winner === V ? "win" : s.winner == null ? "draw" : "loss", turns: s.turn, first: s.first === V, at: Date.now(), ...(G.undos ? { undo: G.undos, noRw: 1 } : {}), ...(G.tamper ? { noRw: 1 } : {}) };
     const fresh = newlyEarned(rec), quests = questsDoneBy(rec); // what this game unlocked, and which of today's quests it finished
     if (fresh.length || quests.length) setTimeout(() => celebrate([...quests.map(questNote), ...fresh]), 1800);
     const nU = G.undos || 0; if (nU) setTimeout(() => toast(`เกมนี้ย้อนตา ${nU} ครั้ง จึงไม่นับรางวัลปลดล็อคและภารกิจ`), 1800);
-    if (s.rule && s.winner === V && G.mode !== "solo") { const note = weeklyWinNote(isoWeek(s.startedAt).key); setTimeout(() => toast(note), 2400); } // counted before this game's record lands
-    saveMatch(s.id + "-" + V, { ...(s.rule ? { rule: s.rule, wk: isoWeek(s.startedAt).key } : {}), ...(G.gs ? { gs: G.gs } : {}), ...(G.undos ? { noRw: 1 } : {}), ...(G.tamper ? { flag: "tamper" } : {}), rp: rp ? 1 : 0, undo: G.undos || 0, brain: rec.brain, lifeLost: rec.lifeLost, uid: Me.uid, mode: G.fish ? "goldfish" : G.mode, deckId: P.deckId, deckName: P.deckName, th, opp: O.name, oppDeck: O.deckName, result: s.winner === V ? "win" : s.winner == null ? "draw" : "loss", turns: s.turn, reason: s.reason, first: s.first === V, at: Date.now(), log: s.log.slice(-14).map((l) => l.m) }).catch((e) => console.warn(e));
+    if (s.rule && s.winner === V && G.mode !== "solo" && !(s.ruleBad || []).includes(V)) { const note = weeklyWinNote(isoWeek(s.startedAt).key); setTimeout(() => toast(note), 2400); } // counted before this game's record lands
+    saveMatch(s.id + "-" + V, { ...(s.rule && !(s.ruleBad || []).includes(V) ? { rule: s.rule, wk: isoWeek(s.startedAt).key } : {}), ...(G.gs ? { gs: G.gs } : {}), ...(G.undos || G.tamper ? { noRw: 1 } : {}), ...(G.tamper ? { flag: "tamper" } : {}), rp: rp ? 1 : 0, undo: G.undos || 0, brain: rec.brain, lifeLost: rec.lifeLost, uid: Me.uid, mode: G.fish ? "goldfish" : G.mode, deckId: P.deckId, deckName: P.deckName, th, opp: O.name, oppDeck: O.deckName, result: s.winner === V ? "win" : s.winner == null ? "draw" : "loss", turns: s.turn, reason: s.reason, first: s.first === V, at: Date.now(), log: s.log.slice(-14).map((l) => l.m) }).catch((e) => console.warn(e));
   }
   lsDel(SAVE); draw(); if (G.mode === "friend") ladderReset();
   if (G.rec && G.mode !== "friend") { const g = G; setTimeout(() => { if (G === g) openSummary(g); }, 2600); } // after the banner and the falling gold or ash
@@ -678,7 +725,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261115012727").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261115013301").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", mat: botMat(), bot: true });

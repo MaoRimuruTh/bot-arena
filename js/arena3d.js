@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261115012727";
-import { E } from "./engine.js?v=20261115012727";
-import { h } from "./util.js?v=20261115012727";
-import { Sfx } from "./sfx.js?v=20261115012727";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261115013301";
+import { E } from "./engine.js?v=20261115013301";
+import { h } from "./util.js?v=20261115013301";
+import { Sfx } from "./sfx.js?v=20261115013301";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -224,9 +224,9 @@ function unmount() {
 }
 
 // ---------- 3D avatars: a small figure for each player who has chosen one, at the left end of the centre band ----------
-// Original designs made in Blender (tools/avatars). A model with idle / hit / win / lose clips plays them; one without gets the same moves from code.
+// Every figure is a scanned sculpture (CC0, see assets/models/LICENSE.md). A model with idle / hit / win / lose clips plays them; one without gets the same moves from code.
 // statue: a scanned sculpture (CC0, Poly Haven; see assets/models/LICENSE.md) in assets/models, with a lighter "lo" file for phones and low quality
-export const AVATARS = { chang: { name: "ช้างไม้แกะ", file: "chang.glb", lo: "chang_lo.glb", statue: true, h: 1.05 }, naga: { name: "ลูกพญานาค", file: "naga.glb", h: 1.3 }, maew: { name: "แมวศิลา", file: "maew.glb", lo: "maew_lo.glb", statue: true, h: 1.2 }, suea: { name: "เสือน้อย", file: "suea.glb", h: 1.25 }, kai: { name: "ไก่ชนน้อย", file: "kai.glb", h: 1.2 },
+export const AVATARS = { chang: { name: "ช้างไม้แกะ", file: "chang.glb", lo: "chang_lo.glb", statue: true, h: 1.05 }, naga: { name: "วาฬสำริด", file: "naga.glb", lo: "naga_lo.glb", statue: true, h: 1.15 }, maew: { name: "แมวศิลา", file: "maew.glb", lo: "maew_lo.glb", statue: true, h: 1.2 }, suea: { name: "ม้าศึกพอร์ซเลน", file: "suea.glb", lo: "suea_lo.glb", statue: true, h: 1.25 }, kai: { name: "กระทิงสำริด", file: "kai.glb", lo: "kai_lo.glb", statue: true, h: 1.15 },
   singha: { name: "สิงห์สำริด", file: "singha.glb", lo: "singha_lo.glb", statue: true, sway: true, h: 1.3 } };
 // lacquer colours for the mat (the gold line-work stays); the edge colour washes in on the opponent's side
 export const MATS = { black: { name: "รักดำ", lac: "#120b09", edge: "rgba(150,34,24," }, red: { name: "รักแดง", lac: "#3a0d09", edge: "rgba(190,60,30," },

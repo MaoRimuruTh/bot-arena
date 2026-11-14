@@ -6,6 +6,5 @@
 | assets/scan | scanned flagstones and rocks for the scenes | Poly Haven, CC0 1.0; see assets/scan/LICENSE.md |
 | assets/models | scanned sculptures for the table figures | Poly Haven, CC0 1.0; see assets/models/LICENSE.md |
 | assets/fx | particle and light sprites | Kenney, CC0; see assets/fx/KENNEY_LICENSE.txt |
-| assets/avatars | the procedural figures' files | made here by tools/avatars |
 
 No official Battle of Talingchan art, playmat or card image is stored in this repository: card data and pictures load live from the official CDN.

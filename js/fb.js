@@ -1,4 +1,4 @@
-import { firebaseConfig, FB_VERSION } from "./config.js?v=20261115012727";
+import { firebaseConfig, FB_VERSION } from "./config.js?v=20261115013301";
 const base = `https://www.gstatic.com/firebasejs/${FB_VERSION}/`;
 const { initializeApp } = await import(base + "firebase-app.js");
 const A = await import(base + "firebase-auth.js");
@@ -54,6 +54,8 @@ export function startData() {
   unsubs.push(F.onSnapshot(F.doc(db, "users", Me.uid, "private", "favs"), (s) => { Data.favs = (s.exists() && s.data().cards) || {}; emit(); }, () => {}));
   unsubs.push(F.onSnapshot(F.doc(db, "users", Me.uid, "private", "prices"), (s) => { Data.prices = (s.exists() && s.data().cards) || {}; emit(); }, () => {}));
   unsubs.push(F.onSnapshot(F.doc(db, "meta", "config"), (s) => { Data.meta = (s.exists() && s.data()) || {}; emit(); }, () => {}));
+  // Ciel's theme decks are the owner's own: kept in the owner's private data (null = not there yet, see cielDecks)
+  if (Me.profile && Me.profile.role === "owner") unsubs.push(F.onSnapshot(F.doc(db, "users", Me.uid, "private", "ciel"), (s) => { let list = null; try { list = s.exists() ? JSON.parse(s.data().json || "[]") : null; } catch { list = []; } Data.ciel = list; Data.cielSeen = true; emit(); }, () => { Data.cielSeen = true; emit(); }));
   if (Me.profile && Me.profile.role === "owner") unsubs.push(F.onSnapshot(F.collection(db, "users"), (s) => { Data.users = s.docs.map((d) => ({ id: d.id, ...d.data() })); emit(); }, () => {}));
 }
 export async function saveDeck(deck) {
@@ -87,6 +89,7 @@ export const addQuestion = ({ text, ctx }) => F.setDoc(F.doc(inboxCol()), { text
 export const watchInbox = (cb) => F.onSnapshot(inboxCol(), (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (b.at || 0) - (a.at || 0))), () => cb([]));
 export const answerQuestion = (id, answer) => F.updateDoc(F.doc(inboxCol(), id), { answer: String(answer).slice(0, 4000), answeredAt: Date.now() });
 export const deleteQuestion = (id) => F.deleteDoc(F.doc(inboxCol(), id));
+export const saveCiel = (list) => F.setDoc(F.doc(db, "users", Me.uid, "private", "ciel"), { json: JSON.stringify(list), updatedAt: Date.now() });
 export const saveMatch = (id, body) => F.setDoc(F.doc(db, "matches", id), body);
 export const setUserStatus = (uid, status) => F.updateDoc(F.doc(db, "users", uid), { status });
 export const setMeta = (patch) => F.setDoc(F.doc(db, "meta", "config"), patch, { merge: true });

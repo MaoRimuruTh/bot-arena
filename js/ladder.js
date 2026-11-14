@@ -1,10 +1,11 @@
 // Friends' ladder: a rating for everyone who has finished a friend game, worked out in the browser from the finished
 // games every approved member can read (each keeps a small result summary). Elo from 1000, oldest game first.
-import { finishedGames } from "./fb.js?v=20261115012727";
+import { finishedGames } from "./fb.js?v=20261115013301";
 
 const START = 1000, K = 24;
 // one finished game as { w, seats, names, at, id }, from its summary or, for games from before summaries, its final state
 function outcome(g) {
+  if (g.nc || g.bad0 || g.bad1) return null; // ended as a no-contest, or a player's app found a state that does not come out of the moves
   let r = g.result, st = null;
   if (!r || !r.seats) { try { st = JSON.parse(g.state); } catch { return null; } if (!st || st.phase !== "over") return null; r = { w: st.winner == null ? "" : st.P[st.winner].uid || "", seats: [st.P[0].uid || "", st.P[1].uid || ""], names: [st.P[0].name, st.P[1].name], at: g.updatedAt }; }
   if (!r.seats[0] || !r.seats[1] || r.seats[0] === r.seats[1]) return null;

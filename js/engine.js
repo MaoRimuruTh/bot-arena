@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261115012727";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261115012727";
-import { SCRIPTS } from "./scripts.js?v=20261115012727";
-import { newId, clone } from "./util.js?v=20261115012727";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261115013301";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261115013301";
+import { SCRIPTS } from "./scripts.js?v=20261115013301";
+import { newId, clone } from "./util.js?v=20261115013301";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -339,6 +339,8 @@ export const E = {
     const s = { v: 1, id: id || newId(), mode, seed: seed | 0, turn: 0, active: first, first, phase: toss ? "toss" : "mull", land: null, cards: {}, nextI: 1, log: [], trig: [], pend: null, need: 0,
       winner: null, reason: "", mull: [false, false], mu: [{}, {}], played: [{}, {}], startedAt: Date.now(), P: [] };
     if (rule) s.rule = String(rule);
+    // ห้ามการ์ดซ้ำ: a seat whose Main Deck has a name twice breaks the week's rule (the game still plays; that seat earns no star)
+    if (s.rule === "nodup") { const bad = [0, 1].filter((q) => { const seen = new Set(); return ((decks[q] && decks[q].main) || []).some((id) => { const c = card(id); const k = c ? normName(c.n) : String(id); if (seen.has(k)) return true; seen.add(k); return false; }); }); if (bad.length) s.ruleBad = bad; }
     for (let p = 0; p < 2; p++) {
       const pl = players[p];
       const P = { uid: pl.uid || null, name: pl.name, ava: pl.ava || "", av3: pl.av3 || "", sig: pl.sig || "", mat: pl.mat || "", sleeve: pl.sleeve || "", skins: pl.skins || null, bot: !!pl.bot, deckName: decks[p].name || "", deckId: decks[p].id || null, deck: [], hand: [], av: [], mg: [], cs: [], hell: [], dark: [], life: [] };
@@ -633,12 +635,23 @@ export const E = {
     return E.reactsFor(s, q, on).length ? on : null; },
   doomWin(s, on) { on.ids = [...new Set([...on.kill, ...on.killCs, ...on.leave])]; if (!on.ids.length || s.phase === "over") return null; on.i = on.ids[0];
     return E.reactsFor(s, on.p, on).some((x) => { const sc = scriptOf(s, x); return !!(sc && sc.react && sc.react.kinds.includes("doom")); }) ? on : null; },
-  // before a fight is resolved: whoever is about to lose an Avatar / Construct in it may answer first
-  fightDoom(s) { const pd = s.pend; if (!pd || (pd.tk !== "av" && pd.tk !== "cs")) return false; const A = E.locate(s, pd.att), T = E.locate(s, pd.ti); if (!A || A.z !== "av" || !T || T.z !== pd.tk) return false;
-    const ap = Math.max(0, E.power(s, A.x) + (pd.bonus || 0) + (pd.tk === "av" ? E.battleMod(s, A.x, T.x) : 0)), tp = Math.max(0, E.power(s, T.x) + (pd.tk === "av" ? E.battleMod(s, T.x, A.x) : 0));
-    let dead = []; if (pd.tk === "cs") dead = ap > tp ? [T] : []; else if (ap > tp) dead = [T]; else if (tp > ap) dead = [A]; else if (ap > 0) { const ah = E.kw(s, A.x, "ลูกฮึด"), dh = E.kw(s, T.x, "ลูกฮึด"); dead = ah && !dh ? [T] : dh && !ah ? [A] : [A, T]; }
-    pd.doomAsked = pd.doomAsked || [false, false];
-    for (const q of [1 - pd.by, pd.by]) { if (pd.doomAsked[q]) continue; const mine = dead.filter((D) => D.p === q); if (!mine.length) continue; pd.doomAsked[q] = true;
+  // who would be destroyed if the fight were settled now: the 1st target, นางตานีด่าง's 2nd target and THE END's other Avatars, all at once
+  // (Rule Book p.22 ช่วงหลังจบการต่อสู้ ขั้นที่ 1: every loser goes to hell together); listed in fight order, attacker last
+  fightDead(s) { const pd = s.pend; if (!pd) return []; const A = E.locate(s, pd.att); if (!A || A.z !== "av") return []; const out = []; let atkDies = false;
+    const one = (tk, ti, side) => { const T = ti != null ? E.locate(s, ti) : null; if (!T || T.z !== tk || (tk !== "av" && tk !== "cs")) return;
+      const ap = Math.max(0, E.power(s, A.x) + (pd.bonus || 0) + (tk === "av" ? E.battleMod(s, A.x, T.x) : 0)), tp = Math.max(0, E.power(s, T.x) + (tk === "av" ? E.battleMod(s, T.x, A.x) : 0));
+      if (tk === "cs") { if (ap > tp) out.push(T); return; } if (side && ap === 0 && tp === 0) return;
+      if (ap > tp) out.push(T); else if (tp > ap) atkDies = true; else if (ap > 0) { const ah = E.kw(s, A.x, "ลูกฮึด"), dh = E.kw(s, T.x, "ลูกฮึด"); if (!dh || ah) out.push(T); if (!ah || dh) atkDies = true; } };
+    one(pd.tk, pd.ti); if (pd.tk2 && pd.tk2 !== "life") one(pd.tk2, pd.ti2);
+    if (pd.tk === "av" && A.x.fa === s.turn) { const T1 = E.locate(s, pd.ti); if (T1 && T1.z === "av") for (const y of s.P[1 - pd.by].av) if (y.i !== T1.x.i) one("av", y.i, true); }
+    if (atkDies) out.push(A); return out; },
+  // before a fight is resolved: whoever is about to lose Avatars / Constructs in it may answer first, the defender first. One window per player
+  // lists ALL of that player's cards doomed in this fight (every loser of the fight is destroyed at once, Rule Book p.22), so the one React Magic
+  // a turn allows can go where it matters most. Rule Book p.23: a React keeps one leaving Avatar once, so after a React has saved one card the
+  // player is asked again for the ones still doomed (if another answer is still allowed); a pass is not asked again
+  fightDoom(s) { const pd = s.pend; if (!pd || (pd.tk !== "av" && pd.tk !== "cs")) return false; const dead = E.fightDead(s); if (!dead.length) return false;
+    pd.doomSeen = pd.doomSeen || [];
+    for (const q of [1 - pd.by, pd.by]) { const mine = dead.filter((D) => D.p === q && !D.x.guard); if (!mine.length) continue; const key = q + ":" + mine.map((D) => D.x.i).sort((a, b) => a - b).join(","); if (pd.doomSeen.includes(key)) continue; pd.doomSeen.push(key);
       const on = E.doomWin(s, { kind: "doom", by: 1 - q, p: q, kill: mine.filter((D) => D.z === "av").map((D) => D.x.i), killCs: mine.filter((D) => D.z === "cs").map((D) => D.x.i), leave: [], fight: true });
       if (on) { s.rw = on; E.log(s, q, `${mine.map((D) => E.name(s, D.x)).join(", ")} กำลังจะถูกทำลายจากการต่อสู้`); return true; } }
     return false; },
@@ -915,12 +928,12 @@ export const E = {
     E.ev(s, { k: "clash", att: att.i, by: pd.by, tk: pd.tk, ti: pd.ti, ap });
     // นางตานีด่าง's 2nd target: POWER read now, before anything of this fight is destroyed, and settled with the 1st (all at once)
     const Tb = pd.tk2 && pd.tk2 !== "life" && pd.ti2 != null ? E.locate(s, pd.ti2) : null; const ap2 = pd.tk2 ? Math.max(0, E.power(s, att) + (pd.bonus || 0) + (Tb && pd.tk2 === "av" ? E.battleMod(s, att, Tb.x) : 0)) : 0;
-    const p2 = Tb && Tb.z === pd.tk2 ? Math.max(0, E.power(s, Tb.x) + (pd.tk2 === "av" ? E.battleMod(s, Tb.x, att) : 0)) : null;
+    const p2 = Tb && Tb.z === pd.tk2 ? Math.max(0, E.power(s, Tb.x) + (pd.tk2 === "av" ? E.battleMod(s, Tb.x, att) : 0)) : null; const kills = [], beat = []; /* Avatars this fight destroyed (each counted) and the defenders that beat the attacker */
     const second = () => { if (!pd.tk2) return; if (pd.tk2 === "life") { if (ap2 > 0 && !pd.noDmg && s.phase !== "over") E.damageLife(s, 1 - pd.by, pd.by); else E.log(s, pd.by, "เป้าหมายที่ 2 (LIFE): ไม่ทำความเสียหาย"); return; }
       const Y = Tb && E.locate(s, Tb.x.i); if (!Y || Y.z !== pd.tk2 || p2 == null) { E.log(s, pd.by, "เป้าหมายที่ 2 หายไป"); return; } const y = Y.x; const alive = () => E.locate(s, att.i)?.z === "av";
       if (pd.tk2 === "cs") { if (ap2 > p2) E.destroy(s, y.i, `แพ้พลัง ${ap2} ต่อ ${p2}`); else E.log(s, pd.by, `Construct ${E.name(s, y)} รับไว้ได้ (${ap2} ต่อ ${p2})`); return; }
       if (ap2 === 0 && p2 === 0) E.log(s, pd.by, `เป้าหมายที่ 2: POWER 0 ปะทะ 0 ไม่มีอะไรเกิดขึ้น`);
-      else if (ap2 > p2) E.destroy(s, y.i, `แพ้การต่อสู้ ${p2} ต่อ ${ap2}`); else if (p2 > ap2) { if (alive()) E.destroy(s, att.i, `แพ้การต่อสู้ ${ap2} ต่อ ${p2}`); }
+      else if (ap2 > p2) { if (E.wornHas(s, att, "killNoDeath")) y.nd = s.turn; E.destroy(s, y.i, `แพ้การต่อสู้ ${p2} ต่อ ${ap2}`); kills.push({ dead: y, dp: p2, a: ap2 }); } else if (p2 > ap2) { if (alive()) E.destroy(s, att.i, `แพ้การต่อสู้ ${ap2} ต่อ ${p2}`); beat.push({ w: y, a: ap2 }); }
       else { const ah = E.kw(s, att, "ลูกฮึด"), dh = E.kw(s, y, "ลูกฮึด"); if (!dh || ah) E.destroy(s, y.i, `พลังเท่ากัน ${p2}`); if ((!ah || dh) && alive()) E.destroy(s, att.i, `พลังเท่ากัน ${ap2}`); } };
     if (pd.tk === "life") {
       if (ap <= 0) E.log(s, pd.by, "POWER 0 โจมตีแต่ไม่ทำความเสียหาย");
@@ -937,12 +950,8 @@ export const E = {
       if (pd.tk === "cs") {
         if (ap > tp) E.destroy(s, T.x.i, `แพ้พลัง ${ap} ต่อ ${tp}`); else E.log(s, pd.by, `Construct ${E.name(s, T.x)} รับไว้ได้ (${ap} ต่อ ${tp})`);
       } else if (ap === 0 && tp === 0) E.log(s, pd.by, "POWER 0 ปะทะ 0 ไม่มีอะไรเกิดขึ้น");
-      else if (ap > tp) { const dead = T.x; if (E.wornHas(s, att, "killNoDeath")) dead.nd = s.turn; E.destroy(s, T.x.i, `แพ้การต่อสู้ ${tp} ต่อ ${ap}`); if (!E.locate(s, dead.i)?.z?.startsWith("av")) E.hostKill(s, pd.by, att, dead, tp); if (fires(s, att, "win", WIN_RE) && !E.locate(s, dead.i)?.z?.startsWith("av")) s.trig.push({ id: tid(s), seat: pd.by, i: att.i, c: att.c, when: "win", diff: ap - tp, dead: dead.i });
-        if (!E.locate(s, dead.i)?.z?.startsWith("av")) E.wonFight(s, pd.by, att);
-        if (!att.mute && (scriptOf(s, att) || {}).kill && !E.locate(s, dead.i)?.z?.startsWith("av")) s.trig.push({ id: tid(s), seat: pd.by, i: att.i, c: att.c, when: "kill", dead: dead.i });
-        // cards worn by the winner that react to it ("เมื่อ Avatar ที่สวมใส่การ์ดนี้ทำลาย Avatar อีกฝ่ายจากการต่อสู้")
-        if (E.locate(s, att.i) && !E.locate(s, dead.i)?.z?.startsWith("av")) for (const m of [...s.P[0].mg, ...s.P[1].mg]) if (m.on === att.i && (scriptOf(s, m) || {}).hostWin) s.trig.push({ id: tid(s), seat: pd.by, i: m.i, c: m.c, when: "hostWin", optional: true, dead: dead.i, dp: tp, ap }); }
-      else if (tp > ap) { if (E.wornHas(s, T.x, "killNoDeath")) att.nd = s.turn; E.destroy(s, att.i, `แพ้การต่อสู้ ${ap} ต่อ ${tp}`); const D = E.locate(s, T.x.i); if (D && D.z === "av" && !E.locate(s, att.i)?.z?.startsWith("av")) E.hostKill(s, D.p, T.x, att, ap); if (D && D.z === "av" && !E.locate(s, att.i)?.z?.startsWith("av")) E.wonFight(s, D.p, T.x); if (D && D.z === "av" && !T.x.mute && (scriptOf(s, T.x) || {}).kill && !E.locate(s, att.i)?.z?.startsWith("av")) s.trig.push({ id: tid(s), seat: D.p, i: T.x.i, c: T.x.c, when: "kill", dead: att.i }); }
+      else if (ap > tp) { const dead = T.x; if (E.wornHas(s, att, "killNoDeath")) dead.nd = s.turn; E.destroy(s, T.x.i, `แพ้การต่อสู้ ${tp} ต่อ ${ap}`); kills.push({ dead, dp: tp, a: ap }); }
+      else if (tp > ap) { if (E.wornHas(s, T.x, "killNoDeath")) att.nd = s.turn; E.destroy(s, att.i, `แพ้การต่อสู้ ${ap} ต่อ ${tp}`); beat.push({ w: T.x, a: ap }); }
       else {
         const ah = E.kw(s, att, "ลูกฮึด"), dh = E.kw(s, T.x, "ลูกฮึด");
         if (ah && !dh) E.destroy(s, T.x.i, "เสมอ แต่อีกฝ่ายมีลูกฮึด");
@@ -951,9 +960,15 @@ export const E = {
         else { E.destroy(s, T.x.i, `พลังเท่ากัน ${tp}`); E.destroy(s, att.i, `พลังเท่ากัน ${ap}`); }
       }
       for (const { y, py } of side) { const Y = E.locate(s, y.i); if (!Y || Y.z !== "av") continue; const alive = () => E.locate(s, att.i)?.z === "av";
-        if (ap > py) E.destroy(s, y.i, `แพ้การต่อสู้ ${py} ต่อ ${ap}`); else if (py > ap) { if (alive()) E.destroy(s, att.i, `แพ้การต่อสู้ ${ap} ต่อ ${py}`); }
+        if (ap > py) { if (E.wornHas(s, att, "killNoDeath")) y.nd = s.turn; E.destroy(s, y.i, `แพ้การต่อสู้ ${py} ต่อ ${ap}`); kills.push({ dead: y, dp: py, a: ap }); } else if (py > ap) { if (alive()) E.destroy(s, att.i, `แพ้การต่อสู้ ${ap} ต่อ ${py}`); beat.push({ w: y, a: ap }); }
         else if (ap > 0) { const ah = E.kw(s, att, "ลูกฮึด"), dh = E.kw(s, y, "ลูกฮึด"); if (!dh || ah) E.destroy(s, y.i, `พลังเท่ากัน ${py}`); if ((!ah || dh) && alive()) E.destroy(s, att.i, `พลังเท่ากัน ${ap}`); } }
       second();
+      // Rule Book p.22 (ช่วงหลังจบการต่อสู้ ขั้นที่ 2): "เมื่อทำลาย Avatar จากการต่อสู้" works once for EVERY Avatar this fight destroyed (นางตานีด่าง's 2nd
+      // target, THE END's other Avatars), but not for a winner that was itself destroyed in the fight ("เพราะว่า Avatar ถูกทำลายไปก่อน")
+      if (E.locate(s, att.i)?.z === "av") for (const { dead, dp, a } of kills) { if (E.locate(s, dead.i)?.z?.startsWith("av")) continue; E.hostKill(s, pd.by, att, dead, dp); if (fires(s, att, "win", WIN_RE)) s.trig.push({ id: tid(s), seat: pd.by, i: att.i, c: att.c, when: "win", diff: a - dp, dead: dead.i }); E.wonFight(s, pd.by, att);
+        if (!att.mute && (scriptOf(s, att) || {}).kill) s.trig.push({ id: tid(s), seat: pd.by, i: att.i, c: att.c, when: "kill", dead: dead.i });
+        for (const m of [...s.P[0].mg, ...s.P[1].mg]) if (m.on === att.i && (scriptOf(s, m) || {}).hostWin) s.trig.push({ id: tid(s), seat: pd.by, i: m.i, c: m.c, when: "hostWin", optional: true, dead: dead.i, dp, ap: a }); }
+      if (!E.locate(s, att.i)?.z?.startsWith("av")) for (const { w, a } of beat) { const D = E.locate(s, w.i); if (!D || D.z !== "av") continue; E.hostKill(s, D.p, w, att, a); E.wonFight(s, D.p, w); if (!w.mute && (scriptOf(s, w) || {}).kill) s.trig.push({ id: tid(s), seat: D.p, i: w.i, c: w.c, when: "kill", dead: att.i }); }
       // "when this Avatar attacked and was not destroyed in the fight"
       if (pd.tk === "av") { const T2 = E.locate(s, T.x.i); const st = T2 && T2.z === "av" && !T.x.mute ? scriptOf(s, T.x) : null; if (st && st.survived) s.trig.push({ id: tid(s), seat: T2.p, i: T.x.i, c: T.x.c, when: "survived", optional: true });
         for (const m of [...s.P[0].mg, ...s.P[1].mg]) if (m.on === T.x.i && (scriptOf(s, m) || {}).atkShield) E.moveTo(s, m.i, "hell"); } // ประกันชั้นต่ำ is used up by the attack
