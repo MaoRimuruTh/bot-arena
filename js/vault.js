@@ -5,7 +5,7 @@
 // The figure can be shown too, as a lighter copy (fewer polygons: fine on the table, poor for printing). Shown copies are
 // stored scrambled, so browsing the database shows no picture or model file; that keeps out casual copying, not a determined
 // expert, since whatever a browser draws has to reach it.
-import { db, F, Me, Data, setMeta } from "./fb.js?v=20261114111245";
+import { db, F, Me, Data, setMeta } from "./fb.js?v=20261114112449";
 
 const CHUNK = 700 * 1024, MAX = 6 * 1024 * 1024;
 const ref = (id) => F.doc(db, "users", Me.uid, "private", id);
@@ -97,6 +97,17 @@ export function customSleeve(P) {
   if (!P || P.sleeve !== "own") return null;
   if (P.uid && P.uid === Me.uid && Vault.has("sleeve")) { const it = Vault.m.sleeve; return bitmap("sl:" + it.v, () => vaultBlob("sleeve"), () => ({ img: null, sleeve: true })); }
   const sh = showOf("sleeve", P.uid); return sh ? bitmap("slS:" + sh.v, showBlob(sh), () => ({ img: null, sleeve: true })) : null;
+}
+// the picture standee: his own picture printed on a flat stand beside the table (a card on a base, never a model);
+// the full picture on his screen, the smaller copy he shows on anyone else's
+const stands = new Map();
+export function customStand(P) {
+  if (!P || P.av3 !== "stand" || !P.uid) return null;
+  let key, get;
+  if (P.uid === Me.uid && Vault.has("stand")) { const it = Vault.m.stand; key = "st:" + it.v; get = () => vaultBlob("stand"); }
+  else { const sh = showOf("stand", P.uid); if (!sh) return null; key = "stS:" + sh.v; get = showBlob(sh); }
+  if (!stands.has(key)) stands.set(key, { key, h: 1.3, stand: true, finish: "", bmp: get().then((b) => (b ? createImageBitmap(b) : null)).catch(() => null) });
+  return stands.get(key);
 }
 // the figure: the full model on the owner's screen, the lighter copy he shows on anyone else's
 const figs = new Map();

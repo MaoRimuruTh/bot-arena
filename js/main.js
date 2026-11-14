@@ -1,23 +1,23 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261114111245";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261114111245";
-import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn, foilSetting } from "./arena3d.js?v=20261114111245";
-import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261114111245";
-import { Vault, startVault } from "./vault.js?v=20261114111245";
-import { vaultSection } from "./vaultui.js?v=20261114111245";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261114111245";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261114111245";
-import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261114111245";
-import { Sfx } from "./sfx.js?v=20261114111245";
-import { Music, MUSIC_STYLES } from "./music.js?v=20261114111245";
-import { Views, avatarEl } from "./ui.js?v=20261114111245";
-import { Ciel } from "./ai.js?v=20261114111245";
-import "./views/library.js?v=20261114111245";
-import "./views/decks.js?v=20261114111245";
-import "./views/lab.js?v=20261114111245";
-import "./views/unlocks.js?v=20261114111245";
-import "./views/history.js?v=20261114111245";
-import { openReport } from "./views/ask.js?v=20261114111245";
-import "./views/play.js?v=20261114111245";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261114112449";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261114112449";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn, foilSetting } from "./arena3d.js?v=20261114112449";
+import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261114112449";
+import { Vault, startVault } from "./vault.js?v=20261114112449";
+import { vaultSection } from "./vaultui.js?v=20261114112449";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261114112449";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261114112449";
+import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261114112449";
+import { Sfx } from "./sfx.js?v=20261114112449";
+import { Music, MUSIC_STYLES } from "./music.js?v=20261114112449";
+import { Views, avatarEl } from "./ui.js?v=20261114112449";
+import { Ciel } from "./ai.js?v=20261114112449";
+import "./views/library.js?v=20261114112449";
+import "./views/decks.js?v=20261114112449";
+import "./views/lab.js?v=20261114112449";
+import "./views/unlocks.js?v=20261114112449";
+import "./views/history.js?v=20261114112449";
+import { openReport } from "./views/ask.js?v=20261114112449";
+import "./views/play.js?v=20261114112449";
 
 const root = $("#view");
 // text size for the whole app (everything is sized in rem), kept per browser; Hearthstone and LoR offer the same for small screens
@@ -91,7 +91,7 @@ function avatarSection() {
   return [h("div", { class: "eyebrow", style: "margin-top:12px" }, "อวตาร 3 มิติ สนาม ผ้าปูโต๊ะ และวงอัญเชิญ"),
     h("div", { class: "small muted" }, "อวตารยืนข้างแถบกลางสนามฝั่งคุณ เด้งตอนเริ่มเทิร์น สะดุ้งตอนเสีย LIFE ดีใจหรือคอตกตอนจบเกม สนามคือฉากรอบโต๊ะ (แมพ) ที่เห็นเฉพาะบนเครื่องเรา ส่วนผ้าปูโต๊ะ (playmat) คือผ้าที่ปูบนโต๊ะฝั่งเราซึ่งคู่แข่งเห็นด้วย วงอัญเชิญคือวงที่เปิดใต้การ์ดตอนเราอัญเชิญ เปลี่ยนแล้วใช้ตั้งแต่เกมถัดไป"),
     seg("หน้าตาเว็บ (ธีม)", "bot.ui", uiTheme(), UI_THEMES, "ui", (t) => { applyUi(); return `หน้าตาเว็บ: ${t}`; }),
-    seg("อวตาร 3 มิติ", "bot.av3", myFigure(), [["", "ไม่มี"], ...Object.entries(AVATARS).map(([k, a]) => [k, a.name]), ...(Vault.has("fig") ? [["own", "รูปปั้นของฉัน"]] : [])], "av", (t) => `เลือก${t}แล้ว ใช้ตั้งแต่เกมถัดไป`),
+    seg("อวตาร 3 มิติ", "bot.av3", myFigure(), [["", "ไม่มี"], ...Object.entries(AVATARS).map(([k, a]) => [k, a.name]), ...(Vault.has("fig") ? [["own", "รูปปั้นของฉัน"]] : []), ...(Vault.has("stand") ? [["stand", "ภาพตั้งโต๊ะของฉัน"]] : [])], "av", (t) => `เลือก${t}แล้ว ใช้ตั้งแต่เกมถัดไป`),
     seg("สนาม (ฉากรอบโต๊ะ)", "bot.scene", myScene(), Object.entries(SCENES).filter(([k]) => sceneOpen(k)).map(([k, m]) => [k, m.owner ? "✦ " + m.name : m.name]), "scene", (t) => `สนาม${t} ใช้ตั้งแต่เกมถัดไป`),
     seg("ผ้าปูโต๊ะ (playmat)", "bot.mat", myMat(), [...Object.entries(MATS).map(([k, m]) => [k, m.name]), ...(Vault.has("mat") ? [["own", "ผ้าปูของฉัน"]] : [])], "mat", (t) => `ผ้าปู${t} ใช้ตั้งแต่เปิดสนามครั้งถัดไป`),
     Vault.has("sleeve") ? seg("หลังการ์ด", "bot.sleeve", mySleeve(), [["", "ลายไทย"], ["own", "หลังการ์ดของฉัน"]], "sleeve", (t) => `หลังการ์ด${t} ใช้ตั้งแต่เกมถัดไป`) : null,

@@ -1,15 +1,16 @@
 // Settings for the owner's own things (vault.js): a picture for his half of the mat, a picture for his card sleeves and a
 // 3D figure. A picture is framed here (drag to move it, slide to zoom) and saved twice: in full for his own screen, and
 // smaller for opponents if he lets them see it. Shown only to the owner account.
-import { h, toast, openSheet } from "./util.js?v=20261114111245";
-import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, shownBlob, isOwner, vaultBlob } from "./vault.js?v=20261114111245";
-import { matLines, sleeveFrame, MAT_ASPECT, FIG_FINISH, FIG_MOVES, figureViewer } from "./arena3d.js?v=20261114111245";
-import { setMeta, Data } from "./fb.js?v=20261114111245";
+import { h, toast, openSheet } from "./util.js?v=20261114112449";
+import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, shownBlob, isOwner, vaultBlob } from "./vault.js?v=20261114112449";
+import { matLines, sleeveFrame, MAT_ASPECT, FIG_FINISH, FIG_MOVES, figureViewer } from "./arena3d.js?v=20261114112449";
+import { setMeta, Data } from "./fb.js?v=20261114112449";
 
-const MAT_A = MAT_ASPECT, SLEEVE_A = 1.5 / 2.04; // a player's playmat on their side of the table (arena3d.js); a card
+const MAT_A = MAT_ASPECT, SLEEVE_A = 1.5 / 2.04, STAND_A = 0.7; // a player's playmat on their side of the table (arena3d.js); a card
 const KIND = {
   mat: { a: MAT_A, full: 2048, show: 1280, title: "จัดภาพผ้าปู", pick: "bot.mat", label: "ผ้าปูของฉัน", hint: "ภาพนี้เป็นฝั่งของมาสเตอร์บนโต๊ะ เส้นทองคือกรอบโซนที่จะวาดทับ" },
   sleeve: { a: SLEEVE_A, full: 600, show: 360, title: "จัดภาพหลังการ์ด", pick: "bot.sleeve", label: "หลังการ์ดของฉัน", hint: "ภาพนี้จะอยู่หลังการ์ดทุกใบของมาสเตอร์ ทั้ง Deck และ LIFE ที่คว่ำอยู่" },
+  stand: { a: STAND_A, full: 720, show: 420, title: "จัดภาพตั้งโต๊ะ", pick: "bot.av3", pickV: "stand", label: "ภาพตั้งโต๊ะของฉัน", hint: "ภาพนี้พิมพ์ลงแผ่นตั้งบนฐาน ยืนข้างโต๊ะฝั่งของมาสเตอร์ (แทนรูปปั้น 3 มิติ)" },
 };
 const loadImage = async (file) => { try { return await createImageBitmap(file); } catch { const u = URL.createObjectURL(file), im = new Image(); im.src = u; await im.decode(); return im; } };
 const toBlob = (c, q) => new Promise((res) => c.toBlob(res, "image/jpeg", q));
@@ -27,27 +28,36 @@ async function render(kind, img, st, w, q) {
 // the framing sheet: drag the picture, zoom it, (mat) choose how dark the lacquer veil over it is, choose whether opponents see it
 function editor(kind, img) {
   const K = KIND[kind], st = { z: 1, cx: 0.5, cy: 0.5, veil: 0.38 }, W = kind === "mat" ? 1024 : 360, H = Math.round(W / K.a);
-  const cv = h("canvas", { class: "vprev " + kind, width: W, height: H, "aria-label": "ตัวอย่างภาพ ลากเพื่อเลื่อน" }), g = cv.getContext("2d");
+  const cv = h("canvas", { class: "vprev " + kind, width: W, height: H, "aria-label": "ตัวอย่างภาพ ลากเพื่อเลื่อน บีบสองนิ้วเพื่อซูม" }), g = cv.getContext("2d");
   const lines = kind === "mat" ? matLines() : null;
   const draw = () => { g.clearRect(0, 0, W, H); drawCrop(g, W, H, img, st);
     if (lines) { g.fillStyle = `rgba(13,11,18,${st.veil})`; g.fillRect(0, 0, W, H); g.globalCompositeOperation = "screen"; g.drawImage(lines, 0, 0, W, H); g.globalCompositeOperation = "source-over"; }
     if (kind === "sleeve") sleeveFrame(g, W, H); }; // (the sleeve's edge and gloss are the table's, not part of the saved picture)
-  let drag = null;
-  cv.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY, cx: st.cx, cy: st.cy }; try { cv.setPointerCapture(e.pointerId); } catch {} });
-  cv.addEventListener("pointermove", (e) => { if (!drag) return; const r = cv.getBoundingClientRect(), k = W / r.width, s = Math.max(W / img.width, H / img.height) * st.z;
+  // (the standee's white border and base are the table's too)
+  // one finger (or the mouse) drags the picture; two fingers pinch to zoom; the mouse wheel zooms too (the slider follows)
+  let drag = null, pinch = null; const pts = new Map();
+  const setZ = (z) => { st.z = Math.min(3, Math.max(1, z)); if (zoom) zoom.value = String(st.z); draw(); };
+  const gap = () => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
+  const restart = () => { const [p] = [...pts.values()]; drag = p ? { x: p.x, y: p.y, cx: st.cx, cy: st.cy } : null; };
+  cv.addEventListener("pointerdown", (e) => { pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); try { cv.setPointerCapture(e.pointerId); } catch {}
+    if (pts.size >= 2) { pinch = { d: gap(), z: st.z }; drag = null; } else restart(); });
+  cv.addEventListener("pointermove", (e) => { if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch && pts.size >= 2) { setZ(pinch.z * (gap() / pinch.d)); return; }
+    if (!drag) return; const r = cv.getBoundingClientRect(), k = W / r.width, s = Math.max(W / img.width, H / img.height) * st.z;
     st.cx = drag.cx - ((e.clientX - drag.x) * k) / (img.width * s); st.cy = drag.cy - ((e.clientY - drag.y) * k) / (img.height * s); draw(); });
-  for (const ev of ["pointerup", "pointercancel"]) cv.addEventListener(ev, () => { drag = null; });
+  for (const ev of ["pointerup", "pointercancel"]) cv.addEventListener(ev, (e) => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; restart(); });
+  cv.addEventListener("wheel", (e) => { e.preventDefault(); setZ(st.z * Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
   const zoom = h("input", { type: "range", min: "1", max: "3", step: "0.01", value: "1", "aria-label": "ซูม", oninput: (e) => { st.z = +e.target.value; draw(); } });
   const veil = kind === "mat" ? h("input", { type: "range", min: "0", max: "0.7", step: "0.01", value: String(st.veil), "aria-label": "ความมืดของภาพ", oninput: (e) => { st.veil = +e.target.value; draw(); } }) : null;
   const show = h("input", { type: "checkbox", checked: kind === "mat" || shownNow(kind) });
   draw();
-  openSheet((api) => [h("div", { class: "small muted" }, K.hint), cv, h("div", { class: "tiny muted" }, "ลากภาพเพื่อเลื่อน เลื่อนแถบเพื่อซูม"),
+  openSheet((api) => [h("div", { class: "small muted" }, K.hint), cv, h("div", { class: "tiny muted" }, "ลากภาพเพื่อเลื่อน บีบสองนิ้ว เลื่อนลูกกลิ้ง หรือเลื่อนแถบเพื่อซูม"),
     h("label", { class: "vrow" }, h("span", null, "ซูม"), zoom), veil ? h("label", { class: "vrow" }, h("span", null, "ความมืดของภาพ"), veil) : null,
     h("label", { class: "vcheck" }, show, h("span", null, "ให้คู่แข่งเห็นภาพนี้บนโต๊ะของเขา (ได้แค่ฉบับย่อ ไม่มีทางโหลดไฟล์)")),
     h("div", { class: "row" }, h("button", { class: "btn gold", onclick: async (e) => { const b = e.currentTarget; b.disabled = true; b.textContent = "กำลังบันทึก…";
       try { const full = await render(kind, img, st, K.full, 0.9), small = show.checked ? await render(kind, img, st, K.show, 0.82) : null;
         await vaultPut(kind, full, kind === "mat" ? { veil: st.veil } : {}); await vaultShow(kind, small, kind === "mat" ? { veil: st.veil } : {});
-        try { localStorage.setItem(K.pick, "own"); } catch {} toast(`บันทึก${K.label}แล้ว ใช้ตั้งแต่เกมถัดไป`); api.close(); }
+        try { localStorage.setItem(K.pick, K.pickV || "own"); } catch {} toast(`บันทึก${K.label}แล้ว ใช้ตั้งแต่เกมถัดไป`); api.close(); }
       catch (er) { console.warn(er); toast("บันทึกไม่สำเร็จ: " + (er.message || er), "bad"); b.disabled = false; b.textContent = "บันทึก"; } } }, "บันทึก"),
       h("button", { class: "btn", onclick: () => api.close() }, "ยกเลิก"))].filter(Boolean), { title: K.title, wide: kind === "mat" });
 }
@@ -98,7 +108,7 @@ function figSheet() {
 
 function rows() {
   const out = [];
-  for (const kind of ["mat", "sleeve"]) {
+  for (const kind of ["mat", "sleeve", "stand"]) {
     const K = KIND[kind], has = Vault.has(kind), shown = shownNow(kind);
     const pick = filePick("image/*", async (f) => { try { editor(kind, await loadImage(f)); } catch { toast("เปิดรูปนี้ไม่ได้", "bad"); } });
     out.push(h("div", { class: "vitem" }, has ? thumb(kind) : h("div", { class: "vthumb empty " + kind }, "ยังไม่มีภาพ"),

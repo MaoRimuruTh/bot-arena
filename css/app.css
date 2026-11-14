@@ -1073,3 +1073,7 @@ html.ui-pro .feed{background:rgba(14,16,20,.6)}
 @media (max-width:560px){
 :where(html.ui-pro) .hero .wash{background:linear-gradient(180deg,rgba(17,19,22,0) 22%,rgba(17,19,22,.9) 50%,#121418 72%),linear-gradient(90deg,#121418 30%,rgba(17,19,22,.7) 62%,rgba(17,19,22,.15))}
 }
+
+/* the owner's picture standee (vaultui.js): a portrait card */
+.vthumb.stand{width:63px;height:90px}
+.vprev.stand{width:min(240px,64vw);margin:0 auto;border-radius:8px}

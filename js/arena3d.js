@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261114111245";
-import { E } from "./engine.js?v=20261114111245";
-import { h } from "./util.js?v=20261114111245";
-import { Sfx } from "./sfx.js?v=20261114111245";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261114112449";
+import { E } from "./engine.js?v=20261114112449";
+import { h } from "./util.js?v=20261114112449";
+import { Sfx } from "./sfx.js?v=20261114112449";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -247,7 +247,24 @@ const GROUND = { pond: { build: () => buildPond(), air: [0x0f2a26, 0.019, 0xf2f6
   studio: { build: () => buildStudio(), air: [0x0b0d12, 0.02, 0xdfe6ff, 0x101318, 0.55], noMotes: true },
   azure: { build: () => buildAzure(), air: [0x030818, 0.017, 0x9fc4ff, 0x060a1c, 0.46], noMotes: true } };
 const avCache = new Map();
+// a picture standee: the picture with a white border on the front, plain lacquer on the back, on a thin stand; made as a
+// stand-in for a loaded model so it sits, hops and flinches like the figures do
+function standeeScene(bm) {
+  const a = 0.7, w = 512, hh = Math.round(w / a), c = document.createElement("canvas"); c.width = w; c.height = hh; const g = c.getContext("2d"), b = 16;
+  g.fillStyle = "#f4efe6"; g.fillRect(0, 0, w, hh); g.drawImage(bm, b, b, w - 2 * b, hh - 2 * b);
+  const tex = new THREE.CanvasTexture(c); if ("colorSpace" in tex) tex.colorSpace = THREE.SRGBColorSpace; else tex.encoding = THREE.sRGBEncoding; tex.anisotropy = 4;
+  const H = 1, W = H * a, grp = new THREE.Group(), board = new THREE.Group(), dark = { color: 0x1a1214, roughness: 0.55, metalness: 0 };
+  // the board leans back on a strut like a photo on an easel, so the camera above the table sees the picture, not its edge
+  const front = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.55, metalness: 0 })); front.position.set(0, H / 2, 0.004);
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshStandardMaterial({ ...dark, name: "back" })); back.rotation.y = Math.PI; back.position.set(0, H / 2, -0.004);
+  board.add(front, back); board.position.y = 0.05; board.rotation.x = -0.32;
+  const strut = new THREE.Mesh(new THREE.BoxGeometry(0.06, H * 0.62, 0.02), new THREE.MeshStandardMaterial({ ...dark, name: "strut" })); strut.position.set(0, H * 0.27, -0.22); strut.rotation.x = 0.42;
+  const foot = new THREE.Mesh(new THREE.BoxGeometry(W * 0.62, 0.05, 0.14), new THREE.MeshStandardMaterial({ ...dark, name: "foot" })); foot.position.set(0, 0.025, 0.02);
+  grp.add(board, strut, foot); grp.traverse((m) => { if (m.isMesh) m.castShadow = true; });
+  return { scene: grp, animations: [] };
+}
 const loadAvatar = (key, f) => {
+  if (f && f.stand) { if (!avCache.has(f.key)) avCache.set(f.key, f.bmp.then((bm) => (bm ? standeeScene(bm) : null))); return avCache.get(f.key); }
   if (f) { if (!avCache.has(f.key)) avCache.set(f.key, f.url.then((u) => (u && THREE.GLTFLoader ? new Promise((res) => new THREE.GLTFLoader().load(u, res, undefined, () => res(null))) : null))); return avCache.get(f.key); }
   const a = AVATARS[key]; if (!a || !THREE.GLTFLoader) return Promise.resolve(null);
   if (!avCache.has(key)) avCache.set(key, new Promise((res) => new THREE.GLTFLoader().load(`assets/avatars/${a.file}?v=${ENV_V}`, res, undefined, () => res(null))));
@@ -259,7 +276,7 @@ const avSpot = (mine) => { const x = R.small ? -3.55 : -4.75; return mine ? { x,
 function syncAvatars(s, V) {
   R.avatars = R.avatars || [null, null];
   for (const p of [0, 1]) {
-    const f = s.P[p] && s.P[p].av3 === "own" && custom.fig ? custom.fig(s.P[p]) : null; // the owner's own figure: on his own screen only
+    const f = s.P[p] && s.P[p].av3 === "own" && custom.fig ? custom.fig(s.P[p]) : s.P[p] && s.P[p].av3 === "stand" && custom.stand ? custom.stand(s.P[p]) : null; // the owner's own figure or picture standee
     const key = f ? f.key + ":" + f.finish : (s.P[p] && AVATARS[s.P[p].av3]) ? s.P[p].av3 : ""; const cur = R.avatars[p];
     if (cur && cur.key === key) { if (cur.grp && cur.mine !== (p === V)) placeAvatar(cur, p === V); continue; }
     if (cur && cur.grp) R.scene.remove(cur.grp);

@@ -1,13 +1,13 @@
 // Achievements: earned only by playing (nothing here can be bought), each one unlocking something for the table:
 // a 3D figure to stand by your side, a colour of lacquer for the mat, the circle that opens when you summon, or one of the
 // official box decks (คัดสรรเด็ค) that plays stronger than the Starter Decks. Worked out from your own match history.
-import { Data } from "./fb.js?v=20261114111245";
-import { lsGet } from "./util.js?v=20261114111245";
-import { stars } from "./quests.js?v=20261114111245";
-import { AVATARS, MATS, SIGILS, SCENES, WINFX } from "./arena3d.js?v=20261114111245";
-import { BOX_LISTS, themeCounts, officialStarters } from "./boxdecks.js?v=20261114111245";
-import { Vault } from "./vault.js?v=20261114111245";
-import { isOwnerNow } from "./persona.js?v=20261114111245";
+import { Data } from "./fb.js?v=20261114112449";
+import { lsGet } from "./util.js?v=20261114112449";
+import { stars } from "./quests.js?v=20261114112449";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX } from "./arena3d.js?v=20261114112449";
+import { BOX_LISTS, themeCounts, officialStarters } from "./boxdecks.js?v=20261114112449";
+import { Vault } from "./vault.js?v=20261114112449";
+import { isOwnerNow } from "./persona.js?v=20261114112449";
 
 const real = (ms) => ms.filter((m) => m.mode !== "goldfish");
 const wins = (ms) => real(ms).filter((m) => m.result === "win").length;
@@ -60,7 +60,7 @@ export function newlyEarned(match) { const before = earned(Data.matches.filter((
 // your chosen figure and mat colour, if they are open to you (kept per browser)
 const pick = (k) => { try { return localStorage.getItem(k) || ""; } catch { return ""; } };
 // "own": the owner's own figure / mat picture / card sleeve, kept in his private space (vault.js)
-export const myFigure = () => { const k = pick("bot.av3"); return k === "own" ? (Vault.has("fig") ? "own" : "") : AVATARS[k] && unlocked("av", k) ? k : ""; };
+export const myFigure = () => { const k = pick("bot.av3"); return k === "own" ? (Vault.has("fig") ? "own" : "") : k === "stand" ? (Vault.has("stand") ? "stand" : "") : AVATARS[k] && unlocked("av", k) ? k : ""; };
 export const myMat = () => { const k = pick("bot.mat"); return k === "own" && Vault.has("mat") ? "own" : MATS[k] && unlocked("mat", k) ? k : "black"; };
 // the scene round the table (สนาม): ซากุระราตรี opens with the sakura mat's achievement; a browser that used the sakura mat before the two were
 // told apart keeps its trees
