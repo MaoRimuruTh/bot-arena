@@ -1,10 +1,10 @@
-import { h, openSheet, fmtDate, busy } from "../util.js?v=20261114010310";
-import { Data, Me } from "../fb.js?v=20261114010310";
-import { Views, avatarEl } from "../ui.js?v=20261114010310";
-import { ladder, ladderNow, ladderFresh } from "../ladder.js?v=20261114010310";
-import { stars } from "../quests.js?v=20261114010310";
-import { hasReplay, openReplay } from "./play.js?v=20261114010310";
-import { ACH, progress, rewardName } from "../achieve.js?v=20261114010310";
+import { h, openSheet, fmtDate, busy } from "../util.js?v=20261114102919";
+import { Data, Me } from "../fb.js?v=20261114102919";
+import { Views, avatarEl } from "../ui.js?v=20261114102919";
+import { ladder, ladderNow, ladderFresh } from "../ladder.js?v=20261114102919";
+import { stars } from "../quests.js?v=20261114102919";
+import { hasReplay, openReplay } from "./play.js?v=20261114102919";
+import { ACH, progress, rewardName } from "../achieve.js?v=20261114102919";
 
 const MODE_TH = { bot: "บอท", friend: "เพื่อน", solo: "สองฝั่ง", goldfish: "ซ้อมมือเดียว" };
 Views.history = {
@@ -12,7 +12,7 @@ Views.history = {
     const all = Data.matches, ms = all.filter((m) => m.mode !== "goldfish"), fish = all.filter((m) => m.mode === "goldfish"); // practice against the dummy is kept out of the win rates
     const head = h("div", { class: "pagehead" }, h("div", null, h("h1", null, "ประวัติการดวล"), h("div", { class: "muted small" }, "ทุกเกมที่จบจะบันทึกอัตโนมัติ ชิเอลใช้ข้อมูลนี้วิเคราะห์เด็ค")));
     if (!Data.ready.matches) return root.replaceChildren(head, busy());
-    if (!all.length) return root.replaceChildren(head, h("div", { class: "stack" }, h("div", { class: "empty" }, h("div", null, "ยังไม่มีเกมที่จบ เกมแรกของคุณจะมาอยู่ตรงนี้พร้อมรีเพลย์"), h("div", { class: "row", style: "justify-content:center;margin-top:12px" }, h("a", { class: "btn gold", href: "#play" }, "ไปสนามดวล"))), ladderPanel()));
+    if (!all.length) return root.replaceChildren(head, h("div", { class: "stack" }, h("div", { class: "empty" }, h("div", null, "ยังไม่มีเกมที่จบ เกมแรกของคุณจะมาอยู่ตรงนี้พร้อมรีเพลย์"), h("div", { class: "row", style: "justify-content:center;margin-top:12px" }, h("a", { class: "btn gold", href: "#play" }, "ไปสนามดวล"))), ladderPanel(), achPanel(all)));
     const w = ms.filter((m) => m.result === "win").length;
     const byDeck = {};
     for (const m of ms) { const k = m.deckName || "ไม่ทราบ"; byDeck[k] = byDeck[k] || { n: 0, w: 0, t: 0 }; byDeck[k].n++; byDeck[k].t += m.turns || 0; if (m.result === "win") byDeck[k].w++; }
@@ -51,13 +51,10 @@ function fishPanel(fish) {
     Object.entries(by).sort((a, b) => b[1].length - a[1].length).map(([k, t]) => { t.sort((a, b) => a - b); return h("div", { class: "row", style: "justify-content:space-between" }, h("span", { class: "small" }, `${k} (${t.length} เกม)`), h("span", { class: "num small" }, `เร็วสุด ${t[0]} · กลาง ${t[t.length >> 1]} · เฉลี่ย ${(t.reduce((a, b) => a + b, 0) / t.length).toFixed(1)}`)); }));
 }
 // achievements: what each one asks, how far along you are, what it opens up
-function achPanel(all) {
-  const rows = ACH.map((a) => ({ a, p: progress(a, all) })); const n = rows.filter((r) => r.p.done).length;
-  return h("div", { class: "panel stack" }, h("div", { class: "row", style: "justify-content:space-between" }, h("div", { class: "eyebrow" }, "ความสำเร็จ"), h("span", { class: "chip gold" }, `${n}/${ACH.length}`)),
-    h("div", { class: "achlist" }, rows.map(({ a, p }) => h("div", { class: "ach" + (p.done ? " done" : "") }, h("span", { class: "ico", "aria-hidden": "true" }, p.done ? "✦" : "·"),
-      h("div", { style: "min-width:0" }, h("b", null, a.name), h("div", { class: "tiny muted" }, a.how + (a.gives ? " · ได้" + rewardName(a.gives) : "")),
-        p.need > 1 && !p.done ? h("div", { class: "trk", style: "margin-top:4px" }, h("i", { style: `width:${(p.have / p.need) * 100}%` })) : null),
-      h("span", { class: "tiny num" }, p.done ? "สำเร็จ" : p.need > 1 ? `${p.have}/${p.need}` : "")))));
+function achPanel(all) { // the summary of the unlocks page (#unlocks): how many are open, and the way there
+  const rows = ACH.filter((a) => a.gives).map((a) => progress(a, all)), n = rows.filter((p) => p.done).length;
+  return h("a", { class: "panel stack achlink", href: "#unlocks" }, h("div", { class: "row", style: "justify-content:space-between" }, h("div", { class: "eyebrow" }, "ปลดล็อค"), h("span", { class: "chip gold" }, `${n}/${rows.length}`)),
+    h("div", { class: "trk", "aria-hidden": "true" }, h("i", { style: `width:${Math.round((n / rows.length) * 100)}%` })), h("span", { class: "small" }, "ดูของที่ยังล็อค วิธีปลดล็อค และความคืบหน้า"));
 }
 // friends' ladder: everyone's finished friend games, rated; plus how you have done against each friend
 function ladderPanel() {

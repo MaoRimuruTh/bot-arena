@@ -1,22 +1,23 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261114010310";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261114010310";
-import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261114010310";
-import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261114010310";
-import { Vault, startVault } from "./vault.js?v=20261114010310";
-import { vaultSection } from "./vaultui.js?v=20261114010310";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261114010310";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261114010310";
-import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261114010310";
-import { Sfx } from "./sfx.js?v=20261114010310";
-import { Music, MUSIC_STYLES } from "./music.js?v=20261114010310";
-import { Views, avatarEl } from "./ui.js?v=20261114010310";
-import { Ciel } from "./ai.js?v=20261114010310";
-import "./views/library.js?v=20261114010310";
-import "./views/decks.js?v=20261114010310";
-import "./views/lab.js?v=20261114010310";
-import "./views/history.js?v=20261114010310";
-import { openReport } from "./views/ask.js?v=20261114010310";
-import "./views/play.js?v=20261114010310";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261114102919";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261114102919";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn } from "./arena3d.js?v=20261114102919";
+import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261114102919";
+import { Vault, startVault } from "./vault.js?v=20261114102919";
+import { vaultSection } from "./vaultui.js?v=20261114102919";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261114102919";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261114102919";
+import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261114102919";
+import { Sfx } from "./sfx.js?v=20261114102919";
+import { Music, MUSIC_STYLES } from "./music.js?v=20261114102919";
+import { Views, avatarEl } from "./ui.js?v=20261114102919";
+import { Ciel } from "./ai.js?v=20261114102919";
+import "./views/library.js?v=20261114102919";
+import "./views/decks.js?v=20261114102919";
+import "./views/lab.js?v=20261114102919";
+import "./views/unlocks.js?v=20261114102919";
+import "./views/history.js?v=20261114102919";
+import { openReport } from "./views/ask.js?v=20261114102919";
+import "./views/play.js?v=20261114102919";
 
 const root = $("#view");
 // text size for the whole app (everything is sized in rem), kept per browser; Hearthstone and LoR offer the same for small screens
@@ -57,8 +58,8 @@ function appSection(api) {
 // ---------- gate screens ----------
 function ring() {
   const NS = "http://www.w3.org/2000/svg"; const mk = (cls, r, dash) => { const s = document.createElementNS(NS, "svg"); s.setAttribute("viewBox", "0 0 200 200"); if (cls) s.setAttribute("class", cls);
-    s.innerHTML = `<circle cx="100" cy="100" r="${r}" fill="none" stroke="rgba(227,181,74,.55)" stroke-width="0.8" stroke-dasharray="${dash}"/><circle cx="100" cy="100" r="${r - 6}" fill="none" stroke="rgba(227,181,74,.25)" stroke-width="0.5"/>` +
-      Array.from({ length: 12 }, (_, k) => `<rect x="99" y="${100 - r - 2}" width="2" height="5" fill="rgba(255,217,134,.8)" transform="rotate(${k * 30} 100 100)"/>`).join(""); return s; };
+    s.innerHTML = `<circle cx="100" cy="100" r="${r}" fill="none" style="stroke:var(--gold);stroke-opacity:.55" stroke-width="0.8" stroke-dasharray="${dash}"/><circle cx="100" cy="100" r="${r - 6}" fill="none" style="stroke:var(--gold);stroke-opacity:.25" stroke-width="0.5"/>` +
+      Array.from({ length: 12 }, (_, k) => `<rect x="99" y="${100 - r - 2}" width="2" height="5" style="fill:var(--gold-hi);fill-opacity:.8" transform="rotate(${k * 30} 100 100)"/>`).join(""); return s; };
   return h("div", { class: "ring" }, mk("", 96, "2 4"), mk("r2", 92, "14 6"));
 }
 function gate(...kids) { root.replaceChildren(h("div", { class: "gate" }, h("div", { class: "stack", style: "align-items:center;gap:22px" }, ...kids))); }
