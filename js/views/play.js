@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261114133434";
-import { fxText, kwGloss } from "../fxtext.js?v=20261114133434";
-import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261114133434";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261114133434";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261114133434";
-import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261114133434";
-import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor, myWinFx } from "../achieve.js?v=20261114133434";
-import { themeCounts, officialStarters } from "../boxdecks.js?v=20261114133434";
-import { ladder, ladderReset } from "../ladder.js?v=20261114133434";
-import { notify } from "../notify.js?v=20261114133434";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261114133434";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261114133434";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261114133434";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261114133434";
-import { Music, MUSIC_STYLES } from "../music.js?v=20261114133434";
-import { Sfx } from "../sfx.js?v=20261114133434";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261114133434";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261114133434";
-import { readAura, traits } from "../auras.js?v=20261114133434";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261114133434";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261114181128";
+import { fxText, kwGloss } from "../fxtext.js?v=20261114181128";
+import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261114181128";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261114181128";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261114181128";
+import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261114181128";
+import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor, myWinFx } from "../achieve.js?v=20261114181128";
+import { themeCounts, officialStarters } from "../boxdecks.js?v=20261114181128";
+import { ladder, ladderReset } from "../ladder.js?v=20261114181128";
+import { notify } from "../notify.js?v=20261114181128";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261114181128";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261114181128";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261114181128";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261114181128";
+import { Music, MUSIC_STYLES } from "../music.js?v=20261114181128";
+import { Sfx } from "../sfx.js?v=20261114181128";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar } from "../fb.js?v=20261114181128";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261114181128";
+import { readAura, traits } from "../auras.js?v=20261114181128";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261114181128";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -26,8 +26,8 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(s.id ? [`รีเพลย์ในเครื่องนี้: ${s.id}-${V}`] : []), "บันทึก 40 บรรทัดล่าสุด:\n" + s.log.slice(-40).map((l) => "· " + l.m).join("\n"), // so a report can be traced back to its game
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261114133434";
-import { customMat, customSleeve, customFig, customStand, setOnReady, onVault } from "../vault.js?v=20261114133434";
+import { allDecks, deckById } from "./decks.js?v=20261114181128";
+import { customMat, customSleeve, customFig, customStand, setOnReady, onVault } from "../vault.js?v=20261114181128";
 // the players' own mat picture, card sleeve and figure (vault.js): the table asks for them, and redraws when one loads or changes
 Arena.setCustom({ mat: customMat, sleeve: customSleeve, fig: customFig, stand: customStand, skins: (s) => setGameSkins(s && s.P, Me.uid) }); setOnReady((o) => Arena.customReady(o)); onVault(() => Arena.refreshCustom());
 { let sig = ""; Data.listeners.add(() => { const sh = Data.meta && Data.meta.show, now = sh ? Object.entries(sh).map(([k, x]) => k + ":" + (x && x.v) + ":" + (x && x.finish)).join() : ""; if (now !== sig) { sig = now; Arena.refreshCustom(); } }); }
@@ -116,11 +116,12 @@ Views.play = {
       } else {
         const lobby = h("div", { class: "stack", style: "gap:8px" }, busy("กำลังหาห้อง…")); let seenRooms = null;
         lobbyUnsub = watchLobby((rooms) => {
-          const list = rooms.filter((r) => Date.now() - (r.updatedAt || 0) < 6 * 3600e3).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-          if (seenRooms) for (const r of list) if (!seenRooms.has(r.id) && r.host !== Me.uid) notify("มีห้องรอดวล", `${r.hostName || "เพื่อน"} สร้างห้องด้วยเด็ค ${(r.hostDeck && r.hostDeck.name) || ""}`, "bot-room");
+          const list = rooms.filter((r) => Date.now() - (r.updatedAt || 0) < 6 * 3600e3 && (r.status !== "seeding" || r.host === Me.uid || r.guest === Me.uid)).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+          if (seenRooms) for (const r of list) if (!seenRooms.has(r.id) && r.host !== Me.uid && r.status !== "seeding") notify("มีห้องรอดวล", `${r.hostName || "เพื่อน"} สร้างห้องด้วยเด็ค ${(r.hostDeck && r.hostDeck.name) || ""}`, "bot-room");
           seenRooms = new Set(list.map((r) => r.id));
           lobby.replaceChildren(...(list.length ? list.map((r) => h("div", { class: "mrow", style: "cursor:default" }, avatarEl(r.hostAva, r.hostName), h("div", { class: "grow" }, h("b", null, r.hostName || "เพื่อน"), h("div", { class: "tiny muted" }, (r.tour ? `แมตช์ทัวร์กับ ${r.vsName || "เพื่อน"} · ` : r.vs ? `ท้าดวล ${r.vsName || "เพื่อน"} · ` : "") + "เด็ค " + (r.hostDeck && r.hostDeck.name || ""))),
-            r.host === Me.uid ? h("button", { class: "btn sm danger", onclick: () => F.deleteDoc(gameRef(r.id)).catch(() => {}) }, "ยกเลิกห้อง")
+            r.status === "seeding" ? h("button", { class: "btn sm gold", onclick: () => openOnline(r.id, r.host === Me.uid ? 0 : 1) }, r.host === Me.uid ? "เพื่อนเข้าแล้ว เริ่มเกม" : "กลับเข้าห้อง")
+            : r.host === Me.uid ? h("button", { class: "btn sm danger", onclick: () => F.deleteDoc(gameRef(r.id)).catch(() => {}) }, "ยกเลิกห้อง")
               : r.vs && r.vs !== Me.uid ? h("span", { class: "tiny muted" }, "รอ " + (r.vsName || "เพื่อน")) : h("button", { class: "btn sm gold", disabled: !d, onclick: () => joinRoom(r) }, "เข้าร่วม"))) : [h("div", { class: "muted small" }, "ยังไม่มีห้องที่รออยู่")]));
         });
         // games in progress: watch a friend's (hands stay hidden), or get back into your own from this device
@@ -268,11 +269,50 @@ function stopGame(clear) {
 // Rule Book 3.2 (Deck Set 3): a card marked "ลำเอียง" cannot go in a Deck used in a competition, so tournament matches turn such a Deck away (other games play it as usual)
 const BIASED_TOUR = "แมตช์ทัวร์นาเมนต์ใช้เด็คที่มีการ์ดลำเอียงไม่ได้ (Rule Book: การ์ดลำเอียงใส่ใน Deck ที่ใช้แข่งขันไม่ได้) เลือกเด็คอื่นก่อนนะ";
 const biasedDeck = (d) => !!d && validateDeck(d).items.some((x) => x.warn && /ลำเอียง/.test(x.msg));
+// ---------- a fair shuffle between friends ----------
+// The host locks in a secret when it opens the room (only its fingerprint, a SHA-256 hash, goes in the room), the friend
+// adds their own random part and their Deck when joining, then the host shows the secret and starts the game. The shuffle
+// seed comes from both parts, so neither player can pick it, and each side checks the other's part.
+const rndHex = (n) => Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) => b.toString(16).padStart(2, "0")).join("");
+const sha256 = async (t) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t))), (b) => b.toString(16).padStart(2, "0")).join("");
+const seedOf = (h, j) => (parseInt(String(h).slice(0, 8), 16) ^ parseInt(String(j), 16)) | 0;
+const lsOr = (k) => { try { return localStorage.getItem(k) || ""; } catch { return ""; } };
+const lsPut = (k, v) => { try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch { /* storage may be off */ } };
+async function lockSeed(id) { const h = rndHex(16); lsPut("bot.h." + id, h); return sha256(h); } // the host's secret stays on this device until the game starts
+const fairStart = (g, id) => E.newGame({ players: [{ uid: g.host, name: g.hostName, ava: g.hostAva || "", av3: g.hostAv3 || "", sig: g.hostSig || "", mat: g.hostMat || "", sleeve: g.hostSleeve || "", skins: g.hostSkins || null },
+  { uid: g.guest, name: g.guestName, ava: g.guestAva || "", av3: g.guestAv3 || "", sig: g.guestSig || "", mat: g.guestMat || "", sleeve: g.guestSleeve || "", skins: g.guestSkins || null }],
+  decks: [g.hostDeck, g.guestDeck], seed: seedOf(g.h, g.j), first: 0, toss: true, mode: "friend", id });
+// the host, once the friend has joined: show the secret and start the game
+let fairBusy = null;
+async function startFair(id, g) {
+  if (fairBusy === id) return; fairBusy = id;
+  try {
+    const h = lsOr("bot.h." + id);
+    if (!h) { toast("เครื่องนี้ไม่มีรหัสสับเด็คของห้องนี้ (เปิดห้องจากเครื่องอื่นหรือเปล่า) ยกเลิกห้องแล้วเปิดใหม่นะ", "bad"); return; }
+    if (await sha256(h) !== g.hc) { toast("รหัสสับเด็คของห้องนี้ไม่ตรงกับที่ล็อกไว้ ยกเลิกห้องแล้วเปิดใหม่นะ", "bad"); return; }
+    await F.runTransaction(db, async (tx) => { const snap = await tx.get(gameRef(id)); const d = snap.data(); if (!d || d.status !== "seeding" || d.state) return;
+      const st = JSON.stringify(fairStart({ ...d, h }, id)); tx.update(gameRef(id), { h, init: st, state: st, status: "playing", updatedAt: Date.now() }); });
+  } catch (e) { console.warn(e); toast("เริ่มเกมไม่ได้ ลองเปิดห้องใหม่อีกครั้ง", "bad"); } finally { fairBusy = null; }
+}
+// both players, when the game starts: was the shuffle fair?
+async function checkFair(id, g, V) {
+  const GG = G; let why = "";
+  try {
+    const mine = V === 0 ? lsOr("bot.h." + id) : "", saw = V === 1 ? lsOr("bot.hc." + id) : "", hc = saw || g.hc;
+    if (!hc) return; // a room from before fair shuffles
+    if (!g.h || !g.j || !g.init) why = "เกมนี้เริ่มโดยไม่ได้สับเด็คแบบยุติธรรม";
+    else if (mine && g.h !== mine) why = "รหัสสับเด็คในห้องไม่ใช่ของเรา";
+    else if (await sha256(g.h) !== hc) why = "รหัสสับเด็คไม่ตรงกับที่ล็อกไว้ตอนเปิดห้อง";
+    else { const init = JSON.parse(g.init), a = fairStart(g, id); a.startedAt = init.startedAt; if (JSON.stringify(a) !== JSON.stringify(init)) why = "สถานะตอนเริ่มเกมไม่ตรงกับการสับเด็ค"; }
+  } catch (e) { console.warn(e); why = "ตรวจการสับเด็คไม่ได้"; }
+  lsPut(V === 0 ? "bot.h." + id : "bot.hc." + id, ""); // each side forgets its own part once checked
+  if (why && GG && G === GG && !GG.tamper) { GG.tamper = "seed: " + why; console.warn("fair shuffle check:", why); toast("⚠ " + why + " เกมนี้จะถูกบันทึกว่าน่าสงสัย", "bad"); }
+}
 async function createRoom(extra = {}) { // extra: a tournament match ({ tour, vs, vsName }) only that friend may join
   const me = deckById(Setup.deck); if (!me) return;
   if (extra.tour && biasedDeck(me)) { toast(BIASED_TOUR, "bad"); return; }
-  const id = newGameId();
-  await F.setDoc(gameRef(id), { status: "waiting", host: Me.uid, hostName: myName(), hostAva: myAvatar(), hostAv3: myFigure(), hostSig: mySigil(), hostMat: myMat(), hostSleeve: mySleeve(), hostSkins: skinsFor(me), hostDeck: pack(me), seats: [Me.uid], createdAt: Date.now(), updatedAt: Date.now(), ...extra });
+  const id = newGameId(); const hc = await lockSeed(id);
+  await F.setDoc(gameRef(id), { status: "waiting", hc, host: Me.uid, hostName: myName(), hostAva: myAvatar(), hostAv3: myFigure(), hostSig: mySigil(), hostMat: myMat(), hostSleeve: mySleeve(), hostSkins: skinsFor(me), hostDeck: pack(me), seats: [Me.uid], createdAt: Date.now(), updatedAt: Date.now(), ...extra });
   toast("สร้างห้องแล้ว รอเพื่อนเข้าร่วม"); openOnline(id, 0);
 }
 async function joinRoom(r) {
@@ -281,6 +321,9 @@ async function joinRoom(r) {
   try {
     await F.runTransaction(db, async (tx) => {
       const snap = await tx.get(gameRef(r.id)); const g = snap.data(); if (!g || g.status !== "waiting") throw new Error("ห้องนี้เริ่มไปแล้ว"); if (g.vs && g.vs !== Me.uid) throw new Error("ห้องนี้เป็นแมตช์ทัวร์ของเพื่อนคนอื่น");
+      if (g.hc) { // a fair shuffle: our random part and our Deck go in now; the host shows its secret next and starts the game
+        lsPut("bot.hc." + r.id, g.hc);
+        tx.update(gameRef(r.id), { status: "seeding", guest: Me.uid, guestName: myName(), seats: [g.host, Me.uid], j: rndHex(4), guestDeck: pack(me), guestAva: myAvatar(), guestAv3: myFigure(), guestSig: mySigil(), guestMat: myMat(), guestSleeve: mySleeve(), guestSkins: skinsFor(me), updatedAt: Date.now() }); return; }
       const s = E.newGame({ players: [{ uid: g.host, name: g.hostName, ava: g.hostAva || "", av3: g.hostAv3 || "", sig: g.hostSig || "", mat: g.hostMat || "", sleeve: g.hostSleeve || "", skins: g.hostSkins || null }, { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), skins: skinsFor(me) }], decks: [g.hostDeck, pack(me)], seed: (Math.random() * 2 ** 31) | 0, first: 0, toss: true, mode: "friend", id: r.id });
       tx.update(gameRef(r.id), { status: "playing", guest: Me.uid, guestName: myName(), seats: [g.host, Me.uid], state: JSON.stringify(s), updatedAt: Date.now() });
     });
@@ -290,8 +333,8 @@ async function joinRoom(r) {
 // rematch with the same friend: open a room only they may join, and leave a note on the finished game for them
 async function friendRematch() {
   const g = G, s = g.s, V = g.V, opp = s.P[1 - V]; const deck = deckById(s.P[V].deckId) || deckById(Setup.deck); if (!deck) return toast("เลือกเด็คก่อน");
-  const id = newGameId();
-  try { await F.setDoc(gameRef(id), { status: "waiting", host: Me.uid, hostName: myName(), hostAva: myAvatar(), hostAv3: myFigure(), hostSig: mySigil(), hostMat: myMat(), hostSleeve: mySleeve(), hostSkins: skinsFor(deck), hostDeck: pack(deck), seats: [Me.uid], createdAt: Date.now(), updatedAt: Date.now(), vs: opp.uid, vsName: opp.name });
+  const id = newGameId(); const hc = await lockSeed(id);
+  try { await F.setDoc(gameRef(id), { status: "waiting", hc, host: Me.uid, hostName: myName(), hostAva: myAvatar(), hostAv3: myFigure(), hostSig: mySigil(), hostMat: myMat(), hostSleeve: mySleeve(), hostSkins: skinsFor(deck), hostDeck: pack(deck), seats: [Me.uid], createdAt: Date.now(), updatedAt: Date.now(), vs: opp.uid, vsName: opp.name });
     await F.updateDoc(gameRef(g.id), { rematch: { id, by: V } }); } catch { return toast("เปิดห้องไม่ได้", "bad"); }
   stopGame(true); openOnline(id, 0); toast(`เปิดห้องแล้ว รอ ${opp.name} รับคำท้า`);
 }
@@ -311,8 +354,10 @@ function openOnline(id, V, watch) {
     G.emoSeen = G.emoSeen || {};
     for (const p of [0, 1]) { const e = g["emo" + p]; if (e && e.at > (G.emoSeen[p] || 0)) { G.emoSeen[p] = e.at; if ((G.watch || p !== G.V) && Date.now() - e.at < 15000 && G.s) showEmote(p, e.k); } }
     if (g.rematch && g.rematch.by !== G.V && !G.watch && G.offer !== g.rematch.id) { G.offer = g.rematch.id; notify("เพื่อนขอดวลอีกครั้ง", `${G.s ? G.s.P[g.rematch.by].name : "เพื่อน"} เปิดห้องรอแล้ว`, "bot-game"); toast("เพื่อนขอดวลอีกครั้ง"); draw(); }
+    if (!g.state && g.status === "seeding" && g.host === Me.uid && !G.watch) startFair(id, g);
     if (!g.state) { G.sawWaiting = true; return; } if (g.trimmed || g.state === G.lastState) return; G.lastState = g.state;
     const s = JSON.parse(g.state); const first = !G.s, was = G.s;
+    if (first && !G.watch) checkFair(id, g, G.V);
     if (was && !G.tamper) { let why = ""; try { why = cardsSane(was, s); } catch (e) { console.warn(e); } if (why) { G.tamper = why; console.warn("game state check:", why); toast("⚠ สถานะเกมที่ได้รับไม่ตรงกับการเล่นปกติ (การ์ดถูกเพิ่ม เปลี่ยน หรือหายไป) เกมนี้จะถูกบันทึกว่าน่าสงสัย", "bad"); } }
     G.s = s; persist();
     if (!G.watch) heads(was, s);
@@ -585,7 +630,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261114133434").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261114181128").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", mat: botMat(), bot: true });
