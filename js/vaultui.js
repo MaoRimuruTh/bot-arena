@@ -1,10 +1,10 @@
 // Settings for the owner's own things (vault.js): a picture for his half of the mat, a picture for his card sleeves and a
 // 3D figure. A picture is framed here (drag to move it, slide to zoom) and saved twice: in full for his own screen, and
 // smaller for opponents if he lets them see it. Shown only to the owner account.
-import { h, toast, openSheet } from "./util.js?v=20261114184824";
-import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, shownBlob, isOwner, vaultBlob } from "./vault.js?v=20261114184824";
-import { matLines, sleeveFrame, MAT_ASPECT, FIG_FINISH, FIG_MOVES, figureViewer } from "./arena3d.js?v=20261114184824";
-import { setMeta, Data } from "./fb.js?v=20261114184824";
+import { h, toast, openSheet } from "./util.js?v=20261114185307";
+import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, shownBlob, isOwner, vaultBlob } from "./vault.js?v=20261114185307";
+import { matLines, sleeveFrame, veilPaint, MAT_ASPECT, FIG_FINISH, FIG_MOVES, figureViewer } from "./arena3d.js?v=20261114185307";
+import { setMeta, Data } from "./fb.js?v=20261114185307";
 
 const MAT_A = MAT_ASPECT, SLEEVE_A = 1.5 / 2.04, STAND_A = 0.7; // a player's playmat on their side of the table (arena3d.js); a card
 const KIND = {
@@ -31,7 +31,7 @@ function editor(kind, img) {
   const cv = h("canvas", { class: "vprev " + kind, width: W, height: H, "aria-label": "ตัวอย่างภาพ ลากเพื่อเลื่อน บีบสองนิ้วเพื่อซูม" }), g = cv.getContext("2d");
   const lines = kind === "mat" ? matLines() : null;
   const draw = () => { g.clearRect(0, 0, W, H); drawCrop(g, W, H, img, st);
-    if (lines) { g.fillStyle = `rgba(13,11,18,${st.veil})`; g.fillRect(0, 0, W, H); g.globalCompositeOperation = "screen"; g.drawImage(lines, 0, 0, W, H); g.globalCompositeOperation = "source-over"; }
+    if (lines) { veilPaint(g, 0, 0, W, H, "#0d0b12", st.veil); g.globalCompositeOperation = "screen"; g.drawImage(lines, 0, 0, W, H); g.globalCompositeOperation = "source-over"; }
     if (kind === "sleeve") sleeveFrame(g, W, H); }; // (the sleeve's edge and gloss are the table's, not part of the saved picture)
   // (the standee's white border and base are the table's too)
   // one finger (or the mouse) drags the picture; two fingers pinch to zoom; the mouse wheel zooms too (the slider follows)
@@ -62,6 +62,13 @@ function editor(kind, img) {
       h("button", { class: "btn", onclick: () => api.close() }, "ยกเลิก"))].filter(Boolean), { title: K.title, wide: kind === "mat" });
 }
 
+// how his own sleeves look on the table: shiny or matt plastic (this device; from the next game)
+const SLEEVE_FIN = { gloss: "ซองเงา", matte: "ซองด้าน" };
+function sleeveFinSeg() {
+  let cur = "gloss"; try { cur = localStorage.getItem("bot.sleeveFin") === "matte" ? "matte" : "gloss"; } catch {}
+  return h("div", { class: "seg wrap", role: "group", "aria-label": "ผิวซองการ์ด" }, Object.entries(SLEEVE_FIN).map(([k, t]) => h("button", { "aria-pressed": cur === k ? "true" : "false", onclick: (e) => {
+    try { localStorage.setItem("bot.sleeveFin", k); } catch {} for (const b of e.currentTarget.parentElement.children) b.setAttribute("aria-pressed", b === e.currentTarget ? "true" : "false"); toast(t + " ใช้ตั้งแต่เกมถัดไป"); } }, t)));
+}
 // a small picture of what is stored
 function thumb(kind) {
   const K = KIND[kind], w = kind === "mat" ? 240 : 66, c = h("canvas", { class: "vthumb " + kind, width: w, height: Math.round(w / K.a) });
@@ -113,6 +120,7 @@ function rows() {
     const pick = filePick("image/*", async (f) => { try { editor(kind, await loadImage(f)); } catch { toast("เปิดรูปนี้ไม่ได้", "bad"); } });
     out.push(h("div", { class: "vitem" }, has ? thumb(kind) : h("div", { class: "vthumb empty " + kind }, "ยังไม่มีภาพ"),
       h("div", { class: "stack", style: "gap:6px;min-width:0" }, h("b", null, K.label), h("span", { class: "tiny muted" }, has ? (shown ? "คู่แข่งเห็นฉบับย่อบนโต๊ะของเขา" : "เห็นแค่บนเครื่องของมาสเตอร์") : "เลือกรูปแล้วจัดตำแหน่งได้"),
+        kind === "sleeve" && has ? sleeveFinSeg() : null,
         h("div", { class: "row wrap" }, pick, h("button", { class: "btn sm gold", onclick: () => pick.click() }, has ? "เปลี่ยนรูป" : "เลือกรูป"),
           has && shown ? h("button", { class: "btn sm", onclick: () => vaultShow(kind, null).then(() => toast("ซ่อนจากคู่แข่งแล้ว")).catch(() => toast("ทำไม่สำเร็จ", "bad")) }, "ซ่อนจากคู่แข่ง") : null,
           has ? h("button", { class: "btn sm danger", onclick: () => vaultDrop(kind).then(() => toast("ลบแล้ว")).catch(() => toast("ลบไม่สำเร็จ", "bad")) }, "ลบ") : null))));

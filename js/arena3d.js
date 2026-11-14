@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261114184824";
-import { E } from "./engine.js?v=20261114184824";
-import { h } from "./util.js?v=20261114184824";
-import { Sfx } from "./sfx.js?v=20261114184824";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261114185307";
+import { E } from "./engine.js?v=20261114185307";
+import { h } from "./util.js?v=20261114185307";
+import { Sfx } from "./sfx.js?v=20261114185307";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -78,6 +78,7 @@ function mount(container, opts = {}) {
   const small = innerWidth < 760; R.small = small; R.Q = Q; R.watch = !!opts.watch; /* a friend looking on: no "your turn", and the winner gets the banner */ R.matKey = [small || Q === "low", { near: MATS[opts.mat] || MATS.black, far: MATS[opts.farMat] || MATS[opts.mat] || MATS.black }]; R.zones = tallScreen(container) ? ZONES.tall : ZONES.wide; const mt = matTextures(...R.matKey, R.zones);
   R.matMat = new THREE.MeshStandardMaterial({ map: mt.base, emissiveMap: mt.glow, emissive: new THREE.Color(mt.emis), emissiveIntensity: 0.2, roughness: Q === "high" ? 1 : 0.8, roughnessMap: Q === "high" ? mt.rough : null, metalness: 0 }); R.matGlow = mt.glow; // (below high nothing reflects in the mat: a constant roughness, one texture fewer)
   clothMat(R.matMat, mt, Q); // a fine weave and a soft sheen: the mat is cloth, not a sheet of plastic
+  pmClothHook(R.matMat, mt.pmCloth);
   const top = new THREE.Mesh(new THREE.PlaneGeometry(MW, MD), R.matMat); top.rotation.x = -Math.PI / 2; top.position.set(0, 0, MZ); top.receiveShadow = true; scene.add(top);
   const lacq = new THREE.MeshStandardMaterial({ color: 0x5a1812, roughness: 0.34, metalness: 0, envMapIntensity: 0.3 }); R.lacq = lacq;
   const body = new THREE.Mesh(new THREE.BoxGeometry(MW, 0.28, MD), lacq); body.position.set(0, -0.18, MZ); body.receiveShadow = true; scene.add(body);
@@ -1522,6 +1523,13 @@ function hallShow() {
   if (R.hemi) { R.hemi.color.setHex(air[2]); R.hemi.groundColor.setHex(air[3]); R.hemi.intensity = air[4]; }
 }
 const rgbaOf = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
+// the veil over an owner's own mat picture (how dark is his choice): light in the middle and heavier toward the edge, an oval
+// vignette, so the art keeps its life where the cards lie and the gold zone lines still read (the editor's preview uses it too)
+export function veilPaint(g, x0, y0, w, hh, lac, veil) {
+  if (!(veil > 0)) return; g.save(); g.translate(x0 + w / 2, y0 + hh / 2); g.scale(w / hh, 1);
+  const gr = g.createRadialGradient(0, 0, 0, 0, 0, hh * 0.72); gr.addColorStop(0, rgbaOf(lac, veil * 0.42)); gr.addColorStop(0.55, rgbaOf(lac, veil * 0.8)); gr.addColorStop(1, rgbaOf(lac, Math.min(0.92, veil * 1.3 + 0.06)));
+  g.fillStyle = gr; g.fillRect(-hh / 2, -hh / 2, hh, hh); g.restore();
+}
 // the gold line-work of our half of the wide table, gold on black, for the playmat editor to lay over a picture ("screen")
 export function matLines() {
   const mt = matTextures(true, { near: MATS.black, far: MATS.black }, ZONES.wide), src = mt.glow.image, S = src.width / MW;
@@ -1584,16 +1592,17 @@ const roundRect = (c, x0, y0, x1, y1, r) => { c.beginPath(); c.moveTo(x0 + r, y0
 // owner's veil, a dark bound edge with a row of stitches, and cloth's matt finish in the roughness map
 function playmat(g, rq, m, near, [x0, y0, x1, y1], U) {
   const r = U(PM.r), bw = U(PM.bind), w = x1 - x0, hh = y1 - y0;
-  g.save(); g.shadowColor = "rgba(0,0,0,.6)"; g.shadowBlur = U(0.22); g.shadowOffsetY = U(near ? 0.05 : -0.05); g.fillStyle = "#0c0b0e"; roundRect(g, x0, y0, x1, y1, r); g.fill(); g.restore();
+  g.save(); g.shadowColor = "rgba(0,0,0,.72)"; g.shadowBlur = U(0.3); g.shadowOffsetY = U(0.07); g.fillStyle = "#0c0b0e"; roundRect(g, x0, y0, x1, y1, r); g.fill(); g.restore();
+  g.fillStyle = "#050407"; roundRect(g, x0 + U(0.012), y0 + U(0.04), x1 - U(0.012), y1 + U(0.04), r); g.fill(); // its rubber side, seen below the edge nearer the player (the mat is a few mm thick)
   g.save(); roundRect(g, x0, y0, x1, y1, r); g.clip();
   const iw = m.img.width, ih = m.img.height, k = Math.max(w / iw, hh / ih), dw = iw * k, dh = ih * k;
   if (near) g.drawImage(m.img, x0 + (w - dw) / 2, y0 + (hh - dh) / 2, dw, dh); else { g.translate(x1, y1); g.rotate(Math.PI); g.drawImage(m.img, (w - dw) / 2, (hh - dh) / 2, dw, dh); }
   g.restore();
-  g.save(); roundRect(g, x0, y0, x1, y1, r); g.clip(); g.fillStyle = rgbaOf(m.lac, m.veil != null ? m.veil : 0.3); g.fillRect(x0, y0, w, hh);
+  g.save(); roundRect(g, x0, y0, x1, y1, r); g.clip(); veilPaint(g, x0, y0, w, hh, m.lac, m.veil != null ? m.veil : 0.3);
   // the binding round the edge, a little sheen along its inner side, and the stitching along it
   g.lineWidth = bw * 2; g.strokeStyle = "#0e0d12"; roundRect(g, x0, y0, x1, y1, r); g.stroke();
   g.lineWidth = Math.max(1, U(0.012)); g.strokeStyle = "rgba(255,255,255,.10)"; roundRect(g, x0 + bw, y0 + bw, x1 - bw, y1 - bw, Math.max(1, r - bw)); g.stroke();
-  g.setLineDash([U(0.07), U(0.045)]); g.lineWidth = Math.max(1, U(0.016)); g.strokeStyle = "rgba(150,140,128,.55)"; const sx = bw * 0.5; roundRect(g, x0 + sx, y0 + sx, x1 - sx, y1 - sx, Math.max(1, r - sx)); g.stroke(); g.setLineDash([]);
+  // (the stitching along it is thread in the mat's own shader, where the light can catch it: pmClothHook)
   g.restore();
   rq.save(); rq.fillStyle = "#e4e4e4"; roundRect(rq, x0, y0, x1, y1, r); rq.fill(); rq.restore(); // cloth is matt: the hall's light does not shine in it
 }
@@ -1793,7 +1802,7 @@ function matTextures(small, mats = {}, Z = ZONES.wide) {
   // the labels need the display font: redraw once it has loaded
   if (document.fonts && document.fonts.status !== "loaded") document.fonts.ready.then(repaint);
   if (document.fonts && (NEAR.kind === "sketch" || FAR.kind === "sketch") && !document.fonts.check('600 20px "Mali"', "นรกAa")) document.fonts.load('600 20px "Mali"', "นรกAa").then(repaint).catch(() => {});
-  return { base: tb, glow: tg, rough: tr, emis: tint ? 0xffffff : 0xe0982c, weave: [weaveOf(FAR), weaveOf(NEAR), 1 - yMid / CH] };
+  return { base: tb, glow: tg, rough: tr, emis: tint ? 0xffffff : 0xe0982c, pmCloth: [cloths.some((c) => c.near), cloths.some((c) => !c.near)], weave: [weaveOf(FAR), weaveOf(NEAR), 1 - yMid / CH] };
 }
 // dark teak planks: grain running along each plank, a seam between them, each plank a slightly different tone
 function woodTexture(small) {
@@ -2186,7 +2195,7 @@ function fitTall(camera, w, hh) {
 function swapMat() {
   if (!R || !R.matMat || !R.matKey) return; const mt = matTextures(...R.matKey, R.zones), M = R.matMat;
   for (const k of ["map", "emissiveMap", "roughnessMap"]) if (M[k] && M[k].dispose) M[k].dispose();
-  M.map = mt.base; M.emissiveMap = mt.glow; M.emissive.setHex(mt.emis); M.roughnessMap = R.Q === "high" ? mt.rough : null; if (!M.roughnessMap) mt.rough.dispose(); if (M.metalnessMap) M.metalnessMap = mt.glow; R.matGlow = mt.glow; if (M.userData.weave) M.userData.weave.k.value.set(...mt.weave); M.needsUpdate = true;
+  M.map = mt.base; M.emissiveMap = mt.glow; M.emissive.setHex(mt.emis); M.roughnessMap = R.Q === "high" ? mt.rough : null; if (!M.roughnessMap) mt.rough.dispose(); if (M.metalnessMap) M.metalnessMap = mt.glow; R.matGlow = mt.glow; if (M.userData.pmCloth) { M.userData.pmCloth.uPmClothN.value = mt.pmCloth[0] ? 1 : 0; M.userData.pmCloth.uPmClothF.value = mt.pmCloth[1] ? 1 : 0; } if (M.userData.weave) M.userData.weave.k.value.set(...mt.weave); M.needsUpdate = true;
 }
 // ---------- the side zones of a wide table ----------
 // LIFE lies sideways down its owner's left like a damage zone: face down until it is turned up, then its face shows (tap
@@ -2208,11 +2217,65 @@ function makeLife(s, x, p) {
   face.userData.life = back.userData.life = x.i; edge.userData.life = x.i; return { i: x.i, p, grp, flip, face, back, edge, up: null };
 }
 function dropMesh(o) { R.scene.remove(o.grp); if (o.face && o.face.material.dispose) o.face.material.dispose(); if (o.top && o.top.material !== R.backMat && !o.top.material.userData.keep && o.top.material.dispose) o.top.material.dispose(); if (o.el) o.el.remove(); }
+// an owner's own picture on the table is a cloth playmat, and in the light it should read as one: matt (no hall light shining in
+// it), a soft velvet sheen at a low angle, a faintly uneven nap, and round its edge a raised
+// rubber binding with a stitched thread. All of it is in the mat's own shader, limited to the cloth's rounded rectangle(s): no
+// extra mesh or texture (the fine weave itself is the built-in cloth's normal map, when the mat has one)
+function pmClothHook(M, cloth) {
+  const u = { uPmClothN: { value: cloth && cloth[0] ? 1 : 0 }, uPmClothF: { value: cloth && cloth[1] ? 1 : 0 } }; M.userData.pmCloth = u; M.extensions = { derivatives: true };
+  const f = (v) => v.toFixed(4), zN0 = MZ + PM.z0, zN1 = MZ + MD / 2 - PM.z1, czN = (zN0 + zN1) / 2, bz = (zN1 - zN0) / 2, czF = 2 * MZ - czN;
+  const rect = (cz) => `pmcRect(pmcP, vec2(0.0, ${f(cz)}), vec2(${f(PM.x)}, ${f(bz)}), ${f(PM.r)})`;
+  // (the mat may already carry another hook, e.g. the built-in cloth: it runs first and ours adds to its result)
+  const prev = M.onBeforeCompile, prevCK = M.customProgramCacheKey;
+  M.customProgramCacheKey = () => "pmCloth|" + (prevCK ? prevCK.call(M) : "");
+  M.onBeforeCompile = (sh, r) => {
+    if (prev) prev.call(M, sh, r);
+    Object.assign(sh.uniforms, u);
+    sh.fragmentShader = sh.fragmentShader.replace("#include <common>", `#include <common>
+uniform float uPmClothN, uPmClothF;
+float pmcRect(vec2 p, vec2 c, vec2 b, float r) { vec2 q = abs(p - c) - b + r; return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r; }
+float pmcH(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float pmcN(vec2 p) { vec2 i = floor(p), g = fract(p); g = g * g * (3.0 - 2.0 * g); return mix(mix(pmcH(i), pmcH(i + vec2(1.0, 0.0)), g.x), mix(pmcH(i + vec2(0.0, 1.0)), pmcH(i + vec2(1.0, 1.0)), g.x), g.y); }
+vec3 pmcBump(vec3 sp, vec3 sn, vec2 dH) { vec3 sx = dFdx(sp), sy = dFdy(sp), r1 = cross(sy, sn), r2 = cross(sn, sx); float det = dot(sx, r1); return normalize(abs(det) * sn - sign(det) * (dH.x * r1 + dH.y * r2)); }`)
+      .replace("#include <map_fragment>", `#include <map_fragment>
+vec2 pmcP = vec2(vUv.x * ${f(MW)} - ${f(MW / 2)}, ${f(MZ + MD / 2)} - vUv.y * ${f(MD)}); float pmcD = 1.0, pmcCz = 0.0;
+if (uPmClothN > 0.5) { float d = ${rect(czN)}; if (d < pmcD) { pmcD = d; pmcCz = ${f(czN)}; } }
+if (uPmClothF > 0.5) { float d = ${rect(czF)}; if (d < pmcD) { pmcD = d; pmcCz = ${f(czF)}; } }
+float pmcIn = 1.0 - smoothstep(-0.006, 0.0, pmcD), pmcBind = pmcIn * smoothstep(${f(-PM.bind - 0.012)}, ${f(-PM.bind + 0.004)}, pmcD);
+vec2 pmcQ = abs(pmcP - vec2(0.0, pmcCz)) / vec2(${f(PM.x)}, ${f(bz)}); float pmcAlong = pmcQ.x > pmcQ.y ? pmcP.y : pmcP.x;
+float pmcSt = pmcIn * (1.0 - smoothstep(0.004, 0.009, abs(pmcD + ${f(PM.bind * 0.5)}))) * step(0.38, fract(pmcAlong / 0.115));
+float pmcNap = pmcN(pmcP * 3.1) * 0.6 + pmcN(pmcP * 17.0) * 0.4; diffuseColor.rgb *= 1.0 + pmcIn * (1.0 - pmcBind) * (pmcNap - 0.5) * 0.09; // the nap of the cloth: faintly uneven
+diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.62, 0.58, 0.53), pmcSt * 0.75);`)
+      .replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>
+roughnessFactor = mix(roughnessFactor, mix(0.8, 0.5, pmcBind), pmcIn);`)
+      .replace("#include <emissivemap_fragment>", `float pmcHt = pmcIn * (pmcBind * sin(clamp(-pmcD / ${f(PM.bind)}, 0.0, 1.0) * 3.14159) * 0.02 + pmcSt * 0.0016);
+vec3 pmcNb = pmcBump(-vViewPosition, normal, vec2(dFdx(pmcHt), dFdy(pmcHt))); normal = normalize(mix(normal, pmcNb, pmcIn));
+#include <emissivemap_fragment>`)
+      .replace("#include <tonemapping_fragment>", `float pmcNv = clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0);
+gl_FragColor.rgb += pmcIn * (1.0 - pmcBind) * pow(1.0 - pmcNv, 2.0) * 0.07 * mix(diffuseColor.rgb, vec3(1.0), 0.35);
+#include <tonemapping_fragment>`);
+  };
+}
+// an own sleeve is shiny plastic over a printed back: the art keeps its own colours (unlit, like the card faces) and over it a
+// highlight that slides as the card or the view moves (on gloss a sharp glint and a broad soft one, on matte only a soft sheen),
+// a long streak across the plastic, and a little more light toward the grazing angle (Fresnel); the black folded edge takes less
+const SLEEVE_HOOK = function (sh) {
+  Object.assign(sh.uniforms, this.userData.u);
+  sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vNw; varying vec3 vWp;").replace("#include <project_vertex>", "#include <project_vertex>\nvNw = normalize(mat3(modelMatrix) * normal); vWp = (modelMatrix * vec4(transformed, 1.0)).xyz;");
+  sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nuniform float uGloss; varying vec3 vNw; varying vec3 vWp;").replace("gl_FragColor = vec4( outgoingLight, diffuseColor.a );", `vec3 N = normalize(vNw), Vd = normalize(cameraPosition - vWp), L = normalize(vec3(0.0, 0.74, -0.67)), Hh = normalize(L + Vd);
+  float nh = max(dot(N, Hh), 0.0), nv = max(dot(N, Vd), 0.0), e = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y)), plastic = smoothstep(0.018, 0.03, e);
+  float sp = uGloss * (pow(nh, 120.0) * 0.7 + pow(nh, 16.0) * 0.16) + (1.0 - uGloss) * pow(nh, 5.0) * 0.1;
+  float sw = vUv.x * 0.75 - vUv.y + dot(Vd.xz, vec2(1.4, 1.1)) * 1.6, streak = exp(-pow(fract(sw * 0.5) - 0.5, 2.0) * 60.0) * 0.09 * uGloss;
+  float fr = pow(1.0 - nv, 4.0) * mix(0.04, 0.16, uGloss);
+  gl_FragColor = vec4( outgoingLight + (sp * (0.35 + 0.65 * plastic) + (streak + fr) * plastic) * vec3(1.0, 0.98, 0.94), diffuseColor.a );`);
+};
+const sleeveFin = () => { try { return localStorage.getItem("bot.sleeveFin") === "matte" ? 0 : 1; } catch { return 1; } };
+function sleeveMat(img) { const m = new THREE.MeshBasicMaterial({ map: sleeveTexture(img), color: 0xdedede, toneMapped: false }); m.userData.keep = true; m.userData.u = { uGloss: { value: sleeveFin() } }; m.onBeforeCompile = SLEEVE_HOOK; return m; }
 // a player's card sleeve: their own picture (vault.js) once it has loaded, otherwise the Thai-pattern back
 function backFor(s, p) {
   const P = s && s.P && s.P[p], o = P && P.sleeve === "own" && custom.sleeve ? custom.sleeve(P) : null;
   if (!o || !o.img) return backLook(lookOf(s, p)); // no picture of their own: the back that goes with their look
-  if (!o.mat) { o.mat = new THREE.MeshBasicMaterial({ map: sleeveTexture(o.img), color: 0xd6d6d6, toneMapped: false }); o.mat.userData.keep = true; }
+  if (!o.mat) o.mat = sleeveMat(o.img); // (lit by its own plastic highlight: SLEEVE_HOOK)
   return o.mat;
 }
 // a player's own sleeve as a printed art sleeve: the picture under a soft gloss (light from the top left, a little shade
@@ -2221,15 +2284,16 @@ function backFor(s, p) {
 function sleeveTexture(img, W = 512) {
   const H = Math.round(W * 697 / 512), c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
   const k = Math.max(W / img.width, H / img.height), dw = img.width * k, dh = img.height * k; g.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
-  sleeveFrame(g, W, H);
-  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; return t;
+  sleeveFrame(g, W, H, false);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 8; return t;
 }
 // the sleeve drawn over a picture already in a W×H canvas (the table's card backs, and the sleeve editor's preview)
-export function sleeveFrame(g, W, H) {
-  let gr = g.createLinearGradient(0, 0, W * 0.9, H); gr.addColorStop(0, "rgba(255,255,255,.17)"); gr.addColorStop(0.3, "rgba(255,255,255,.05)"); gr.addColorStop(0.52, "rgba(255,255,255,0)"); gr.addColorStop(1, "rgba(0,0,0,.16)"); g.fillStyle = gr; g.fillRect(0, 0, W, H);
-  gr = g.createLinearGradient(W * 0.12, 0, W * 0.62, H * 0.5); gr.addColorStop(0, "rgba(255,255,255,0)"); gr.addColorStop(0.45, "rgba(255,255,255,.09)"); gr.addColorStop(0.55, "rgba(255,255,255,.09)"); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; g.fillRect(0, 0, W, H); // a band of shine
+export function sleeveFrame(g, W, H, gloss = true) {
+  let gr = null; if (gloss) { gr = g.createLinearGradient(0, 0, W * 0.9, H); gr.addColorStop(0, "rgba(255,255,255,.17)"); gr.addColorStop(0.3, "rgba(255,255,255,.05)"); gr.addColorStop(0.52, "rgba(255,255,255,0)"); gr.addColorStop(1, "rgba(0,0,0,.16)"); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  gr = g.createLinearGradient(W * 0.12, 0, W * 0.62, H * 0.5); gr.addColorStop(0, "rgba(255,255,255,0)"); gr.addColorStop(0.45, "rgba(255,255,255,.09)"); gr.addColorStop(0.55, "rgba(255,255,255,.09)"); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; g.fillRect(0, 0, W, H); } // a band of shine
   const b = W * 0.026, r = W * 0.05;
   g.lineWidth = b * 2; g.strokeStyle = "#0c0b0f"; roundRect(g, 0, 0, W, H, r); g.stroke();
+  g.lineWidth = b * 1.1; g.strokeStyle = "rgba(0,0,0,.24)"; roundRect(g, b * 1.5, b * 1.5, W - b * 1.5, H - b * 1.5, Math.max(1, r - b * 1.5)); g.stroke(); // the printed back sits a little under the plastic
   g.lineWidth = Math.max(1, W * 0.004); g.strokeStyle = "rgba(255,255,255,.32)"; roundRect(g, b, b, W - b, H - b, Math.max(1, r - b)); g.stroke();
 }
 function syncBacks(s) {
