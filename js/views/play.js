@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261115105458";
-import { fxText, kwGloss } from "../fxtext.js?v=20261115105458";
-import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261115105458";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261115105458";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261115105458";
-import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261115105458";
-import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor, myWinFx } from "../achieve.js?v=20261115105458";
-import { themeCounts, officialStarters } from "../boxdecks.js?v=20261115105458";
-import { ladder, ladderReset } from "../ladder.js?v=20261115105458";
-import { notify } from "../notify.js?v=20261115105458";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261115105458";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261115105458";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261115105458";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261115105458";
-import { Music, MUSIC_STYLES } from "../music.js?v=20261115105458";
-import { Sfx } from "../sfx.js?v=20261115105458";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar, shareReplayDoc, loadSharedReplay } from "../fb.js?v=20261115105458";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261115105458";
-import { readAura, traits } from "../auras.js?v=20261115105458";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261115105458";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261115105939";
+import { fxText, kwGloss } from "../fxtext.js?v=20261115105939";
+import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261115105939";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261115105939";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261115105939";
+import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261115105939";
+import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor, myWinFx } from "../achieve.js?v=20261115105939";
+import { themeCounts, officialStarters } from "../boxdecks.js?v=20261115105939";
+import { ladder, ladderReset } from "../ladder.js?v=20261115105939";
+import { notify } from "../notify.js?v=20261115105939";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261115105939";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261115105939";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261115105939";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261115105939";
+import { Music, MUSIC_STYLES } from "../music.js?v=20261115105939";
+import { Sfx } from "../sfx.js?v=20261115105939";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar, shareReplayDoc, loadSharedReplay } from "../fb.js?v=20261115105939";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261115105939";
+import { readAura, traits } from "../auras.js?v=20261115105939";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261115105939";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -26,14 +26,14 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(s.id ? [`รีเพลย์ในเครื่องนี้: ${s.id}-${V}`] : []), "บันทึก 40 บรรทัดล่าสุด:\n" + s.log.slice(-40).map((l) => "· " + l.m).join("\n"), // so a report can be traced back to its game
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261115105458";
-import { customMat, customSleeve, customFig, customStand, setOnReady, onVault } from "../vault.js?v=20261115105458";
-import { openGlossSheet } from "../glossary.js?v=20261115105458";
-import { weekRule, weeklyPanel, weeklyWinNote, isoWeek, ruleChip, hudLine, eventPicker, eventOpt, seriesNext, seriesChip, seriesText, seriesAfter, seriesWinner } from "../weekly.js?v=20261115105458";
-import { openCoach } from "../coach.js?v=20261115105458";
-import { mullHint } from "../matchups.js?v=20261115105458";
-import { logged, check as checkMoves, idleReason, pickMap } from "../movelog.js?v=20261115105458";
-import { openSandbox, openFishRuns } from "../sandbox.js?v=20261115105458";
+import { allDecks, deckById } from "./decks.js?v=20261115105939";
+import { customMat, customSleeve, customFig, customStand, setOnReady, onVault } from "../vault.js?v=20261115105939";
+import { openGlossSheet } from "../glossary.js?v=20261115105939";
+import { weekRule, weeklyPanel, weeklyWinNote, isoWeek, ruleChip, hudLine, eventPicker, eventOpt, seriesNext, seriesChip, seriesText, seriesAfter, seriesWinner } from "../weekly.js?v=20261115105939";
+import { openCoach } from "../coach.js?v=20261115105939";
+import { mullHint } from "../matchups.js?v=20261115105939";
+import { logged, check as checkMoves, idleReason, pickMap } from "../movelog.js?v=20261115105939";
+import { openSandbox, openFishRuns } from "../sandbox.js?v=20261115105939";
 // the players' own mat picture, card sleeve and figure (vault.js): the table asks for them, and redraws when one loads or changes
 Arena.setCustom({ mat: customMat, sleeve: customSleeve, fig: customFig, stand: customStand, skins: (s) => setGameSkins(s && s.P, Me.uid) }); setOnReady((o) => Arena.customReady(o)); onVault(() => Arena.refreshCustom());
 { let sig = ""; Data.listeners.add(() => { const sh = Data.meta && Data.meta.show, now = sh ? Object.entries(sh).map(([k, x]) => k + ":" + (x && x.v) + ":" + (x && x.finish)).join() : ""; if (now !== sig) { sig = now; Arena.refreshCustom(); } }); }
@@ -242,7 +242,7 @@ function questPanel() {
 }
 // ---------- start / resume ----------
 const pickOpp = () => { const o = Setup.opp !== "random" && deckById(Setup.opp); if (o && !deckLocked(o)) return o; const st = allDecks().filter((d) => d.starter && !d.box); return st[Math.floor(Math.random() * st.length)]; };
-import { dupNames, ruleDeck, singlePanel, botSingle, NODUP_NEED } from "../weekly.js?v=20261115105458";
+import { dupNames, ruleDeck, singlePanel, botSingle, NODUP_NEED } from "../weekly.js?v=20261115105939";
 const pack = (d) => ({ ...deckToList(d), name: d.name, id: d.id });
 // ไต่ด่าน: the official Starter Decks one after another, the bot growing stronger; a step is passed by a win recorded with its number
 function gauntletSteps() { const lv = (k, n) => (k < 2 ? "easy" : k < Math.ceil(n * 0.6) ? "basic" : "hard"); const list = officialStarters().filter((d) => validateDeck(d).ok);
@@ -806,7 +806,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261115105458").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261115105939").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", mat: botMat(), bot: true });
@@ -1812,10 +1812,12 @@ function promptBox0(s, p) {
   }
   if (s.trig.length && G.ask && G.tk === s.trig[0].id) {
     const t = s.trig[0]; const d = s.cards[t.c] || {}; const a = G.ask; const sel = G.askSel || [];
+    /* a choice we make for the other player's card (รถถังลงถนน, จมน้ำ, 40ดีกรีแมน …): say so in the title */
+    const dn = ((t.as === 0 || t.as === 1 ? t.as : (E.locate(s, t.i) || { x: { o: p } }).x.o) !== p ? "ผลของการ์ดฝ่ายตรงข้าม · " : "") + d.n;
     if (a.order) return box(a.prompt, h("div", { class: "opts" }, a.modes.map((t, k) => h("button", { class: "btn sm", onclick: () => { G.tOrd = a.key; G.ask = null; if (k > 0) doAct({ type: "trigFirst", id: a.order[k] }, p); else humanTrig(G.s, p); } }, t))),
       // one press for the whole batch: the abilities listed here run in this order with no more asking (a new one joining asks again)
       h("div", { class: "row" }, h("button", { class: "btn gold sm", onclick: () => { G.tOrdBatch = a.order.slice(); G.tOrd = a.key; G.ask = null; humanTrig(G.s, p); } }, "เรียงตามนี้ทั้งหมด ไม่ต้องถามอีก")));
-    if (a.modes) return box(`${d.n}: ${a.prompt}`, h("div", { class: "opts" }, a.modes.map((t, k) => h("button", { class: "btn sm", onclick: () => { G.tpicks[a.idx] = [k]; G.ask = null; humanTrig(G.s, p); } }, t))));
+    if (a.modes) return box(`${dn}: ${a.prompt}`, h("div", { class: "opts" }, a.modes.map((t, k) => h("button", { class: "btn sm", onclick: () => { G.tpicks[a.idx] = [k]; G.ask = null; humanTrig(G.s, p); } }, t))));
     const need = Math.min(a.n, a.options.length); const show = Array.isArray(a.reveal) ? a.reveal : a.options;
     /* a GEM-total pick ("ทิ้งการ์ดที่มี GEM รวมกัน 3 ขึ้นไป"): any number of cards, ready once their GEM reaches the total */
     const gs = a.gemSum ? sel.reduce((t, i) => { const L = E.locate(s, i); return t + (L ? E.def(s, L.x).g || 0 : 0); }, 0) : 0;
@@ -1823,11 +1825,11 @@ function promptBox0(s, p) {
     const cs = a.costMax != null ? sel.reduce((t, i) => { const L = E.locate(s, i); return t + (L ? E.def(s, L.x).c || 0 : 0); }, 0) : 0;
     const okN = a.gemSum ? gs >= a.gemSum : a.costMax != null && cs > a.costMax ? false : a.min ? sel.length >= Math.min(a.min, need) && sel.length <= need : a.optional ? sel.length <= need : sel.length === need;
     if ((Arena.on || G.flat) && askOnTable(s)) { const done = (ids) => { G.tpicks[a.idx] = ids; G.ask = null; G.askSel = []; Arena.select(null); humanTrig(G.s, p); };
-      return h("div", { class: "prompt glass slim low" }, h("b", null, `${d.n}: ${a.prompt}`), h("span", { class: "tiny muted" }, `${touchy() ? "แตะ" : "คลิก"}การ์ดที่เรืองแสงบนโต๊ะ หรือเลือกจากปุ่ม${show.some((i) => copyTag(s, i, show)) ? " (# = ใบที่เท่าไรนับจากซ้าย)" : ""}`),
+      return h("div", { class: "prompt glass slim low" }, h("b", null, `${dn}: ${a.prompt}`), h("span", { class: "tiny muted" }, `${touchy() ? "แตะ" : "คลิก"}การ์ดที่เรืองแสงบนโต๊ะ หรือเลือกจากปุ่ม${show.some((i) => copyTag(s, i, show)) ? " (# = ใบที่เท่าไรนับจากซ้าย)" : ""}`),
         ...show.map((i) => { const L = E.locate(s, i); const can = a.options.includes(i); return pointAt(h("button", { class: "btn sm" + (sel.includes(i) ? " gold" : ""), disabled: !can, onclick: () => askToggle(i) }, `${L.p === p ? "" : "ฝ่ายตรงข้าม · "}${E.name(s, L.x)} ${copyTag(s, i, show)}P${E.power(s, L.x)}`), i); }),
         h("button", { class: "btn sm gold", disabled: !okN, onclick: () => done(G.askSel || []) }, sel.length ? "ยืนยัน" : a.optional ? "ยืนยัน (ไม่เลือก)" : "ยืนยัน"),
         a.optional && sel.length ? h("button", { class: "btn sm", onclick: () => done([]) }, "ไม่เลือก") : null); }
-    return box(`${d.n}: ${a.prompt}`, h("div", { class: "tiny muted" }, Array.isArray(a.reveal) ? "การ์ดที่เปิดดู (ใบที่เลือกไม่ได้จะจางไว้)" : a.gemSum ? `เลือกการ์ดให้ GEM รวม ${a.gemSum} ขึ้นไป · ตอนนี้ GEM ${gs}` : a.costMax != null ? `เลือกได้สูงสุด ${need} ใบ Cost รวมไม่เกิน ${a.costMax} · ตอนนี้ Cost ${cs}${cs > a.costMax ? " (เกิน)" : ""}` : a.min ? `เลือก ${Math.min(a.min, need)}-${need} ใบ` : `เลือก ${need} ใบ${a.optional ? " หรือไม่เลือกก็ได้" : ""}`),
+    return box(`${dn}: ${a.prompt}`, h("div", { class: "tiny muted" }, Array.isArray(a.reveal) ? "การ์ดที่เปิดดู (ใบที่เลือกไม่ได้จะจางไว้)" : a.gemSum ? `เลือกการ์ดให้ GEM รวม ${a.gemSum} ขึ้นไป · ตอนนี้ GEM ${gs}` : a.costMax != null ? `เลือกได้สูงสุด ${need} ใบ Cost รวมไม่เกิน ${a.costMax} · ตอนนี้ Cost ${cs}${cs > a.costMax ? " (เกิน)" : ""}` : a.min ? `เลือก ${Math.min(a.min, need)}-${need} ใบ` : `เลือก ${need} ใบ${a.optional ? " หรือไม่เลือกก็ได้" : ""}`),
       h("div", { class: "pick" }, show.map((i) => { const L = E.locate(s, i); if (!L) return null; const dd = E.def(s, L.x); const can = a.options.includes(i);
         return pointAt(cardBtn(dd.im, { seat: L.x.o, info: () => cardView(L.x), cls: (sel.includes(i) ? "sel" : "") + (can ? "" : " dim"), badge: L.z === "av" || L.z === "cs" ? "P" + E.power(s, L.x) + " " + copyTag(s, i, show).trim() : ZONE_TH[L.z], note: !can && a.why ? a.why[i] : null, onclick: () => { if (!can) return cardView(L.x); askToggle(i); } }), i); })),
       show.some((i) => copyTag(s, i, show)) ? h("div", { class: "tiny muted" }, "ชื่อซ้ำกัน: เลข # คือใบที่เท่าไรนับจากซ้ายบนสนาม · แตะหรือชี้ตัวเลือก การ์ดใบนั้นบนโต๊ะจะเรืองแสง") : null,

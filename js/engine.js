@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261115105458";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261115105458";
-import { SCRIPTS } from "./scripts.js?v=20261115105458";
-import { newId, clone } from "./util.js?v=20261115105458";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261115105939";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261115105939";
+import { SCRIPTS } from "./scripts.js?v=20261115105939";
+import { newId, clone } from "./util.js?v=20261115105939";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -441,7 +441,7 @@ export const E = {
     if (L.z === "mg" && x.on) { const H = E.locate(s, x.on); if (H && H.x.muteBy === x.i) { delete H.x.mute; delete H.x.muteBy; } delete x.on; if (H && H.z === "av" && !x.mute && (scriptOf(s, x) || {}).leaveKillsHost) s.later2 = [...(s.later2 || []), H.x.i]; if (H && H.z === "av" && !x.mute && (scriptOf(s, x) || {}).leaveReturns && H.p !== H.x.o) { const P0 = s.P[H.x.o]; if (E.avatars(P0) < 4) { s.P[H.p].av.splice(s.P[H.p].av.indexOf(H.x), 1); P0.av.push(H.x); E.log(s, H.x.o, `${E.name(s, H.x)} กลับไปอยู่กับเจ้าของ`); } } }
     if (L.z === "av" && to !== "av") { if (x.ov && x.ov.t) delete x.ov; /* FAQ เครื่องบิน Super Air: off the Avatar Zone it is a Magic Card again */ for (const q of [0, 1]) for (const y of s.P[q].av) if (y.nwBy === x.i) { delete y.nw; delete y.nwBy; } const so = x.mute ? null : scriptOf(s, x); if (so && so.onLeave) s.trig.push({ id: tid(s), seat: L.p, i: x.i, c: x.c, when: "onLeave" }); if (s.dying !== x.i && !x.tok) for (const y of s.P[L.p].hand) { const sh = scriptOf(s, y); if (sh && sh.anyLeave && sh.handDeath && (!sh.handDeathOk || sh.handDeathOk(E, s, y, x, false))) s.trig.unshift({ id: tid(s), seat: L.p, i: y.i, c: y.c, when: "handDeath", dead: x.i, optional: true }); } } /* FAQ หนึ่งเดียวเพื่อทุกอย่าง: "ถูกนำออกจากสนาม" (รัททาทุย นินจา) also answers an exile or a bounce, at once */
     if (x.tok && to !== "av") { E.log(s, L.p, `Token ${E.name(s, x)} ถูกนำออกจากเกม`); return null; }
-    x.a = true; x.pm = 0; x.tm = 0; for (const k of ["ntg", "backDraw", "ctlx", "home", "kw", "kt", "ua", "ao", "tn", "fm", "story", "mute", "zero", "muteEnd", "guard", "used", "saved", "exd", "canAtk", "back", "lk", "lkp", "cst", "nlt", "hs", "sb", "t0", "muteBy", "ind", "imm", "nsh", "cm", "ups", "blk", "fromHell", "noAct", "bp", "fd", "rimm", "own", "lh2", "kf", "frz", "kraken", "px", "feed", "ofa", "mustAtk", "sumt", "picky", "hs2", "tani", "twice", "twiceUsed", "sye", "nw", "nwBy", "nact", "mil", "kdm", "fa", "stay"]) delete x[k]; if (to !== "hand") delete x.hcm; if (to !== "hell") delete x.hlock; if (to !== "life") delete x.up; if (!["av", "mg", "cs", "land"].includes(to)) { delete x.nameAs; delete x.syAs; delete x.ov; delete x.srv; delete x.xn; delete x.xsy; delete x.mgo; }
+    x.a = true; x.pm = 0; x.tm = 0; for (const k of ["ntg", "backDraw", "ctlx", "home", "kw", "kt", "ua", "ao", "tn", "fm", "story", "mute", "zero", "muteEnd", "guard", "used", "saved", "exd", "canAtk", "back", "lk", "lkp", "cst", "nlt", "hs", "sb", "t0", "muteBy", "ind", "imm", "nsh", "cm", "ups", "blk", "fromHell", "noAct", "bp", "fd", "rimm", "own", "lh2", "kf", "frz", "kraken", "px", "feed", "ofa", "mustAtk", "sumt", "picky", "pkc", "hs2", "tani", "twice", "twiceUsed", "sye", "nw", "nwBy", "nact", "mil", "kdm", "fa", "stay"]) delete x[k]; if (to !== "hand") delete x.hcm; if (to !== "hell") delete x.hlock; if (to !== "life") delete x.up; if (!["av", "mg", "cs", "land"].includes(to)) { delete x.nameAs; delete x.syAs; delete x.ov; delete x.srv; delete x.xn; delete x.xsy; delete x.mgo; }
     const owner = x.o; const ctl = seatOverride != null ? seatOverride : (L.z === "land" ? owner : L.p);
     const dest = { hand: owner, hell: owner, dark: owner, deckTop: owner, deckBottom: owner, life: seatOverride != null ? seatOverride : owner }[to];
     if (to === "deckTop") s.P[dest].deck.unshift(x);
@@ -794,7 +794,7 @@ export const E = {
         else if (act.tk === "life") { need(E.lifeOpen(s, p, x) || E.kw(s, x, "เตะไข่"), "ฝ่ายตรงข้ามยังมี Avatar อยู่ (ยกเว้นเตะไข่)"); need(!E.noLife(s, x), "Avatar ใบนี้โจมตี LIFE ไม่ได้ตอนนี้ (เงื่อนไขบนการ์ด)"); }
         else throw new RuleError("เป้าหมายไม่ถูกต้อง");
         need(E.tw2Ok(s, x, act.tk, act.ti), "เป้าหมายที่ 2 ต้องไม่ซ้ำเป้าหมายแรก และเลือก Avatar คู่กับ LIFE ไม่ได้ (FAQ นางตานีด่าง)");
-        if (x.picky === s.turn && act.tk === "av") { const opts = O.av.filter((y) => !E.atkSafe(s, y) && !E.atkBy(s, y, x)); const ap = E.power(s, x); const pick = opts.filter((y) => E.power(s, y) >= ap).sort((a, b) => E.power(s, b) - E.power(s, a))[0] || opts.sort((a, b) => (E.def(s, a).c || 0) - (E.def(s, b).c || 0))[0]; if (pick && pick.i !== act.ti) { act = { ...act, ti: pick.i }; E.log(s, 1 - p, `${O.name} เลือกเป้าหมายการโจมตีเอง: ${E.name(s, pick)}`); } }
+        if (x.picky === s.turn && x.pkc == null && act.tk === "av") { /* (a state from before pickTarget) */ const opts = O.av.filter((y) => !E.atkSafe(s, y) && !E.atkBy(s, y, x)); const ap = E.power(s, x); const pick = opts.filter((y) => E.power(s, y) >= ap).sort((a, b) => E.power(s, b) - E.power(s, a))[0] || opts.sort((a, b) => (E.def(s, a).c || 0) - (E.def(s, b).c || 0))[0]; if (pick && pick.i !== act.ti) { act = { ...act, ti: pick.i }; E.log(s, 1 - p, `${O.name} เลือกเป้าหมายการโจมตีเอง: ${E.name(s, pick)}`); } }
         let bonus = 0; const sup = [], bs = [], stab = [];
         for (const i of act.sup || []) {
           const y = E.helpPool(s, p).find((z) => z.i === i); const hp = y ? E.helpOf(s, p, x, y) : null; if (!hp) continue;
@@ -813,7 +813,9 @@ export const E = {
         E.log(s, p, `${E.name(s, x)} (POWER ${E.power(s, x) + bonus}) โจมตี ${tName}${sup.length ? ` · ผู้ช่วย ${sup.length} ใบ +${bonus}` : ""}`);
         {
           for (const m of [...s.P[0].mg, ...s.P[1].mg]) if (m.on === x.i && !m.mute && (scriptOf(s, m) || {}).hostAttack) s.trig.push({ id: tid(s), seat: p, i: m.i, c: m.c, when: "hostAttack" });
-          if (fires(s, x, "attack", /เมื่อ\s*(?:Avatar\s*|การ์ด)?(?:ใบนี้|ตัวนี้)?\s*(?:ประกาศ)?โจมตี|เมื่อโจมตี/)) E.addTrig(s, p, x, "attack"); }
+          if (fires(s, x, "attack", /เมื่อ\s*(?:Avatar\s*|การ์ด)?(?:ใบนี้|ตัวนี้)?\s*(?:ประกาศ)?โจมตี|เมื่อโจมตี/)) E.addTrig(s, p, x, "attack");
+          /* ความสบายตาที่แท้จริง: "ฝ่ายตรงข้ามต้องเป็นผู้เลือกเป้าหมาย" — their own trigger, asked on their side */
+          if (x.picky === s.turn && x.pkc != null && !x.mute && s.cards[x.pkc]) s.trig.push({ id: tid(s), seat: 1 - p, i: x.i, c: x.pkc, when: "pickTarget" }); }
         for (const l0 of E.lands(s)) { const ls = l0.mute ? null : scriptOf(s, l0); if (ls && ls.landAtkOps) { const ops = ls.landAtkOps(E, s, x, p) || []; if (ops.length) E.ops(s, ops, p); } }
         for (const l0 of E.lands(s)) { const ls = l0.mute ? null : scriptOf(s, l0); const n = ls && ls.landAttack ? ls.landAttack(E, s, x) || 0 : 0; if (n) { x.fm = (x.fm || 0) + n; E.log(s, p, `${E.name(s, x)} POWER +${n} จนจบการต่อสู้ (${E.name(s, l0)})`); } }
         if (x.feed === s.turn) { E.log(s, 1 - p, `${E.name(s, x)} โจมตี: ${s.P[1 - p].name} จั่วการ์ด 1 ใบ`); E.draw(s, 1 - p, 1); }
@@ -1240,7 +1242,7 @@ export const E = {
       case "bpOn": { const L = E.locate(s, o.i); if (L) L.x.bp = s.turn; return; }
       case "tani2": { const pd = s.pend; if (!pd || pd.tk2 || !["av", "cs", "life"].includes(o.tk)) return; const T2 = o.ti != null ? E.locate(s, o.ti) : null; if (o.tk !== "life" && (!T2 || T2.z !== o.tk)) return;
         pd.tk2 = o.tk; pd.ti2 = o.ti != null ? o.ti : null; const A = E.locate(s, pd.att); E.log(s, pd.by, `${A ? E.name(s, A.x) : "ผู้โจมตี"} โจมตีเป้าหมายที่ 2 พร้อมกัน: ${o.tk === "life" ? "LIFE" : E.name(s, T2.x)}`); return; }
-      case "flagSet": { const L = E.locate(s, o.i); if (L && /^(tlb|st0|sorry|kraken|frz|lh2|kf|own|feed|ofa|mustAtk|mgo|sumt|picky|hs2|tani|twice|twiceUsed|nact|kdm|fa)$/.test(o.k)) L.x[o.k] = o.v == null ? s.turn : o.v; return; }
+      case "flagSet": { const L = E.locate(s, o.i); if (L && /^(tlb|st0|sorry|kraken|frz|lh2|kf|own|feed|ofa|mustAtk|mgo|sumt|picky|pkc|hs2|tani|twice|twiceUsed|nact|kdm|fa)$/.test(o.k)) L.x[o.k] = o.v == null ? s.turn : o.v; return; }
       case "sorry": { s.sorry = { t: s.turn, p: seat }; E.log(s, by, "เทิร์นนี้การขอโทษของ DJ ปีโป้ จะได้รับการยกโทษเสมอ"); return; }
       case "copyStats": { const L = E.locate(s, o.i), F = E.locate(s, o.from); if (!L || !F) return; const d = E.def(s, F.x); L.x.ov = { n: d.n, c: d.c, g: d.g, sy: d.sy, pw: E.power(s, F.x) }; E.log(s, by, `${E.def(s, L.x).n}: ชื่อ Cost GEM Symbol POWER เหมือน ${d.n} จนจบเทิร์น`); return; }
       case "ovSet": { const L = E.locate(s, o.i); if (!L || !o.ov) return; let nv = o.ov; if (o.sw) { const d0 = E.def(s, L.x); if ((d0.c || 0) !== o.sw.c || (d0.pw || 0) !== o.sw.pw) nv = { c: d0.pw || 0, pw: d0.c || 0 }; } /* FAQ ชิบาตะ: a value changed while swapped is swapped back with it */ const ov = { ...(L.x.ov || {}) }; for (const k of ["n", "c", "pw", "g", "sy", "co"]) { if (nv[k] === null) delete ov[k]; else if (nv[k] !== undefined) ov[k] = nv[k]; } if (Object.keys(ov).length) L.x.ov = ov; else delete L.x.ov; if (o.why) E.log(s, by, String(o.why)); return; }

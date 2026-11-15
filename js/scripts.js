@@ -670,9 +670,14 @@ Object.assign(SCRIPTS, {
     cast: (c) => { const { E, s, seat: p } = c; const P = s.P[p], O = s.P[1 - p]; const room = (Q) => E.avatars(Q) < 4 && Q.av.length < 6; const uniq = (list) => { const seen = new Set(); return list.filter((x) => { const n = E.name(s, x); if (seen.has(n)) return false; seen.add(n); return true; }); };
     const mine = room(P) ? uniq(P.deck.filter((x) => E.def(s, x).t === "A" && E.named(s, x, "รถถัง") && (E.def(s, x).c || 0) <= 5)).sort((a, b) => (E.def(s, b).pw || 0) - (E.def(s, a).pw || 0)) : [];
     const t = c.choose(mine, 1, "เลือก รถถัง Cost 5 หรือต่ำกว่า จาก Deck เรา")[0];
-    const theirs = room(O) ? O.deck.filter((x) => E.def(s, x).t === "A" && (E.def(s, x).c || 0) <= 5).sort((a, b) => (E.def(s, b).pw || 0) - (E.def(s, a).pw || 0))[0] : null;
-    return { explain: `${t ? `อัญเชิญ ${E.name(s, t)} จาก Deck เรา` : "เราไม่มี รถถัง ให้อัญเชิญ"} · ${theirs ? `อีกฝ่ายอัญเชิญ ${E.name(s, theirs)} จาก Deck (ระบบเลือกใบที่ POWER สูงสุดให้)` : "อีกฝ่ายไม่มี Avatar ให้อัญเชิญ"}`,
-      ops: [...(t ? [{ op: "put", i: t.i }] : []), { op: "shuffle", seat: p }, ...(theirs ? [{ op: "put", i: theirs.i }] : []), { op: "shuffle", seat: 1 - p }] }; } },
+    /* the other player picks their own Avatar: a trigger of theirs (asked on their device; a bot picks for itself) */
+    const foe = room(O) && O.deck.some((x) => E.def(s, x).t === "A" && (E.def(s, x).c || 0) <= 5);
+    return { explain: `${t ? `อัญเชิญ ${E.name(s, t)} จาก Deck เรา` : "เราไม่มี รถถัง ให้อัญเชิญ"} · ${foe ? "อีกฝ่ายเลือก Avatar Cost 5 หรือต่ำกว่า จาก Deck ของตนเอง" : "อีกฝ่ายไม่มี Avatar ให้อัญเชิญ"}`,
+      ops: [...(t ? [{ op: "put", i: t.i }] : []), { op: "shuffle", seat: p }, foe ? { op: "resume", t: { i: c.t.i, c: c.t.c, when: "foePick", seat: 1 - p, as: p } } : { op: "shuffle", seat: 1 - p }] }; },
+    foePick: (c) => { const { E, s, seat: q } = c; const Q = s.P[q]; if (!(E.avatars(Q) < 4 && Q.av.length < 6)) return { explain: "Avatar Zone เต็ม ไม่มีผล", ops: [{ op: "shuffle", seat: q }] };
+      const list = uniq(E, s, Q.deck.filter((x) => E.def(s, x).t === "A" && (E.def(s, x).c || 0) <= 5)).sort((a, b) => (E.def(s, b).pw || 0) - (E.def(s, a).pw || 0));
+      const y = c.choose(list, 1, "เลือก Avatar Cost 5 หรือต่ำกว่า จาก Deck ของคุณ อัญเชิญลงสนามฝั่งคุณ 1 ใบ", { exact: true })[0];
+      return { explain: y ? `อัญเชิญ ${E.name(s, y)} จาก Deck` : "ไม่มี Avatar ให้อัญเชิญ", ops: [...(y ? [{ op: "put", i: y.i }] : []), { op: "shuffle", seat: q }] }; } },
   // ขึ้นมาเร็ว ไอ้ลูกลิง !!: our รถถัง is attacked → scout 5, a Tank Ranger {คน} goes onto a รถถัง; if it does, the attacker is destroyed
   "SD04-018": { react: { kinds: ["attack"], can: (E, s, p, on) => { const T = on.tk === "av" ? E.locate(s, on.ti) : null; return !!T && T.p === p && E.named(s, T.x, "รถถัง"); } },
     cast: (c) => { const { E, s, seat: p } = c; const on = onTarget(c); const top = s.P[p].deck.slice(0, 5); const ids = top.map((x) => x.i); const hosts = tanks(E, s, p).sort((a, b) => (b.i === on.ti ? 1 : 0) - (a.i === on.ti ? 1 : 0));
@@ -1058,9 +1063,12 @@ Object.assign(SCRIPTS, {
   "SD09-015": { canCast: (E, s) => [0, 1].every((q) => s.P[q].hell.some((y) => E.def(s, y).t === "A" && (E.def(s, y).c || 0) <= 4 && !E.def(s, y).o1)), // FAQ: not if a player has none
     cast: (c) => { const { E, s, seat: p } = c; const ok = (y) => E.def(s, y).t === "A" && (E.def(s, y).c || 0) <= 4 && !E.def(s, y).o1;
     const mine = c.choose(uniq(E, s, [...s.P[p].hell].reverse().filter(ok)).sort(byPw(E, s)), 1, "เลือก Avatar ในนรกเรา (Cost 4 หรือต่ำกว่า) วางไว้บนสุดของ Deck")[0];
-    const theirs = uniq(E, s, [...s.P[1 - p].hell].reverse().filter(ok)).sort((a, b) => worth(E, s, b) - worth(E, s, a))[0];
-    const ops = [], say = []; if (mine) { ops.push({ op: "move", i: mine.i, to: "deckTop" }); say.push(`เรา ${E.name(s, mine)}`); } if (theirs) { ops.push({ op: "move", i: theirs.i, to: "deckTop" }); say.push(`ฝ่ายตรงข้าม ${E.name(s, theirs)}`); }
-    return { explain: say.length ? `วางบนสุดของ Deck: ${say.join(" · ")}` : "ไม่มี Avatar ในนรกที่ตรงเงื่อนไข", ops }; } },
+    const foe = s.P[1 - p].hell.some(ok); /* the other player picks theirs: a trigger of theirs */
+    const ops = [], say = []; if (mine) { ops.push({ op: "move", i: mine.i, to: "deckTop" }); say.push(`เรา ${E.name(s, mine)}`); } if (foe) { ops.push({ op: "resume", t: { i: c.t.i, c: c.t.c, when: "foePick", seat: 1 - p, as: p } }); say.push("ฝ่ายตรงข้ามเลือกของตนเอง"); }
+    return { explain: say.length ? `วางบนสุดของ Deck: ${say.join(" · ")}` : "ไม่มี Avatar ในนรกที่ตรงเงื่อนไข", ops }; },
+    foePick: (c) => { const { E, s, seat: q } = c; const ok = (y) => E.def(s, y).t === "A" && (E.def(s, y).c || 0) <= 4 && !E.def(s, y).o1;
+      const y = c.choose(uniq(E, s, [...s.P[q].hell].reverse().filter(ok)).sort((a, b) => worth(E, s, b) - worth(E, s, a)), 1, "เลือก Avatar ในนรกของคุณ (Cost 4 หรือต่ำกว่า) วางไว้บนสุดของ Deck", { exact: true })[0];
+      return y ? { explain: `วาง ${E.name(s, y)} ไว้บนสุดของ Deck`, ops: [{ op: "move", i: y.i, to: "deckTop" }] } : { explain: "ไม่มี Avatar ในนรกที่ตรงเงื่อนไข", ops: [] }; } },
   // วานรร้อนรัก (React): our วานร is in a fight: sacrifice another วานร that is not fighting: the fighting one POWER +2 until end of turn
   "SD09-017": { react: { kinds: ["attack"], own: true, can: (E, s, p, on) => { const T = fighters(E, s, p, on).mine; return !!T && monkey(E, s, T.x) && s.P[p].av.some((y) => y.i !== T.x.i && monkey(E, s, y)); } },
     cast: (c) => { const { E, s, seat: p } = c; const on = onTarget(c); const T = fighters(E, s, p, on).mine; if (!T) return { explain: "Avatar ที่ต่อสู้ไม่อยู่แล้ว", ops: [] };
@@ -1183,15 +1191,17 @@ Object.assign(SCRIPTS, {
     pickTarget: (c) => { const { E, s, seat: q } = c; const pd = s.pend; const A = pd ? E.locate(s, pd.att) : null; if (!A) return { explain: "ไม่มีการโจมตีแล้ว", ops: [] }; const ap = E.power(s, A.x) + (pd.bonus || 0); const O = s.P[q];
       const opts = [...O.av.filter((y) => !E.atkSafe(s, y)), ...O.cs]; const life = !O.av.length || E.kw(s, A.x, "เตะไข่");
       const best = [...opts].sort((a, b) => (E.power(s, b) >= ap) - (E.power(s, a) >= ap) || worth(E, s, a) - worth(E, s, b));
-      const t = c.choose(best, 1, "40ดีกรีแมนโจมตี: คุณเป็นผู้เลือกเป้าหมายการโจมตี", { optional: life })[0];
+      const t = c.choose(best, 1, `${E.name(s, A.x)} โจมตี: คุณเป็นผู้เลือกเป้าหมายการโจมตี`, { optional: life })[0];
       if (!t) return life ? { explain: "เลือกให้โจมตี LIFE", ops: [{ op: "redirect", life: true }] } : { explain: "ไม่มีเป้าหมายอื่น", ops: [] };
       return t.i === pd.ti ? { explain: `เลือก ${E.name(s, t)} (เป้าหมายเดิม)`, ops: [] } : { explain: `เลือกให้โจมตี ${E.name(s, t)}`, ops: [{ op: "redirect", i: t.i }] }; } },
   // เสามงคล: cannot attack (read from the text) · draws 1 more card after the normal draw
   "BT02-024": { drawMore: 1 },
   // ชุ่ย โจรสุสาน: จุติ: each player chooses 5 cards from the other's hell; they go back to their owners' Decks, which are shuffled
   "BT02-026": { summon: (c) => { const { E, s, seat: p } = c; const theirs = c.choose([...s.P[1 - p].hell].sort((a, b) => worth(E, s, b) - worth(E, s, a)), 5, "เลือกการ์ดในนรกฝ่ายตรงข้าม 5 ใบ กลับเข้า Deck ของเขา", { exact: s.P[1 - p].hell.length >= 5 });
-    const ours = [...s.P[p].hell].sort((a, b) => worth(E, s, b) - worth(E, s, a)).slice(0, 5); // the opponent takes our best ones
-    return { explain: `นรกฝ่ายตรงข้าม ${theirs.length} ใบ และนรกเรา ${ours.length} ใบ กลับเข้า Deck เจ้าของ แล้วสับ`, ops: [...[...theirs, ...ours].map((y) => ({ op: "move", i: y.i, to: "deckBottom" })), { op: "shuffle", seat: p }, { op: "shuffle", seat: 1 - p }] }; } },
+    /* each player picks from the OTHER one's hell: the opponent picks 5 of ours on their own (a trigger of theirs) */ const foe = s.P[p].hell.length > 0;
+    return { explain: `นรกฝ่ายตรงข้าม ${theirs.length} ใบ กลับเข้า Deck เจ้าของ แล้วสับ${foe ? " · ฝ่ายตรงข้ามเลือกการ์ดในนรกเรา 5 ใบ" : ""}`, ops: [...theirs.map((y) => ({ op: "move", i: y.i, to: "deckBottom" })), { op: "shuffle", seat: 1 - p }, foe ? { op: "resume", t: { i: c.t.i, c: c.t.c, when: "foePick", seat: 1 - p, as: p } } : { op: "shuffle", seat: p }] }; },
+    foePick: (c) => { const { E, s, seat: q } = c; const H = s.P[1 - q].hell; const pick = c.choose([...H].sort((a, b) => worth(E, s, b) - worth(E, s, a)), 5, "เลือกการ์ดในนรกฝ่ายตรงข้าม 5 ใบ กลับเข้า Deck ของเขา", { exact: H.length >= 5 });
+      return { explain: `นรกฝ่ายตรงข้าม ${pick.length} ใบ กลับเข้า Deck เจ้าของ แล้วสับ`, ops: [...pick.map((y) => ({ op: "move", i: y.i, to: "deckBottom" })), { op: "shuffle", seat: 1 - q }] }; } },
   // พยาบาล เอ๋: survives being attacked: turn one of our face-up LIFE cards face down
   "BT02-027": { survived: (c) => { const L = c.self ? c.E.locate(c.s, c.self.i) : null; const p = L && L.z === "av" ? L.p : c.seat; /* FAQ พยาบาล เอ๋ + ริกกี้: whoever controls it when the ability resolves */ return c.s.P[p].life.some((y) => y.up) && !c.E.critical(c.s.P[p]) ? { explain: "ไม่ถูกทำลายจากการถูกโจมตี: สุ่มคว่ำ LIFE เรา 1 ใบ", ops: [{ op: "lifeFlip", seat: p, up: false, rnd: true }] } : { explain: "ไม่มี LIFE ที่คว่ำได้", ops: [] }; } },
   // สตีฟ Tank Ranger: rides a รถถัง (POWER +2); in the Battle Phase that รถถัง must attack if it can
@@ -1327,8 +1337,10 @@ Object.assign(SCRIPTS, {
       return t ? { explain: `${E.name(s, t)} POWER +6 · ถูกทำลายใน End Phase`, ops: [{ op: "power", i: t.i, n: 6, temp: false }, { op: "atEnd", turn: s.turn, ops: [{ op: "destroy", i: t.i, why: "ซุปเปอร์สแน็ค" }], why: `${E.name(s, t)} ถูกทำลาย (ซุปเปอร์สแน็ค)` }] } : { explain: "ไม่มี Avatar {สัตว์}", ops: [] }; } },
   // จมน้ำ: each player puts one of its own Avatars at the bottom of its Deck (the opponent picks its cheapest)
   "BT03-046": { canCast: (E, s) => s.P[0].av.length > 0 && s.P[1].av.length > 0, // FAQ
-    cast: (c) => { const { E, s, seat: p } = c; const mine = c.choose([...s.P[p].av].sort(cheapCard(E, s)), 1, "เลือก Avatar ฝ่ายเรา 1 ใบ กลับเข้าใต้ Deck", { exact: true })[0]; const theirs = [...s.P[1 - p].av].sort(cheapCard(E, s))[0];
-    return { explain: `${mine ? E.name(s, mine) : "-"} และ ${theirs ? E.name(s, theirs) : "-"} กลับเข้าใต้ Deck เจ้าของ`, ops: [...(mine ? [{ op: "move", i: mine.i, to: "deckBottom", player: true }] : []), ...(theirs ? [{ op: "move", i: theirs.i, to: "deckBottom", player: true }] : [])] }; } },
+    cast: (c) => { const { E, s, seat: p } = c; const mine = c.choose([...s.P[p].av].sort(cheapCard(E, s)), 1, "เลือก Avatar ฝ่ายเรา 1 ใบ กลับเข้าใต้ Deck", { exact: true })[0]; const foe = s.P[1 - p].av.length > 0; /* the other player picks theirs: a trigger of theirs */
+    return { explain: `${mine ? E.name(s, mine) : "-"} กลับเข้าใต้ Deck เจ้าของ${foe ? " · ฝ่ายตรงข้ามเลือก Avatar ของตนเอง 1 ใบ" : ""}`, ops: [...(mine ? [{ op: "move", i: mine.i, to: "deckBottom", player: true }] : []), ...(foe ? [{ op: "resume", t: { i: c.t.i, c: c.t.c, when: "foePick", seat: 1 - p, as: p } }] : [])] }; },
+    foePick: (c) => { const { E, s, seat: q } = c; const y = c.choose([...s.P[q].av].sort(cheapCard(E, s)), 1, "เลือก Avatar ของคุณ 1 ใบ กลับเข้าใต้ Deck", { exact: true })[0];
+      return y ? { explain: `${E.name(s, y)} กลับเข้าใต้ Deck เจ้าของ`, ops: [{ op: "move", i: y.i, to: "deckBottom", player: true }] } : { explain: "ไม่มี Avatar", ops: [] }; } },
   // เอาเสื้อมาหมุนๆแล้วตบ (React): a hand card back into the Deck, shuffle: destroy an opposing {แมลง} Avatar
   "BT03-048": { react: { kinds: ["attack", "summon", "cast", "destroyed"], anytime: true, can: (E, s, p) => s.P[1 - p].av.some((y) => sy(E, s, y, "แมลง") && !E.noAim(s, y)) && s.P[p].hand.length >= 2 },
     cast: (c) => { const { E, s, seat: p } = c; const back = c.choose(s.P[p].hand.filter((y) => y.i !== c.t.i).sort(cheapCard(E, s)), 1, "นำการ์ดบนมือ 1 ใบกลับเข้า Deck", { exact: true })[0]; const t = c.choose(s.P[1 - p].av.filter((y) => sy(E, s, y, "แมลง") && !E.noAim(s, y)).sort(strongFirst(E, s)), 1, "เลือก Avatar {แมลง} ฝ่ายตรงข้ามที่จะทำลาย", { exact: true })[0];
@@ -1465,11 +1477,15 @@ Object.assign(SCRIPTS, {
     return { explain: `กำหนดเลข ${all.map((x, k) => `${k + 1}=${E.name(s, x)}`).join(", ")} แล้วทอยลูกเต๋า`, ops: [{ op: "roll", sides: 6, why: "Grand Rumble", cases }] }; } },
   // ใครเจ๋งกว่า !: both show a card with a Cost; the lower one is discarded, a tie sends both back into the Decks
   "BT04-045": { cast: (c) => { const { E, s, seat: p } = c; const has = (y) => E.def(s, y).c != null; const mine = c.choose(s.P[p].hand.filter((y) => y.i !== c.t.i && has(y)).sort((a, b) => (E.def(s, b).c || 0) - (E.def(s, a).c || 0)), 1, "เลือกการ์ดที่มี Cost บนมือเพื่อแสดง", { exact: true })[0];
-    const theirs = s.P[1 - p].hand.filter(has).sort((a, b) => (E.def(s, b).c || 0) - (E.def(s, a).c || 0))[0]; const cm = mine ? E.def(s, mine).c : -1, ct = theirs ? E.def(s, theirs).c : -1; const ops = [], say = [`เรา: ${mine ? E.name(s, mine) + " (Cost " + cm + ")" : "ไม่มี"}`, `ฝ่ายตรงข้าม: ${theirs ? E.name(s, theirs) + " (Cost " + ct + ")" : "ไม่มี แสดงมือทั้งหมด"}`];
-    if (!theirs) ops.push({ op: "note", text: `มือฝ่ายตรงข้าม: ${s.P[1 - p].hand.map((y) => E.name(s, y)).join(", ") || "-"}` });
-    if (mine && theirs) { if (cm < ct) ops.push({ op: "discard", seat: p, iids: [mine.i] }); else if (ct < cm) ops.push({ op: "discard", seat: 1 - p, iids: [theirs.i] }); else ops.push({ op: "move", i: mine.i, to: "deckBottom" }, { op: "move", i: theirs.i, to: "deckBottom" }, { op: "shuffle", seat: p }, { op: "shuffle", seat: 1 - p }); }
-    else if (mine && !theirs) { /* nothing to compare */ } else if (theirs && !mine) ops.push({ op: "note", text: `มือเรา: ${s.P[p].hand.filter((y) => y.i !== c.t.i).map((y) => E.name(s, y)).join(", ") || "-"}` });
-    return { explain: say.join(" · "), ops }; } },
+    /* both show at once: ours is set aside unseen, then the other player picks theirs (a trigger of theirs) and the two are compared there */
+    return { explain: mine ? "เลือกการ์ดที่จะแสดงแล้ว · ฝ่ายตรงข้ามเลือกการ์ดของตนเอง" : "เราไม่มีการ์ดที่มี Cost · ฝ่ายตรงข้ามเลือกการ์ดของตนเอง", ops: [{ op: "resume", t: { i: c.t.i, c: c.t.c, when: "foePick", seat: 1 - p, as: p, mine: mine ? mine.i : null } }] }; },
+    foePick: (c) => { const { E, s, seat: q } = c; const p = 1 - q; const P = s.P[p], Q = s.P[q]; const has = (y) => E.def(s, y).c != null; const mine = c.t.mine != null ? P.hand.find((y) => y.i === c.t.mine) || null : null;
+      const theirs = c.choose(Q.hand.filter(has).sort((a, b) => (E.def(s, b).c || 0) - (E.def(s, a).c || 0)), 1, "เลือกการ์ดที่มี Cost บนมือคุณ 1 ใบเพื่อแสดง (Cost น้อยกว่าต้องทิ้ง · เท่ากันกลับเข้า Deck)", { exact: true })[0];
+      const cm = mine ? E.def(s, mine).c : -1, ct = theirs ? E.def(s, theirs).c : -1; const ops = [], say = [`${P.name}: ${mine ? E.name(s, mine) + " (Cost " + cm + ")" : "ไม่มี แสดงมือทั้งหมด"}`, `${Q.name}: ${theirs ? E.name(s, theirs) + " (Cost " + ct + ")" : "ไม่มี แสดงมือทั้งหมด"}`];
+      if (!mine) ops.push({ op: "note", text: `มือ ${P.name}: ${P.hand.filter((y) => y.i !== c.t.i).map((y) => E.name(s, y)).join(", ") || "-"}` });
+      if (!theirs) ops.push({ op: "note", text: `มือ ${Q.name}: ${Q.hand.map((y) => E.name(s, y)).join(", ") || "-"}` });
+      if (mine && theirs) { if (cm < ct) ops.push({ op: "discard", seat: p, iids: [mine.i] }); else if (ct < cm) ops.push({ op: "discard", seat: q, iids: [theirs.i] }); else ops.push({ op: "move", i: mine.i, to: "deckBottom" }, { op: "move", i: theirs.i, to: "deckBottom" }, { op: "shuffle", seat: p }, { op: "shuffle", seat: q }); }
+      return { explain: say.join(" · "), ops }; } },
   // ความจริงงงงงงง: with a "ผู้รู้ความจริง" of ours: show a card from our Deck, shuffle, put it on top
   "BT04-047": { canCast: (E, s, p) => s.P[p].av.some((y) => truthAv(E, s, y)), cast: (c) => { const { E, s, seat: p } = c; const t = c.choose(uniq(E, s, s.P[p].deck).sort((a, b) => worth(E, s, b) - worth(E, s, a)), 1, "เลือกการ์ดจาก Deck ที่จะวางไว้บนสุด", { exact: true })[0];
     return t ? { explain: `แสดง ${E.name(s, t)} · สับ Deck แล้ววางไว้บนสุด`, ops: [{ op: "shuffle", seat: p }, { op: "move", i: t.i, to: "deckTop" }] } : { explain: "Deck หมด", ops: [] }; } },
@@ -1960,7 +1976,11 @@ Object.assign(SCRIPTS, {
     selfColorless: (E, s, x) => { const L = E.locate(s, x.i); return !!L && new Set(s.P[L.p].hell.filter((y) => isAv(E, s, y)).map((y) => E.name(s, y))).size >= 10; } },
   // ตำรวจไซบอร์ค จ่านิ่ง: once per turn the opponent draws 1, then puts a card from the hand on top of the Deck
   "BT07-008": { activate: { label: "ฝ่ายตรงข้ามจั่ว 1 ใบ แล้ววางการ์ดจากมือ 1 ใบไว้บนสุดของ Deck", can: (E, s, x, L) => L.z === "av" && s.phase === "main" && s.P[1 - L.p].deck.length > 0,
-    run: (c) => ({ explain: "ฝ่ายตรงข้ามจั่ว 1 ใบ แล้ววางการ์ด 1 ใบจากมือไว้บนสุดของ Deck", ops: [{ op: "draw", seat: 1 - c.seat, n: 1 }, { op: "handToTop", seat: 1 - c.seat }] }) } },
+    run: (c) => ({ explain: "ฝ่ายตรงข้ามจั่ว 1 ใบ แล้วเลือกแสดงการ์ด 1 ใบจากมือ วางไว้บนสุดของ Deck", ops: [{ op: "draw", seat: 1 - c.seat, n: 1 }, { op: "resume", t: { i: c.t.i, c: c.t.c, when: "foePick", seat: 1 - c.seat, as: c.seat } }] }) },
+    /* the opponent picks the card: a trigger of theirs (asked on their device; a bot gives up its weakest) */
+    foePick: (c) => { const { E, s, seat: q } = c; const H = s.P[q].hand; if (!H.length) return { explain: "ไม่มีการ์ดบนมือ", ops: [] }; const v = (y) => (E.def(s, y).pw || 0) + (E.def(s, y).c || 0);
+      const y = c.choose([...H].sort((a, b) => v(a) - v(b)), 1, "แสดงการ์ด 1 ใบจากมือคุณ แล้ววางไว้บนสุดของ Deck", { exact: true })[0];
+      return { explain: `แสดง ${E.name(s, y)} แล้ววางไว้บนสุดของ Deck`, ops: [{ op: "move", i: y.i, to: "deckTop" }] }; } },
   // น้องไอซ์ จี่สมอง: declaring an attack on an Avatar of POWER 3 or less destroys it
   "BT07-010": { attackOk: (E, s) => { const T = s.pend && s.pend.tk === "av" ? E.locate(s, s.pend.ti) : null; return !!T && E.power(s, T.x) <= 3; },
     attack: (c) => { const { E, s } = c; const T = s.pend && s.pend.tk === "av" ? E.locate(s, s.pend.ti) : null; return T && T.z === "av" && E.power(s, T.x) <= 3 ? { explain: `ทำลาย ${E.name(s, T.x)} (POWER ไม่เกิน 3)`, ops: [{ op: "destroy", i: T.x.i, why: "น้องไอซ์" }] } : { explain: "", ops: [] }; } },
@@ -3223,7 +3243,8 @@ Object.assign(SCRIPTS, {
   // คาถาอัดคาบ้าน: 3+ จอมเวทย์ on our zone: the opponent cannot use React cards this turn
   "BT12-059": { canCast: (E, s, p) => s.P[p].av.filter((y) => wizard(E, s, y)).length >= 3, cast: () => ({ explain: "ฝ่ายตรงข้ามใช้ React ไม่ได้จนจบเทิร์น", ops: [{ op: "stateSet", k: "noReact", why: "คาถาอัดคาบ้าน: ฝ่ายตรงข้ามใช้การ์ด React ไม่ได้จนจบเทิร์น" }] }) },
   // ความสบายตาที่แท้จริง: one of ours +2, and the opponent picks its attack targets until the end of our turn
-  "BT12-060": { canCast: (E, s, p) => s.P[p].av.length > 0, cast: (c) => { const { E, s, seat: p } = c; const t = c.choose([...s.P[p].av].sort(strongFirst(E, s)), 1, "เลือก Avatar ฝ่ายเรา", { exact: true })[0]; return t ? { explain: `${E.name(s, t)} POWER +2 · ฝ่ายตรงข้ามเลือกเป้าหมายการโจมตีให้`, ops: [{ op: "power", i: t.i, n: 2, temp: true }, { op: "flagSet", i: t.i, k: "picky" }] } : { explain: "", ops: [] }; } },
+  "BT12-060": { canCast: (E, s, p) => s.P[p].av.length > 0, cast: (c) => { const { E, s, seat: p } = c; const t = c.choose([...s.P[p].av].sort(strongFirst(E, s)), 1, "เลือก Avatar ฝ่ายเรา", { exact: true })[0]; return t ? { explain: `${E.name(s, t)} POWER +2 · เมื่อโจมตีจนจบเทิร์น ฝ่ายตรงข้ามเป็นผู้เลือกเป้าหมายการโจมตี`, ops: [{ op: "power", i: t.i, n: 2, temp: true }, { op: "flagSet", i: t.i, k: "picky" }, { op: "flagSet", i: t.i, k: "pkc", v: c.t.c }] } : { explain: "", ops: [] }; },
+    /* the granted "เมื่อโจมตี": the opponent picks the target, a trigger of theirs (as 40ดีกรีแมน) */ pickTarget: (c) => SCRIPTS["BT02-023"].pickTarget(c) },
   // ฉิบหายการช่าง: two different appliances to our Magic Zone, or a เบเซอร์ of Cost 6+ to the hand
   "BT12-061": { cast: (c) => { const { E, s, seat: p } = c; const ap = uniq(E, s, s.P[p].deck.filter((y) => appliance(E, s, y))); const bz = s.P[p].deck.filter((y) => E.named(s, y, "เบเซอร์") && (E.def(s, y).c || 0) >= 6); const m = c.mode(["1) เครื่องใช้ไฟฟ้า ชื่อต่างกัน 2 ใบ ไปวางบน Magic Zone", "2) เบเซอร์ Cost 6 ขึ้นไป ขึ้นมือ"], "ฉิบหายการช่าง", ap.length >= 2 || !bz.length ? 0 : 1);
     if (m === 0) { const ts = c.choose(ap.sort((a, b) => worth(E, s, b) - worth(E, s, a)), 2, "เลือก เครื่องใช้ไฟฟ้า 2 ใบ (ชื่อต่างกัน)", { exact: true }); return { explain: `${ts.map((y) => E.name(s, y)).join(", ") || "ไม่มี"} ไปวางบน Magic Zone`, ops: [...ts.map((y) => ({ op: "move", i: y.i, to: "mg", seat: p })), { op: "shuffle", seat: p }] }; }
@@ -3661,25 +3682,40 @@ Object.assign(SCRIPTS, {
     back2: (c) => { const { E, s, seat: p } = c; const H = [...s.P[p].hand].sort((a, b) => gemVal(E, s, a) - gemVal(E, s, b)); const pick = c.choose(H, 2, "เลือกการ์ดบนมือ 2 ใบกลับเข้า Deck", { exact: true });
       return { explain: `นำ ${pick.length} ใบกลับเข้า Deck แล้วสับ`, ops: [...pick.map((y) => ({ op: "move", i: y.i, to: "deckBottom" })), { op: "shuffle", seat: p }] }; } },
   // พี่วัฒน์ BGN (พอดี จุติ, once a turn by name): everyone draws or discards to five, the hands are shown, and the player with fewer GEM in hand picks one of three
-  "BT07-027": { summon: (c) => { const { E, s, seat: p } = c; if (!c.t.exact) return { explain: "ไม่ได้อัญเชิญแบบพอดี ความสามารถไม่ทำงาน", ops: [] };
+  "BT07-027": (() => { /* the other player's parts are triggers of theirs: trimming their own hand, and choosing when their GEM is lower */
+    const MODES = ["1) นำการ์ด 2 ใบจากใต้ Deck ขึ้นมือ", "2) Avatar ฝ่ายเราทุกใบ POWER +2", "3) ควบคุม Avatar ฝ่ายตรงข้าม 1 ใบ จนจบ Draw Phase ถัดไปของเจ้าของ"];
+    const gem = (E, s, q) => s.P[q].hand.reduce((a, y) => a + (E.def(s, y).g || 0), 0);
+    const opts = (E, s, q) => { const P = s.P[q], O = s.P[1 - q]; const foe = O.av.filter((y) => !E.noAim(s, y) && !y.tok).sort(strongFirst(E, s)); const canTake = foe.length > 0 && E.avatars(P) < 4;
+      return { foe, canTake, best: canTake && E.power(s, foe[0]) >= 4 ? 2 : P.av.length >= 2 ? 1 : 0 }; };
+    const doIt = (E, s, q, m, t, who) => { const P = s.P[q];
+      if (m === 0) return { explain: who + "นำการ์ด 2 ใบจากใต้ Deck ขึ้นมือ", ops: P.deck.slice(-2).map((y) => ({ op: "move", i: y.i, to: "hand" })) };
+      if (m === 1) return { explain: who + "Avatar ทุกใบ POWER +2", ops: P.av.map((y) => ({ op: "power", i: y.i, n: 2, temp: false })) };
+      return { explain: who + (t ? `ควบคุม ${E.name(s, t)} จนจบ Draw Phase ถัดไปของเจ้าของ` : "ไม่มี Avatar ให้ควบคุม"), ops: t ? [{ op: "control", i: t.i, seat: q, until: "ownerDraw" }] : [] }; };
+    const toGem = (c, p) => ({ op: "resume", t: { i: c.t.i, c: c.t.c, when: "gemPick", seat: p } });
+    return { summon: (c) => { const { E, s, seat: p } = c; if (!c.t.exact) return { explain: "ไม่ได้อัญเชิญแบบพอดี ความสามารถไม่ทำงาน", ops: [] };
       if (!once(s, p, "พี่วัฒน์ BGN")) return { explain: "ใช้ความสามารถของ พี่วัฒน์ BGN ไปแล้วในเทิร์นนี้", ops: [] };
       const ops = [{ op: "nameOnce", seat: p, name: "พี่วัฒน์ BGN" }];
       for (const q of [p, 1 - p]) { const H = s.P[q].hand; if (H.length < 5) ops.push({ op: "draw", seat: q, n: 5 - H.length });
-        else if (H.length > 5) { const n = H.length - 5; const low = [...H].sort((a, b) => gemVal(E, s, a) - gemVal(E, s, b)); const pick = q === p ? c.choose(low, n, `ทิ้งการ์ดบนมือ ${n} ใบให้เหลือ 5 ใบ`, { exact: true }) : low.slice(0, n); ops.push({ op: "discard", seat: q, iids: pick.map((y) => y.i) }); } }
-      ops.push({ op: "resume", t: { i: c.t.i, c: c.t.c, when: "gemPick", seat: p } });
+        else if (H.length > 5 && q === p) { const n = H.length - 5; const low = [...H].sort((a, b) => gemVal(E, s, a) - gemVal(E, s, b)); const pick = c.choose(low, n, `ทิ้งการ์ดบนมือ ${n} ใบให้เหลือ 5 ใบ`, { exact: true }); ops.push({ op: "discard", seat: q, iids: pick.map((y) => y.i) }); } }
+      ops.push(s.P[1 - p].hand.length > 5 ? { op: "resume", t: { i: c.t.i, c: c.t.c, when: "trimHand", seat: 1 - p, as: p } } : toGem(c, p));
       return { explain: "ทุกคนจั่วหรือทิ้งจนมีการ์ดบนมือ 5 ใบ แล้วเทียบ GEM บนมือ", ops }; },
-    gemPick: (c) => { const { E, s, seat: p } = c; const gem = (q) => s.P[q].hand.reduce((a, y) => a + (E.def(s, y).g || 0), 0); const a = gem(p), b = gem(1 - p);
+    trimHand: (c) => { const { E, s, seat: q } = c; const H = s.P[q].hand; const n = H.length - 5; if (n <= 0) return { explain: "", ops: [toGem(c, 1 - q)] };
+      const pick = c.choose([...H].sort((a, b) => gemVal(E, s, a) - gemVal(E, s, b)), n, `ทิ้งการ์ดบนมือคุณ ${n} ใบให้เหลือ 5 ใบ`, { exact: true });
+      return { explain: `ทิ้งการ์ดบนมือ ${n} ใบให้เหลือ 5 ใบ`, ops: [{ op: "discard", seat: q, iids: pick.map((y) => y.i) }, toGem(c, 1 - q)] }; },
+    gemPick: (c) => { const { E, s, seat: p } = c; const a = gem(E, s, p), b = gem(E, s, 1 - p);
       const show = [{ op: "peek", seat: p, z: "hand", label: `แสดงมือ ${s.P[p].name} (GEM ${a})` }, { op: "peek", seat: 1 - p, z: "hand", label: `แสดงมือ ${s.P[1 - p].name} (GEM ${b})` }];
       if (a === b) return { explain: `GEM บนมือเท่ากัน (${a}) ไม่มีใครได้เลือก`, ops: show };
-      const q = a < b ? p : 1 - p; const P = s.P[q], O = s.P[1 - q]; // the player with less GEM chooses; for the other side the game picks what suits them
-      const foe = O.av.filter((y) => !E.noAim(s, y) && !y.tok).sort(strongFirst(E, s)); const canTake = foe.length > 0 && E.avatars(P) < 4;
-      const best = canTake && E.power(s, foe[0]) >= 4 ? 2 : P.av.length >= 2 ? 1 : 0;
-      const m = q === p ? c.mode(["1) นำการ์ด 2 ใบจากใต้ Deck ขึ้นมือ", "2) Avatar ฝ่ายเราทุกใบ POWER +2", "3) ควบคุม Avatar ฝ่ายตรงข้าม 1 ใบ จนจบ Draw Phase ถัดไปของเจ้าของ"], `GEM บนมือน้อยกว่า (${a} ต่อ ${b}): เลือกปฏิบัติ 1 อย่าง`, best) : best;
-      const who = q === p ? "" : `${P.name} มี GEM น้อยกว่า เลือก: `;
-      if (m === 0) return { explain: who + "นำการ์ด 2 ใบจากใต้ Deck ขึ้นมือ", ops: [...show, ...P.deck.slice(-2).map((y) => ({ op: "move", i: y.i, to: "hand" }))] };
-      if (m === 1) return { explain: who + "Avatar ทุกใบ POWER +2", ops: [...show, ...P.av.map((y) => ({ op: "power", i: y.i, n: 2, temp: false }))] };
-      const t = canTake ? (q === p ? c.choose(foe, 1, "เลือก Avatar ฝ่ายตรงข้ามที่จะควบคุม")[0] : foe[0]) : null;
-      return { explain: who + (t ? `ควบคุม ${E.name(s, t)} จนจบ Draw Phase ถัดไปของเจ้าของ` : "ไม่มี Avatar ให้ควบคุม"), ops: [...show, ...(t ? [{ op: "control", i: t.i, seat: q, until: "ownerDraw" }] : [])] }; } },
+      const q = a < b ? p : 1 - p; /* the player with less GEM chooses: when that is the other player, it is a trigger of theirs */
+      if (q !== p) return { explain: `${s.P[q].name} มี GEM บนมือน้อยกว่า (${b} ต่อ ${a}) ได้เลือกปฏิบัติ 1 อย่าง`, ops: [...show, { op: "resume", t: { i: c.t.i, c: c.t.c, when: "gemMode", seat: q, as: p } }] };
+      const g = opts(E, s, q); const m = c.mode(MODES, `GEM บนมือน้อยกว่า (${a} ต่อ ${b}): เลือกปฏิบัติ 1 อย่าง`, g.best);
+      const t = m === 2 && g.canTake ? c.choose(g.foe, 1, "เลือก Avatar ฝ่ายตรงข้ามที่จะควบคุม")[0] : null; const r = doIt(E, s, q, m, t, "");
+      return { explain: r.explain, ops: [...show, ...r.ops] }; },
+    gemMode: (c) => { const { E, s, seat: q } = c; const g = opts(E, s, q); const m = c.mode(MODES, `GEM บนมือคุณน้อยกว่า (${gem(E, s, q)} ต่อ ${gem(E, s, 1 - q)}): เลือกปฏิบัติ 1 อย่าง`, g.best);
+      const t = m === 2 && g.canTake ? c.choose(g.foe, 1, "เลือก Avatar ฝ่ายตรงข้ามที่จะควบคุม")[0] : null;
+      /* carried out by the card's owner, as before: the choice is theirs, the effect stays this card's */
+      return { explain: "", ops: [{ op: "resume", t: { i: c.t.i, c: c.t.c, when: "gemDo", seat: 1 - q, q, m, ti: t ? t.i : null } }] }; },
+    gemDo: (c) => { const { E, s } = c; const q = c.t.q === 0 || c.t.q === 1 ? c.t.q : 1 - c.seat; const T = c.t.ti != null ? E.locate(s, c.t.ti) : null; const t = T && T.z === "av" && T.p !== q ? T.x : null;
+      return doIt(E, s, q, c.t.m | 0, t, `${s.P[q].name} เลือก: `); } }; })(),
   // ตัวอะไรสักอย่างที่เป็นมิตรและพูดมาก (คำสั่งเสีย): for the rest of the game we summon only blue {เอเลี่ยน}; "ตัวอะไรซักอย่าง" in our hand cost 2 less (not below 2)
   "BT09-018": { death: (c) => ({ explain: "ตลอดเกมนี้อัญเชิญได้เฉพาะ Avatar {เอเลี่ยน} สีฟ้า · ตัวอะไรสักอย่างบนมือ Cost -2 (ไม่ต่ำกว่า 2)", ops: [{ op: "gameRule", seat: c.seat, lock: "blueAlien", costDown: { name: "ตัวอะไรสักอย่าง", n: 2, min: 2 }, why: "คำสั่งเสีย ตัวอะไรสักอย่างฯ: ตลอดเกมนี้อัญเชิญได้เฉพาะ Avatar {เอเลี่ยน} สีฟ้า" }] }) },
   // Skill : Hypersense: "when the opponent uses an Avatar's ability" — that Avatar loses its abilities this turn (and with 8+ Magic in our hell it may be destroyed)
