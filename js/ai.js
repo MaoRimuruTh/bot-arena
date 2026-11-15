@@ -1,11 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261115113208";
-import { plain } from "./persona.js?v=20261115113208";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261115113208";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261115113208";
-import { modPowerFor } from "./auras.js?v=20261115113208";
-import { Data } from "./fb.js?v=20261115113208";
-import { lsGet, clone } from "./util.js?v=20261115113208";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261115120338";
+import { plain } from "./persona.js?v=20261115120338";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261115120338";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261115120338";
+import { modPowerFor } from "./auras.js?v=20261115120338";
+import { Data } from "./fb.js?v=20261115120338";
+import { lsGet, clone } from "./util.js?v=20261115120338";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -259,7 +259,7 @@ export const H = {
         if (a.type === "summon") { const fx = d.x && /จุติ/.test(d.x) ? H.opsScore(s, p, H.preview(s, { i: x.i, c: x.c, when: "summon", seat: p, exact: true })) : 0; sc = (d.pw || 0) + 2 + Math.max(0, fx) + csBonus(d) - payLoss * 0.45 + (P.av.length < 2 ? 3 : 0) + bias; } // csBonus: a lasting buff for every Avatar of ours
         else if (a.type === "build") sc = 3 + csBonus(d) - payLoss * 0.3;
         else if (a.type === "cast" && d.st === "L") sc = E.lands(s).some((l) => l.o === p) ? -1 : E.lands(s).length && !E.landSc(s, "splitLand") ? 3 : 2.5; // ours replaces theirs: their Land goes too
-        else if (a.type === "cast" && d.st === "D") { const host = P.av.find((y) => y.i === a.on); const sm = scriptOf(s, x); const b = sm && sm.modV ? sm.modV(E, s, x, host) : modBonus(d.x) || (host ? modPowerFor(E, s, x, host) : 0) || gearV(d.x); sc = b > 0 && host ? b + (host.a ? 1.5 : 0) + E.power(s, host) * 0.1 : -1; }
+        else if (a.type === "cast" && d.st === "D") { const host = P.av.find((y) => y.i === a.on) || s.P[1 - p].av.find((y) => y.i === a.on); /* wearFoe */ const sm = scriptOf(s, x); const b = sm && sm.modV ? sm.modV(E, s, x, host) : modBonus(d.x) || (host ? modPowerFor(E, s, x, host) : 0) || gearV(d.x); sc = b > 0 && host ? b + (host.a ? 1.5 : 0) + E.power(s, host) * 0.1 : -1; }
         else if (a.type === "cast" && d.st === "N") sc = H.opsScore(s, p, H.preview(s, { i: x.i, c: x.c, when: "cast", seat: p }));
         else if (a.type === "cast" && d.st === "R") { const sr = scriptOf(s, x); let v = -99; // a React that names no moment, played in our own turn
           if (sr && sr.react && sr.react.anytime && sr.react.botV) { try { v = sr.react.botV(E, s, p, null); } catch { v = -99; } } sc = v >= 3 ? v : -99; }
