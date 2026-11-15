@@ -1,18 +1,18 @@
-import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261115182417";
-import { plain, isOwnerNow } from "../persona.js?v=20261115182417";
-import { fxText } from "../fxtext.js?v=20261115182417";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, limitKey, banlist, banMax, banPair, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261115182417";
-import { Data, Me, saveDeck, deleteDeck, saveSkins, saveCiel } from "../fb.js?v=20261115182417";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261115182417";
-import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261115182417";
-import { filterBar, filterCards } from "./library.js?v=20261115182417";
-import { openingOdds, simGame } from "./lab.js?v=20261115182417";
-import { freeBuild } from "../builder.js?v=20261115182417";
-import { deckCode, deckText, parseDeck, printCard } from "../deckcode.js?v=20261115182417";
+import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261115183341";
+import { plain, isOwnerNow } from "../persona.js?v=20261115183341";
+import { fxText } from "../fxtext.js?v=20261115183341";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, limitKey, banlist, banMax, banPair, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261115183341";
+import { Data, Me, saveDeck, deleteDeck, saveSkins, saveCiel } from "../fb.js?v=20261115183341";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261115183341";
+import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261115183341";
+import { filterBar, filterCards } from "./library.js?v=20261115183341";
+import { openingOdds, simGame } from "./lab.js?v=20261115183341";
+import { freeBuild } from "../builder.js?v=20261115183341";
+import { deckCode, deckText, parseDeck, printCard } from "../deckcode.js?v=20261115183341";
 // Ciel's decks are not imported here: they come from the owner's private data (see cielDecks)
-import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261115182417";
-import { deckLocked, deckLockAch } from "../achieve.js?v=20261115182417";
-import { noteBase, noteVersion, openVersions, openCardStats } from "../decktools.js?v=20261115182417";
+import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261115183341";
+import { deckLocked, deckLockAch } from "../achieve.js?v=20261115183341";
+import { noteBase, noteVersion, openVersions, openCardStats } from "../decktools.js?v=20261115183341";
 
 // Ciel's theme decks: print codes → card ids (resolved once the card data is loaded). They are Ciel's decks for Rimuru,
 // so only the owner's account sees them: other accounts get none (not in the deck list, the duel setup, the lab or the bot's picks)
@@ -22,7 +22,7 @@ let cielCache = null, cielMoving = false;
 function moveCiel() {
   if (cielMoving) return; cielMoving = true;
   // a failed load writes nothing (a network hiccup must never leave an empty list behind); it is tried again next visit
-  import("../cieldecks.js?v=20261115182417").then((m) => { if (m.CIEL_DECKS && m.CIEL_DECKS.length) return saveCiel(m.CIEL_DECKS); }).catch((e) => console.warn("Ciel's decks: not moved yet", e));
+  import("../cieldecks.js?v=20261115183341").then((m) => { if (m.CIEL_DECKS && m.CIEL_DECKS.length) return saveCiel(m.CIEL_DECKS); }).catch((e) => console.warn("Ciel's decks: not moved yet", e));
 }
 export function cielDecks() {
   const own = isOwnerNow(); if (!own || !Me.uid) return [];
