@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261115120338";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261115120338";
-import { SCRIPTS } from "./scripts.js?v=20261115120338";
-import { newId, clone } from "./util.js?v=20261115120338";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261115124839";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261115124839";
+import { SCRIPTS } from "./scripts.js?v=20261115124839";
+import { newId, clone } from "./util.js?v=20261115124839";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -1243,7 +1243,7 @@ export const E = {
       case "bpOn": { const L = E.locate(s, o.i); if (L) L.x.bp = s.turn; return; }
       case "tani2": { const pd = s.pend; if (!pd || pd.tk2 || !["av", "cs", "life"].includes(o.tk)) return; const T2 = o.ti != null ? E.locate(s, o.ti) : null; if (o.tk !== "life" && (!T2 || T2.z !== o.tk)) return;
         pd.tk2 = o.tk; pd.ti2 = o.ti != null ? o.ti : null; const A = E.locate(s, pd.att); E.log(s, pd.by, `${A ? E.name(s, A.x) : "ผู้โจมตี"} โจมตีเป้าหมายที่ 2 พร้อมกัน: ${o.tk === "life" ? "LIFE" : E.name(s, T2.x)}`); return; }
-      case "flagSet": { const L = E.locate(s, o.i); if (L && /^(tlb|st0|sorry|kraken|frz|lh2|kf|own|feed|ofa|mustAtk|mgo|sumt|picky|pkc|hs2|tani|twice|twiceUsed|nact|kdm|fa|cru)$/.test(o.k)) L.x[o.k] = o.v == null ? s.turn : o.v; return; }
+      case "flagSet": { const L = E.locate(s, o.i); if (L && /^(tlb|st0|sorry|kraken|frz|lh2|kf|own|feed|ofa|mustAtk|mgo|sumt|picky|pkc|hs2|tani|twice|twiceUsed|nact|kdm|fa|cru|used|n55)$/.test(o.k)) L.x[o.k] = o.v == null ? s.turn : o.v; return; }
       case "sorry": { s.sorry = { t: s.turn, p: seat }; E.log(s, by, "เทิร์นนี้การขอโทษของ DJ ปีโป้ จะได้รับการยกโทษเสมอ"); return; }
       case "copyStats": { const L = E.locate(s, o.i), F = E.locate(s, o.from); if (!L || !F) return; const d = E.def(s, F.x); L.x.ov = { n: d.n, c: d.c, g: d.g, sy: d.sy, pw: E.power(s, F.x) }; E.log(s, by, `${E.def(s, L.x).n}: ชื่อ Cost GEM Symbol POWER เหมือน ${d.n} จนจบเทิร์น`); return; }
       case "ovSet": { const L = E.locate(s, o.i); if (!L || !o.ov) return; let nv = o.ov; if (o.sw) { const d0 = E.def(s, L.x); if ((d0.c || 0) !== o.sw.c || (d0.pw || 0) !== o.sw.pw) nv = { c: d0.pw || 0, pw: d0.c || 0 }; } /* FAQ ชิบาตะ: a value changed while swapped is swapped back with it */ const ov = { ...(L.x.ov || {}) }; for (const k of ["n", "c", "pw", "g", "sy", "co"]) { if (nv[k] === null) delete ov[k]; else if (nv[k] !== undefined) ov[k] = nv[k]; } if (Object.keys(ov).length) L.x.ov = ov; else delete L.x.ov; if (o.why) E.log(s, by, String(o.why)); return; }
