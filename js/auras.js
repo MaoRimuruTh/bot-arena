@@ -1,7 +1,7 @@
 // Free reader for continuous POWER effects ("ต่อเนื่อง ... POWER +N").
 // Conservative like effects.js: anything it can't express exactly is ignored (returns no aura).
 // readAura(def) -> null or { desc, run(E, s, src, L) -> [{ seat, test(x), n }] }
-import { nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261115110851";
+import { nameText, syText, allSy, colorIs, hasFieldAlias, normName } from "./cards.js?v=20261115113208";
 const cache = new Map();
 
 const ON_FIELD = { A: "av", T: "av", C: "cs" };
@@ -169,7 +169,7 @@ export function traits(def) {
     // "cannot attack unless an Avatar is worn (N or more)" / "may attack only with an empty hand"
     if ((m = text.match(/ถ้าไม่มี\s*Avatar\s*สวมใส่\s*Avatar\s*(?:ใบนี้|ตัวนี้)\s*(?:(\d+)\s*ใบ\s*ขึ้นไป)?\s*(?:จะ)?\s*ไม่สามารถ\s*โจมตีได้/))) { const need = +(m[1] || 1); o.noAttack = (E, s, x) => [...s.P[0].mg, ...s.P[1].mg].filter((c) => c.on === x.i && ["A", "T"].includes(E.def(s, c).t)).length < need; }
     else if (/(?:การ์ด|Avatar)\s*(?:ใบนี้|ตัวนี้)\s*สามารถ(?:สั่ง)?โจมตีได้\s*(?:ต่อ)?เมื่อเราไม่มีการ์ดบนมือ/.test(text)) o.noAttack = (E, s, x) => { const L = E.locate(s, x.i); return !!L && s.P[L.p].hand.length > 0; };
-    if (String(text).split(/\n/).some((l) => /(?:Avatar|การ์ด)\s*(?:ใบนี้|ตัวนี้)\s*(?:จะ)?\s*(?:ไม่สามารถ\s*(?:ถูก)?\s*เปลี่ยนการควบคุม|ไม่ถูกเปลี่ยนการควบคุม)/.test(l))) o.noControl = true;
+    if (String(text).split(/\n/).some((l) => /(?:Avatar|การ์ด)\s*(?:ใบนี้|ตัวนี้)\s*(?:จะ)?\s*(?:ไม่สามารถ\s*(?:ถูก)?\s*เปลี่ยนการควบคุม|ไม่ถูกเปลี่ยนการควบคุม)/.test(l))) { o.noControl = true; const ex = String(text).match(/เปลี่ยนการควบคุม\s*ยกเว้น(?:จาก)?\s*ความสามารถ(?:ของ)?\s*["“]?([^"”\n]+?)["”]?\s*$/m); if (ex) o.noControlBut = ex[1].trim(); } // ไอ้นัท: "… ยกเว้นจากความสามารถของ อีช่า"
     if (line(/ฝ่ายตรงข้าม\s*(?:จะ)?\s*ไม่สามารถเลือกเป้า(?:หมาย)?(?:การ)?โจมตี(?:อื่น)?\s*(?:ได้)?\s*นอกจาก\s*(?:การ์ด|Avatar)\s*(?:ใบนี้|ตัวนี้)/)) o.taunt = () => true;
     if (/ไม่สามารถลงสนามจากบนมือ|ลงสนามจากบนมือไม่ได้/.test(text)) o.noHand = true;
     if (/ควบคุม[^\n]*?(?:ใน|บน)\s*Avatar Zone\s*ได้เพียง\s*1\s*ใบ/.test(text)) o.uniq = true;

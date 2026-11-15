@@ -214,8 +214,8 @@ Object.assign(SCRIPTS, {
       else say += ` (ได้ Avatar ${m.avatars} ใบ ไม่ถึง 4)`;
       return { explain: say, ops }; } },
   "BT11-022": { virusExile: true, activate: fromDark,
-    attack: (c) => { if (c.self && c.self.used === "a" + c.s.turn) return { explain: "ใช้ไปแล้วในเทิร์นนี้", ops: [] }; if (c.self) c.self.used = "a" + c.s.turn;
-      const m = virusMill(c, 3); const ops = [...m.ops]; let say = m.blocked ? "ธรณีสูบไม่ทำงาน (Overdose ฝ่ายตรงข้าม)" : "ทุกคนธรณีสูบ 3 ใบ";
+    attack: (c) => { if (c.self && (c.self.cru === c.s.turn || c.self.used === "a" + c.s.turn)) return { explain: "ใช้ไปแล้วในเทิร์นนี้", ops: [] }; /* once per turn, marked by an op: working the effect out never writes to the live state (it runs again after each choice) */
+      const m = virusMill(c, 3); const ops = [...(c.self ? [{ op: "flagSet", i: c.self.i, k: "cru" }] : []), ...m.ops]; let say = m.blocked ? "ธรณีสูบไม่ทำงาน (Overdose ฝ่ายตรงข้าม)" : "ทุกคนธรณีสูบ 3 ใบ";
       if (m.avatars >= 4) { const t = c.choose(c.s.P[1 - c.seat].av.filter((x) => !c.E.noAim(c.s, x)).sort(strongFirst(c.E, c.s)), 1, "เลือก Avatar ฝ่ายตรงข้ามให้เสียความสามารถและ POWER ตั้งต้น 0", { optional: true })[0];
         say += ` · ได้ Avatar ${m.avatars} ใบ (ถึง 4)`; if (t) { ops.push({ op: "mute", i: t.i, until: "turn", zero: true }); say += ` · ${c.E.name(c.s, t)} เสียความสามารถ และ POWER ตั้งต้นเป็น 0 จนจบเทิร์น`; } }
       else say += ` (ได้ Avatar ${m.avatars} ใบ ไม่ถึง 4)`;
@@ -369,7 +369,7 @@ Object.assign(SCRIPTS, {
   "KD03-004": { activate: { label: "ทำลายโอตะที่สวมใส่ 1 ใบ: ทำลายการ์ดบนสนาม 1 ใบ",
     can: (E, s, x, L) => L.z === "av" && myOta(E, s, L.p).length > 0 && (s.P[1 - L.p].av.length + s.P[1 - L.p].cs.length) > 0,
     run: (c) => { const o = destroyOtaCost(c, 1); const O = c.s.P[1 - c.seat];
-      const t = c.choose([...O.av.filter((x) => !c.E.noAim(c.s, x)).sort(strongFirst(c.E, c.s)), ...O.cs], 1, "เลือกการ์ดบนสนามฝ่ายตรงข้ามที่จะทำลาย")[0];
+      const P = c.s.P[c.seat]; const t = c.choose([...O.av.filter((x) => !c.E.noAim(c.s, x)).sort(strongFirst(c.E, c.s)), ...O.cs, ...O.mg.filter((x) => !x.fd), ...c.E.lands(c.s), ...P.av.filter((x) => !c.E.noAim(c.s, x)), ...P.cs, ...P.mg.filter((x) => !x.fd && !o.includes(x))], 1, "เลือกการ์ดบนสนามที่จะทำลาย")[0]; /* "การ์ดบนสนาม" names no side: any card on the field (FAQ โรงบาล) — the bot still takes the strongest opposing Avatar first */
       return { explain: `ทำลาย ${o.map((x) => c.E.name(c.s, x)).join(", ")}${t ? ` · ทำลาย ${c.E.name(c.s, t)}` : ""}`, ops: [...o.map((x) => ({ op: "destroy", i: x.i, why: "ค่าความสามารถของแบมบูจัง" })), ...(t ? [{ op: "destroy", i: t.i, why: "แบมบูจัง" }] : [])] }; } } },
   // โทมาโทจัง: other idols wearing an โอตะ +2; can't be attacked while it wears one and another idol is here
   "KD03-005": { aura: (E, s, src, L) => (L.z === "av" ? [{ seat: L.p, test: (x) => x.i !== src.i && idol(E, s, x) && otaOn(E, s, x).length > 0, n: 2 }] : []),
@@ -469,6 +469,7 @@ Object.assign(SCRIPTS, {
   // เฟรย่า (พอดี): 3 purple {เทพ} Avatars from hell back to the deck, draw 1
   "BT05-025": { summon: (c) => { if (!c.t.exact) return { explain: "ไม่ได้อัญเชิญแบบพอดี ความสามารถไม่ทำงาน", ops: [] };
     const pool = c.s.P[c.seat].hell.filter((x) => isAv(c.E, c.s, x) && sy(c.E, c.s, x, "เทพ") && c.E.def(c.s, x).co === "ม่วง");
+    if (pool.length < 3) return { explain: "ในนรกมี Avatar {เทพ} สีม่วงไม่ถึง 3 ใบ ทำผลไม่ครบ ความสามารถไม่ทำงาน", ops: [] }; // Rule Book: an effect is carried out in full or not at all (no draw either)
     const pick = c.choose(pool.sort(strongFirst(c.E, c.s)), 3, "เลือกเทพสีม่วงในนรก 3 ใบกลับเข้า Deck", { exact: pool.length >= 3 });
     return { explain: `นำ ${pick.length} ใบกลับเข้า Deck · จั่ว 1 ใบ`, ops: [...pick.map((x) => ({ op: "move", i: x.i, to: "deckBottom" })), { op: "shuffle", seat: c.seat }, { op: "draw", seat: c.seat, n: 1 }] }; } },
   // การสละชีพของเทพธิดา
@@ -565,7 +566,7 @@ Object.assign(SCRIPTS, {
   "BT02-053": { react: { kinds: ["attack"], can: (E, s, p, on) => myTargetAttacked(E, s, p, on) && s.P[p].av.length > 1 },
     cast: (c) => { const on = onTarget(c); const pool = c.s.P[c.seat].av.filter((x) => x.i !== on.ti).sort((a, b) => c.E.power(c.s, b) - c.E.power(c.s, a));
       const t = c.choose(pool, 1, "เลือก Avatar ฝ่ายเราที่จะยืม POWER ให้เป้าหมาย")[0]; const T = c.E.locate(c.s, on.ti);
-      return t && T ? { explain: `${c.E.name(c.s, T.x)} POWER +${c.E.power(c.s, t)} จาก ${c.E.name(c.s, t)}`, ops: [{ op: "power", i: T.x.i, n: c.E.power(c.s, t), temp: true }] } : { explain: "ไม่มีเป้าหมาย", ops: [] }; } },
+      return t && T ? { explain: `${c.E.name(c.s, T.x)} POWER +${c.E.power(c.s, t)} จาก ${c.E.name(c.s, t)}`, ops: [{ op: "power", i: T.x.i, n: c.E.power(c.s, t), temp: "fight" }] } : { explain: "ไม่มีเป้าหมาย", ops: [] }; } },
   // ไปเลยมอนตี้
   "BT02-054": { react: { kinds: ["attack"] },
     cast: (c) => { const on = onTarget(c); const P = c.s.P[c.seat]; const n = 2 * (P.av.length + P.cs.length + P.mg.length + c.E.lands(c.s).filter((l) => l.o === c.seat).length + P.hand.length); const L = c.E.locate(c.s, on.att); /* FAQ: "บนสนาม" counts the Land Magic Zone too */
@@ -1217,9 +1218,13 @@ Object.assign(SCRIPTS, {
     return { explain: `Avatar เราทุกใบนอน (POWER รวมที่นอน ${sum})${t ? ` · ทำลาย ${E.name(s, t)}` : ""}`, ops: [...s.P[p].av.filter((y) => y.a).map((y) => ({ op: "wake", i: y.i, v: false })), ...(t ? [{ op: "destroy", i: t.i, why: "ประชามติ" }] : [])] }; } },
   // ฉุบสั่งตาย: rock-paper-scissors (a coin here): the winner destroys an Avatar on the field
   "BT02-043": { canCast: (E, s) => s.P[0].av.length > 0 && s.P[1].av.length > 0, // FAQ: both players need an Avatar
-    cast: (c) => { const { E, s, seat: p } = c; const ours = s.P[1 - p].av.filter((y) => !E.noAim(s, y)).sort((a, b) => worth(E, s, b) - worth(E, s, a)); const mine = [...s.P[p].av].sort((a, b) => worth(E, s, b) - worth(E, s, a))[0];
-    const t = c.choose(ours, 1, "ถ้าเราชนะเป่ายิ้งฉุบ: เลือก Avatar ที่จะทำลาย")[0];
-    return { explain: "เป่ายิ้งฉุบ (ใช้ทอยเหรียญแทน: หัว = เราชนะ)", ops: [{ op: "roll", sides: 2, why: "เป่ายิ้งฉุบ", cases: { 1: t ? [{ op: "destroy", i: t.i, why: "แพ้เป่ายิ้งฉุบ" }] : [], 2: mine ? [{ op: "destroy", i: mine.i, why: "ฝ่ายตรงข้ามชนะเป่ายิ้งฉุบ" }] : [] } }] }; } },
+    cast: (c) => { const { seat: p } = c; const win = (q) => [{ op: "resume", t: { i: c.t.i, c: c.t.c, when: "winPick", seat: q, ...(q !== p ? { as: p } : {}) } }];
+    return { explain: "เป่ายิ้งฉุบ (ใช้ทอยเหรียญแทน: หัว = เราชนะ) · ผู้ชนะเลือกทำลาย Avatar บนสนาม 1 ใบ", ops: [{ op: "roll", sides: 2, why: "เป่ายิ้งฉุบ", cases: { 1: win(p), 2: win(1 - p) } }] }; },
+    /* the winner's own choice, any Avatar on the field (a trigger of theirs: asked on their device; a bot takes the other side's best) */
+    winPick: (c) => { const { E, s, seat: q } = c; const own = c.t.as === 0 || c.t.as === 1 ? c.t.as : q; const ok = (y) => y.o === own || (E.locate(s, y.i) || {}).p === own || !E.noAim(s, y);
+      const theirs = s.P[1 - q].av.filter(ok).sort((a, b) => worth(E, s, b) - worth(E, s, a)), mine = s.P[q].av.filter(ok).sort((a, b) => worth(E, s, a) - worth(E, s, b));
+      const t = c.choose([...theirs, ...mine], 1, "ชนะเป่ายิ้งฉุบ: เลือก Avatar บนสนาม 1 ใบ ทำลาย", { exact: true })[0];
+      return t ? { explain: `ชนะเป่ายิ้งฉุบ: ทำลาย ${E.name(s, t)}`, ops: [{ op: "destroy", i: t.i, why: "ฉุบสั่งตาย" }] } : { explain: "ไม่มี Avatar ให้ทำลาย", ops: [] }; } },
   // ด่านลอย: name a Cost 0-9: a random card from the opponent's hand; an Avatar of that Cost goes to hell
   "BT02-044": { cast: (c) => { const v = c.mode(["Cost 0", "Cost 1", "Cost 2", "Cost 3", "Cost 4", "Cost 5", "Cost 6", "Cost 7", "Cost 8", "Cost 9"], "ด่านลอย: เลือกค่า Cost", 3);
     return { explain: `เลือก Cost ${v} · สุ่มการ์ดบนมือฝ่ายตรงข้าม 1 ใบ`, ops: [{ op: "randomHand", seat: 1 - c.seat, cost: v }] }; } },
@@ -1424,7 +1429,7 @@ Object.assign(SCRIPTS, {
   "BT04-012": { activate: { label: "แสดง Avatar บนมือ: ทำลาย Avatar ที่ POWER เท่ากับ Cost รวม", can: (E, s, x, L) => L.z === "av" && s.phase === "main" && s.P[L.p].hand.some((y) => isAv(E, s, y)) && s.P[1 - L.p].av.length > 0,
     run: (c) => { const { E, s, seat: p } = c; const hand = s.P[p].hand.filter((y) => isAv(E, s, y)).slice(0, 8); const foes = s.P[1 - p].av.filter((y) => !E.noAim(s, y)).sort((a, b) => worth(E, s, b) - worth(E, s, a));
       let plan = null; for (const f of foes) { const want = E.power(s, f); for (let m = 1; m < 1 << hand.length && !plan; m++) { const pick = hand.filter((_, k) => m & (1 << k)); if (pick.reduce((a, y) => a + (E.def(s, y).c || 0), 0) === want) plan = { f, pick }; } if (plan) break; }
-      const shown = c.choose(plan ? [...plan.pick, ...hand.filter((y) => !plan.pick.includes(y))] : hand, plan ? plan.pick.length : hand.length, "แสดง Avatar บนมือ (Cost รวม = POWER ของเป้าหมาย)", { optional: true });
+      const shown = c.choose(plan ? [...plan.pick, ...hand.filter((y) => !plan.pick.includes(y))] : hand, plan && !c.interactive ? plan.pick.length : hand.length, "แสดง Avatar บนมือ (Cost รวม = POWER ของเป้าหมาย)", { optional: true });
       const sum = shown.reduce((a, y) => a + (E.def(s, y).c || 0), 0); const t = c.choose(foes.filter((y) => E.power(s, y) === sum), 1, `เลือก Avatar ฝ่ายตรงข้ามที่ POWER ${sum}`, { exact: true })[0];
       const give = c.choose([...s.P[p].hand].sort(cheapCard(E, s)), 1, "เลือกการ์ดบนมือ 1 ใบให้ฝ่ายตรงข้าม", { exact: true })[0];
       return { explain: `แสดง Cost รวม ${sum}${t ? ` · ทำลาย ${E.name(s, t)}` : " · ไม่มี Avatar ที่ POWER ตรง"}${give ? " · ให้การ์ด 1 ใบแก่ฝ่ายตรงข้าม" : ""}`, ops: [...(t ? [{ op: "destroy", i: t.i, why: "เอเลี่ยนทูตดาวอังคาร" }] : []), ...(give ? [{ op: "giveCard", seat: p, i: give.i }] : [])] }; } } },
@@ -1673,7 +1678,7 @@ Object.assign(SCRIPTS, {
       return { explain: `ส่ง ${four.map((y) => E.name(s, y)).join(", ")} ลงนรก · ${down <= 2 ? "LIFE ฝ่ายตรงข้ามคว่ำ 2 ใบหรือน้อยกว่า: ชนะทันที" : "หงาย LIFE ฝ่ายตรงข้าม 3 ใบ"}`, ops: [...four.map((y) => ({ op: "move", i: y.i, to: "hell" })), ...(down <= 2 ? [{ op: "win", text: "รหัสดำ" }] : Array.from({ length: 3 }, () => ({ op: "lifeFlip", seat: 1 - p })))] }; } },
   // แผนการ : เพดานถล่ม (React): with 2+ sleeping Avatars on the opponent's side: destroy a sleeping Avatar
   "BT05-061": { react: { kinds: ["attack", "summon", "cast", "activate"], can: (E, s, p) => s.P[1 - p].av.filter((y) => !y.a).length >= 2 },
-    cast: (c) => { const { E, s, seat: p } = c; const t = c.choose(s.P[1 - p].av.filter((y) => !y.a && !E.noAim(s, y)).sort((a, b) => worth(E, s, b) - worth(E, s, a)), 1, "เลือก Avatar ที่นอนอยู่ที่จะทำลาย", { exact: true })[0]; return t ? { explain: `ทำลาย ${E.name(s, t)}`, ops: [{ op: "destroy", i: t.i, why: "เพดานถล่ม" }] } : { explain: "ไม่มีเป้าหมาย", ops: [] }; } },
+    cast: (c) => { const { E, s, seat: p } = c; const t = c.choose([...s.P[1 - p].av.filter((y) => !y.a && !E.noAim(s, y)).sort((a, b) => worth(E, s, b) - worth(E, s, a)), ...s.P[p].av.filter((y) => !y.a && !E.noAim(s, y))], 1, "เลือก Avatar ที่นอนอยู่ที่จะทำลาย", { exact: true })[0]; /* no side is named: a sleeping Avatar of either side (FAQ โรงบาล) */ return t ? { explain: `ทำลาย ${E.name(s, t)}`, ops: [{ op: "destroy", i: t.i, why: "เพดานถล่ม" }] } : { explain: "ไม่มีเป้าหมาย", ops: [] }; } },
   // ฮึบบบบ (React): an Avatar gains ลูกฮึด until end of turn
   "BT05-062": { react: { kinds: ["attack", "summon", "cast", "activate", "battle"], anytime: true, own: true, botV: (E, s, q, on) => { if (!on || on.kind !== "attack" || on.tk !== "av") return -5; const T = E.locate(s, on.ti), A = E.locate(s, on.att); return T && A && T.p === q && E.power(s, A.x) + ((s.pend && s.pend.bonus) || 0) >= E.power(s, T.x) ? 4 : -5; } }, cast: (c) => { const { E, s, seat: p } = c; const on = onTarget(c); const T = fighters(E, s, p, on).mine;
     const t = c.choose([...(T ? [T.x] : []), ...s.P[p].av.filter((y) => !T || y.i !== T.x.i)], 1, "เลือก Avatar ที่จะได้รับลูกฮึด", { exact: true })[0]; return t ? { explain: `${E.name(s, t)} ได้รับลูกฮึดจนจบเทิร์น`, ops: [{ op: "keyword", i: t.i, k: "ลูกฮึด", until: "turn" }] } : { explain: "ไม่มี Avatar", ops: [] }; } },
