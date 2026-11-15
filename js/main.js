@@ -1,24 +1,24 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261115110631";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261115110631";
-import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn, foilSetting } from "./arena3d.js?v=20261115110631";
-import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261115110631";
-import { Vault, startVault } from "./vault.js?v=20261115110631";
-import { vaultSection } from "./vaultui.js?v=20261115110631";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261115110631";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261115110631";
-import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261115110631";
-import { Sfx } from "./sfx.js?v=20261115110631";
-import { Music, MUSIC_STYLES } from "./music.js?v=20261115110631";
-import { Views, avatarEl } from "./ui.js?v=20261115110631";
-import { Ciel } from "./ai.js?v=20261115110631";
-import "./views/library.js?v=20261115110631";
-import "./views/decks.js?v=20261115110631";
-import "./views/lab.js?v=20261115110631";
-import "./views/rules.js?v=20261115110631";
-import "./views/unlocks.js?v=20261115110631";
-import "./views/history.js?v=20261115110631";
-import { openReport } from "./views/ask.js?v=20261115110631";
-import "./views/play.js?v=20261115110631";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261115110851";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261115110851";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn, foilSetting } from "./arena3d.js?v=20261115110851";
+import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261115110851";
+import { Vault, startVault } from "./vault.js?v=20261115110851";
+import { vaultSection } from "./vaultui.js?v=20261115110851";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261115110851";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261115110851";
+import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261115110851";
+import { Sfx } from "./sfx.js?v=20261115110851";
+import { Music, MUSIC_STYLES } from "./music.js?v=20261115110851";
+import { Views, avatarEl } from "./ui.js?v=20261115110851";
+import { Ciel } from "./ai.js?v=20261115110851";
+import "./views/library.js?v=20261115110851";
+import "./views/decks.js?v=20261115110851";
+import "./views/lab.js?v=20261115110851";
+import "./views/rules.js?v=20261115110851";
+import "./views/unlocks.js?v=20261115110851";
+import "./views/history.js?v=20261115110851";
+import { openReport } from "./views/ask.js?v=20261115110851";
+import "./views/play.js?v=20261115110851";
 
 const root = $("#view");
 // text size for the whole app (everything is sized in rem), kept per browser; Hearthstone and LoR offer the same for small screens
@@ -240,7 +240,9 @@ async function checkUpdate() {
     if (!document.querySelector(".upd")) document.body.append(h("div", { class: "upd glass", role: "status" }, h("span", null, "มีเวอร์ชันใหม่ของเว็บ"), h("button", { class: "btn gold sm", onclick: () => location.reload() }, "โหลดเลย"), h("button", { class: "btn sm", onclick: (e) => e.currentTarget.parentElement.remove() }, "ไว้ก่อน")));
   } catch {}
 }
-setInterval(checkUpdate, 120000); addEventListener("visibilitychange", () => { if (!document.hidden) checkUpdate(); });
+setInterval(checkUpdate, 30000); addEventListener("visibilitychange", () => { if (!document.hidden) checkUpdate(); });
+addEventListener("hashchange", () => checkUpdate()); /* every page change (menus, lobby, before a game starts) checks for a newer deploy and reloads if nothing is in progress */
+addEventListener("focus", () => checkUpdate());
 
 // ---------- boot ----------
 let meUnsub = null, booted = false;
