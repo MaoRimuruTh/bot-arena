@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261115124839";
-import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261115124839";
-import { E, scriptOf } from "./engine.js?v=20261115124839";
+import { readAura } from "./auras.js?v=20261115133615";
+import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261115133615";
+import { E, scriptOf } from "./engine.js?v=20261115133615";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -303,7 +303,7 @@ function sentence(s, t, p, self, ctx) {
     const zm = t.match(ZZ); const zones = [zm[1], zm[2]]; const to = /อัญเชิญ|Avatar Zone/.test(t) ? "av" : "hand"; if (to === "hand" && zones.includes("มือ")) return false;
     const f = filterOf(t.replace(ZZ, " ")); if (f.bad || !named(f) || pickN(t) > 1) return false;
     if (to === "av" && Math.min(4 - E.avatars(P), 6 - P.av.length) <= 0) { say.push("Avatar Zone เต็ม"); return { ops, say }; }
-    const pool = (z) => (z === "Deck" ? P.deck.slice(ctx.millTop || 0) : z === "นรก" ? [...P.hell].reverse() : P.hand.filter((x) => !(me && x.i === me.i)));
+    const pool = (z) => (z === "Deck" ? P.deck.slice(ctx.millTop || 0) : z === "นรก" ? (to === "av" && E.hellShut(s) ? ((ctx.hellBlank = (ctx.hellBlank || 0) + 1), []) : [...P.hell].reverse()) /* เจนนี่: no summon from hell */ : P.hand.filter((x) => !(me && x.i === me.i)));
     const seen = new Set(); const cands = [...pool(zones[0]), ...pool(zones[1])].filter((x) => typed(x, f) && (to !== "av" || E.def(s, x).t === "A")).filter((x) => { const k = E.def(s, x).n; if (seen.has(k)) return false; seen.add(k); return true; }).sort((a, b) => val(s, b) - val(s, a));
     const got = ctx.choose(cands, 1, `เลือกการ์ดจาก${zones.join("หรือ")}`, { optional: /สามารถ/.test(t) })[0];
     const jt = /อัญเชิญ\s*(?:พอดี\s*)?จุติ/.test(t); const exact = /อัญเชิญ\s*พอดี\s*จุติ/.test(t);
@@ -321,7 +321,7 @@ function sentence(s, t, p, self, ctx) {
   if (me && /(?:อัญเชิญ|นำ|ก่อสร้าง)\s*(?:การ์ด|Avatar|Construct)\s*(?:ใบนี้|นี้)/.test(t) && !/สวมใส่|Magic Zone|มิติมืด/.test(t) && verbs === 0) {
     const L = E.locate(s, me.i); if (!L || ["av", "cs", "mg", "land"].includes(L.z)) return false; // only for a card that is off the field (hell / hand / deck)
     const to = /ก่อสร้าง/.test(t) ? "cs" : /อัญเชิญ|Avatar Zone/.test(t) ? "av" : /ขึ้นมือ/.test(t) ? "hand" : /Deck/.test(t) ? "deck" : null; if (!to) return false;
-    if (to === "av" && E.avatars(P) >= 4) { say.push("Avatar Zone เต็ม"); return { ops, say }; } if (to === "cs" && P.cs.length >= 3) { say.push("Construct Zone เต็ม"); return { ops, say }; }
+    if (to === "av" && E.avatars(P) >= 4) { say.push("Avatar Zone เต็ม"); return { ops, say }; } if (to === "av" && L.z === "hell" && E.hellShut(s)) { if (!/สามารถ/.test(t)) missed(ctx); ctx.hellBlank = (ctx.hellBlank || 0) + 1; say.push("อัญเชิญจากนรกไม่ได้ (เจนนี่)"); return { ops, say }; } /* Rule Book p.12: as if there were nothing to summon */ if (to === "cs" && P.cs.length >= 3) { say.push("Construct Zone เต็ม"); return { ops, say }; }
     if (/สามารถ/.test(t) && ctx.mode([`ทำ: ${t.length > 60 ? t.slice(0, 58) + "…" : t}`, "ไม่ทำ"], E.name(s, me), 0) !== 0) { say.push("ไม่ใช้ความสามารถ"); return { ops, say }; }
     ops.push(to === "av" ? { op: "put", i: me.i } : to === "cs" ? { op: "move", i: me.i, to: "cs", seat: p } : to === "hand" ? { op: "move", i: me.i, to: "hand" } : { op: "move", i: me.i, to: "deckBottom" }); if (to === "deck") ops.push({ op: "shuffle", seat: p });
     say.push(`${E.name(s, me)} ${to === "av" ? "ลงสนาม" : to === "cs" ? "ถูกก่อสร้าง" : to === "hand" ? "ขึ้นมือ" : "กลับเข้า Deck"}`);
@@ -405,7 +405,7 @@ function sentence(s, t, p, self, ctx) {
   } else if (/(?:จาก|ใน)(?:ใน)?\s*นรก/.test(t) && /ขึ้นมือ|อัญเชิญ|Avatar Zone|Deck/.test(t)) {
     const f = f0; const hm = howMany(t); const toDeck = !/ขึ้นมือ|อัญเชิญ|Avatar Zone/.test(t); if (!toDeck && !named(f) && !f.type || hm.n > 3 || /อีกฝ่าย|ฝ่ายตรงข้าม|ผู้เล่นทุกคน|ใครก็ได้/.test(t)) return false;
     const to = /อัญเชิญ|Avatar Zone/.test(t) ? "av" : /ขึ้นมือ/.test(t) ? "hand" : /บนสุด/.test(t) ? "top" : "deck"; const jt = to === "av" && /อัญเชิญ\s*(?:พอดี\s*)?จุติ/.test(t);
-    const cands = [...P.hell].reverse().filter((x) => typed(x, f)).sort((a, b) => val(s, b) - val(s, a));
+    const cands = to === "av" && E.hellShut(s) ? ((ctx.hellBlank = (ctx.hellBlank || 0) + 1), []) : [...P.hell].reverse().filter((x) => typed(x, f)).sort((a, b) => val(s, b) - val(s, a)); // เจนนี่: as if nothing in hell could be summoned (Rule Book p.12)
     if (ctx.deferred) { ops.push({ op: "fromHell", seat: p, ...f, to }); say.push("นำการ์ดจากนรก"); }
     else if (to === "av" && Math.min(4 - E.avatars(P), 6 - P.av.length) <= 0) { if (!hm.upTo) missed(ctx); say.push("Avatar Zone เต็ม อัญเชิญจากนรกไม่ได้"); }
     else { const got = ctx.choose(cands, to === "av" ? Math.min(hm.n, 4 - E.avatars(P), 6 - P.av.length) : hm.n, `เลือกการ์ดจากนรก${hm.n > 1 ? ` (${hm.upTo ? "สูงสุด " : ""}${hm.n} ใบ)` : ""}`, { optional: hm.upTo });
@@ -622,11 +622,12 @@ const why = (m) => { if (globalThis.__dbg) globalThis.__why = m; return null; };
 // Rule Book (การใช้ผลของการ์ด / การจ่าย Cost): an effect has to be carried out in full to be used at all; when a step that
 // is not optional has nothing to act on (บีม with no Avatar to destroy, อีวิลไมเกรน with no weapon in hell) the ability
 // cannot be used, and its Cost is not paid either
+const HELL_TEXT = "เจนนี่ อยู่บนสนาม: อัญเชิญ Avatar จากนรกไม่ได้ ความสามารถนี้จึงใช้ไม่ได้ และไม่ต้องจ่าย Cost";
 const NO_FULL = "ทำผลของการ์ดได้ไม่ครบ (ไม่มีเป้าหมายหรือทำไม่ได้) จึงใช้ความสามารถนี้ไม่ได้ และไม่ต้องจ่าย Cost";
 const missed = (ctx) => { ctx.miss = (ctx.miss || 0) + 1; };
 function readClause(s, text, p, self, ctx, trig) {
   const m0 = ctx.miss || 0; const r = readClause0(s, text, p, self, ctx, trig);
-  return r && !r.fail && (ctx.miss || 0) > m0 ? { fail: NO_FULL } : r;
+  return r && !r.fail && (ctx.miss || 0) > m0 ? { fail: ctx.hellBlank ? (trig.part ? "เจนนี่ อยู่บนสนาม: อัญเชิญ Avatar จากนรกไม่ได้ ส่วนนี้ของความสามารถจึงไม่เกิดผล" : HELL_TEXT) : NO_FULL } : r;
 }
 // "cost : effect" (or just "effect") → { ops, say } | { fail } | null
 function readClause0(s, text, p, self, ctx, trig) {
@@ -636,7 +637,7 @@ function readClause0(s, text, p, self, ctx, trig) {
   if (head && !trig.part && /^สอดแนม/.test(head) && !/^สอดแนม\s*(?:\([^)]*\)\s*)?\d+\s*ใบ$/.test(head)) { const r = readScout(s, head, p, self, ctx, trig); if (r && r.fail) return { fail: r.fail }; if (r && !r.ops.some((o) => o.op === "resume")) { ops.push(...r.ops); say.push(...r.say); head = ""; } }
   if (head && !trig.part) { const h = readHead(s, head, p, self, ctx, trig, body); if (!h) return why("head: " + head);
     if (h.fail) { if (!trig.dry) { const d = readClause(s, body.replace(/^/, modes ? "เลือกปฏิบัติ : " : ""), p, self, makeCtx(s, trig), { ...trig, dry: true }); if (!d) return null; } return h; }
-    ops.push(...h.ops); say.push(...h.say); ctx.millTop = ops.filter((o) => o.op === "mill" && o.seat === p).reduce((a, o) => a + (o.n || 0), 0); if (h.merge) body = h.merge + " " + (/นรก/.test(h.merge) ? body.replace(/^(อัญเชิญ|นำ)\s*(?:Avatar|การ์ด)?\s*(?:ใบ|ตัว)?(?:นั้น|ที่เลือก)/, "$1") : body); }
+    ops.push(...h.ops.map((o) => ({ ...o, asCost: true }))); say.push(...h.say); ctx.millTop = ops.filter((o) => o.op === "mill" && o.seat === p).reduce((a, o) => a + (o.n || 0), 0); if (h.merge) body = h.merge + " " + (/นรก/.test(h.merge) ? body.replace(/^(อัญเชิญ|นำ)\s*(?:Avatar|การ์ด)?\s*(?:ใบ|ตัว)?(?:นั้น|ที่เลือก)/, "$1") : body); }
   if (modes) {
     const list = body.split(/(?:^|\s)\d\s*[).]\s+/).map((x) => x.trim()).filter(Boolean); if (list.length < 2 || list.length > 4) return null;
     const dry = list.map((m) => readClause(s, m, p, self, makeCtx(s, trig), trig)); if (dry.some((r) => !r)) return null; // every option must be readable
@@ -665,7 +666,8 @@ function readClause0(s, text, p, self, ctx, trig) {
   for (let k = start; k < parts.length; k++) { const t = parts[k];
     const dirty = [...(start ? [] : ops), ...eops].map(touches).filter(Boolean);
     if (dirty.length && (k > start || !trig.part) && dirty.some((z) => t.replace(/\{[^{}]*\}|\b[Ss]ymbol\s+\S+/g, " ").includes(z)) && !later && !trig.dry) { // let the earlier steps happen first, then continue from here
-      const dry = makeCtx(s, trig); dry.ref = ctx.ref; dry.when = ctx.when; for (let j = k; j < parts.length; j++) if (!sentence(s, parts[j], p, self, dry)) return null; // the rest must be readable too
+      const dry = makeCtx(s, trig); dry.ref = ctx.ref; dry.when = ctx.when; let dops = 0; for (let j = k; j < parts.length; j++) { const d = sentence(s, parts[j], p, self, dry); if (!d) return null; dops += (d.ops || []).length; } // the rest must be readable too
+      if (dry.hellBlank && !dops && !eops.length) return { fail: HELL_TEXT }; // เจนนี่: all that is left after the Cost is a summon from hell -> the ability cannot be used, no Cost (Rule Book p.12)
       eops.push({ op: "resume", t: { i: trig.i, c: trig.c, when: trig.when, seat: trig.seat, ...(trig.k != null ? { k: trig.k } : {}), ...(trig.on ? { on: trig.on } : {}), part: k + 1 } }); esay.push("แล้วทำส่วนที่เหลือต่อ"); break; }
     const r = sentence(s, t, p, self, ctx); if (!r) return why("sentence: " + t); if (r.fail) return { fail: r.fail }; eops.push(...r.ops); esay.push(...r.say); }
   return { ops: [...ops, ...eops], say: [...say, ...esay] };
@@ -721,10 +723,10 @@ export function makeCtx(s, t, picks = [], interactive = false) {
       if (picks[idx] !== undefined) return picks[idx].map((i) => cands.find((x) => x.i === i)).filter(Boolean);
       if (!interactive || (!o.optional && !o.reveal && !o.gemSum && !(o.min && cands.length > o.min) && cands.length <= n)) return cands.slice(0, n); /* a range pick (min..n) asks whenever the player could take fewer */ /* a GEM-total pick always asks: the player picks which cards reach the total */
       // reveal: the cards shown (a list of ids); "reveal: true" only means "always ask, even with one choice"
-      throw { ask: { idx, prompt, options: cands.map((x) => x.i), n, optional: !!o.optional, exact: !!o.exact, gemSum: o.gemSum || 0, min: o.min || 0, costMax: o.costMax == null ? null : o.costMax, reveal: Array.isArray(o.reveal) ? o.reveal : null, why: o.why || null } };
+      throw { ask: { idx, prompt, options: cands.map((x) => x.i), n, optional: !!o.optional, exact: !!o.exact, gemSum: o.gemSum || 0, min: o.min || 0, costMax: o.costMax == null ? null : o.costMax, reveal: Array.isArray(o.reveal) ? o.reveal : null, why: o.why || (t.cut ? CUT_WHY : null) } };
     },
     // pick one of several written options (เลือกปฏิบัติ); bots take `best`
-    mode(labels, prompt, best = 0) { const idx = k++; if (picks[idx] !== undefined) return picks[idx][0]; if (!interactive) return best; throw { ask: { idx, prompt, modes: labels, options: [], n: 1 } }; },
+    mode(labels, prompt, best = 0) { const idx = k++; if (picks[idx] !== undefined) return picks[idx][0]; if (!interactive) return best; throw { ask: { idx, prompt, modes: labels, options: [], n: 1, ...(t.cut ? { why: CUT_WHY } : {}) } }; },
   };
   const L = E.locate(s, t.i); ctx.self = L ? L.x : null;
   return ctx;
@@ -738,13 +740,70 @@ export function resolveEffect(s, t, picks = [], interactive = false) {
     if (t.when === "activate" && t.k === "kraken") { const L = E.locate(s, t.i), P = s.P[t.seat]; if (!L || L.z !== "mg" || !L.x.kraken || P.hand.length < 2 || E.avatars(P) >= 4) return { explain: "ใช้ความสามารถนี้ไม่ได้แล้ว", ops: [] };
       const pay = ctx.choose([...P.hand].sort((a, b) => cardVal(s, a) - cardVal(s, b)), 2, "ทิ้งการ์ดบนมือ 2 ใบ", { exact: true });
       return pay.length === 2 ? { explain: `ทิ้ง 2 ใบ · อัญเชิญ ${E.name(s, L.x)} จาก Magic Zone`, ops: [{ op: "discard", seat: t.seat, iids: pay.map((y) => y.i) }, { op: "put", i: t.i, here: true }, { op: "flagSet", i: t.i, k: "kraken", v: false }] } : { explain: "", ops: [] }; }
-    const sc = scriptOf(s, { c: t.c });
-    const run = sc && (t.when === "activate" ? t.k == null && sc.activate && sc.activate.run : t.when === "answer" ? sc.answer && sc.answer.run : sc[t.when]);
-    if (run) return run(ctx);
-    if (t.when === "milled" && (E.locate(s, t.i) || {}).z !== "hell") return { explain: "การ์ดใบนี้ไม่ได้อยู่ในนรกแล้ว ความสามารถไม่ทำงาน", ops: [] };
-    return autoEffect(s, t, ctx);
+    const run = runOf(s, t);
+    if (!run && t.when === "milled" && (E.locate(s, t.i) || {}).z !== "hell") return { explain: "การ์ดใบนี้ไม่ได้อยู่ในนรกแล้ว ความสามารถไม่ทำงาน", ops: [] };
+    const r = run ? run(ctx) : autoEffect(s, t, ctx);
+    if (t.cut) { const ops = r && r.ops ? costOps(s, t, r.ops) : []; return { explain: ops.length ? cutSay(s, ops) : CUT, ops }; } // cancelled: the Cost only
+    return run && r && r.ops && r.ops.length && E.hellShut(s) ? hellCut(s, t, r) : r;
   } catch (e) { if (e && e.ask) return { ask: e.ask }; throw e; }
 }
+
+// ---------- a cancelled ability keeps its paid Cost (Rule Book p.12 / p.14, FAQ เหน็บกินมือ; see E.cutTrig) ----------
+const runOf = (s, t) => { const sc = scriptOf(s, { c: t.c }); return sc && (t.when === "activate" ? t.k == null && sc.activate && sc.activate.run : t.when === "answer" ? sc.answer && sc.answer.run : sc[t.when]); };
+const CUT = "ความสามารถนี้ถูกยกเลิก";
+const CUT_WHY = "ความสามารถนี้ถูกยกเลิกแล้ว: เลือกเพื่อจ่าย Cost ที่ประกาศไว้เท่านั้น ผลของความสามารถจะไม่เกิดขึ้น";
+const BOOK = new Set(["nameOnce", "used", "mu", "aoUse"]); // the use itself still counts (FAQ พี่ซี๊ด แก๊งขยะ: a cancelled เทิร์นละครั้ง is spent)
+// the Cost words of a card: what stands before each ":" (explanations in brackets and names in quotes left out)
+function costKinds(d) { const x = String((d && d.x) || "").replace(/\{red[^}]*\}/g, " "); let h = "", from = 0;
+  for (let i = x.indexOf(":"); i >= 0; i = x.indexOf(":", i + 1)) { h += " | " + x.slice(Math.max(from, i - 200), i).split(/อัตโนมัติ|สั่งใช้|จุติ|คำสั่งเสีย|ต่อเนื่อง|เทิร์นละครั้ง|\n/).pop(); from = i + 1; }
+  h = h.replace(/\([^)]*\)/g, " ").replace(/["“][^"”]*["”]/g, " ") // conditions are not Costs: "เมื่อ … ถูกทำลาย", "เมื่อ Avatar ใบนี้ ทำลาย Avatar ฝ่ายตรงข้าม", "ที่อยู่ในสภาพนอน"
+    .replace(/(?:จะ|ไม่)?\s*ถูก\s*\S*/g, " ").replace(/ทำลาย\s*Avatar\s*(?:ของ|ด้วย|จาก)?\s*(?:ฝ่ายตรงข้าม|อีกฝ่าย|การต่อสู้)/g, " ").replace(/(?:อยู่)?ใน\s*สภาพ\s*(?:ตื่น|นอน)/g, " ");
+  return { discard: /ทิ้ง|ทั้งการ์ด(?:จาก)?(?:บน)?มือ/.test(h), kill: /เซ่นไหว้|เซ่นไหว์|ทำลาย|ลงนรก/.test(h), exile: /เนรเทศ/.test(h), mill: /ธรณีสูบ/.test(h), sleep: /นอน/.test(h), life: /หงาย/.test(h) && /LIFE/.test(h),
+    give: /ให้\s*(?:อีกฝ่าย|ฝ่ายตรงข้าม)/.test(h), hand: /ขึ้นมือ|กลับมือ/.test(h), deck: /Deck/.test(h) && /กลับ|เข้า|ใต้|บนสุด/.test(h) }; }
+function costOp(s, p, o, k) { const L = o.i != null ? E.locate(s, o.i) : null; const own = !!L && L.p === p; const mine = o.seat == null || o.seat === p;
+  switch (o.op) {
+    case "discard": case "discardRandom": return k.discard && mine;
+    case "destroy": return k.kill && own;
+    case "exile": return k.exile && own;
+    case "mill": return k.mill && mine;
+    case "wake": return k.sleep && o.v === false && own;
+    case "lifeFlip": return k.life && mine;
+    case "giveCard": return k.give;
+    case "move": return own && ((o.to === "hell" && (k.kill || (k.discard && L.z === "hand"))) || (o.to === "hand" && k.hand && ["av", "cs", "mg"].includes(L.z)) || (/^deck/.test(o.to) && k.deck) || (o.to === "dark" && k.exile));
+    case "shuffle": case "handToDeck": return k.deck && mine;
+  } return false; }
+// the ops of a resolved ability that pay its Cost: the ones the text reader marked (asCost), or for a hand-written script the Cost-like ops it
+// lists first (scripts write the Cost before the effect), counted only when the card's text has that kind of Cost before a ":" (a script that
+// lists its Cost after the effect marks those ops asCost itself)
+export function costOps(s, t, ops) {
+  ops = (ops || []).filter(Boolean); let out;
+  if (!runOf(s, t) || ops.some((o) => o.asCost)) out = ops.filter((o) => o.asCost || BOOK.has(o.op));
+  else { const k = costKinds(s.cards[t.c]); out = []; for (const o of ops) { if (BOOK.has(o.op) || costOp(s, t.seat, o, k)) out.push(o); else break; } }
+  return out.some((o) => !BOOK.has(o.op)) ? out : [];
+}
+function cutSay(s, ops) { const nm = (i) => { const L = E.locate(s, i); return L ? E.name(s, L.x) : "การ์ด"; };
+  const w = ops.map((o) => o.op === "discard" ? `ทิ้ง ${(o.iids || []).map(nm).join(", ")}` : o.op === "discardRandom" ? "ทิ้งการ์ดแบบสุ่ม" : o.op === "destroy" ? `เซ่นไหว้ ${nm(o.i)}` : o.op === "exile" ? `เนรเทศ ${nm(o.i)}`
+    : o.op === "mill" ? `ธรณีสูบ ${o.n || 1} ใบ` : o.op === "wake" ? `${nm(o.i)} เป็นสภาพนอน` : o.op === "lifeFlip" ? "หงาย LIFE 1 ใบ" : o.op === "giveCard" ? `ให้ ${nm(o.i)} แก่ฝ่ายตรงข้าม`
+    : o.op === "move" ? `${nm(o.i)} ${o.to === "hand" ? "ขึ้นมือ" : o.to === "hell" ? "ลงนรก" : o.to === "dark" ? "ถูกเนรเทศ" : "กลับเข้า Deck"}` : null).filter(Boolean);
+  return `${CUT} · Cost ที่จ่ายแล้วไม่คืน: ${w.join(" · ")}`; }
+E.ext.costOps = (s, t, ops) => costOps(s, t, ops);
+// ---------- เจนนี่ (BT05-012): no one can summon from hell ----------
+// Rule Book p.12: an effect that cannot be carried out cannot be used, and its Cost is not paid. A hand-written ability whose effect is only
+// the summon from hell (with what it does to the card it summons) does nothing at all; one that does more keeps the rest (and its Cost),
+// without the summon. Each script also checks E.hellShut itself where it can (can/canCast, a choice offered); this catches the rest.
+const HELL_NO = "เจนนี่ อยู่บนสนาม: ไม่มีใครอัญเชิญ Avatar จากนรกได้ ความสามารถนี้จึงใช้ไม่ได้ และไม่ต้องจ่าย Cost";
+function hellCut(s, t, r) {
+  const sum = new Set(); for (const o of r.ops) { if (!o) continue; const L = o.i != null ? E.locate(s, o.i) : null; if ((L && L.z === "hell" && (o.op === "put" || (o.op === "move" && o.to === "av"))) || (o.op === "fromHell" && o.to === "av")) sum.add(o); }
+  if (!sum.size) return r;
+  const ids = new Set([...sum].map((o) => o.i).filter((i) => i != null));
+  const rider = (o) => sum.has(o) || ids.has(o.i) || ids.has(o.on) || (o.op === "atEnd" && (o.ops || []).every(rider)); // what the effect does to the card it summons
+  const cost = new Set(costOps(s, t, r.ops)); const rest = r.ops.filter((o) => o && !cost.has(o) && !rider(o) && !BOOK.has(o.op) && o.op !== "shuffle");
+  if (!rest.length) return { explain: HELL_NO, ops: [] };
+  return { ...r, explain: `${r.explain || ""} · อัญเชิญจากนรกไม่ได้ (เจนนี่): ${[...ids].map((i) => { const L = E.locate(s, i); return L ? E.name(s, L.x) : "การ์ด"; }).join(", ")}`, ops: r.ops.filter((o) => o && !rider(o)) };
+}
+E.ext.cutSay = cutSay;
+// does the cancelled (not yet resolved) ability have a Cost to pay? (resolved on a copy, with the bot's choices)
+E.ext.cutKeep = (s, t) => { try { const c = JSON.parse(JSON.stringify(s)); const r = resolveEffect(c, { ...t, cut: true }); return !!(r && r.ops && r.ops.length); } catch { return false; } };
 
 // ---------- hooks the engine calls (kept here so engine.js does not import this file) ----------
 const quiet = (fn) => { try { return fn(); } catch { return null; } };
