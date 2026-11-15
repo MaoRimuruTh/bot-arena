@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261115140806";
-import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261115140806";
-import { E, scriptOf } from "./engine.js?v=20261115140806";
+import { readAura } from "./auras.js?v=20261115163721";
+import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261115163721";
+import { E, scriptOf } from "./engine.js?v=20261115163721";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -726,7 +726,7 @@ export function makeCtx(s, t, picks = [], interactive = false) {
       throw { ask: { idx, prompt, options: cands.map((x) => x.i), n, optional: !!o.optional, exact: !!o.exact, gemSum: o.gemSum || 0, min: o.min || 0, costMax: o.costMax == null ? null : o.costMax, reveal: Array.isArray(o.reveal) ? o.reveal : null, why: o.why || (t.cut ? CUT_WHY : null) } };
     },
     // pick one of several written options (เลือกปฏิบัติ); bots take `best`
-    mode(labels, prompt, best = 0) { const idx = k++; if (picks[idx] !== undefined) return picks[idx][0]; if (!interactive) return best; throw { ask: { idx, prompt, modes: labels, options: [], n: 1, ...(t.cut ? { why: CUT_WHY } : {}) } }; },
+    mode(labels, prompt, best = 0) { const idx = k++; if (picks[idx] !== undefined) return picks[idx][0]; if (!interactive || !labels.length) return best; /* HB6: never ask with no option to press */ throw { ask: { idx, prompt, modes: labels, options: [], n: 1, ...(t.cut ? { why: CUT_WHY } : {}) } }; },
   };
   const L = E.locate(s, t.i); ctx.self = L ? L.x : null;
   return ctx;
@@ -740,6 +740,9 @@ export function resolveEffect(s, t, picks = [], interactive = false) {
     if (t.when === "activate" && t.k === "kraken") { const L = E.locate(s, t.i), P = s.P[t.seat]; if (!L || L.z !== "mg" || !L.x.kraken || P.hand.length < 2 || E.avatars(P) >= 4) return { explain: "ใช้ความสามารถนี้ไม่ได้แล้ว", ops: [] };
       const pay = ctx.choose([...P.hand].sort((a, b) => cardVal(s, a) - cardVal(s, b)), 2, "ทิ้งการ์ดบนมือ 2 ใบ", { exact: true });
       return pay.length === 2 ? { explain: `ทิ้ง 2 ใบ · อัญเชิญ ${E.name(s, L.x)} จาก Magic Zone`, ops: [{ op: "discard", seat: t.seat, iids: pay.map((y) => y.i) }, { op: "put", i: t.i, here: true }, { op: "flagSet", i: t.i, k: "kraken", v: false }] } : { explain: "", ops: [] }; }
+    { const su = scriptOf(s, { c: t.c }); if (su && Array.isArray(su.askUse) && su.askUse.includes(t.when) && !t.cut) { /* HB10: an optional "สั่งใช้" the engine queued for us: the player says yes or no first (bots: yes, as before); asked only when it would do something */
+      const f = runOf(s, t); let acts = false; try { const dry = f ? f(makeCtx(s, t, [], true)) : null; acts = !!(dry && dry.ops && dry.ops.length); } catch (e) { acts = !!(e && e.ask); } /* worked out the player's way: it acts, or it would ask something */
+      if (acts && ctx.mode(["ใช้ความสามารถนี้", "ไม่ใช้"], `${(s.cards[t.c] || {}).n || "การ์ด"}: ใช้ความสามารถนี้ไหม?`, 0) === 1) return { explain: "ไม่ใช้ความสามารถ", ops: [] }; } }
     const run = runOf(s, t);
     if (!run && t.when === "milled" && (E.locate(s, t.i) || {}).z !== "hell") return { explain: "การ์ดใบนี้ไม่ได้อยู่ในนรกแล้ว ความสามารถไม่ทำงาน", ops: [] };
     const r = run ? run(ctx) : autoEffect(s, t, ctx);
