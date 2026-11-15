@@ -1189,3 +1189,8 @@ kbd{font:600 .8rem/1.6 var(--f-mono,ui-monospace,monospace);padding:2px 8px;bord
 .mmown .trk{height:6px;border-radius:4px;background:var(--line-2);overflow:hidden;margin:4px 0}.mmown .trk i{display:block;height:100%;background:var(--gold)}
 .mmhint{border-left:3px solid var(--gold);padding:4px 8px;background:rgba(255,255,255,.04);border-radius:6px}
 @media (max-width:640px){.mmgrid thead th{height:84px}.mmgrid th.rh{max-width:7.5em}.mmtab{font-size:.74rem}.mmtab th,.mmtab td{padding:4px 5px}}
+
+/* restart vote (friend duels): the request bar on the table and the panel on the Deck shelf */
+.rvbar{position:absolute;left:50%;transform:translateX(-50%);top:calc(64px + env(safe-area-inset-top,0px));z-index:30;display:flex;gap:10px;align-items:center;padding:8px 12px;border-radius:14px;max-width:calc(100vw - 32px);flex-wrap:wrap;justify-content:center;text-align:center}
+@media (max-width:760px){.rvbar{top:calc(56px + env(safe-area-inset-top,0px));font-size:.9em}}
+.rvpanel{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:14px;border:1px solid var(--gold,#d4af37)}
