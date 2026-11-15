@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261115103657";
-import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261115103657";
-import { E, scriptOf } from "./engine.js?v=20261115103657";
+import { readAura } from "./auras.js?v=20261115105458";
+import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261115105458";
+import { E, scriptOf } from "./engine.js?v=20261115105458";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -440,7 +440,10 @@ function sentence(s, t, p, self, ctx) {
       const cands = (csOnly ? (opp ? O.cs : P.cs) : opp ? O.av.filter((x) => !E.noAim(s, x)) : P.av).filter((x) => csOnly || typed(x, f)).sort(opp ? (a, b) => (v < 0 ? val(s, b) - val(s, a) : val(s, a) - val(s, b)) : (a, b) => (b.a ? 1 : 0) - (a.a ? 1 : 0) || E.power(s, b) - E.power(s, a));
       // "… บนสนามทุกใบ" naming no side: every one on the field, ours and theirs (FAQ โรงบาล / สละเพื่อนเพื่อช่วยเพื่อน: a card that names no player affects the other side too; the same wording on a Land already counts both sides)
       const bothSides = !csOnly && /ทุกใบ|ทั้งหมด/.test(t) && /บนสนาม/.test(t) && !OPP.test(t) && !/ฝ่ายเรา|ของเรา|Zone\s*เรา|สนาม\s*เรา|ผู้เล่น/.test(t);
-      tgt = bothSides ? [...P.av, ...O.av].filter((x) => typed(x, f)) : /ทุกใบ|ทั้งหมด/.test(t) ? cands : ctx.choose(cands, 1, `เลือก Avatar ${opp ? "ฝ่ายตรงข้าม" : "ฝ่ายเรา"} ที่จะ POWER ${v > 0 ? "+" : ""}${v}`);
+      // "เลือก Avatar 1 ใบ POWER ±N" naming no side: any Avatar on the field may be chosen (FAQ โรงบาล: no player named = both sides); the usual side comes first, so the bot's pick is unchanged
+      const anySide = !csOnly && /เลือก/.test(t.split("POWER")[0]) && !OPP.test(t) && !/ฝ่ายเรา|ของเรา|Zone\s*เรา|สนาม\s*เรา/.test(t);
+      const pool = anySide ? [...cands, ...(opp ? P.av : O.av.filter((x) => !E.noAim(s, x))).filter((x) => typed(x, f))] : cands;
+      tgt = bothSides ? [...P.av, ...O.av].filter((x) => typed(x, f)) : /ทุกใบ|ทั้งหมด/.test(t) ? cands : ctx.choose(pool, 1, `เลือก Avatar ${anySide ? "" : opp ? "ฝ่ายตรงข้าม " : "ฝ่ายเรา "}ที่จะ POWER ${v > 0 ? "+" : ""}${v}`);
     }
     if (!tgt.length) { missed(ctx); say.push("ไม่มีเป้าหมาย POWER"); }
     for (const x of tgt) ops.push({ op: "power", i: x.i, n: v, temp });
@@ -715,9 +718,9 @@ export function makeCtx(s, t, picks = [], interactive = false) {
       if (cands.some((x) => x && x.borrow)) cands = cands.filter((x) => !(x && x.borrow));
       const idx = k++; if (!cands.length) { if (n > 0 && !o.optional && !o.reveal) ctx.miss = (ctx.miss || 0) + 1; return []; }
       if (picks[idx] !== undefined) return picks[idx].map((i) => cands.find((x) => x.i === i)).filter(Boolean);
-      if (!interactive || (!o.optional && !o.reveal && !o.gemSum && cands.length <= n)) return cands.slice(0, n); /* a GEM-total pick always asks: the player picks which cards reach the total */
+      if (!interactive || (!o.optional && !o.reveal && !o.gemSum && !(o.min && cands.length > o.min) && cands.length <= n)) return cands.slice(0, n); /* a range pick (min..n) asks whenever the player could take fewer */ /* a GEM-total pick always asks: the player picks which cards reach the total */
       // reveal: the cards shown (a list of ids); "reveal: true" only means "always ask, even with one choice"
-      throw { ask: { idx, prompt, options: cands.map((x) => x.i), n, optional: !!o.optional, exact: !!o.exact, gemSum: o.gemSum || 0, reveal: Array.isArray(o.reveal) ? o.reveal : null, why: o.why || null } };
+      throw { ask: { idx, prompt, options: cands.map((x) => x.i), n, optional: !!o.optional, exact: !!o.exact, gemSum: o.gemSum || 0, min: o.min || 0, costMax: o.costMax == null ? null : o.costMax, reveal: Array.isArray(o.reveal) ? o.reveal : null, why: o.why || null } };
     },
     // pick one of several written options (เลือกปฏิบัติ); bots take `best`
     mode(labels, prompt, best = 0) { const idx = k++; if (picks[idx] !== undefined) return picks[idx][0]; if (!interactive) return best; throw { ask: { idx, prompt, modes: labels, options: [], n: 1 } }; },
