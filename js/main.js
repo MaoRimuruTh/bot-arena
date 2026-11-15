@@ -1,24 +1,25 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261115133615";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261115133615";
-import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn, foilSetting } from "./arena3d.js?v=20261115133615";
-import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261115133615";
-import { Vault, startVault } from "./vault.js?v=20261115133615";
-import { vaultSection } from "./vaultui.js?v=20261115133615";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261115133615";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261115133615";
-import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261115133615";
-import { Sfx } from "./sfx.js?v=20261115133615";
-import { Music, MUSIC_STYLES } from "./music.js?v=20261115133615";
-import { Views, avatarEl } from "./ui.js?v=20261115133615";
-import { Ciel } from "./ai.js?v=20261115133615";
-import "./views/library.js?v=20261115133615";
-import "./views/decks.js?v=20261115133615";
-import "./views/lab.js?v=20261115133615";
-import "./views/rules.js?v=20261115133615";
-import "./views/unlocks.js?v=20261115133615";
-import "./views/history.js?v=20261115133615";
-import { openReport } from "./views/ask.js?v=20261115133615";
-import "./views/play.js?v=20261115133615";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261115140806";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261115140806";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn, foilSetting } from "./arena3d.js?v=20261115140806";
+import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261115140806";
+import { Vault, startVault } from "./vault.js?v=20261115140806";
+import { tablePreview, pvHover, pvUnhover, pvPick, pvClose } from "./preview.js?v=20261115140806";
+import { vaultSection } from "./vaultui.js?v=20261115140806";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261115140806";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261115140806";
+import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261115140806";
+import { Sfx } from "./sfx.js?v=20261115140806";
+import { Music, MUSIC_STYLES } from "./music.js?v=20261115140806";
+import { Views, avatarEl } from "./ui.js?v=20261115140806";
+import { Ciel } from "./ai.js?v=20261115140806";
+import "./views/library.js?v=20261115140806";
+import "./views/decks.js?v=20261115140806";
+import "./views/lab.js?v=20261115140806";
+import "./views/rules.js?v=20261115140806";
+import "./views/unlocks.js?v=20261115140806";
+import "./views/history.js?v=20261115140806";
+import { openReport } from "./views/ask.js?v=20261115140806";
+import "./views/play.js?v=20261115140806";
 
 const root = $("#view");
 // text size for the whole app (everything is sized in rem), kept per browser; Hearthstone and LoR offer the same for small screens
@@ -85,12 +86,15 @@ function meArea() {
 // the little 3D figure by your side of the table, and the colour of the mat's lacquer: some are opened by achievements (kept per browser)
 function avatarSection() {
   const seg = (label, key, cur, opts, kind, done) => h("div", { class: "segfield" }, h("div", { class: "seglabel", "aria-hidden": "true" }, label), h("div", { class: "seg wrap", role: "group", "aria-label": label }, opts.map(([k, t]) => { const open = !k || unlocked(kind, k);
-    return h("button", { "aria-pressed": cur === k ? "true" : "false", disabled: !open, title: open ? t : "ล็อคอยู่ · " + needFor(kind, k), onclick: (e) => {
-      try { if (k) localStorage.setItem(key, k); else localStorage.removeItem(key); } catch {} for (const b of e.currentTarget.parentElement.children) b.setAttribute("aria-pressed", b === e.currentTarget ? "true" : "false"); toast(done(t)); } }, open ? t : "🔒 " + t); })));
+    const peek = open && key !== "bot.ui"; // (the look of the pages is not previewed: choosing it changes the page at once)
+    return h("button", { "aria-pressed": cur === k ? "true" : "false", disabled: !open, title: open ? t : "ล็อคอยู่ · " + needFor(kind, k),
+      onpointerenter: (e) => { if (peek && e.pointerType === "mouse") pvHover(key, k); }, onpointerleave: (e) => { if (e.pointerType === "mouse") pvUnhover(); }, onfocus: () => { if (peek) pvHover(key, k); }, onblur: () => pvUnhover(), onclick: (e) => {
+      try { if (k) localStorage.setItem(key, k); else localStorage.removeItem(key); } catch {} for (const b of e.currentTarget.parentElement.children) b.setAttribute("aria-pressed", b === e.currentTarget ? "true" : "false"); toast(done(t)); pvPick(key); } }, open ? t : "🔒 " + t); })));
   const locked = [...Object.keys(AVATARS).filter((k) => !unlocked("av", k)).map((k) => [AVATARS[k].name, needFor("av", k)]), ...Object.keys(MATS).filter((k) => !unlocked("mat", k)).map((k) => ["ผ้าปู" + MATS[k].name, needFor("mat", k)]),
     ...Object.keys(SIGILS).filter((k) => !unlocked("sig", k)).map((k) => ["วงอัญเชิญ" + SIGILS[k].name, needFor("sig", k)]), ...Object.keys(WINFX).filter((k) => !unlocked("win", k)).map((k) => ["ฉากชัยชนะ" + WINFX[k].name, needFor("win", k)])];
   return [h("div", { class: "eyebrow", style: "margin-top:12px" }, "อวตาร 3 มิติ สนาม ผ้าปูโต๊ะ และวงอัญเชิญ"),
     h("div", { class: "small muted" }, "อวตารยืนข้างแถบกลางสนามฝั่งคุณ เด้งตอนเริ่มเทิร์น สะดุ้งตอนเสีย LIFE ดีใจหรือคอตกตอนจบเกม สนามคือฉากรอบโต๊ะ (แมพ) ที่เห็นเฉพาะบนเครื่องเรา ส่วนผ้าปูโต๊ะ (playmat) คือผ้าที่ปูบนโต๊ะฝั่งเราซึ่งคู่แข่งเห็นด้วย วงอัญเชิญคือวงที่เปิดใต้การ์ดตอนเราอัญเชิญ เปลี่ยนแล้วใช้ตั้งแต่เกมถัดไป"),
+    tablePreview().el, // what each choice looks like on the table, and where it sits (preview.js)
     seg("หน้าตาเว็บ (ธีม)", "bot.ui", uiTheme(), UI_THEMES, "ui", (t) => { applyUi(); return `หน้าตาเว็บ: ${t}`; }),
     seg("อวตาร 3 มิติ", "bot.av3", myFigure(), [["", "ไม่มี"], ...Object.entries(AVATARS).map(([k, a]) => [k, a.name]), ...(Vault.has("fig") ? [["own", "รูปปั้นของฉัน"]] : []), ...(Vault.has("stand") ? [["stand", "ภาพตั้งโต๊ะของฉัน"]] : [])], "av", (t) => `เลือก${t}แล้ว ใช้ตั้งแต่เกมถัดไป`),
     seg("สนาม (ฉากรอบโต๊ะ)", "bot.scene", myScene(), Object.entries(SCENES).filter(([k]) => sceneOpen(k)).map(([k, m]) => [k, m.owner ? "✦ " + m.name : m.name]), "scene", (t) => `สนาม${t} ใช้ตั้งแต่เกมถัดไป`),
@@ -174,7 +178,7 @@ function settings() {
     }
     out.push(h("div", { class: "row", style: "margin-top:12px" }, h("button", { class: "btn", onclick: () => { api.close(); signOut(); } }, "ออกจากระบบ")));
     return groupSettings(out);
-  }, { title: "ตั้งค่า", sub: myName(), wide: true });
+  }, { title: "ตั้งค่า", sub: myName(), wide: true, onClose: pvClose });
 }
 // ---------- profile: nickname + picture (upload, card art, or Google) ----------
 function shrinkImage(file) {

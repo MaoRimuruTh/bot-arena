@@ -1077,6 +1077,35 @@ html.ui-pro .feed{background:rgba(14,16,20,.6)}
 /* the owner's picture standee (vaultui.js): a portrait card */
 .vthumb.stand{width:63px;height:90px}
 .vprev.stand{width:min(240px,64vw);margin:0 auto;border-radius:8px}
+/* the table preview in Settings (preview.js): the game's own 3D table, small, kept in view while the looks below it scroll */
+.pvbox{display:contents} /* (no box of its own: the picture stays in view through the whole settings group, not just this box) */
+.pvpane{position:sticky;top:-12px;z-index:4;margin-top:10px;border-radius:12px;background:var(--panel-solid,#1b100d);box-shadow:0 10px 24px rgba(0,0,0,.4)}
+.pvstage{position:relative;width:100%;aspect-ratio:16/9;max-height:min(36vh,330px);border-radius:12px 12px 0 0;overflow:hidden;border:1px solid rgba(216,168,74,.35);background:radial-gradient(120% 90% at 50% 30%,#2a1712 0%,#120a08 60%,#0c0706 100%);touch-action:pan-y}
+.pvstage>canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.pvflat{position:absolute;inset:0;display:grid;place-items:center;padding:6px}
+.pvflat svg{width:100%;height:100%;display:block}
+.pvflat text{font:600 .5px var(--f-display,"IBM Plex Sans Thai",sans-serif);fill:#f3e6c6;text-anchor:middle}
+.pvmark{animation:pvring 1.6s ease-in-out infinite}
+@keyframes pvring{50%{stroke-opacity:.35}}
+.pvpin{position:absolute;left:0;top:0;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;border:2px solid #ffe7a8;box-shadow:0 0 0 3px rgba(0,0,0,.35),0 0 12px #ffcf6a;pointer-events:none;animation:pvpulse 1.6s ease-in-out infinite}
+.pvpin[hidden]{display:none}
+@keyframes pvpulse{50%{box-shadow:0 0 0 3px rgba(0,0,0,.35),0 0 22px 6px #ffcf6a}}
+.pvcap{padding:6px 10px 7px;border:1px solid rgba(216,168,74,.35);border-top:0;border-radius:0 0 12px 12px;color:var(--gold-hi,#f3cd77);font-size:.8rem;line-height:1.4;min-height:2.1em}
+.pvfull{position:absolute;top:8px;right:8px;z-index:3;min-height:0;padding:4px 10px;background:rgba(10,6,5,.7)}
+.pvbar{gap:6px;align-items:center;margin-top:8px}
+.pvnote{margin-top:6px} .pvnote:empty{display:none}
+.pvbar .seg.pvviews{display:flex;flex-wrap:wrap;gap:6px;border:0;background:none;overflow:visible;padding:0}
+.pvbar .seg.pvviews button{border:1px solid var(--line-2);border-radius:999px;padding:7px 12px;background:rgba(255,255,255,.03)}
+.pvbar .seg.pvviews button[aria-pressed="true"]{border-color:rgba(232,186,92,.6);background:rgba(216,168,74,.16)}
+.vhead{margin-top:16px}
+.pvover{position:fixed;inset:0;z-index:90;display:flex;flex-direction:column;padding:max(10px,env(safe-area-inset-top,0px)) max(10px,env(safe-area-inset-right,0px)) max(10px,env(safe-area-inset-bottom,0px)) max(10px,env(safe-area-inset-left,0px));background:rgba(6,4,3,.95)}
+.pvover .pvpane{position:relative;top:auto;margin:0;flex:1;display:flex;flex-direction:column;min-height:0}
+.pvover .pvstage{flex:1;aspect-ratio:auto;max-height:none}
+.pvover .pvclose{position:absolute;z-index:6;top:max(18px,calc(env(safe-area-inset-top,0px) + 8px));right:max(18px,calc(env(safe-area-inset-right,0px) + 8px))}
+@media (max-width:760px){.pvstage{aspect-ratio:16/10}.pvcap{font-size:.74rem;padding:5px 9px 6px}}
+@media (max-height:600px){.pvpane{position:relative;top:auto}}
+:where(html.ui-glass) .pvstage,:where(html.ui-glass) .pvcap{border-color:rgba(130,196,255,.35)}
+:where(html.ui-pro) .pvstage,:where(html.ui-pro) .pvcap{border-color:rgba(79,125,255,.35)}
 
 /* post-game coach (js/coach.js): one card per flagged moment, a thin progress track while it works */
 .coachrow { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line, rgba(255,255,255,.12)); min-width: 0; overflow-wrap: anywhere; }

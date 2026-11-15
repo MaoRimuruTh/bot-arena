@@ -1,16 +1,16 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261115133615";
-import { E } from "./engine.js?v=20261115133615";
-import { h } from "./util.js?v=20261115133615";
-import { Sfx } from "./sfx.js?v=20261115133615";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261115140806";
+import { E } from "./engine.js?v=20261115140806";
+import { h } from "./util.js?v=20261115140806";
+import { Sfx } from "./sfx.js?v=20261115140806";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 let R = null; // runtime
 let custom = {}; // the players' own mat picture, card sleeve and figure (see vault.js): set by the game view
 export const Arena = {
-  get on() { return !!R; },
-  mount, unmount, update, idle: () => (R ? R.queue : Promise.resolve()),
+  get on() { return !!R && !R.preview; }, // (the small table in Settings is not a game table: see TablePreview)
+  mount, unmount: () => { if (R && !R.preview) unmount(); }, update, idle: () => (R ? R.queue : Promise.resolve()),
   refit: () => R && R.resize(true), // the HUD is drawn: fit an upright phone's table between its bars
   // where a card on the table is on screen: its centre and its drawn width and height (for the buttons beside it)
   screenOf: (i) => { const m = R && R.meshes.get(i); if (!m) return null; const P = m.grp.position, c = toScreen(P), sc = m.scale || 1;
@@ -65,6 +65,7 @@ function mount(container, opts = {}) {
   const FX = {}; ["magic_02", "slash_02", "circle_05", "smoke_03", "light_02", "star_06", "flare_01", "twirl_02"].forEach((n) => (FX[n] = tex("assets/fx/" + n + ".png")));
   R = { container, canvas, renderer, scene, camera, loader, FX, meshes: new Map(), dying: new Set(), texCache: new Map(), labels: new Map(), queue: Promise.resolve(), lastEv: 0, camBase: new THREE.Vector3(0, 11, 9.6), look: new THREE.Vector3(0, 0, 0.4), off: new THREE.Vector3(), alive: true, onHover: null, onClick: null, hovered: null, view: 0 };
 
+  R.preview = !!opts.preview; if (R.preview) R.pv = { focus: "table", yaw: 0, vis: true, until: performance.now() + 1500, timer: 0, asleep: false, fin: null }; // the preview in Settings (TablePreview)
   R.sceneKey = SCENES[opts.scene] ? opts.scene : "hall"; R.winfx = WINFX[opts.winfx] ? opts.winfx : "gold";
   R.hemi = new THREE.HemisphereLight(0xffe2c0, 0x140a06, 0.5); scene.add(R.hemi);
   const key = new THREE.DirectionalLight(0xffe2b0, 1.1); key.position.set(4, 12, 7); key.castShadow = true; key.shadow.mapSize.set(1024, 1024);
@@ -75,7 +76,7 @@ function mount(container, opts = {}) {
   R.redL = new THREE.PointLight(0xff4a3a, 0.55, 16, 2); R.redL.position.set(0, 4.2, -4.4); scene.add(R.redL);
 
   // the play mat: black lacquer with gold-leaf line-work (ลายรดน้ำ), stepped corners (ย่อมุม) round every zone
-  const small = innerWidth < 760; R.small = small; R.Q = Q; R.watch = !!opts.watch; /* a friend looking on: no "your turn", and the winner gets the banner */ R.matKey = [small || Q === "low", { near: MATS[opts.mat] || MATS.black, far: MATS[opts.farMat] || MATS[opts.mat] || MATS.black }]; R.zones = tallScreen(container) ? ZONES.tall : ZONES.wide; const mt = matTextures(...R.matKey, R.zones);
+  const small = innerWidth < 760; R.small = small; R.Q = Q; R.watch = !!opts.watch; /* a friend looking on: no "your turn", and the winner gets the banner */ R.matKey = [small || Q === "low", { near: MATS[opts.mat] || MATS.black, far: MATS[opts.farMat] || MATS[opts.mat] || MATS.black }]; R.zones = tallScreen(R.preview ? document.documentElement : container) ? ZONES.tall : ZONES.wide; const mt = matTextures(...R.matKey, R.zones);
   R.matMat = new THREE.MeshStandardMaterial({ map: mt.base, emissiveMap: mt.glow, emissive: new THREE.Color(mt.emis), emissiveIntensity: 0.2, roughness: Q === "high" ? 1 : 0.8, roughnessMap: Q === "high" ? mt.rough : null, metalness: 0 }); R.matGlow = mt.glow; // (below high nothing reflects in the mat: a constant roughness, one texture fewer)
   clothMat(R.matMat, mt, Q); // a fine weave and a soft sheen: the mat is cloth, not a sheet of plastic
   pmClothHook(R.matMat, mt.pmCloth);
@@ -140,19 +141,19 @@ function mount(container, opts = {}) {
   }
   R.resize = (smooth) => {
     const w = container.clientWidth || innerWidth, hh = container.clientHeight || innerHeight; renderer.setSize(w, hh, false); camera.aspect = w / hh;
-    const portrait = w / hh < 0.9; const k = portrait ? 1 : Math.min(1.45, Math.max(1, 820 / hh, 1250 / w));
+    const portrait = R.preview ? tallScreen(document.documentElement) : w / hh < 0.9; const k = portrait ? 1 : Math.min(1.45, Math.max(1, 820 / hh, 1250 / w));
     const Z = portrait ? ZONES.tall : ZONES.wide; if (Z !== R.zones) { R.zones = Z; swapMat(); decor(); if (R.last) update(R.last.s, R.last.V); } // turned the phone: the other table
-    camera.fov = portrait ? 50 : 38; camera.updateProjectionMatrix();
-    const cam = portrait ? fitTall(camera, w, hh) : wideCam(camera, w, hh, k);
+    camera.fov = R.preview ? 36 : portrait ? 50 : 38; camera.updateProjectionMatrix();
+    const cam = R.preview ? pvCam(camera, w, hh) : portrait ? fitTall(camera, w, hh) : wideCam(camera, w, hh, k);
     gsap.killTweensOf(R.camBase); gsap.killTweensOf(R.look);
     if (smooth && !reduce) { gsap.to(R.camBase, { x: cam.pos.x, y: cam.pos.y, z: cam.pos.z, duration: 0.5, ease: "power2.out" }); gsap.to(R.look, { x: cam.look.x, y: cam.look.y, z: cam.look.z, duration: 0.5, ease: "power2.out" }); }
     else { R.camBase.copy(cam.pos); R.look.copy(cam.look); }
     if (R.composer) R.composer.setSize(w, hh);
-    document.documentElement.style.setProperty("--handDrop", hh < 620 ? "-28px" : hh < 760 ? "-40px" : "-44px");
+    if (!R.preview) document.documentElement.style.setProperty("--handDrop", hh < 620 ? "-28px" : hh < 760 ? "-40px" : "-44px");
   };
   R.onResize = () => R.resize(); addEventListener("resize", R.onResize); R.resize();
   // automatic quality: if the table keeps running under ~28 frames a second, give up the glow first, then resolution
-  R.autoQ = gfxSetting() === "auto" ? { t0: performance.now(), born: performance.now(), sum: 0, n: 0, slow: 0, last: 0 } : null;
+  R.autoQ = gfxSetting() === "auto" && !R.preview ? { t0: performance.now(), born: performance.now(), sum: 0, n: 0, slow: 0, last: 0 } : null;
   R.onVis = () => { if (R && R.autoQ) R.autoQ.last = 0; }; document.addEventListener("visibilitychange", R.onVis);
   // holo foil on rare cards: "auto" turns it on only where it is safe (high quality, a mouse or trackpad screen, not a phone low on battery)
   const fo = foilSetting(), touch = matchMedia && matchMedia("(pointer: coarse)").matches; R.uT = { value: 0 }; R.uFoilK = { value: fo === "1" || (fo === "auto" && Q === "high" && !touch) ? 1 : 0 };
@@ -165,6 +166,7 @@ function mount(container, opts = {}) {
     const objs = [...R.meshes.values()].map((m) => m.mesh); if (R.lifeT.visible) objs.push(R.lifeT); if (R.side) objs.push(...R.side.objs);
     const hit = ray.intersectObjects(objs)[0]; return hit ? (hit.object === R.lifeT ? "life" : hit.object.userData.i != null ? hit.object.userData.i : sidePick(hit.object)) : null;
   };
+  if (!R.preview) {
   canvas.addEventListener("pointermove", (e) => {
     const p = pick(e); if (p === R.hovered) return;
     const prev = R.meshes.get(R.hovered); if (prev && !prev.busy) { if (!prev.sel) gsap.to(prev.grp.position, { y: prev.restY, duration: 0.2 }); gsap.to(prev.grp.rotation, { x: 0, duration: 0.25 }); }
@@ -181,12 +183,14 @@ function mount(container, opts = {}) {
   canvas.addEventListener("pointerup", (e) => { const d = down; down = null; if (!d || !d.moved) return; R.noClick = performance.now(); if (R.onDrag) R.onDrag("drop", d.p, e, pick(e)); });
   canvas.addEventListener("pointercancel", () => { down = null; if (R.onDrag) R.onDrag("cancel"); });
   canvas.addEventListener("click", (e) => { if (R.noClick && performance.now() - R.noClick < 600) { R.noClick = 0; return; } const p = pick(e); if (R.onClick) R.onClick(p); }); // null: the empty table (closes what is open)
+  }
   const clock = new THREE.Clock();
   // "ประหยัดเครื่อง" in Settings: the table is drawn 30 times a second instead of 60 (half the work for the phone's GPU)
   const cap = Q === "low" ? 1000 / 30 - 3 : 0, idleCap = Q === "mid" ? 1000 / 30 - 3 : 0; let lastDraw = 0; // mid (phones on "auto"): 30 a second while nothing on the table moves
   const liveR = R; // this table's own loop: a newer table mounted in the same frame must not keep this loop drawing
   const tick = (now = performance.now()) => {
     if (!R || R !== liveR || !R.alive) return;
+    if (R.preview && pvHold(now, lastDraw)) return;
     const capNow = cap || (idleCap && R.hovered == null && !gsap.globalTimeline.getChildren(true, true, false).some((x) => x.isActive()) ? idleCap : 0);
     if (capNow && now - lastDraw < capNow) { if (!cap && R.autoQ) R.autoQ.last = 0; requestAnimationFrame(tick); return; } lastDraw = now;
     const dt = Math.min(0.05, clock.getDelta()), t = clock.elapsedTime;
@@ -207,18 +211,19 @@ function mount(container, opts = {}) {
     const cr = R.canvas.getBoundingClientRect(); // the labels below read the layout once a frame and move by transform: no layout per label
     if (R.side) for (const o of R.side.piles.values()) { if (!o.grp.visible && !o.n) { o.el.style.display = "none"; continue; } o.el.style.display = ""; const lz = (R.zones && R.zones.side && R.zones.side.piles.lz) || 0.62; const sp = toScreen(o.grp.position.clone().add(new THREE.Vector3(0, 0.2, (o.mine ? lz : -lz))), cr); o.el.style.transform = `translate(${sp.x}px,${sp.y}px) translate(-50%,-50%)`; }
     for (const [i, el] of R.labels) { const m = R.meshes.get(i); if (!m) continue; const s = toScreen(m.grp.position.clone().add(new THREE.Vector3(-0.55 * m.scale, 0.1, (m.side === "me" ? 0.85 : -0.85) * m.scale)), cr); el.style.transform = `translate(${s.x}px,${s.y}px) translate(-50%,-50%)` + (el._pk && el._pk.k !== 1 ? ` scale(${el._pk.k})` : ""); }
+    if (R.preview) pvPin(camera);
     if (R.composer) R.composer.render(); else renderer.render(scene, camera);
     if (R.autoQ) watchFps(R.autoQ);
     requestAnimationFrame(tick);
   };
-  tick(); decor();
+  R.tick = tick; tick(); decor();
   R.speed = animSetting(); gsap.globalTimeline.timeScale(R.speed); // "fast animations" in Settings speed up every move and pause on the table
-  gsap.from(R.camBase, { y: 22, z: 18, duration: reduce ? 0 : 2, ease: "power3.out" });
+  if (R.preview) pvSetup(container); else gsap.from(R.camBase, { y: 22, z: 18, duration: reduce ? 0 : 2, ease: "power3.out" });
   gsap.from(R.matMat, { emissiveIntensity: 0, duration: reduce ? 0 : 1.8, ease: "power2.out" }); // the gold leaf catches the light once
 }
 function unmount() {
   document.querySelectorAll(".fxcuts,.rpsduel").forEach((x) => x.remove());
-  if (!R) return; R.alive = false; removeEventListener("resize", R.onResize); if (R.onVis) document.removeEventListener("visibilitychange", R.onVis); if (R.onHand) document.removeEventListener("pointerdown", R.onHand, true); gsap.globalTimeline.timeScale(1);
+  if (!R) return; R.alive = false; if (R.pvOff) R.pvOff(); removeEventListener("resize", R.onResize); if (R.onVis) document.removeEventListener("visibilitychange", R.onVis); if (R.onHand) document.removeEventListener("pointerdown", R.onHand, true); gsap.globalTimeline.timeScale(1);
   for (const el of R.labels.values()) el.remove(); if (R.side) for (const o of R.side.piles.values()) o.el.remove();
   R.renderer.dispose(); try { R.renderer.forceContextLoss(); } catch { /* already gone */ } R.canvas.remove(); R = null; // free the GPU now, not at the next garbage collection
 }
@@ -266,7 +271,7 @@ function standeeScene(bm) {
   const front = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.55, metalness: 0 })); front.position.set(0, H / 2, 0.004);
   const back = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshStandardMaterial({ ...dark, name: "back" })); back.rotation.y = Math.PI; back.position.set(0, H / 2, -0.004);
   board.add(front, back); board.position.y = 0.05; board.rotation.x = -0.32;
-  const strut = new THREE.Mesh(new THREE.BoxGeometry(0.06, H * 0.62, 0.02), new THREE.MeshStandardMaterial({ ...dark, name: "strut" })); strut.position.set(0, H * 0.27, -0.22); strut.rotation.x = 0.42;
+  const strut = new THREE.Mesh(new THREE.BoxGeometry(0.06, H * 0.62, 0.02), new THREE.MeshStandardMaterial({ ...dark, name: "strut" })); strut.position.set(0, H * 0.27, -0.31); strut.rotation.x = 0.42; // (its top just behind the board)
   const foot = new THREE.Mesh(new THREE.BoxGeometry(W * 0.62, 0.05, 0.14), new THREE.MeshStandardMaterial({ ...dark, name: "foot" })); foot.position.set(0, 0.025, 0.02);
   grp.add(board, strut, foot); grp.traverse((m) => { if (m.isMesh) m.castShadow = true; });
   return { scene: grp, animations: [] };
@@ -283,12 +288,13 @@ const loadAvatar = (key, f) => {
 // (a phone shows less of the mat's sides, so there they stand further in and a little smaller)
 // (an upright phone has its Land Magic Zone at the left end of the band, so there the figures stand in the free middle of the band instead,
 // one at each end, each nearer its owner; nothing is played on the band itself)
-const avSpot = (mine) => { if (R.zones === ZONES.tall) return mine ? { x: -1.4, z: MZ + 0.5, ry: 0.5 } : { x: 1.2, z: MZ - 0.55, ry: 0.3 };
-  const x = R.small ? -3.55 : -4.75; return mine ? { x, z: 0.6, ry: 0.5 } : { x, z: -1.0, ry: 0.3 }; };
+const avSpot = (mine) => figSpot(mine, R.zones === ZONES.tall, R.small);
+const figSpot = (mine, tall, small) => { if (tall) return mine ? { x: -1.4, z: MZ + 0.5, ry: 0.5 } : { x: 1.2, z: MZ - 0.55, ry: 0.3 };
+  const x = small ? -3.55 : -4.75; return mine ? { x, z: 0.6, ry: 0.5 } : { x, z: -1.0, ry: 0.3 }; };
 function syncAvatars(s, V) {
   R.avatars = R.avatars || [null, null];
   for (const p of [0, 1]) {
-    const f = s.P[p] && s.P[p].av3 === "own" && custom.fig ? custom.fig(s.P[p]) : s.P[p] && s.P[p].av3 === "stand" && custom.stand ? custom.stand(s.P[p]) : null; // the owner's own figure or picture standee
+    const f = s.P[p] && s.P[p].av3 === "ph" ? phStand(s.P[p].ph) : s.P[p] && s.P[p].av3 === "own" && custom.fig ? custom.fig(s.P[p]) : s.P[p] && s.P[p].av3 === "stand" && custom.stand ? custom.stand(s.P[p]) : null; // the owner's own figure or picture standee
     const key = f ? f.key + ":" + f.finish : (s.P[p] && AVATARS[s.P[p].av3]) ? s.P[p].av3 : ""; const cur = R.avatars[p];
     if (cur && cur.key === key) { if (cur.grp) placeAvatar(cur, p === V); continue; } // placed again each time: a turned phone moves the figures with its table
     if (cur && cur.grp) R.scene.remove(cur.grp);
@@ -2220,7 +2226,7 @@ function pileSpot(V, p, Pl, k) { const [x, z] = Pl.pos ? Pl.pos[k] : [Pl.x, Pl[k
 function makePile(key) {
   const grp = new THREE.Group(), body = new THREE.Mesh(R.geo.edge, [R.capMat, R.pileMat]), top = new THREE.Mesh(R.geo.face, R.backMat);
   body.castShadow = top.castShadow = true; grp.add(body, top); R.scene.add(grp); body.userData.pile = top.userData.pile = key;
-  const el = h("div", { class: "pilel" }); document.body.append(el);
+  const el = h("div", { class: "pilel" }); if (!R.preview) document.body.append(el); // (the preview has no labels)
   return { key, grp, body, top, el, n: -1, topI: null };
 }
 function makeLife(s, x, p) {
@@ -2281,13 +2287,14 @@ const SLEEVE_HOOK = function (sh) {
   float fr = pow(1.0 - nv, 4.0) * mix(0.04, 0.16, uGloss);
   gl_FragColor = vec4( outgoingLight + (sp * (0.35 + 0.65 * plastic) + (streak + fr) * plastic) * vec3(1.0, 0.98, 0.94), diffuseColor.a );`);
 };
-const sleeveFin = () => { try { return localStorage.getItem("bot.sleeveFin") === "matte" ? 0 : 1; } catch { return 1; } };
+const sleeveFin = () => { if (R && R.preview && R.pv.fin != null) return R.pv.fin; try { return localStorage.getItem("bot.sleeveFin") === "matte" ? 0 : 1; } catch { return 1; } };
 function sleeveMat(img) { const m = new THREE.MeshBasicMaterial({ map: sleeveTexture(img), color: 0xdedede, toneMapped: false }); m.userData.keep = true; m.userData.u = { uGloss: { value: sleeveFin() } }; m.onBeforeCompile = SLEEVE_HOOK; return m; }
 // a player's card sleeve: their own picture (vault.js) once it has loaded, otherwise the Thai-pattern back
 function backFor(s, p) {
-  const P = s && s.P && s.P[p], o = P && P.sleeve === "own" && custom.sleeve ? custom.sleeve(P) : null;
+  const P = s && s.P && s.P[p], o = P && P.sleeve === "ph" ? phSleeve() : P && P.sleeve === "own" && custom.sleeve ? custom.sleeve(P) : null;
   if (!o || !o.img) return backLook(lookOf(s, p)); // no picture of their own: the back that goes with their look
   if (!o.mat) o.mat = sleeveMat(o.img); // (lit by its own plastic highlight: SLEEVE_HOOK)
+  o.mat.userData.u.uGloss.value = sleeveFin(); // (glossy or matt can change in Settings)
   return o.mat;
 }
 // a player's own sleeve as a printed art sleeve: the picture under a soft gloss (light from the top left, a little shade
@@ -2367,6 +2374,7 @@ function placeShadow(m) {
   m.shadow.material.opacity = m.shOp * Math.max(0.15, 1 - hgt * 0.3);
 }
 function label(s, m, x, instant) {
+  if (R.preview) return;
   const d = E.def(s, x); if (!(d.t === "A" || d.t === "T" || d.t === "C")) { const old = R.labels.get(m.i); if (old) { old.remove(); R.labels.delete(m.i); } return; }
   let el = R.labels.get(m.i); if (!el) { el = h("div", { class: "pwl" }); document.body.append(el); R.labels.set(m.i, el); }
   const p = E.power(s, x), b = d.pw || 0, was = el.dataset.v; el.dataset.v = p; el.textContent = p;
@@ -2691,13 +2699,17 @@ async function animateEvent(ev, prev, s, V) {
   } else if (ev.k === "over") {
     const won = R.watch ? ev.w != null : ev.w === V; Sfx.play(won ? "win" : "lose"); if (R.watch) banner(ev.w != null ? s.P[ev.w].name : "DRAW", ev.w != null ? "ชนะ" : ""); else banner(won ? "VICTORY" : "DEFEAT", ""); for (const p of [0, 1]) avatarDo(p, ev.w === p ? "win" : "lose"); flash(won ? "rgba(255,210,120,.5)" : "rgba(80,0,10,.6)", 0.6);
     if (!reduce && won && !R.watch && R.winfx !== "gold") winFx(R.winfx);
-    else if (!reduce) for (let k = 0; k < (won ? 90 : 40); k++) gsap.delayedCall(Math.random() * 1.6, () => { // gold leaf rains for a win, ash and embers drift down for a loss
+    else if (!reduce) leafRain(won);
+  }
+}
+// gold leaf rains for a win, ash and embers drift down for a loss
+function leafRain(won) {
+  for (let k = 0; k < (won ? 90 : 40); k++) gsap.delayedCall(Math.random() * 1.6, () => {
       if (!R) return; const win = won, p0 = new THREE.Vector3((Math.random() - 0.5) * 15, 6 + Math.random() * 2, (Math.random() - 0.5) * 10 - 0.5);
       const sp = sprite(win && Math.random() < 0.4 ? R.FX.star_06 : R.FX.dot, win ? [0xffd27a, 0xffe9b0, 0xd8a84a, 0xff9a4a][k % 4] : k % 3 ? 0x3a2622 : 0xff5a3a, win ? 0.28 + Math.random() * 0.2 : 0.2 + Math.random() * 0.25, p0, 0.95);
       const d = 2.2 + Math.random() * 1.6; gsap.to(sp.position, { y: 0.1, x: p0.x + (Math.random() - 0.5) * 2, z: p0.z + (Math.random() - 0.5) * 1.5, duration: d, ease: "sine.in" }); gsap.to(sp.material, { rotation: (Math.random() - 0.5) * 8, duration: d });
       gsap.to(sp.material, { opacity: 0, duration: 0.6, delay: d - 0.6, onComplete: () => { R && R.scene.remove(sp); sp.material.dispose(); } });
     });
-  }
 }
 const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms / ((R && R.speed) || 1)));
 // the victory effects you can earn: lotus petals drifting down, lanterns rising off the table, fireworks bursting over it
@@ -2770,14 +2782,14 @@ function flatNote(t) {
   gsap.fromTo(d, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.25 }); gsap.to(d, { opacity: 0, duration: 0.4, delay: 2.4, onComplete: () => d.remove() });
 }
 // each side of the table is its owner's mat: a lacquer colour, or their own picture (vault.js); the table's surroundings follow
-function matOf(P) { if (!P) return null; if (P.mat === "own" && custom.mat) { const m = custom.mat(P); if (m) return m; } return MATS[P.mat] || null; }
+function matOf(P) { if (!P) return null; if (P.mat === "ph") return phMat(); if (P.mat === "own" && custom.mat) { const m = custom.mat(P); if (m) return m; } return MATS[P.mat] || null; }
 function applyMats(s, V) {
   const k = R.matKey, near = matOf(s.P[V]) || k[1].near, far = matOf(s.P[1 - V]) || (k[1].far === k[1].near ? MATS.red : k[1].far);
   if (near !== k[1].near || far !== k[1].far) { R.matKey = [k[0], { near, far }]; swapMat(); } decor();
 }
 function update(s, V, opts = {}) {
-  if (custom.skins) custom.skins(s); // each side's cards in their owner's skins (cards.js GameSkins)
-  if (!R) { try { flatEvents(s, V, opts); } catch (e) { console.warn(e); } return Promise.resolve(); } R.last = { s, V };
+  if (custom.skins && !(R && R.preview)) custom.skins(s); // each side's cards in their owner's skins (cards.js GameSkins)
+  if (!R || (R.preview && !opts.preview)) { try { flatEvents(s, V, opts); } catch (e) { console.warn(e); } return Promise.resolve(); } R.last = { s, V };
   // flush: a jump (a replay seek) drops the animations still waiting in the queue, and the banner they raised
   if (opts.flush) { R.token = (R.token || 0) + 1; const band = document.querySelector(".banner .band"); if (band) { gsap.killTweensOf(band); gsap.set(band, { opacity: 0 }); } }
   const token = R.token || 0;
@@ -2794,4 +2806,119 @@ function update(s, V, opts = {}) {
     if (drops.size) await sleepMs(reduce ? 200 : 1150); else if (burned.size) await sleepMs(reduce ? 100 : 600);
   }).catch((err) => console.warn(err));
   return R.queue;
+}
+
+// ---------- the table preview in Settings (ตกแต่ง, js/preview.js) ----------
+// The same table as a game (this file's mount, mats, sleeves, figures, scenes and summon circles), drawn small in a box in
+// Settings with a few cards laid out on the player's side, so a look can be seen, and where it sits, before a game. It is
+// drawn while something moves (a choice, a picture coming in, the view turning) and otherwise once every PV_IDLE ms, and not
+// at all while its box is off screen or the tab is hidden. A game table that opens takes over (mount drops the preview).
+const PV_IDLE = 700;
+function pvSetup(container) {
+  const P = R.pv, me = R;
+  const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => { if (R === me) { R.resize(); pvWake(300); } }) : null; if (ro) ro.observe(container);
+  const vis = () => { if (R === me) pvWake(300); }; document.addEventListener("visibilitychange", vis);
+  // a sideways drag swings the camera round the table (an upward or downward swipe still scrolls the page); a double click squares it again
+  const cv = R.canvas; cv.style.touchAction = "pan-y"; let d = null;
+  cv.addEventListener("pointerdown", (e) => { if (e.button) return; d = { x: e.clientX, yaw: P.yaw, id: e.pointerId }; P.drag = true; pvWake(200); });
+  cv.addEventListener("pointermove", (e) => { if (!d || e.pointerId !== d.id || R !== me) return; if (Math.abs(e.clientX - d.x) > 6) try { cv.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
+    P.yaw = Math.max(-1, Math.min(1, d.yaw - (e.clientX - d.x) * 0.006)); R.resize(); pvWake(200); });
+  const up = () => { d = null; P.drag = false; }; cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
+  cv.addEventListener("dblclick", () => { if (R !== me) return; P.yaw = 0; R.resize(true); pvWake(700); });
+  R.pvOff = () => { if (ro) ro.disconnect(); document.removeEventListener("visibilitychange", vis); clearTimeout(P.timer); P.timer = 0; };
+}
+// whether the preview skips this frame: off screen or hidden (no next frame until it is woken), or nothing moving (look again
+// in a moment: a card picture or a model may have come in). A figure that plays its own idle clip is drawn 30 times a second.
+function pvHold(now, lastDraw) {
+  const P = R.pv; clearTimeout(P.timer); P.timer = 0;
+  if (!P.vis || document.hidden) { P.asleep = true; return true; }
+  if (now < P.until || P.drag || gsap.globalTimeline.getChildren(true, true, false).some((x) => x.isActive())) return false;
+  if (!reduce && R.avatars && R.avatars.some((a) => a && a.acts && a.acts.idle)) { if (now - lastDraw >= 32) return false; requestAnimationFrame(R.tick); return true; }
+  if (now - lastDraw >= PV_IDLE) return false;
+  P.asleep = true; P.timer = setTimeout(() => { P.timer = 0; pvWake(0); }, PV_IDLE - (now - lastDraw)); return true;
+}
+function pvWake(ms) {
+  if (!R || !R.preview) return; const P = R.pv; P.until = Math.max(P.until, performance.now() + ms);
+  if (P.asleep) { P.asleep = false; clearTimeout(P.timer); P.timer = 0; requestAnimationFrame(R.tick); }
+}
+// what the preview camera keeps in view for each thing looked at (points on the table, [x, y, z]), and how steeply it looks down
+function pvFrame(f) {
+  const tall = R.zones === ZONES.tall, sp = figSpot(true, tall, R.small);
+  if (f === "av3" || f === "stand" || f === "fig") return { pts: [[sp.x - 1.2, 0, sp.z - 0.9], [sp.x + 1.3, 0, sp.z + 1.2], [sp.x, tall ? 1.4 : 1.7, sp.z]], el: 0.5 };
+  if (f === "sleeve") { const [x, z] = pileSpot(0, 0, R.zones.side.piles, "deck"); return { pts: tall ? [[x - 3.1, 0, z - 1.1], [x + 0.7, 0, z + 1.6]] : [[x - 2.4, 0, z - 2.1], [x + 0.9, 0, z + 1.3]], el: 0.72 }; }
+  if (f === "sig") return { pts: [[-3.2, 0, 0.6], [3.2, 0, 3.8]], el: 0.78 };
+  if (f === "mat") return { pts: [[-MW / 2, 0, MZ], [MW / 2, 0, MZ], [-MW / 2, 0, MZ + MD / 2], [MW / 2, 0, MZ + MD / 2]], el: 0.98 };
+  if (f === "scene" || f === "win") return { pts: [[-9.5, 0, -7.4], [9.5, 0, -7.4], [-9.5, 0, 6.4], [9.5, 0, 6.4], [0, 3.2, 0]], el: 0.58 };
+  const x = tall ? 5.0 : 7.0; return { pts: [[-x, 0, MZ - 3.1], [x, 0, MZ - 3.1], [-x, 0, 5.0], [x, 0, 5.0], [sp.x, 1.0, sp.z]], el: 0.86 }; // our side, and the near edge of theirs
+}
+function pvCam(camera, w, hh) {
+  const V3 = THREE.Vector3, { pts, el } = pvFrame(R.pv.focus), yaw = R.pv.yaw || 0, P = pts.map((p) => new V3(...p)), q = new V3();
+  const dir = new V3(Math.sin(yaw) * Math.cos(el), Math.sin(el), Math.cos(yaw) * Math.cos(el));
+  const look = P.reduce((a, p) => a.add(p), new V3()).multiplyScalar(1 / P.length).setY(0), m = 0.86; // (m: the points stay inside 86% of the frame)
+  const fits = (d) => { camera.position.copy(look).addScaledVector(dir, d); camera.lookAt(look); camera.updateMatrixWorld(true);
+    return P.every((p) => { q.copy(p).project(camera); return Math.abs(q.x) <= m && Math.abs(q.y) <= m && q.z < 1; }); };
+  let lo = 2, hi = 90; for (let k = 0; k < 26; k++) { const d = (lo + hi) / 2; if (fits(d)) hi = d; else lo = d; }
+  return { pos: look.clone().addScaledVector(dir, hi), look };
+}
+// the spot a thing stands on (x, y, z, the ring's size, the pin's height), or null for a whole side or the room round it
+function pvSpot(f) {
+  const tall = R.zones === ZONES.tall, sp = figSpot(true, tall, R.small);
+  if (f === "av3" || f === "stand" || f === "fig") return [sp.x, 0, sp.z, tall ? 1.1 : 1.35, null]; // (the ring is enough: a pin over the figure floats loose)
+  if (f === "sleeve") { const [x, z] = pileSpot(0, 0, R.zones.side.piles, "deck"); return [x, 0, z, 1.25, 0.3]; }
+  return null;
+}
+function pvMark(spot) {
+  if (!R.pv.ring) { const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: ringTexture(), color: 0xffd27a, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
+    m.rotation.x = -Math.PI / 2; m.renderOrder = 2; R.scene.add(m); R.pv.ring = m; }
+  const m = R.pv.ring; m.visible = !!spot; if (spot) { m.position.set(spot[0], 0.035, spot[2]); m.scale.setScalar(spot[3]); }
+}
+function pvPin(camera) {
+  const P = R.pv, el = P.pin, sp = P.spot; if (!el) return; if (!sp || sp[4] == null) { el.hidden = true; return; }
+  const q = new THREE.Vector3(sp[0], sp[4], sp[2]).project(camera), w = R.canvas.clientWidth, hh = R.canvas.clientHeight;
+  el.hidden = false; el.style.transform = `translate(${Math.round((q.x * 0.5 + 0.5) * w)}px,${Math.round((-q.y * 0.5 + 0.5) * hh)}px)`;
+}
+// an owner's own thing that has no picture yet: a neutral board with a dashed edge, so the preview still shows where it goes
+const PH = {};
+function phCanvas(w, hh, line1, line2) {
+  const c = document.createElement("canvas"); c.width = w; c.height = hh; const g = c.getContext("2d"), u = Math.min(w, hh) / 100;
+  g.fillStyle = "#3a3940"; g.fillRect(0, 0, w, hh); g.strokeStyle = "rgba(255,255,255,.07)"; g.lineWidth = u * 2.4;
+  for (let x = -hh; x < w; x += u * 10) { g.beginPath(); g.moveTo(x, hh); g.lineTo(x + hh, 0); g.stroke(); }
+  g.setLineDash([u * 5, u * 3.5]); g.strokeStyle = "rgba(240,232,214,.8)"; g.lineWidth = u * 1.4; g.strokeRect(u * 6, u * 6, w - u * 12, hh - u * 12); g.setLineDash([]);
+  g.fillStyle = "rgba(240,232,214,.92)"; g.textAlign = "center"; g.textBaseline = "middle"; const F = '"IBM Plex Sans Thai", "Chakra Petch", sans-serif';
+  g.font = `600 ${Math.round(u * 22)}px ${F}`; g.fillText("+", w / 2, hh / 2 - u * 20);
+  g.font = `600 ${Math.round(u * 14)}px ${F}`; g.fillText(line1, w / 2, hh / 2 + u * 4); g.font = `500 ${Math.round(u * 10)}px ${F}`; g.fillText(line2, w / 2, hh / 2 + u * 21);
+  return c;
+}
+const phMat = () => PH.mat || (PH.mat = { name: "ผ้าปูของฉัน", lac: "#17161b", edge: "rgba(170,170,185,", kind: "img", img: phCanvas(1024, Math.round(1024 / MAT_ASPECT), "ภาพผ้าปูของคุณ", "จะปูเต็มฝั่งนี้"), veil: 0.12 });
+const phSleeve = () => PH.sl || (PH.sl = { img: phCanvas(300, 408, "หลังการ์ด", "ของคุณ"), sleeve: true });
+const phStand = (kind) => PH[kind] || (PH[kind] = { key: "ph:" + kind, h: 1.3, stand: true, finish: "", bmp: Promise.resolve(phCanvas(360, 514, kind === "fig" ? "รูปปั้น" : "ภาพตั้งโต๊ะ", "ของคุณ")) });
+export const TablePreview = {
+  mount(container, opts = {}) { mount(container, { ...opts, preview: true }); return !!(R && R.preview); },
+  live: (el) => !!(R && R.preview && R.alive && R.container === el),
+  unmount: () => { if (R && R.preview) unmount(); },
+  visible(v) { if (R && R.preview) { R.pv.vis = !!v; if (v) pvWake(300); } },
+  pin(el) { if (R && R.preview) R.pv.pin = el; },
+  // the cards and choices to draw (a game state with the player in seat 0)
+  show(s) { if (!R || !R.preview) return Promise.resolve(); const first = !R.last;
+    return update(s, 0, { preview: true, reset: first }).then(() => { if (R && R.preview) { syncBacks(s); pvWake(700); } }); },
+  view(focus) { if (!R || !R.preview) return; const P = R.pv; if (P.focus !== focus) { P.focus = focus; R.resize(true); } P.spot = pvSpot(focus); pvMark(P.spot); pvWake(800); },
+  scene(k) { if (R && R.preview && SCENES[k] && R.sceneKey !== k) { R.sceneKey = k; decor(); pvWake(800); } },
+  fin(v) { if (R && R.preview && R.pv.fin !== v) { R.pv.fin = v; if (R.last) syncBacks(R.last.s); pvWake(300); } },
+  // the middle Avatar is summoned again, in the chosen circle (a still circle when motion is reduced)
+  summon() {
+    if (!R || !R.preview) return false; const ms = [...R.meshes.values()].filter((m) => m.side === "me" && m.zone === "av"), m = ms[Math.floor(ms.length / 2)]; if (!m || m.busy || !m.want) return false;
+    const L = { pos: m.want.pos, scale: m.want.scale, side: "me", p: 0 }, cHex = m.co ? colorHex(m.co) : 0xffc35a;
+    if (reduce) { const ring = sigil(L.pos, R.sig[0] === "azure" ? 0x0a4ad8 : cHex, L.scale, R.sig[0]); gsap.killTweensOf([ring.material, ring.scale, ring.rotation]); ring.material.opacity = 0.95; ring.scale.setScalar(2.9 * L.scale);
+      gsap.to(ring.material, { opacity: 0, duration: 0.5, delay: 1.6, onComplete: () => { if (R) R.scene.remove(ring); ring.geometry.dispose(); ring.material.dispose(); } }); pvWake(2300); return true; }
+    summonIn(m, L, m.co, cHex); pvWake(1800); return true;
+  },
+  // the victory effect over the table (not when motion is reduced: it is all motion)
+  win(kind) { if (!R || !R.preview || reduce) return false; if (WINFX[kind] && kind !== "gold") winFx(kind); else leafRain(true); pvWake(kind === "lantern" ? 7500 : 5200); return true; },
+};
+// the same table as a flat map (for the preview without 3D): where each zone, pile and the figure are on the player's side
+export function tableMap(tall, small) {
+  const Z = tall ? ZONES.tall : ZONES.wide, sp = figSpot(true, tall, small), pile = (k) => pileSpot(0, 0, Z.side.piles, k);
+  return { MW, MD, MZ, PM, card: [CARD.w, CARD.h], av: { z: 2.15, gap: Z.avGap(3) }, cs: [Z.csX(0), 4.15, Z.csS], mg: [Z.mgX(0), 4.15, Z.mgS], band: Z.band,
+    life: Z.side.life ? { ...Z.side.life } : null, piles: { deck: pile("deck"), hell: pile("hell"), dark: pile("dark"), s: Z.side.piles.s }, fig: [sp.x, sp.z],
+    land: [Z.land.x, MZ, Z.land.s] };
 }

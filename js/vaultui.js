@@ -1,10 +1,11 @@
 // Settings for the owner's own things (vault.js): a picture for his half of the mat, a picture for his card sleeves and a
 // 3D figure. A picture is framed here (drag to move it, slide to zoom) and saved twice: in full for his own screen, and
 // smaller for opponents if he lets them see it. Shown only to the owner account.
-import { h, toast, openSheet } from "./util.js?v=20261115133615";
-import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, shownBlob, isOwner, vaultBlob } from "./vault.js?v=20261115133615";
-import { matLines, sleeveFrame, veilPaint, MAT_ASPECT, FIG_FINISH, FIG_MOVES, figureViewer } from "./arena3d.js?v=20261115133615";
-import { setMeta, Data } from "./fb.js?v=20261115133615";
+import { h, toast, openSheet } from "./util.js?v=20261115140806";
+import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, shownBlob, isOwner, vaultBlob } from "./vault.js?v=20261115140806";
+import { matLines, sleeveFrame, veilPaint, MAT_ASPECT, FIG_FINISH, FIG_MOVES, figureViewer } from "./arena3d.js?v=20261115140806";
+import { pvFocus, pvHover, pvUnhover } from "./preview.js?v=20261115140806";
+import { setMeta, Data } from "./fb.js?v=20261115140806";
 
 const MAT_A = MAT_ASPECT, SLEEVE_A = 1.5 / 2.04, STAND_A = 0.7; // a player's playmat on their side of the table (arena3d.js); a card
 const KIND = {
@@ -66,8 +67,10 @@ function editor(kind, img) {
 const SLEEVE_FIN = { gloss: "ซองเงา", matte: "ซองด้าน" };
 function sleeveFinSeg() {
   let cur = "gloss"; try { cur = localStorage.getItem("bot.sleeveFin") === "matte" ? "matte" : "gloss"; } catch {}
-  return h("div", { class: "seg wrap", role: "group", "aria-label": "ผิวซองการ์ด" }, Object.entries(SLEEVE_FIN).map(([k, t]) => h("button", { "aria-pressed": cur === k ? "true" : "false", onclick: (e) => {
-    try { localStorage.setItem("bot.sleeveFin", k); } catch {} for (const b of e.currentTarget.parentElement.children) b.setAttribute("aria-pressed", b === e.currentTarget ? "true" : "false"); toast(t + " ใช้ตั้งแต่เกมถัดไป"); } }, t)));
+  const own = { kind: "sleeve", has: true };
+  return h("div", { class: "seg wrap", role: "group", "aria-label": "ผิวซองการ์ด" }, Object.entries(SLEEVE_FIN).map(([k, t]) => h("button", { "aria-pressed": cur === k ? "true" : "false",
+    onpointerenter: (e) => { if (e.pointerType === "mouse") pvHover("bot.sleeveFin", k, own); }, onpointerleave: (e) => { if (e.pointerType === "mouse") pvUnhover(); }, onclick: (e) => {
+    try { localStorage.setItem("bot.sleeveFin", k); } catch {} for (const b of e.currentTarget.parentElement.children) b.setAttribute("aria-pressed", b === e.currentTarget ? "true" : "false"); toast(t + " ใช้ตั้งแต่เกมถัดไป"); pvFocus("sleeve", true, true); } }, t)));
 }
 // a small picture of what is stored
 function thumb(kind) {
@@ -113,15 +116,19 @@ function figSheet() {
   load();
 }
 
+// pointing at a row, or reaching it with Tab, shows its place on the table; a tap keeps it there; "ดูบนโต๊ะ" also brings the preview into view
+const peek = (kind, has) => ({ onpointerenter: (e) => { if (e.pointerType === "mouse") pvFocus(kind, has); }, onpointerleave: (e) => { if (e.pointerType === "mouse") pvFocus(null); },
+  onfocusin: () => pvFocus(kind, has), onfocusout: (e) => { if (!e.currentTarget.contains(e.relatedTarget)) pvFocus(null); }, onpointerdown: (e) => { if (e.pointerType !== "mouse") pvFocus(kind, has, true); } });
+const where = (kind, has) => h("button", { class: "btn sm", onclick: () => pvFocus(kind, has, true, true) }, "ดูบนโต๊ะ");
 function rows() {
   const out = [];
   for (const kind of ["mat", "sleeve", "stand"]) {
     const K = KIND[kind], has = Vault.has(kind), shown = shownNow(kind);
     const pick = filePick("image/*", async (f) => { try { editor(kind, await loadImage(f)); } catch { toast("เปิดรูปนี้ไม่ได้", "bad"); } });
-    out.push(h("div", { class: "vitem" }, has ? thumb(kind) : h("div", { class: "vthumb empty " + kind }, "ยังไม่มีภาพ"),
+    out.push(h("div", { class: "vitem", ...peek(kind, has) }, has ? thumb(kind) : h("div", { class: "vthumb empty " + kind }, "ยังไม่มีภาพ"),
       h("div", { class: "stack", style: "gap:6px;min-width:0" }, h("b", null, K.label), h("span", { class: "tiny muted" }, has ? (shown ? "คู่แข่งเห็นฉบับย่อบนโต๊ะของเขา" : "เห็นแค่บนเครื่องของมาสเตอร์") : "เลือกรูปแล้วจัดตำแหน่งได้"),
         kind === "sleeve" && has ? sleeveFinSeg() : null,
-        h("div", { class: "row wrap" }, pick, h("button", { class: "btn sm gold", onclick: () => pick.click() }, has ? "เปลี่ยนรูป" : "เลือกรูป"),
+        h("div", { class: "row wrap" }, pick, h("button", { class: "btn sm gold", onclick: () => pick.click() }, has ? "เปลี่ยนรูป" : "เลือกรูป"), where(kind, has),
           has && shown ? h("button", { class: "btn sm", onclick: () => vaultShow(kind, null).then(() => toast("ซ่อนจากคู่แข่งแล้ว")).catch(() => toast("ทำไม่สำเร็จ", "bad")) }, "ซ่อนจากคู่แข่ง") : null,
           has ? h("button", { class: "btn sm danger", onclick: () => vaultDrop(kind).then(() => toast("ลบแล้ว")).catch(() => toast("ลบไม่สำเร็จ", "bad")) }, "ลบ") : null))));
   }
@@ -135,11 +142,11 @@ function rows() {
         try { localStorage.setItem("bot.av3", "own"); } catch {} toast(painted ? "บันทึกรูปปั้นแล้ว ใช้สีจากไฟล์ ตั้งแต่เกมถัดไป" : "บันทึกรูปปั้นแล้ว ใช้ตั้งแต่เกมถัดไป"); } }
     catch (er) { toast("บันทึกไม่สำเร็จ: " + (er.message || er), "bad"); } });
   const full = load(false), light = load(true);
-  out.push(h("div", { class: "vitem" }, h("div", { class: "vthumb empty fig" + (has ? " has" : "") }, has ? "🗿" : "ยังไม่มีไฟล์"),
+  out.push(h("div", { class: "vitem", ...peek("fig", has) }, h("div", { class: "vthumb empty fig" + (has ? " has" : "") }, has ? "🗿" : "ยังไม่มีไฟล์"),
     h("div", { class: "stack", style: "gap:6px;min-width:0" }, h("b", null, "รูปปั้นของฉัน"), h("span", { class: "tiny muted" }, has ? (shown ? "คู่แข่งเห็นฉบับเบาบนโต๊ะของเขา" : "เห็นแค่บนเครื่องของมาสเตอร์") + (it.name ? " · " + it.name : "") : "ไฟล์ .glb ไม่เกิน 6 MB"),
       has ? h("div", { class: "seg wrap", role: "group", "aria-label": "ผิวรูปปั้น" }, Object.entries(FIG_FINISH).map(([k, t]) => h("button", { "aria-pressed": fin === k ? "true" : "false", onclick: async () => {
-        try { await vaultMeta("fig", { finish: k }); if (shown) await setMeta({ show: { fig: { finish: k } } }); toast("ผิวรูปปั้น: " + t); } catch { toast("เปลี่ยนไม่สำเร็จ", "bad"); } } }, t))) : null,
-      h("div", { class: "row wrap" }, full, light, has ? h("button", { class: "btn sm gold", onclick: figSheet }, "ดู 3D") : null, h("button", { class: "btn sm" + (has ? "" : " gold"), onclick: () => full.click() }, has ? "เปลี่ยนไฟล์" : "เลือกไฟล์ .glb"),
+        try { pvFocus("fig", true, true); await vaultMeta("fig", { finish: k }); if (shown) await setMeta({ show: { fig: { finish: k } } }); toast("ผิวรูปปั้น: " + t); } catch { toast("เปลี่ยนไม่สำเร็จ", "bad"); } } }, t))) : null,
+      h("div", { class: "row wrap" }, full, light, where("fig", has), has ? h("button", { class: "btn sm gold", onclick: figSheet }, "ดู 3D") : null, h("button", { class: "btn sm" + (has ? "" : " gold"), onclick: () => full.click() }, has ? "เปลี่ยนไฟล์" : "เลือกไฟล์ .glb"),
         has ? h("button", { class: "btn sm", onclick: () => light.click() }, shown ? "เปลี่ยนฉบับให้คู่แข่งเห็น" : "ให้คู่แข่งเห็น (ไฟล์เบา ≤ 420 KB)") : null,
         shown ? h("button", { class: "btn sm", onclick: () => vaultShow("fig", null).then(() => toast("ซ่อนจากคู่แข่งแล้ว")).catch(() => toast("ทำไม่สำเร็จ", "bad")) }, "ซ่อนจากคู่แข่ง") : null,
         has ? h("button", { class: "btn sm danger", onclick: () => vaultDrop("fig").then(() => vaultShow("fig", null)).then(() => toast("ลบแล้ว")).catch(() => toast("ลบไม่สำเร็จ", "bad")) }, "ลบ") : null))));
@@ -153,6 +160,6 @@ export function vaultSection() {
   // what opponents see is kept with the shared settings: repaint when that changes too
   const sig = () => { const sh = Data.meta && Data.meta.show; return sh ? Object.entries(sh).map(([k, v]) => k + ":" + (v && v.v) + ":" + (v && v.finish)).join() : ""; };
   let last = sig(); const dl = () => { if (!box.isConnected) { Data.listeners.delete(dl); return; } const now = sig(); if (now !== last) { last = now; paint(); } }; Data.listeners.add(dl);
-  return [h("div", { class: "eyebrow", style: "margin-top:12px" }, "ของส่วนตัวของมาสเตอร์ (บัญชีเจ้าของสนามเท่านั้น)"),
+  return [h("div", { class: "seglabel vhead" }, "ของส่วนตัวของมาสเตอร์ (บัญชีเจ้าของสนามเท่านั้น)"),
     h("div", { class: "small muted" }, "เก็บในพื้นที่ส่วนตัวของบัญชีนี้ ไม่อยู่ในโค้ดของเว็บ และไม่มีปุ่มให้ใครโหลดไฟล์ ถ้าเปิดให้คู่แข่งเห็น เขาจะได้แค่ฉบับย่อที่วาดบนโต๊ะ"), box];
 }
