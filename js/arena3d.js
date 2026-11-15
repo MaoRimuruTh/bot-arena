@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261115163721";
-import { E } from "./engine.js?v=20261115163721";
-import { h } from "./util.js?v=20261115163721";
-import { Sfx } from "./sfx.js?v=20261115163721";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261115182417";
+import { E } from "./engine.js?v=20261115182417";
+import { h } from "./util.js?v=20261115182417";
+import { Sfx } from "./sfx.js?v=20261115182417";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -55,7 +55,10 @@ function mount(container, opts = {}) {
   const Q = gfxLevel(); // high: bloom, shadows, reflections everywhere · mid: none of those, only the brass reflects · low: no reflections, fewer motes, lower resolution
   const canvas = h("canvas", { "aria-label": "สนามดวล 3 มิติ" }); container.prepend(canvas);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, Q === "low" ? 1 : Q === "mid" ? 1.5 : 1.75));
+  // how finely the table is drawn: low at 1, mid up to 1.5; high draws a desktop screen at 1.5 at least (supersampled: the gold hairlines and the
+  // card edges stop stepping on a 1x monitor) and a sharp one at up to 2, while a phone on high stays at 1.75 (it also draws the glow and the shadows)
+  { const dpr = devicePixelRatio || 1, touch = !!(window.matchMedia && matchMedia("(pointer: coarse)").matches);
+    renderer.setPixelRatio(Q === "low" ? 1 : Q === "mid" ? Math.min(dpr, 1.5) : touch ? Math.min(dpr, 1.75) : Math.min(Math.max(dpr, 1.5), 2)); }
   renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.92;
   renderer.shadowMap.enabled = Q === "high"; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0x0b0605, 0.026);
@@ -80,11 +83,23 @@ function mount(container, opts = {}) {
   R.matMat = new THREE.MeshStandardMaterial({ map: mt.base, emissiveMap: mt.glow, emissive: new THREE.Color(mt.emis), emissiveIntensity: 0.2, roughness: Q === "high" ? 1 : 0.8, roughnessMap: Q === "high" ? mt.rough : null, metalness: 0 }); R.matGlow = mt.glow; // (below high nothing reflects in the mat: a constant roughness, one texture fewer)
   clothMat(R.matMat, mt, Q); // a fine weave and a soft sheen: the mat is cloth, not a sheet of plastic
   pmClothHook(R.matMat, mt.pmCloth);
-  const top = new THREE.Mesh(new THREE.PlaneGeometry(MW, MD), R.matMat); top.rotation.x = -Math.PI / 2; top.position.set(0, 0, MZ); top.receiveShadow = true; scene.add(top);
-  const lacq = new THREE.MeshStandardMaterial({ color: 0x5a1812, roughness: 0.34, metalness: 0, envMapIntensity: 0.3 }); R.lacq = lacq;
-  const body = new THREE.Mesh(new THREE.BoxGeometry(MW, 0.28, MD), lacq); body.position.set(0, -0.18, MZ); body.receiveShadow = true; scene.add(body);
-  const trimM = new THREE.MeshStandardMaterial({ color: 0xc99a3e, emissive: 0x7a5414, emissiveIntensity: 0.6, roughness: 0.35, metalness: 0.3 });
-  for (const [w, d, x, z] of [[MW + 0.08, 0.05, 0, MZ - MD / 2], [MW + 0.08, 0.05, 0, MZ + MD / 2], [0.05, MD, -MW / 2, MZ], [0.05, MD, MW / 2, MZ]]) { const t = new THREE.Mesh(new THREE.BoxGeometry(w, 0.05, d), trimM); t.position.set(x, 0.005, z); scene.add(t); }
+  // a playmat lying on a lacquered tray, not a painted board: the cloth has rounded corners and a soft rolled rim (its bound edge curling
+  // down onto the tray), and the tray round it is deep, glossy lacquer with a thin inlaid line. Tray and line take the near mat's look (trayLook).
+  const rr = (w, d, r) => { const s = new THREE.Shape(), x = w / 2, y = d / 2; s.moveTo(-x + r, -y); s.lineTo(x - r, -y); s.absarc(x - r, -y + r, r, -Math.PI / 2, 0, false); s.lineTo(x, y - r); s.absarc(x - r, y - r, r, 0, Math.PI / 2, false);
+    s.lineTo(-x + r, y); s.absarc(-x + r, y - r, r, Math.PI / 2, Math.PI, false); s.lineTo(-x, -y + r); s.absarc(-x + r, -y + r, r, Math.PI, Math.PI * 1.5, false); return s; };
+  const topG = new THREE.ShapeGeometry(rr(MW, MD, MAT_R), 10); { const uv = topG.attributes.uv, ps = topG.attributes.position; for (let k = 0; k < uv.count; k++) uv.setXY(k, ps.getX(k) / MW + 0.5, ps.getY(k) / MD + 0.5); } // (the same UVs as a plain plane: the mat's drawing and shaders are unchanged)
+  const top = new THREE.Mesh(topG, R.matMat); top.rotation.x = -Math.PI / 2; top.position.set(0, 0, MZ); top.receiveShadow = true; scene.add(top);
+  const hide = new THREE.MeshBasicMaterial({ visible: false }); // (an extruded rim or tray shows its sides; the cloth's own top covers its lid)
+  R.rollMat = new THREE.MeshStandardMaterial({ color: 0x121015, roughness: 0.86, metalness: 0 });
+  const roll = new THREE.Mesh(new THREE.ExtrudeGeometry(rr(MW, MD, MAT_R), { depth: 0.018, bevelEnabled: true, bevelThickness: 0.016, bevelSize: 0.022, bevelSegments: Q === "low" ? 2 : 4, curveSegments: 10 }).rotateX(-Math.PI / 2), [hide, R.rollMat]);
+  roll.position.set(0, -0.035, MZ); scene.add(roll); // its top meets the cloth just under it; its foot rests on the tray
+  R.trayMat = Q === "high" ? new THREE.MeshPhysicalMaterial({ roughness: 0.42, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.14, envMapIntensity: 0.55 }) : new THREE.MeshStandardMaterial({ roughness: 0.3, metalness: 0, envMapIntensity: 0.3 }); R.lacq = R.trayMat;
+  const body = new THREE.Mesh(new THREE.ExtrudeGeometry(rr(MW + 0.36, MD + 0.36, MAT_R + 0.18), { depth: 0.25, bevelEnabled: true, bevelThickness: 0.025, bevelSize: 0.025, bevelSegments: Q === "low" ? 1 : 3, curveSegments: 10 }).rotateX(-Math.PI / 2), R.trayMat);
+  body.position.set(0, -0.325, MZ); body.receiveShadow = true; scene.add(body);
+  { const ring = rr(MW + 0.26, MD + 0.26, MAT_R + 0.13); ring.holes.push(rr(MW + 0.2, MD + 0.2, MAT_R + 0.1));
+    R.inlayMat = new THREE.MeshStandardMaterial({ emissiveIntensity: 0.55, roughness: 0.32, metalness: 0.45, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    R.inlay = new THREE.Mesh(new THREE.ShapeGeometry(ring, 10).rotateX(-Math.PI / 2), R.inlayMat); R.inlay.position.set(0, -0.0495, MZ); scene.add(R.inlay); }
+  trayLook();
   const shade = new THREE.Mesh(new THREE.PlaneGeometry(MW * 1.9, MD * 1.9), new THREE.MeshBasicMaterial({ map: softShadow(), transparent: true, depthWrite: false })); shade.rotation.x = -Math.PI / 2; shade.position.set(0, -0.31, MZ); scene.add(shade);
   // the centre band lights up when the Battle Phase starts
   const div = new THREE.Mesh(new THREE.PlaneGeometry(MW - 3.4, 0.62), new THREE.MeshBasicMaterial({ map: R.FX.light_02, color: 0xffc35a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })); div.rotation.x = -Math.PI / 2; div.position.set(1.2, 0.02, MZ); scene.add(div); R.div = div;
@@ -93,9 +108,10 @@ function mount(container, opts = {}) {
   R.lifeHalo = sprite(FX.light_02, 0xff4a52, 3.2, R.lifeT.position, 0.5); R.lifeHalo.visible = false;
   FX.dot = dotTexture(); R.beamTex = beamTexture(); R.backTex = backTexture(); R.rimTex = haloTexture(18, 5); R.shadowTex = haloTexture(24, 0); R.sigilTexs = {}; R.sig = ["lotus", "lotus"];
   R.geo = cardGeometry(); R.capMat = new THREE.MeshBasicMaterial({ visible: false });
-  R.edgeMat = new THREE.MeshStandardMaterial({ color: 0x3a2a20, roughness: 0.62, metalness: 0 }); // the paper core, not metal
-  R.backMat = new THREE.MeshBasicMaterial({ map: R.backTex, color: 0xcccccc, toneMapped: false });
-  R.pileMat = new THREE.MeshStandardMaterial({ color: 0xbdb2a0, roughness: 0.85, metalness: 0 }); // the edges of a stack of cards
+  R.edgeMat = new THREE.MeshStandardMaterial({ color: 0x9c958a, roughness: 0.7, metalness: 0 }); // the card stock's cut edge: a thin light line when a card tips or flies
+  R.backMat = glossBack(new THREE.MeshBasicMaterial({ map: R.backTex, color: 0xcccccc, toneMapped: false })); // a printed, laminated back: it catches the light like a card
+  R.pileMat = new THREE.MeshStandardMaterial({ color: 0xbdb2a0, roughness: 0.85, metalness: 0 }); // the edges of a stack of cards: fine lines, one per card (PILE_HOOK)
+  R.pileMat.extensions = { derivatives: true }; R.pileMat.onBeforeCompile = PILE_HOOK;
   // the teak table the mat lies on, and candles in brass dishes round it, each throwing a flickering pool of light on the wood
   // unlit, with the lamplight baked into vertex colours: it covers much of a phone screen, so it must be cheap to draw
   const tg = new THREE.PlaneGeometry(70, 50, 28, 20), tp = tg.attributes.position, tc = new Float32Array(tp.count * 3);
@@ -135,7 +151,11 @@ function mount(container, opts = {}) {
     // the glow pass draws the scene into its own buffer first; by default that buffer has a 16-bit depth, too coarse to tell the
     // table top from the board under it: thin stripes all over the mat ("สวยสุด" on phones). A depth + stencil buffer is 24-bit.
     const sz = renderer.getDrawingBufferSize(new THREE.Vector2());
-    R.composer = new THREE.EffectComposer(renderer, new THREE.WebGLRenderTarget(sz.x, sz.y, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, stencilBuffer: true }));
+    // On WebGL2 that buffer is multisampled too: drawn through the glow pass the table would otherwise lose its antialiasing, and "สวยสุด"
+    // would show more stair-steps on the gold lines and the card edges than the plain table
+    const rtO = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, stencilBuffer: true }, msaa = !!(renderer.capabilities.isWebGL2 && THREE.WebGLMultisampleRenderTarget);
+    const rt = msaa ? new THREE.WebGLMultisampleRenderTarget(sz.x, sz.y, rtO) : new THREE.WebGLRenderTarget(sz.x, sz.y, rtO); if (msaa) rt.samples = 4;
+    R.composer = new THREE.EffectComposer(renderer, rt);
     R.composer.setPixelRatio(renderer.getPixelRatio()); R.composer.addPass(new THREE.RenderPass(scene, camera));
     R.composer.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.4, 0.9));
   }
@@ -549,6 +569,9 @@ function points(n, color, size, map, spread) {
 // ---------- lacquer and gold leaf ----------
 // world ↔ mat canvas: x ∈ [-MW/2, MW/2], z ∈ [MZ - MD/2, MZ + MD/2]; the top of the canvas is the opponent's side
 const MW = 15.4, MD = 11.6, MZ = -0.2;
+const MAT_R = 0.42; // the cloth's rounded corner (the bound edge, the stitches and the rolled rim follow it)
+// the lacquer tray the cloth lies on and the thin inlaid line round it, in the look of the near mat: sRGB colours of the tray, the line and the line's glow
+const TRAY = { lac: ["#2c0d0a", "#c99a3e", "#6a4612"], glass: ["#0b1532", "#9fd0ff", "#1f4a7a"], pro: ["#1b1e25", "#b8c0cf", "#353c48"], sketch: ["#2e2219", null, null] };
 // a player's own picture lies on their half as a cloth playmat would: inside the table's gilded border and clear of the
 // centre band, its corners rounded, its edge bound and stitched; the zones' gold line-work is printed over it
 const PM = { x: 7.2, z0: 0.42, z1: 0.46, r: 0.3, bind: 0.075 }; // half its width; gap to the centre line; gap to the near edge; corner; binding
@@ -1585,12 +1608,16 @@ function clothMat(M, mt, Q) {
   M.onBeforeCompile = (sh) => {
     sh.uniforms.weaveRep = M.userData.weave.rep; sh.uniforms.weaveK = M.userData.weave.k;
     const maps = THREE.ShaderChunk.normal_fragment_maps.replace("texture2D( normalMap, vUv )", `texture2D( normalMap, vUv * vec2( weaveRep, weaveRep * ${(MD / MW).toFixed(4)} ) )`).replace("mapN.xy *= normalScale;", "mapN.xy *= normalScale * clothK;");
-    sh.fragmentShader = "uniform float weaveRep;\nuniform vec3 weaveK;\n" + sh.fragmentShader
-      .replace("#include <normal_fragment_maps>", "float clothK = vUv.y > weaveK.z ? weaveK.x : weaveK.y;\n" + maps)
+    const lay = Q === "low" ? "" : `
+	{ vec2 lp = vUv * vec2(3.0, ${(3 * MD / MW).toFixed(3)}); const float e = 0.03; float n0 = clothN(lp), nx = clothN(lp + vec2(e, 0.0)), ny = clothN(lp + vec2(0.0, e));
+	  vec3 tX = normalize((viewMatrix * vec4(1.0, 0.0, 0.0, 0.0)).xyz), tZ = normalize((viewMatrix * vec4(0.0, 0.0, 1.0, 0.0)).xyz);
+	  normal = normalize(normal - (tX * (nx - n0) - tZ * (ny - n0)) / e * 0.04 * clothK); }`; // the lay of the cloth: a broad, soft unevenness (a few percent of light)
+    sh.fragmentShader = "uniform float weaveRep;\nuniform vec3 weaveK;\nfloat clothH(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }\nfloat clothV(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(clothH(i), clothH(i + vec2(1.0, 0.0)), f.x), mix(clothH(i + vec2(0.0, 1.0)), clothH(i + vec2(1.0, 1.0)), f.x), f.y); }\nfloat clothN(vec2 p) { return clothV(p) * 0.7 + clothV(p * 2.3 + 5.1) * 0.3; }\n" + sh.fragmentShader
+      .replace("#include <normal_fragment_maps>", "float clothK = vUv.y > weaveK.z ? weaveK.x : weaveK.y;\n" + maps + lay)
       // cloth's sheen: the fibres catch the light toward the edge of view (a soft rim, strongest on the far side of the table)
       .replace("#include <tonemapping_fragment>", "\tgl_FragColor.rgb += vec3( 1.0, 0.95, 0.88 ) * 0.075 * clothK * pow( 1.0 - clamp( dot( normal, normalize( vViewPosition ) ), 0.0, 1.0 ), 3.0 );\n#include <tonemapping_fragment>");
     // with the hall to reflect (high quality), only the gold leaf reflects it fully
-    if (M.userData.metal) sh.fragmentShader = sh.fragmentShader.replace("#include <lights_fragment_maps>", "#include <lights_fragment_maps>\n\tradiance *= mix(0.22, 1.0, metalnessFactor);");
+    if (M.userData.metal) sh.fragmentShader = sh.fragmentShader.replace("#include <lights_fragment_maps>", "#include <lights_fragment_maps>\n\tradiance *= mix(0.08, 1.0, metalnessFactor);");
   };
   M.customProgramCacheKey = () => "cloth" + (M.userData.metal ? 1 : 0); M.needsUpdate = true;
 }
@@ -1599,10 +1626,11 @@ function binding(g, rq, FAR, NEAR, CW, CH, yMid, U) {
   const b = U(0.13), sx = U(0.075);
   for (const [m, y0, y1] of [[FAR, 0, yMid], [NEAR, yMid, CH]]) { if (m.kind === "sketch") continue;
     const thread = m.kind === "glass" ? "rgba(150,205,255,.62)" : m.kind === "pro" ? "rgba(205,214,232,.55)" : m.kind === "sakura" ? "rgba(240,180,206,.55)" : "rgba(222,184,116,.58)";
+    const cr = U(MAT_R); // (round the cloth's rounded corners)
     for (const [c, band, st] of [[g, "rgba(10,9,13,.92)", thread], [rq, "#e6e6e6", null]]) { c.save(); c.beginPath(); c.rect(0, y0, CW, y1 - y0); c.clip();
-      c.lineWidth = b * 2; c.strokeStyle = band; c.strokeRect(0, 0, CW, CH);
-      if (st) { c.lineWidth = Math.max(1, U(0.01)); c.strokeStyle = "rgba(255,255,255,.08)"; c.strokeRect(b, b, CW - 2 * b, CH - 2 * b); // the binding's turned edge
-        c.setLineDash([U(0.07), U(0.042)]); c.lineCap = "round"; c.lineWidth = Math.max(1, U(0.017)); c.strokeStyle = st; c.strokeRect(sx, sx, CW - 2 * sx, CH - 2 * sx); c.setLineDash([]); }
+      c.lineWidth = b * 2; c.strokeStyle = band; roundRect(c, 0, 0, CW, CH, cr); c.stroke(); c.fillStyle = band; for (const [x, y] of [[0, 0], [CW, 0], [0, CH], [CW, CH]]) c.fillRect(x - cr, y - cr, 2 * cr, 2 * cr);
+      if (st) { c.lineWidth = Math.max(1, U(0.01)); c.strokeStyle = "rgba(255,255,255,.08)"; roundRect(c, b, b, CW - b, CH - b, cr - b); c.stroke(); // the binding's turned edge
+        c.setLineDash([U(0.07), U(0.042)]); c.lineCap = "round"; c.lineWidth = Math.max(1, U(0.017)); c.strokeStyle = st; roundRect(c, sx, sx, CW - sx, CH - sx, cr - sx); c.stroke(); c.setLineDash([]); }
       c.restore(); } }
 }
 const roundRect = (c, x0, y0, x1, y1, r) => { c.beginPath(); c.moveTo(x0 + r, y0); c.arcTo(x1, y0, x1, y1, r); c.arcTo(x1, y1, x0, y1, r); c.arcTo(x0, y1, x0, y0, r); c.arcTo(x0, y0, x1, y0, r); c.closePath(); };
@@ -1965,6 +1993,8 @@ float fbm(vec2 p) { float v = 0.0, a = 0.5; for (int k = 0; k < 4; k++) { v += a
 vec3 hue(float x) { return clamp(abs(mod(x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0); }`).replace("gl_FragColor = vec4( outgoingLight, diffuseColor.a );", `vec3 col = outgoingLight;
   float sw = vUv.x * 0.8 - vUv.y - uSweep; float band = exp(-sw * sw * 36.0);
   col += band * uSheen * mix(vec3(1.0, 0.97, 0.9), uTint, 0.4);
+  { vec3 Nl = normalize(vNw), Vl = normalize(cameraPosition - vWp), Hl = normalize(vec3(0.0, 0.74, -0.67) + Vl); float nhl = max(dot(Nl, Hl), 0.0), nvl = max(dot(Nl, Vl), 0.0);
+    col += vec3(1.0, 0.97, 0.92) * (pow(nhl, 420.0) * 0.13 + pow(nhl, 9.0) * 0.015 + pow(1.0 - nvl, 5.0) * 0.045); } // the laminate: a broad soft gloss from the lamps beyond the table, a small glint that drifts as the card or the view moves, more light at a grazing angle
   float fk = uFoil * uFoilK;
   if (fk > 0.0) { // the rainbow slides with the angle the card is seen from, strongest on the art's light parts; four-point glints wink in and out
     vec3 N = normalize(vNw), Vd = normalize(cameraPosition - vWp); float ang = dot(Vd.xz, vec2(2.6, 1.8)) + N.x * 2.2 + N.z * 2.6, lum = dot(outgoingLight, vec3(0.3, 0.59, 0.11));
@@ -1993,7 +2023,7 @@ function lookOf(s, p) {
   return null;
 }
 // one material per look, made the first time it is wanted and kept for the whole table (never disposed with a card)
-const backLook = (k) => { if (!k) return R.backMat; R.backMats = R.backMats || {}; if (!R.backMats[k]) { const m = new THREE.MeshBasicMaterial({ map: backTexture(k), color: 0xcccccc, toneMapped: false }); m.userData.keep = true; R.backMats[k] = m; } return R.backMats[k]; };
+const backLook = (k) => { if (!k) return R.backMat; R.backMats = R.backMats || {}; if (!R.backMats[k]) { const m = glossBack(new THREE.MeshBasicMaterial({ map: backTexture(k), color: 0xcccccc, toneMapped: false })); m.userData.keep = true; R.backMats[k] = m; } return R.backMats[k]; };
 // a geometric card back. กระจกดารา: night glass, stars, a chamfered ice-blue frame and a circle of light at the heart.
 // กราไฟต์: a carbon weave, a white chamfered frame, an accent band across the middle and a hexagon round the mark.
 function geoBack(look) {
@@ -2133,7 +2163,7 @@ export function banner(t, s) {
   let b = document.querySelector(".banner"); if (!b) { b = h("div", { class: "banner" }, h("div", { class: "band" }, h("b"), h("span"))); document.body.append(b); }
   b.querySelector("b").textContent = t; b.querySelector("span").textContent = s || ""; const band = b.querySelector(".band");
   gsap.killTweensOf(band); gsap.fromTo(band, { opacity: 0, scaleX: 0.4 }, { opacity: 1, scaleX: 1, duration: 0.35, ease: "power3.out" });
-  const th = /[\u0E00-\u0E7F]/.test(t); /* a Thai name is not tracked out like YOUR TURN */
+  const th = /[\u0E00-\u0E7F]/.test(t); /* Thai is not tracked out like a Latin name: it is set close, with only a little air */
   gsap.fromTo(b.querySelector("b"), { letterSpacing: th ? "0.2em" : "0.6em", opacity: 0 }, { letterSpacing: th ? "0.03em" : "0.25em", opacity: 1, duration: 0.5, ease: "power3.out" });
   gsap.to(band, { opacity: 0, duration: 0.4, delay: 1.3 });
 }
@@ -2159,7 +2189,7 @@ export function popText(pos3, text, color, big = 1) {
     .to(d, { y: 48, rotation: r, opacity: 0, duration: 0.5, ease: "power2.in" }, "+=0.42");
 }
 export function mood(mine) { if (!R) return; gsap.to(R.goldL, { intensity: mine ? 0.95 : 0.5, duration: 0.8 }); gsap.to(R.redL, { intensity: mine ? 0.45 : 0.9, duration: 0.8 }); }
-const GLOW = { rest: 0.16, sel: 0.85 };
+const GLOW = { rest: 0.1, sel: 0.85 }; // (at rest only a faint rim: the contact shadow and the laminate carry the card; the glow is for what is chosen)
 export function highlight(ids, on = true) { if (!R) return; for (const m of R.meshes.values()) { const hit = ids.includes(m.i); m.pulse = on && hit; if (!m.pulse && !m.busy) gsap.to(m.glow.material, { opacity: m.sel ? GLOW.sel : GLOW.rest, duration: 0.2 }); } }
 export function setLifeTarget(v) { if (!R) return; R.lifeT.visible = v; R.lifeHalo.visible = v; }
 export function select(i) { if (!R) return; for (const m of R.meshes.values()) { m.sel = m.i === i; if (m.busy) continue; gsap.to(m.glow.material, { opacity: m.sel ? GLOW.sel : GLOW.rest, duration: 0.2 }); gsap.to(m.grp.position, { y: m.restY + (m.sel ? 0.4 : 0), duration: 0.2 }); if (m.sel) sweep(m, 0.8, 0.6); } }
@@ -2210,8 +2240,16 @@ function fitTall(camera, w, hh) {
   const look = new V3(xc, 0, zc); return { pos: look.clone().addScaledVector(dir, -d), look };
 }
 // the mat redrawn for the other table (the phone was turned)
+// the tray under the cloth and the line inlaid in it take the look of the near mat (lacquer and gold, night glass and ice, graphite and steel, or a
+// plain dark desk under a paper mat); the rolled rim is the binding's dark thread, or the paper itself
+function trayLook() {
+  if (!R || !R.trayMat) return; const m = R.matKey && R.matKey[1] && R.matKey[1].near, k = m ? m.look || m.kind : null;
+  const t = TRAY[k === "glass" ? "glass" : k === "pro" ? "pro" : k === "sketch" ? "sketch" : "lac"], lin = (c) => new THREE.Color(c).convertSRGBToLinear();
+  R.trayMat.color.copy(lin(t[0])); R.inlay.visible = !!t[1]; if (t[1]) { R.inlayMat.color.copy(lin(t[1])); R.inlayMat.emissive.copy(lin(t[2])); }
+  R.rollMat.color.copy(k === "sketch" && m.lac ? lin(m.lac) : lin("#121015"));
+}
 function swapMat() {
-  if (!R || !R.matMat || !R.matKey) return; const mt = matTextures(...R.matKey, R.zones), M = R.matMat;
+  if (!R || !R.matMat || !R.matKey) return; trayLook(); const mt = matTextures(...R.matKey, R.zones), M = R.matMat;
   for (const k of ["map", "emissiveMap", "roughnessMap"]) if (M[k] && M[k].dispose) M[k].dispose();
   M.map = mt.base; M.emissiveMap = mt.glow; M.emissive.setHex(mt.emis); M.roughnessMap = R.Q === "high" ? mt.rough : null; if (!M.roughnessMap) mt.rough.dispose(); if (M.metalnessMap) M.metalnessMap = mt.glow; R.matGlow = mt.glow; if (M.userData.pmCloth) { M.userData.pmCloth.uPmClothN.value = mt.pmCloth[0] ? 1 : 0; M.userData.pmCloth.uPmClothF.value = mt.pmCloth[1] ? 1 : 0; } if (M.userData.weave) M.userData.weave.k.value.set(...mt.weave); M.needsUpdate = true;
 }
@@ -2286,6 +2324,14 @@ const SLEEVE_HOOK = function (sh) {
   float sw = vUv.x * 0.75 - vUv.y + dot(Vd.xz, vec2(1.4, 1.1)) * 1.6, streak = exp(-pow(fract(sw * 0.5) - 0.5, 2.0) * 60.0) * 0.09 * uGloss;
   float fr = pow(1.0 - nv, 4.0) * mix(0.04, 0.16, uGloss);
   gl_FragColor = vec4( outgoingLight + (sp * (0.35 + 0.65 * plastic) + (streak + fr) * plastic) * vec3(1.0, 0.98, 0.94), diffuseColor.a );`);
+};
+// the built-in backs (gold leaf, night glass, graphite) are laminated card stock: the sleeve's highlight at a softer gloss
+function glossBack(m) { m.userData.u = { uGloss: { value: 0.5 } }; m.onBeforeCompile = SLEEVE_HOOK; return m; }
+// the side of a stack of cards (Deck, hell): one fine line per card, which fades into an even tone where the lines are finer than a pixel
+const PILE_HOOK = (sh) => {
+  sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying float vPy;").replace("#include <project_vertex>", "#include <project_vertex>\nvPy = (modelMatrix * vec4(transformed, 1.0)).y;");
+  sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nvarying float vPy;").replace("#include <map_fragment>", `#include <map_fragment>
+  { float q = vPy / 0.0042, w = fwidth(q), l = smoothstep(0.25 - w, 0.25 + w, abs(fract(q) - 0.5)); diffuseColor.rgb *= mix(0.9, 0.8 + 0.2 * l, clamp(1.0 - w * 1.5, 0.0, 1.0)); }`);
 };
 const sleeveFin = () => { if (R && R.preview && R.pv.fin != null) return R.pv.fin; try { return localStorage.getItem("bot.sleeveFin") === "matte" ? 0 : 1; } catch { return 1; } };
 function sleeveMat(img) { const m = new THREE.MeshBasicMaterial({ map: sleeveTexture(img), color: 0xdedede, toneMapped: false }); m.userData.keep = true; m.userData.u = { uGloss: { value: sleeveFin() } }; m.onBeforeCompile = SLEEVE_HOOK; return m; }
@@ -2693,11 +2739,11 @@ async function animateEvent(ev, prev, s, V) {
   } else if (ev.k === "fx") { // a card's effect resolves: its picture, its name and what it did, for a moment over the table
     fxCut(s, ev, mineSide(ev.p)); await sleepMs(350);
   } else if (ev.k === "turn") {
-    mood(mineSide(ev.p)); avatarDo(ev.p, "hop"); Sfx.play("turn", { mine: mineSide(ev.p) }); if (mineSide(ev.p)) buzz(25); banner(mineSide(ev.p) && !R.watch ? "YOUR TURN" : s.P[ev.p].name, `เทิร์น ${ev.t}`); await sleepMs(500);
+    mood(mineSide(ev.p)); avatarDo(ev.p, "hop"); Sfx.play("turn", { mine: mineSide(ev.p) }); if (mineSide(ev.p)) buzz(25); banner(mineSide(ev.p) && !R.watch ? "ตาของคุณ" : s.P[ev.p].name, `เทิร์น ${ev.t}`); await sleepMs(500);
   } else if (ev.k === "battle") {
     Sfx.play("battle"); banner("BATTLE PHASE", ""); gsap.fromTo(R.div.material, { opacity: 0.9 }, { opacity: 0, duration: 1.4, ease: "power2.out" });
   } else if (ev.k === "over") {
-    const won = R.watch ? ev.w != null : ev.w === V; Sfx.play(won ? "win" : "lose"); if (R.watch) banner(ev.w != null ? s.P[ev.w].name : "DRAW", ev.w != null ? "ชนะ" : ""); else banner(won ? "VICTORY" : "DEFEAT", ""); for (const p of [0, 1]) avatarDo(p, ev.w === p ? "win" : "lose"); flash(won ? "rgba(255,210,120,.5)" : "rgba(80,0,10,.6)", 0.6);
+    const won = R.watch ? ev.w != null : ev.w === V; Sfx.play(won ? "win" : "lose"); if (R.watch) banner(ev.w != null ? s.P[ev.w].name : "เสมอ", ev.w != null ? "ชนะ" : ""); else banner(won ? "ชนะ" : "แพ้", won ? "ยินดีด้วย" : "ลองใหม่อีกครั้ง"); for (const p of [0, 1]) avatarDo(p, ev.w === p ? "win" : "lose"); flash(won ? "rgba(255,210,120,.5)" : "rgba(80,0,10,.6)", 0.6);
     if (!reduce && won && !R.watch && R.winfx !== "gold") winFx(R.winfx);
     else if (!reduce) leafRain(won);
   }

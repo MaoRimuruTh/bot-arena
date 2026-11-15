@@ -3,17 +3,20 @@
 // look can be seen, and where it sits, before a game. Pointing at a choice (or reaching it with the keyboard) shows it for
 // a moment; choosing it keeps it. Without WebGL, on "แบบเรียบ 2D" or "ประหยัดเครื่อง", or while a game table is open, a flat
 // map of the same table marks the spot instead. Nothing here is saved or sent anywhere: it only draws.
-import { h, toast } from "./util.js?v=20261115163721";
-import { Arena, TablePreview, tableMap, MATS, gfxSetting } from "./arena3d.js?v=20261115163721";
-import { myFigure, myMat, myScene, mySleeve, mySigil, myWinFx } from "./achieve.js?v=20261115163721";
-import { Vault, onVault } from "./vault.js?v=20261115163721";
-import { CARDS, isBase } from "./cards.js?v=20261115163721";
-import { E } from "./engine.js?v=20261115163721";
-import { Me } from "./fb.js?v=20261115163721";
+import { h, toast } from "./util.js?v=20261115182417";
+import { Arena, TablePreview, tableMap, MATS, gfxSetting } from "./arena3d.js?v=20261115182417";
+import { myFigure, myMat, myScene, mySleeve, mySigil, myWinFx } from "./achieve.js?v=20261115182417";
+import { Vault, onVault } from "./vault.js?v=20261115182417";
+import { CARDS, isBase } from "./cards.js?v=20261115182417";
+import { E } from "./engine.js?v=20261115182417";
+import { Me } from "./fb.js?v=20261115182417";
 
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const tallNow = () => innerWidth / innerHeight < 0.9; // the table an upright phone gets (arena3d.js ZONES.tall)
 // which part of the table each setting is about
+// the bot's mat across the table (as js/views/play.js botMat): beside a night-glass or graphite look, the other modern cloth; else a lacquer colour
+const botMatOf = (m) => { const cl = document.documentElement.classList; if (m === "glass" || m === "dusk") return "pro"; if (m === "pro") return "glass";
+  if (m === "black" && cl.contains("ui-glass")) return "pro"; if (m === "black" && cl.contains("ui-pro")) return "glass"; return m === "red" ? "black" : "red"; };
 const KEY_VIEW = { "bot.av3": "av3", "bot.mat": "mat", "bot.sleeve": "sleeve", "bot.sleeveFin": "sleeve", "bot.scene": "scene", "bot.sig": "sig", "bot.winfx": "win", "bot.ui": "table" };
 const VIEWS = [["table", "ทั้งฝั่ง"], ["mat", "ผ้าปู"], ["sleeve", "หลังการ์ด"], ["av3", "อวตาร"], ["scene", "รอบโต๊ะ"]];
 const CAP = {
@@ -62,7 +65,7 @@ function tableState(L, vault) {
     hell: Array.from({ length: nHell }, (_, k) => inst(p * 100 + 70 + k, ids[k] != null ? ids[k] : pc.fill, p)), dark: [] });
   const me = side(0, pc.me, 4, 34, 2), op = side(1, pc.op, 4, 30, 1);
   Object.assign(me, { mat: L.mat, sleeve: L.sleeve, av3: L.av3, sig: L.sig });
-  Object.assign(op, { mat: L.mat === "red" ? "black" : "red", sleeve: "", av3: "", sig: "lotus" }); // (the bot's mat in a practice game)
+  Object.assign(op, { mat: botMatOf(L.mat), sleeve: "", av3: "", sig: "lotus" }); // (the bot's mat in a practice game)
   // an owner's own thing looked at in Settings: his picture if he has one, or a neutral board where it will go
   if (vault) { const k = vault.kind, has = vault.has;
     if (k === "mat") me.mat = has ? "own" : "ph"; else if (k === "sleeve") me.sleeve = has ? "own" : "ph";
@@ -113,7 +116,7 @@ export function tablePreview() {
     const mat = vault && vault.kind === "mat" ? (vault.has ? "own" : "ph") : L.mat, sleeve = vault && vault.kind === "sleeve" ? "own" : L.sleeve;
     const back = sleeve === "own" ? 'fill="#4a4954" stroke="#f0e8d6" stroke-dasharray=".12 .08"' : 'fill="#6a1a14" stroke="#d8a84a"';
     const zone = 'fill="none" stroke="#d8a84a" stroke-opacity=".75" stroke-width=".05"', fig = vault && (vault.kind === "stand" || vault.kind === "fig") ? vault.kind : L.av3 ? "av3" : "";
-    let s = `<rect x="${-M.MW / 2}" y="${M.MZ - M.MD / 2}" width="${M.MW}" height="${M.MD / 2}" fill="${lac(L.mat === "red" ? "black" : "red")}" opacity=".45"/>`;
+    let s = `<rect x="${-M.MW / 2}" y="${M.MZ - M.MD / 2}" width="${M.MW}" height="${M.MD / 2}" fill="${lac(botMatOf(L.mat))}" opacity=".45"/>`;
     s += `<rect x="${-M.MW / 2}" y="${M.MZ}" width="${M.MW}" height="${M.MD / 2}" fill="${lac(mat, "#120b09")}" stroke="#d8a84a" stroke-width=".06"/>`;
     if (mat === "own" || mat === "ph") s += r(0, M.MZ + M.MD / 4, M.PM.x * 2, M.MD / 2 - M.PM.z0 - M.PM.z1, 'fill="none" stroke="#f0e8d6" stroke-width=".05" stroke-dasharray=".2 .12"') + tx(0, M.MZ + M.MD / 2 - 0.75, mat === "ph" ? "ภาพผ้าปูของคุณ" : "ผ้าปูของฉัน", 'class="lb"');
     s += `<line x1="${-M.MW / 2}" x2="${M.MW / 2}" y1="${M.MZ}" y2="${M.MZ}" stroke="#d8a84a" stroke-width=".05" stroke-dasharray=".25 .15"/>`;
