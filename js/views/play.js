@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261116182525";
-import { fxText, kwGloss } from "../fxtext.js?v=20261116182525";
-import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261116182525";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261116182525";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261116182525";
-import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261116182525";
-import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor, myWinFx } from "../achieve.js?v=20261116182525";
-import { themeCounts, officialStarters } from "../boxdecks.js?v=20261116182525";
-import { ladder, ladderReset } from "../ladder.js?v=20261116182525";
-import { notify } from "../notify.js?v=20261116182525";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261116182525";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261116182525";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261116182525";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261116182525";
-import { Music, MUSIC_STYLES } from "../music.js?v=20261116182525";
-import { Sfx } from "../sfx.js?v=20261116182525";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar, shareReplayDoc, loadSharedReplay } from "../fb.js?v=20261116182525";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261116182525";
-import { readAura, traits } from "../auras.js?v=20261116182525";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261116182525";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261116194838";
+import { fxText, kwGloss } from "../fxtext.js?v=20261116194838";
+import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261116194838";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261116194838";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261116194838";
+import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261116194838";
+import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor, myWinFx } from "../achieve.js?v=20261116194838";
+import { themeCounts, officialStarters } from "../boxdecks.js?v=20261116194838";
+import { ladder, ladderReset } from "../ladder.js?v=20261116194838";
+import { notify } from "../notify.js?v=20261116194838";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261116194838";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261116194838";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261116194838";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261116194838";
+import { Music, MUSIC_STYLES } from "../music.js?v=20261116194838";
+import { Sfx } from "../sfx.js?v=20261116194838";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar, shareReplayDoc, loadSharedReplay } from "../fb.js?v=20261116194838";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261116194838";
+import { readAura, traits } from "../auras.js?v=20261116194838";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261116194838";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -26,14 +26,14 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(s.id ? [`รีเพลย์ในเครื่องนี้: ${s.id}-${V}`] : []), "บันทึก 40 บรรทัดล่าสุด:\n" + s.log.slice(-40).map((l) => "· " + l.m).join("\n"), // so a report can be traced back to its game
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261116182525";
-import { customMat, customSleeve, customFig, customStand, setOnReady, onVault } from "../vault.js?v=20261116182525";
-import { openGlossSheet } from "../glossary.js?v=20261116182525";
-import { weekRule, weeklyPanel, weeklyWinNote, isoWeek, ruleChip, hudLine, eventPicker, eventOpt, seriesNext, seriesChip, seriesText, seriesAfter, seriesWinner } from "../weekly.js?v=20261116182525";
-import { openCoach } from "../coach.js?v=20261116182525";
-import { mullHint } from "../matchups.js?v=20261116182525";
-import { logged, check as checkMoves, idleReason, pickMap } from "../movelog.js?v=20261116182525";
-import { openSandbox, openFishRuns } from "../sandbox.js?v=20261116182525";
+import { allDecks, deckById } from "./decks.js?v=20261116194838";
+import { customMat, customSleeve, customFig, customStand, setOnReady, onVault } from "../vault.js?v=20261116194838";
+import { openGlossSheet } from "../glossary.js?v=20261116194838";
+import { weekRule, weeklyPanel, weeklyWinNote, isoWeek, ruleChip, hudLine, eventPicker, eventOpt, seriesNext, seriesChip, seriesText, seriesAfter, seriesWinner } from "../weekly.js?v=20261116194838";
+import { openCoach } from "../coach.js?v=20261116194838";
+import { mullHint } from "../matchups.js?v=20261116194838";
+import { logged, check as checkMoves, idleReason, pickMap } from "../movelog.js?v=20261116194838";
+import { openSandbox, openFishRuns } from "../sandbox.js?v=20261116194838";
 // the players' own mat picture, card sleeve and figure (vault.js): the table asks for them, and redraws when one loads or changes
 Arena.setCustom({ mat: customMat, sleeve: customSleeve, fig: customFig, stand: customStand, skins: (s) => setGameSkins(s && s.P, Me.uid) }); setOnReady((o) => Arena.customReady(o)); onVault(() => Arena.refreshCustom());
 { let sig = ""; Data.listeners.add(() => { const sh = Data.meta && Data.meta.show, now = sh ? Object.entries(sh).map(([k, x]) => k + ":" + (x && x.v) + ":" + (x && x.finish)).join() : ""; if (now !== sig) { sig = now; Arena.refreshCustom(); } }); }
@@ -244,7 +244,7 @@ function questPanel() {
 }
 // ---------- start / resume ----------
 const pickOpp = () => { const o = Setup.opp !== "random" && deckById(Setup.opp); if (o && !deckLocked(o)) return o; const st = allDecks().filter((d) => d.starter && !d.box); return st[Math.floor(Math.random() * st.length)]; };
-import { dupNames, ruleDeck, singlePanel, botSingle, NODUP_NEED } from "../weekly.js?v=20261116182525";
+import { dupNames, ruleDeck, singlePanel, botSingle, NODUP_NEED } from "../weekly.js?v=20261116194838";
 const pack = (d) => ({ ...deckToList(d), name: d.name, id: d.id });
 // ไต่ด่าน: the official Starter Decks one after another, the bot growing stronger; a step is passed by a win recorded with its number
 function gauntletSteps() { const lv = (k, n) => (k < 2 ? "easy" : k < Math.ceil(n * 0.6) ? "basic" : "hard"); const list = officialStarters().filter((d) => validateDeck(d).ok);
@@ -428,7 +428,7 @@ function endRestart(g) {
   if (!G) return; const s = G.s, V = G.V, already = G.saved; G.saved = true; const seats = g.seats || [];
   const oppName = s ? s.P[1 - V].name : V === 0 ? g.guestName : g.hostName;
   if (s && !already) { const P = s.P[V], O = s.P[1 - V];
-    saveMatch(s.id + "-" + V, { uid: Me.uid, mode: "friend", nc: 1, noRw: 1, flag: "restart", deckId: P.deckId, deckName: P.deckName, opp: O.name, oppDeck: O.deckName, result: "draw", turns: s.turn, reason: "เริ่มใหม่ตามที่ตกลงกัน (เกมนี้ไม่มีผล)", first: s.first === V, at: Date.now(), lifeLost: P.life.filter((x) => x.up).length, rp: 0, undo: 0, brain: null }).catch((e) => console.warn(e)); }
+    recordOnce(s.id + "-" + V, { uid: Me.uid, mode: "friend", nc: 1, noRw: 1, flag: "restart", deckId: P.deckId, deckName: P.deckName, opp: O.name, oppDeck: O.deckName, result: "draw", turns: s.turn, reason: "เริ่มใหม่ตามที่ตกลงกัน (เกมนี้ไม่มีผล)", first: s.first === V, at: Date.now(), lifeLost: P.life.filter((x) => x.up).length, rp: 0, undo: 0, brain: null }).catch((e) => console.warn(e)); }
   Restart = { old: G.id, V, host: V === 0, oppUid: seats[1 - V] || "", oppName, at: Date.now(), ready: false, newId: null,
     room: { ...(g.clock && g.clock.sec ? { clock: g.clock } : {}), ...(g.rule ? { rule: g.rule } : {}), ...(g.series ? { series: { of: g.series.of || 3, prev: (g.series.prev || []).slice(0, 4) } } : {}), ...(g.tour ? { tour: g.tour } : {}) } };
   const mine = s && s.P[V].deckId; if (mine && deckById(mine)) Setup.deck = mine; Setup.mode = "friend"; lsSet("bot.setup", Setup); keepRestart();
@@ -524,7 +524,7 @@ async function noContest(id) {
 function endNoContest(note) {
   if (!G) return; const already = G.saved; G.saved = true; const s = G.s, V = G.V;
   if (s && !already) { const P = s.P[V], O = s.P[1 - V];
-    saveMatch(s.id + "-" + V, { uid: Me.uid, mode: "friend", nc: 1, noRw: 1, flag: "tamper", deckId: P.deckId, deckName: P.deckName, opp: O.name, oppDeck: O.deckName, result: "draw", turns: s.turn, reason: "จบแบบไม่มีผล: สถานะเกมตรวจไม่ผ่าน", first: s.first === V, at: Date.now(), lifeLost: P.life.filter((x) => x.up).length, rp: 0, undo: 0, brain: null }).catch((e) => console.warn(e)); }
+    recordOnce(s.id + "-" + V, { uid: Me.uid, mode: "friend", nc: 1, noRw: 1, flag: "tamper", deckId: P.deckId, deckName: P.deckName, opp: O.name, oppDeck: O.deckName, result: "draw", turns: s.turn, reason: "จบแบบไม่มีผล: สถานะเกมตรวจไม่ผ่าน", first: s.first === V, at: Date.now(), lifeLost: P.life.filter((x) => x.up).length, rp: 0, undo: 0, brain: null }).catch((e) => console.warn(e)); }
   toast(note || "จบเกมแบบไม่มีผลแล้ว ไม่มีใครได้หรือเสียอะไร", note ? "bad" : undefined);
   stopGame(true); location.hash = "#play";
 }
@@ -556,7 +556,7 @@ function openOnline(id, V, watch) {
   G.unsub = F.onSnapshot(gameRef(id), (snap) => {
     if (!G) return; const g = snap.data();
     if (!g) { toast("ห้องถูกปิดแล้ว"); stopGame(true); location.hash = "#play"; return; }
-    G.updatedAt = g.updatedAt || G.updatedAt; if (!G.watch) { G.void = !!(g.bad0 || g.bad1 || g.uv); G.verOp = g["ver" + (1 - G.V)] || ""; } if (g.clock && g.clock.sec) G.clock = g.clock; seriesFrom(g, id);
+    G.updatedAt = g.updatedAt || G.updatedAt; if (!G.watch) { G.void = !!(g.bad0 || g.bad1 || g.uv); G.verOp = g["ver" + (1 - G.V)] || ""; if (G.void && G.saved && G.s && G.s.phase === "over") recNc(G.s.id + "-" + G.V, G.tamper ? "tamper" : "unverified", "ไม่นับผล: " + (G.s.reason || "")).catch((e) => console.warn(e)); } if (g.clock && g.clock.sec) G.clock = g.clock; seriesFrom(g, id);
     if (!G.watch) { if (g.rvOk && !G.rvDone) { G.rvDone = G.ncDone = true; endRestart(g); return; } rvSeen(g); }
     if (g.nc && !G.watch && !G.ncDone) { G.ncDone = true; endNoContest(g.nc.by === G.V ? "" : "เพื่อนขอจบเกมนี้แบบไม่มีผล เพราะสถานะเกมตรวจไม่ผ่าน"); return; }
     G.emoSeen = G.emoSeen || {};
@@ -818,8 +818,19 @@ function noteUnread(s, t) {
   const m = lsGet(UNREAD, {}); m[k] = { n: d.n, when: t.when, at: Date.now(), times: ((m[k] || {}).times || 0) + 1 };
   const keys = Object.keys(m).sort((a, b) => m[b].at - m[a].at); for (const x of keys.slice(40)) delete m[x]; lsSet(UNREAD, m);
 }
+// FR: a game's record is written once (the database rules allow only creating it). A game that finishes again (opened
+// after its end: F5 on the final table) finds its record and keeps it, with no second notice; the record may only become
+// "ไม่นับผล" (a flag that came after it was saved), never go back to a win or loss (a note that lived only on this device
+// is gone after a reload, the record still has it)
+const recOf = (id) => Data.matches.find((m) => m.id === id);
+const ncSent = new Set();
+function recNc(id, flag, reason) { const old = recOf(id); if (!old || old.nc || ncSent.has(id)) return Promise.resolve(); ncSent.add(id);
+  return F.updateDoc(F.doc(db, "matches", id), { result: "draw", nc: 1, noRw: 1, flag, reason: String(reason || "").slice(0, 200) }); }
+const recordOnce = (id, body) => (recOf(id) ? (body.nc ? recNc(id, body.flag || "unverified", body.reason) : Promise.resolve()) : saveMatch(id, body));
 function finish() {
-  if (!G || G.saved) { draw(); return; } G.saved = true; const s = G.s;
+  if (!G || G.saved) { draw(); return; }
+  if (!Data.ready.matches && !G.puzzle && G.recWait !== 2) { if (!G.recWait) { const g = G, t0 = Date.now(); g.recWait = 1; const k = setInterval(() => { if (G !== g) clearInterval(k); else if (Data.ready.matches || Date.now() - t0 > 6000) { clearInterval(k); g.recWait = 2; finish(); } }, 150); } draw(); return; } // FR: this account's records first, so a game that finishes again finds its own
+  G.saved = true; const s = G.s;
   if (G.puzzle) { // puzzles stay out of the history; solving enough of them opens the gold-leaf mat
     if (s.winner === G.V) { const before = earned(), qBefore = doneToday(); const d = lsGet(PZ_DONE, {}); d[G.puzzle.id] = d[G.puzzle.id] || Date.now(); lsSet(PZ_DONE, d);
       const now = earned(), fresh = ACH.filter((a) => now.has(a.id) && !before.has(a.id)), quests = dayQuests(dayOf(Date.now())).filter((x) => x.done && !qBefore.has(x.q.id)).map((x) => questNote(x.q));
@@ -830,11 +841,12 @@ function finish() {
     const P = s.P[V], O = s.P[1 - V]; const rp = keepReplay(s.id + "-" + V);
     const th = themeCounts(deckById(P.deckId));
     const rec = { id: s.id + "-" + V, mode: G.fish ? "goldfish" : G.mode, brain: G.brain || null, lifeLost: P.life.filter((x) => x.up).length, deckId: P.deckId, th, result: s.winner === V ? "win" : s.winner == null ? "draw" : "loss", turns: s.turn, first: s.first === V, at: Date.now(), ...(G.undos ? { undo: G.undos, noRw: 1 } : {}), ...(G.tamper || G.void ? { noRw: 1 } : {}) };
-    const fresh = newlyEarned(rec), quests = questsDoneBy(rec); // what this game unlocked, and which of today's quests it finished
+    const had = recOf(rec.id), fresh = had ? [] : newlyEarned(rec), quests = had ? [] : questsDoneBy(rec); // what this game unlocked, and which of today's quests it finished (FR: told once, when its record is first written)
+    if (had && had.nc && G.mode === "friend" && !G.tamper) G.tamper = "record: " + (had.flag || "nc"); // FR: the table shows what the record says
     if (fresh.length || quests.length) setTimeout(() => celebrate([...quests.map(questNote), ...fresh]), 1800);
-    const nU = G.undos || 0; if (nU) setTimeout(() => toast(`เกมนี้ย้อนตา ${nU} ครั้ง จึงไม่นับรางวัลปลดล็อคและภารกิจ`), 1800);
-    if (s.rule && s.winner === V && G.mode !== "solo" && !(s.ruleBad || []).includes(V)) { const note = weeklyWinNote(isoWeek(s.startedAt).key); setTimeout(() => toast(note), 2400); } // counted before this game's record lands
-    saveMatch(s.id + "-" + V, { ...(s.rule && !(s.ruleBad || []).includes(V) ? { rule: s.rule, wk: isoWeek(s.startedAt).key } : {}), ...(G.gs ? { gs: G.gs } : {}), ...(G.undos || G.tamper || G.void ? { noRw: 1 } : {}), ...(G.tamper ? { flag: "tamper" } : G.void ? { flag: "unverified" } : {}), rp: rp ? 1 : 0, undo: G.undos || 0, brain: rec.brain, lifeLost: rec.lifeLost, uid: Me.uid, mode: G.fish ? "goldfish" : G.mode, deckId: P.deckId, deckName: P.deckName, th, opp: O.name, oppDeck: O.deckName, result: G.mode === "friend" && (G.tamper || G.void) ? "draw" : s.winner === V ? "win" : s.winner == null ? "draw" : "loss", ...(G.mode === "friend" && (G.tamper || G.void) ? { nc: 1 } : {}), turns: s.turn, reason: G.mode === "friend" && (G.tamper || G.void) ? "ไม่นับผล: " + (s.reason || "") : s.reason, first: s.first === V, at: Date.now(), log: s.log.slice(-14).map((l) => l.m) }).catch((e) => console.warn(e));
+    const nU = had ? 0 : G.undos || 0; if (nU) setTimeout(() => toast(`เกมนี้ย้อนตา ${nU} ครั้ง จึงไม่นับรางวัลปลดล็อคและภารกิจ`), 1800);
+    if (!had && !(G.mode === "friend" && (G.tamper || G.void)) && s.rule && s.winner === V && G.mode !== "solo" && !(s.ruleBad || []).includes(V)) { const note = weeklyWinNote(isoWeek(s.startedAt).key); setTimeout(() => toast(note), 2400); } // counted before this game's record lands
+    recordOnce(s.id + "-" + V, { ...(s.rule && !(s.ruleBad || []).includes(V) ? { rule: s.rule, wk: isoWeek(s.startedAt).key } : {}), ...(G.gs ? { gs: G.gs } : {}), ...(G.undos || G.tamper || G.void ? { noRw: 1 } : {}), ...(G.tamper ? { flag: "tamper" } : G.void ? { flag: "unverified" } : {}), rp: rp ? 1 : 0, undo: G.undos || 0, brain: rec.brain, lifeLost: rec.lifeLost, uid: Me.uid, mode: G.fish ? "goldfish" : G.mode, deckId: P.deckId, deckName: P.deckName, th, opp: O.name, oppDeck: O.deckName, result: G.mode === "friend" && (G.tamper || G.void) ? "draw" : s.winner === V ? "win" : s.winner == null ? "draw" : "loss", ...(G.mode === "friend" && (G.tamper || G.void) ? { nc: 1 } : {}), turns: s.turn, reason: G.mode === "friend" && (G.tamper || G.void) ? "ไม่นับผล: " + (s.reason || "") : s.reason, first: s.first === V, at: Date.now(), log: s.log.slice(-14).map((l) => l.m) }).catch((e) => console.warn(e));
   }
   lsDel(SAVE); draw(); if (G.mode === "friend") ladderReset();
   if (G.rec && G.mode !== "friend") { const g = G; setTimeout(() => { if (G === g && !g.sumSeen) openSummary(g); }, 2600); } /* HB2-5: not again when the player already opened it */ // after the banner and the falling gold or ash
@@ -852,7 +864,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261116182525").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261116194838").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", mat: botMat(), bot: true });
