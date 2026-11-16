@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261116163733";
-import { E } from "./engine.js?v=20261116163733";
-import { h } from "./util.js?v=20261116163733";
-import { Sfx } from "./sfx.js?v=20261116163733";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261116182525";
+import { E } from "./engine.js?v=20261116182525";
+import { h } from "./util.js?v=20261116182525";
+import { Sfx } from "./sfx.js?v=20261116182525";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -48,7 +48,11 @@ export const animSetting = () => { try { return +(localStorage.getItem("bot.anim
 export const foilSetting = () => { try { return localStorage.getItem("bot.foil") || "auto"; } catch { return "auto"; } };
 export const buzzOn = () => { try { return localStorage.getItem("bot.buzz") !== "0"; } catch { return true; } };
 let quiet = false; // watching someone's game or a replay: no buzz
-function buzz(pattern) { try { if (!quiet && buzzOn() && navigator.vibrate) navigator.vibrate(pattern); } catch { /* not on this device */ } }
+// (VP2) only once the player has touched the page: before that the browser blocks it and logs "Blocked call to navigator.vibrate"
+// (a reload during a game). userActivation where there is one; else a flag set on the first pointerdown or key
+let touchedPage = false; if (typeof addEventListener === "function") for (const ev of ["pointerdown", "keydown"]) addEventListener(ev, () => { touchedPage = true; }, { once: true, capture: true, passive: true });
+const pageActive = () => { const ua = navigator.userActivation; return ua ? ua.hasBeenActive : touchedPage; };
+function buzz(pattern) { try { if (!quiet && buzzOn() && navigator.vibrate && pageActive()) navigator.vibrate(pattern); } catch { /* not on this device */ } }
 const gfxLevel = () => { const g = gfxSetting(); return g === "low" ? "low" : g === "high" ? "high" : innerWidth < 760 ? "mid" : "high"; };
 function mount(container, opts = {}) {
   unmount();
@@ -110,7 +114,7 @@ function mount(container, opts = {}) {
   R.geo = cardGeometry(); R.capMat = new THREE.MeshBasicMaterial({ visible: false });
   R.edgeMat = new THREE.MeshStandardMaterial({ color: 0x9c958a, roughness: 0.7, metalness: 0 }); // the card stock's cut edge: a thin light line when a card tips or flies
   R.backMat = glossBack(new THREE.MeshBasicMaterial({ map: R.backTex, color: 0xcccccc, toneMapped: false })); // a printed, laminated back: it catches the light like a card
-  R.pileMat = new THREE.MeshStandardMaterial({ color: 0xbdb2a0, roughness: 0.85, metalness: 0 }); // the edges of a stack of cards: fine lines, one per card (PILE_HOOK)
+  R.pileMat = new THREE.MeshStandardMaterial({ color: 0xa69d8e, roughness: 0.9, metalness: 0 }); // the edges of a stack of cards: fine lines, one per card (PILE_HOOK); (VP2) a shade darker: under the lamps the side of the Deck glowed near white, a block of foam beside the dark backs
   R.pileMat.extensions = { derivatives: true }; R.pileMat.onBeforeCompile = PILE_HOOK;
   // the teak table the mat lies on, and candles in brass dishes round it, each throwing a flickering pool of light on the wood
   // unlit, with the lamplight baked into vertex colours: it covers much of a phone screen, so it must be cheap to draw
@@ -164,7 +168,8 @@ function mount(container, opts = {}) {
     const portrait = R.preview ? tallScreen(document.documentElement) : w / hh < 0.9; const k = portrait ? 1 : Math.min(1.45, Math.max(1, 820 / hh, 1250 / w));
     const Z = portrait ? ZONES.tall : ZONES.wide; if (Z !== R.zones) { R.zones = Z; swapMat(); decor(); if (R.last) update(R.last.s, R.last.V); } // turned the phone: the other table
     camera.fov = R.preview ? 36 : portrait ? 50 : 38; camera.updateProjectionMatrix();
-    const cam = R.preview ? pvCam(camera, w, hh) : portrait ? fitTall(camera, w, hh) : wideCam(camera, w, hh, k);
+    const sideways = !portrait && !R.preview && !!document.querySelector(".hud .handrow"); // (a phone held sideways: the hand is the phone's row)
+    const cam = R.preview ? pvCam(camera, w, hh) : portrait ? fitTall(camera, w, hh) : sideways ? fitTall(camera, w, hh, ZONES.wide, [0, -11.2, -9.2], 0.4) : wideCam(camera, w, hh, k);
     gsap.killTweensOf(R.camBase); gsap.killTweensOf(R.look);
     if (smooth && !reduce) { gsap.to(R.camBase, { x: cam.pos.x, y: cam.pos.y, z: cam.pos.z, duration: 0.5, ease: "power2.out" }); gsap.to(R.look, { x: cam.look.x, y: cam.look.y, z: cam.look.z, duration: 0.5, ease: "power2.out" }); }
     else { R.camBase.copy(cam.pos); R.look.copy(cam.look); }
@@ -1789,15 +1794,30 @@ function matTextures(small, mats = {}, Z = ZONES.wide) {
   // a zone is a panel (ลูกฟัก): a firm rule with a hairline inside it, and in each inner corner a corner piece (ลายเข้ามุม: a
   // triangle with a hollowed side, a bead beyond it). Only the shared Land Magic Zone keeps stepped corners (ย่อมุม, the corner of a
   // throne base) — one stepped frame reads as a centrepiece, a dozen read as pixels. A stepped frame's hairline follows it step for step.
-  const frame = (c, x0, z0, x1, z1, st, w = 0.035, stepped = false) => { if (c.sk) return scrawl(c, X(x0), Y(z0), X(x1), Y(z1), U(w * 1.1), w > 0.03 ? 3 : 2); const d = U(0.1); if (c.geo) return geoFrame(c, X(x0), Y(z0), X(x1), Y(z1), U(st), U(w), d, st < 0.1);
+  // gap: a break in the rule (a zone's name is set into it, VP2): the frame is drawn with that box clipped out
+  const frame = (c, x0, z0, x1, z1, st, w = 0.035, stepped = false, gap = null) => { if (gap) { c.save(); c.beginPath(); c.rect(0, 0, CW, CH); c.rect(X(gap[0]), Y(gap[1]), X(gap[2]) - X(gap[0]), Y(gap[3]) - Y(gap[1])); c.clip("evenodd"); frame(c, x0, z0, x1, z1, st, w, stepped); c.restore(); return; }
+    if (c.sk) return scrawl(c, X(x0), Y(z0), X(x1), Y(z1), U(w * 1.1), w > 0.03 ? 3 : 2); const d = U(0.1); if (c.geo) return geoFrame(c, X(x0), Y(z0), X(x1), Y(z1), U(st), U(w), d, st < 0.1);
     if (stepped) { c.lineWidth = U(w); stepPath(c, X(x0), Y(z0), X(x1), Y(z1), U(st)); c.stroke(); c.lineWidth = U(w * 0.38); stepPath(c, X(x0) + d, Y(z0) + d, X(x1) - d, Y(z1) - d, U(st)); c.stroke(); return; }
     c.lineWidth = U(w); c.strokeRect(X(x0), Y(z0), X(x1) - X(x0), Y(z1) - Y(z0)); c.lineWidth = U(w * 0.38); c.strokeRect(X(x0) + d, Y(z0) + d, X(x1) - X(x0) - 2 * d, Y(z1) - Y(z0) - 2 * d);
     if (st < 0.1) return; // the small boxes (LIFE, the piles) stay plain
     const k = U(st * 1.3); for (const [sx, sy, px, py] of [[1, 1, X(x0) + d, Y(z0) + d], [-1, 1, X(x1) - d, Y(z0) + d], [1, -1, X(x0) + d, Y(z1) - d], [-1, -1, X(x1) - d, Y(z1) - d]]) {
       c.beginPath(); c.moveTo(px, py); c.lineTo(px + sx * k, py); c.quadraticCurveTo(px + sx * k * 0.36, py + sy * k * 0.36, px, py + sy * k); c.closePath(); c.fill();
       c.beginPath(); c.arc(px + sx * k * 0.5, py + sy * k * 0.5, Math.max(1, k * 0.085), 0, 7); c.fill(); } };
-  const label = (c, text, x, z, flip, align = "left", size = 0.19) => { c.save(); c.translate(X(x), Y(z)); if (flip) c.rotate(Math.PI); if (c.sk) c.rotate((c.sk.rnd() - 0.5) * 0.07); c.font = c.sk ? `600 ${U(size * 1.12)}px "Mali", "IBM Plex Sans Thai", sans-serif` : `600 ${U(size)}px "Chakra Petch", "IBM Plex Sans Thai", sans-serif`; c.textAlign = align; c.textBaseline = "middle"; c.globalAlpha = c.sk ? 0.92 : 0.8; c.fillText(text, 0, 0); c.restore(); };
-  const inLabel = (c, text, x0, z0, x1, z1, flip) => (flip ? label(c, text, x1 - 0.32, z1 - 0.3, true) : label(c, text, x0 + 0.32, z0 + 0.3, false));
+  // the names on the mat are fine print, like a foil stamp on cloth (VP2; they were a bold face drawn at full strength in all three maps, so
+  // close up they stood out as heavy embossed letters): a medium weight in spaced capitals, at full strength only in the colour map; faint in the
+  // glow map (the bloom no longer thickens them) and half in the roughness map (a foil is only a little glossier than the cloth round it)
+  const LS = Z === ZONES.tall ? 1.2 : 1; // (an upright phone shows the mat smaller: its names a size up)
+  const lblFont = (c, size, text) => { size *= LS; if (c.sk) { c.font = `600 ${U(size * 1.12)}px "Mali", "IBM Plex Sans Thai", sans-serif`; return; } c.font = `500 ${U(size)}px "Chakra Petch", "IBM Plex Sans Thai", sans-serif`; if ("letterSpacing" in c) c.letterSpacing = /[\u0E00-\u0E7F]/.test(text) ? "0px" : `${U(size * 0.13).toFixed(1)}px`; }; // (Thai is set close, never tracked out)
+  const lblText = (c, text) => (c.sk ? text : text.toUpperCase());
+  const label = (c, text, x, z, flip, align = "left", size = 0.15) => { c.save(); c.translate(X(x), Y(z)); if (flip) c.rotate(Math.PI); if (c.sk) c.rotate((c.sk.rnd() - 0.5) * 0.07); lblFont(c, size, text); c.textAlign = align; c.textBaseline = "middle";
+    c.globalAlpha = c.sk ? 0.92 : c.canvas === glow ? 0.3 : c.canvas === rough ? 0.5 : 0.84; c.fillText(lblText(c, text), 0, 0); c.restore(); };
+  // a zone's name set into a break in its frame's rule, on an edge where no card lies (inside the frame the first Construct covered all but
+  // "Zone", and a fourth Avatar the Avatar Zone's name). edge "in": the rule toward the centre band; "out": the rule toward the owner.
+  // at "corner": in from the owner's left corner; at "centre": just to the owner's left of the knot in the middle of the rule
+  const zoneTag = (c, text, x0, z0, x1, z1, flip, edge, at, size = 0.15) => { c.save(); lblFont(c, size, text); const w = c.measureText(lblText(c, text)).width / S; c.restore();
+    const zr = (edge === "in") !== flip ? z0 : z1, xc = at === "centre" ? (x0 + x1) / 2 + (flip ? 1 : -1) * (0.45 + w / 2) : flip ? x1 - 0.55 - w / 2 : x0 + 0.55 + w / 2;
+    return { gap: [xc - w / 2 - 0.1, zr - 0.075, xc + w / 2 + 0.1, zr + 0.075], put: () => label(c, text, xc, zr, flip, "center", size) }; };
+  const zoneFrame = (c, text, x0, z0, x1, z1, st, w, flip, edge, at) => { const t = zoneTag(c, text, x0, z0, x1, z1, flip, edge, at); frame(c, x0, z0, x1, z1, st, w, false, t.gap); t.put(); };
   const draw = () => gild((c, ground) => {
     // the mat's border: a stepped double rule (ย่อมุม; the inner rule follows the outer one step for step) and, between the two, a
     // row of กรวยเชิง along the two long edges — tall leaves with rounded shoulders and a vein cut through, standing on the outer rule and
@@ -1817,22 +1837,22 @@ function matTextures(small, mats = {}, Z = ZONES.wide) {
     // zones, mine near and the opponent's far (their labels face them)
     for (const [zs, flip] of [[1, false], [-1, true]]) {
       const zc = zs > 0 ? 2.15 : -2.55, zo = zs > 0 ? 4.17 : -4.5; const gnd = ground === LAC ? (zs > 0 ? NEAR.lac : FAR.lac) : ground;
-      frame(c, -4.35, zc - 1.18, 4.35, zc + 1.18, 0.16); inLabel(c, "Avatar Zone", -4.35, zc - 1.18, 4.35, zc + 1.18, flip);
+      zoneFrame(c, "Avatar Zone", -4.35, zc - 1.18, 4.35, zc + 1.18, 0.16, 0.035, flip, "in", "centre");
       orn(c, X(0), Y(zc - zs * 1.18), U(0.2), gnd); orn(c, X(0), Y(zc + zs * 1.18), U(0.13), gnd);
-      frame(c, Z.cs[0], zo - 0.76, Z.cs[1], zo + 0.76, 0.11, 0.028); inLabel(c, "Construct Zone", Z.cs[0], zo - 0.76, Z.cs[1], zo + 0.76, flip);
-      frame(c, Z.mg[0], zo - 0.76, Z.mg[1], zo + 0.76, 0.11, 0.028); inLabel(c, "Magic Zone", Z.mg[0], zo - 0.76, Z.mg[1], zo + 0.76, flip);
+      zoneFrame(c, "Construct Zone", Z.cs[0], zo - 0.76, Z.cs[1], zo + 0.76, 0.11, 0.028, flip, "out", "corner");
+      zoneFrame(c, "Magic Zone", Z.mg[0], zo - 0.76, Z.mg[1], zo + 0.76, 0.11, 0.028, flip, "out", "corner");
     }
     // each side's LIFE (laid sideways down its owner's left, like a damage zone) and its Deck, hell and dark zone (its owner's right)
     if (Z.side) for (const [mine, flip] of [[true, false], [false, true]]) {
       const m = (x, z) => (mine ? [x, z] : [-x, 2 * MZ - z]); const box = (x0, z0, x1, z1) => { const [ax, az] = m(x0, z0), [bx, bz] = m(x1, z1); return [Math.min(ax, bx), Math.min(az, bz), Math.max(ax, bx), Math.max(az, bz)]; };
       const Lf = Z.side.life; if (Lf) { const hw = (CARD.h * Lf.s) / 2 + 0.1, hd = (CARD.w * Lf.s) / 2 + 0.1; const lb = box(Lf.x - hw, Lf.z0 - hd, Lf.x + hw, Lf.z0 + 4 * Lf.dz + hd);
-        frame(c, ...lb, 0.08, 0.022); const [lx, lz] = m(Lf.x, Lf.z0 + 4 * Lf.dz + hd + 0.2); label(c, "LIFE", lx, lz, flip, "center", 0.17); }
+        frame(c, ...lb, 0.08, 0.022); const [lx, lz] = m(Lf.x, Lf.z0 + 4 * Lf.dz + hd + 0.2); label(c, "LIFE", lx, lz, flip, "center", 0.15); }
       const Pl = Z.side.piles, pw = (CARD.w * Pl.s) / 2 + 0.07, pd = (CARD.h * Pl.s) / 2 + 0.07;
       for (const [k, name] of [["deck", "Deck"], ["hell", "นรก"], ["dark", Pl.short ? "มืด" : "มิติมืด"]]) { const [tx, tz] = pileSpot(0, mine ? 0 : 1, Pl, k); c.save(); if (c.sk) c.strokeStyle = c.fillStyle = c.sk.m.pens[k];
-        frame(c, tx - pw, tz - pd, tx + pw, tz + pd, 0.06, c.sk ? 0.03 : 0.02); label(c, name, tx, tz, flip, "center", Pl.short ? 0.13 : 0.15); c.restore(); }
+        frame(c, tx - pw, tz - pd, tx + pw, tz + pd, 0.06, c.sk ? 0.03 : 0.02); label(c, name, tx, tz, flip, "center", Pl.short ? 0.12 : 0.13); c.restore(); }
     }
     // Land Magic Zone, shared: in the middle of the table on a wide screen (its centre band of ประจำยาม runs out to both sides), at the left on an upright phone
-    const Ld = Z.land, [b0, b1] = Z.band; frame(c, Ld.x0, MZ - Ld.dz, Ld.x1, MZ + Ld.dz, 0.13, 0.03, true); label(c, "Land Magic", Ld.lx, Ld.lz, false, Ld.align);
+    const Ld = Z.land, [b0, b1] = Z.band; frame(c, Ld.x0, MZ - Ld.dz, Ld.x1, MZ + Ld.dz, 0.13, 0.03, true); label(c, "Land Magic", Ld.lx, Ld.lz, false, Ld.align, 0.15);
     if (c.sk) { const r = c.sk.rnd, gp = Ld.center ? [Ld.x0 - 0.12, Ld.x1 + 0.12] : null; c.lineCap = "round"; c.lineWidth = U(0.024); // on paper: two plain strokes for the band, no ornaments
       for (const dz of [-0.24, 0.24]) for (const [a, b] of gp ? [[b0, gp[0]], [gp[1], b1]] : [[b0, b1]]) { c.beginPath(); c.moveTo(X(a - 0.1 * r()), Y(MZ + dz) + (r() - 0.5) * U(0.05)); c.quadraticCurveTo(X((a + b) / 2), Y(MZ + dz) + (r() - 0.5) * U(0.1), X(b + 0.1 * r()), Y(MZ + dz) + (r() - 0.5) * U(0.05)); c.stroke(); } return; }
     const gap = Ld.center ? [Ld.x0 - 0.12, Ld.x1 + 0.12] : null; c.lineWidth = U(0.022);
@@ -1841,13 +1861,16 @@ function matTextures(small, mats = {}, Z = ZONES.wide) {
     for (const x of [b0, b1]) orn(c, X(x), Y(MZ), U(0.3), ground);
   });
   binding(g, rq, FAR, NEAR, CW, CH, yMid, U); // a bound edge with a row of stitches all round, as on a real playmat
-  const under = NEAR.kind === "sketch" || FAR.kind === "sketch" ? mk() : null; if (under) under.getContext("2d").drawImage(base, 0, 0); // paper shows a second drawing of the lines, so they are redrawn from here
+  // the labels need their fonts: once they have loaded, the gilding is drawn again over a copy of the maps as they were before it (VP2: it
+  // was drawn again over itself, so every name showed twice, the fallback face under the real one, which read as a heavy embossed print,
+  // and the hairlines thickened); the copies are let go after the redraw
+  const sketchy = NEAR.kind === "sketch" || FAR.kind === "sketch", waits = [];
+  if (document.fonts) { if (document.fonts.status !== "loaded") waits.push(document.fonts.ready);
+    for (const f of ['500 20px "Chakra Petch"', ...(sketchy ? ['600 20px "Mali"'] : [])]) if (!document.fonts.check(f, "นรกAa")) waits.push(document.fonts.load(f, "นรกAa")); }
+  let under = waits.length ? [base, glow, rough].map((cv) => { const k = mk(); k.getContext("2d").drawImage(cv, 0, 0); return k; }) : null;
   draw();
-  const repaint = () => { if (!R) return; if (under) g.drawImage(under, 0, 0); draw(); tb.needsUpdate = tg.needsUpdate = tr.needsUpdate = true; };
   const tb = new THREE.CanvasTexture(base), tg = new THREE.CanvasTexture(glow), tr = new THREE.CanvasTexture(rough); tb.encoding = THREE.sRGBEncoding; tb.anisotropy = tg.anisotropy = tr.anisotropy = 8;
-  // the labels need the display font: redraw once it has loaded
-  if (document.fonts && document.fonts.status !== "loaded") document.fonts.ready.then(repaint);
-  if (document.fonts && (NEAR.kind === "sketch" || FAR.kind === "sketch") && !document.fonts.check('600 20px "Mali"', "นรกAa")) document.fonts.load('600 20px "Mali"', "นรกAa").then(repaint).catch(() => {});
+  if (under) Promise.allSettled(waits).then(() => { if (R && under) { [g, q, rq].forEach((cx, k) => cx.drawImage(under[k], 0, 0)); draw(); tb.needsUpdate = tg.needsUpdate = tr.needsUpdate = true; } under = null; });
   return { base: tb, glow: tg, rough: tr, emis: tint ? 0xffffff : 0xe0982c, pmCloth: [cloths.some((c) => c.near), cloths.some((c) => !c.near)], weave: [weaveOf(FAR), weaveOf(NEAR), 1 - yMid / CH] };
 }
 // dark teak planks: grain running along each plank, a seam between them, each plank a slightly different tone
@@ -1982,22 +2005,26 @@ function sigilTexture(kind = "lotus") {
 const sigilTex = (kind) => (R.sigilTexs[kind] = R.sigilTexs[kind] || sigilTexture(SIGILS[kind] || kind === "g_glass" || kind === "g_pro" ? kind : "lotus"));
 // a card face: the official art drawn unlit, plus a light that sweeps across the laminate, holo foil on rare prints,
 // a white hit flash, and the burn that eats the card from its edges when it is destroyed
+// (VP2) uCam: the camera's position. three.js r128 sets its own cameraPosition only for lit or env-mapped materials, so in these unlit
+// (MeshBasic) hooks it was (0,0,0): the view direction ran along the table, and the grazing-angle term lay at its maximum on every card,
+// a flat milky haze (+0.045 on faces, +0.04 to +0.16 on backs and sleeves) instead of the light at the edges it was meant to be
+const camUni = () => (R.camUni = R.camUni || { value: R.camera.position });
 const FACE_HOOK = function (sh) {
   Object.assign(sh.uniforms, this.userData.u);
   sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vNw;").replace("#include <project_vertex>", "#include <project_vertex>\nvNw = normalize(mat3(modelMatrix) * normal); vWp = (modelMatrix * vec4(transformed, 1.0)).xyz;").replace("varying vec3 vNw;", "varying vec3 vNw; varying vec3 vWp;");
   sh.fragmentShader = sh.fragmentShader.replace("#include <common>", `#include <common>
-uniform float uBurn, uSweep, uSheen, uFoil, uFlash, uT, uFoilK; uniform vec3 uEdge, uTint; varying vec3 vNw; varying vec3 vWp;
+uniform float uBurn, uSweep, uSheen, uFoil, uFlash, uT, uFoilK; uniform vec3 uEdge, uTint, uCam; varying vec3 vNw; varying vec3 vWp;
 float h21(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), f.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), f.x), f.y); }
 float fbm(vec2 p) { float v = 0.0, a = 0.5; for (int k = 0; k < 4; k++) { v += a * vn(p); p = p * 2.03 + 1.7; a *= 0.5; } return v / 0.9375; }
 vec3 hue(float x) { return clamp(abs(mod(x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0); }`).replace("gl_FragColor = vec4( outgoingLight, diffuseColor.a );", `vec3 col = outgoingLight;
   float sw = vUv.x * 0.8 - vUv.y - uSweep; float band = exp(-sw * sw * 36.0);
   col += band * uSheen * mix(vec3(1.0, 0.97, 0.9), uTint, 0.4);
-  { vec3 Nl = normalize(vNw), Vl = normalize(cameraPosition - vWp), Hl = normalize(vec3(0.0, 0.74, -0.67) + Vl); float nhl = max(dot(Nl, Hl), 0.0), nvl = max(dot(Nl, Vl), 0.0);
-    col += vec3(1.0, 0.97, 0.92) * (pow(nhl, 420.0) * 0.13 + pow(nhl, 9.0) * 0.015 + pow(1.0 - nvl, 5.0) * 0.045); } // the laminate: a broad soft gloss from the lamps beyond the table, a small glint that drifts as the card or the view moves, more light at a grazing angle
+  { vec3 Vl = normalize(uCam - vWp), Nl = faceforward(normalize(vNw), -Vl, normalize(vNw)), Hl = normalize(normalize(vec3(-2.0, 15.0, -7.0) - vWp) + Vl); float nhl = max(dot(Nl, Hl), 0.0), nvl = max(dot(Nl, Vl), 0.0);
+    col += vec3(1.0, 0.97, 0.92) * (pow(nhl, 420.0) * 0.08 + pow(nhl, 9.0) * 0.015 + pow(1.0 - nvl, 5.0) * 0.045); } // the laminate: a broad soft gloss from the lamps beyond the table, a small glint that drifts as the card or the view moves, more light at a grazing angle
   float fk = uFoil * uFoilK;
   if (fk > 0.0) { // the rainbow slides with the angle the card is seen from, strongest on the art's light parts; four-point glints wink in and out
-    vec3 N = normalize(vNw), Vd = normalize(cameraPosition - vWp); float ang = dot(Vd.xz, vec2(2.6, 1.8)) + N.x * 2.2 + N.z * 2.6, lum = dot(outgoingLight, vec3(0.3, 0.59, 0.11));
+    vec3 N = normalize(vNw), Vd = normalize(uCam - vWp); float ang = dot(Vd.xz, vec2(2.6, 1.8)) + N.x * 2.2 + N.z * 2.6, lum = dot(outgoingLight, vec3(0.3, 0.59, 0.11));
     col += hue(fract(vUv.x * 1.2 + vUv.y * 0.8 + ang + uSweep * 0.35)) * fk * (0.09 + 0.4 * band) * (0.5 + 0.9 * lum);
     vec2 gq = vUv * vec2(9.0, 12.0), gc = floor(gq), gf = fract(gq) - 0.5; float r = h21(gc);
     float tw = step(1.0 - 0.16 * fk, h21(gc + 7.3)) * pow(max(0.0, sin(r * 63.0 + ang * 30.0 + uT * (1.4 + r * 2.0))), 6.0);
@@ -2069,7 +2096,7 @@ function faceMat(d, seat) {
   // card faces are unlit so the official art keeps its real colours (no light/bloom wash-out); FACE_HOOK adds the sheen and the burn
   // (seat: the card's owner, whose skin it shows; a Token with a printed card of its own shows that card, any other is drawn here)
   const token = d.im == null, c = token ? null : skinOf(card(d.im), seat);
-  const u = { uBurn: { value: 0 }, uSweep: { value: -2 }, uSheen: { value: 0 }, uFoil: { value: (c && FOIL[c.r]) || 0 }, uFlash: { value: 0 }, uT: R.uT, uFoilK: R.uFoilK, uEdge: { value: new THREE.Color(0xff8a2a) }, uTint: { value: new THREE.Color(d.co ? colorHex(d.co) : 0xffd9a0) } };
+  const u = { uCam: camUni(), uBurn: { value: 0 }, uSweep: { value: -2 }, uSheen: { value: 0 }, uFoil: { value: (c && FOIL[c.r]) || 0 }, uFlash: { value: 0 }, uT: R.uT, uFoilK: R.uFoilK, uEdge: { value: new THREE.Color(0xff8a2a) }, uTint: { value: new THREE.Color(d.co ? colorHex(d.co) : 0xffd9a0) } };
   const mat = new THREE.MeshBasicMaterial({ map: token ? tokenTexture(d) : R.texCache.get(c.i) || R.backTex, color: 0xdedede, toneMapped: false });
   mat.userData.u = u; mat.userData.own = token; mat.onBeforeCompile = FACE_HOOK;
   if (!token && mat.map === R.backTex) resolveArt(c).then((url) => { if (!url || !R) return; R.loader.load(corsUrl(url), (t) => { if (!R) return t.dispose(); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; R.texCache.set(c.i, t); mat.map = t; mat.needsUpdate = true; }); });
@@ -2199,13 +2226,13 @@ Arena.select = select;
 const tallScreen = (el) => (el.clientWidth || innerWidth) / (el.clientHeight || innerHeight) < 0.9;
 // phones held upright: the band of the screen the table must fit in, between the opponent's bar and our hand (both
 // drawn over the table); measured when the game's HUD is on screen, otherwise its usual size
-function tallBand(w, hh) {
+function tallBand(w, hh, minH = 160) {
   const top = document.querySelector(".hud .oppbar"), hand = document.querySelector(".hud .handrow") || document.querySelector(".hud .handzone"), side = document.querySelector(".hud .matchp");
   const t = top ? top.getBoundingClientRect().bottom + 6 : 64; const hr = hand && hand.getBoundingClientRect(); const sr = side && side.getBoundingClientRect();
   const handTop = hr && hr.height > 40 ? hr.top + (hand.classList.contains("handrow") ? 6 : 30) : hh - 205;
   // a tablet held upright keeps the side panel of the wide screen: the table moves left of it
   const r = sr && sr.width > 40 && sr.left > w * 0.45 ? sr.left - 4 : w;
-  return { t, b: Math.max(t + 160, handTop), l: 0, r };
+  return { t, b: Math.max(t + minH, handTop), l: 0, r };
 }
 // the camera for a wide screen: the usual height and tilt, then the table (its outer cards) is centred in the part of the
 // screen left of the game panel, moving back a little first if it would not fit there
@@ -2223,13 +2250,15 @@ function wideCam(camera, w, hh, k) {
 }
 // the camera for an upright screen: the same downward tilt, moved back just far enough that the whole tall table (its
 // fit points) fits across the screen and between the bars, then centred in that band
-function fitTall(camera, w, hh) {
-  const V3 = THREE.Vector3, dir = new V3(0, -17.5, -10.6).normalize(), band = tallBand(w, hh), M = 10, q = new V3();
-  const pts = ZONES.tall.fit.map(([x, z]) => new V3(x, 0, z));
+// (VP2) also a phone held sideways, which has the wide table but the phone's row of hand cards over the bottom of the screen: the wide
+// table, at the wide view's tilt, fitted in the same band above the hand (the wide view filled the whole height, so the hand hid most of it)
+function fitTall(camera, w, hh, Z = ZONES.tall, dir0 = [0, -17.5, -10.6], zc0 = 1.9) {
+  const V3 = THREE.Vector3, dir = new V3(...dir0).normalize(), band = tallBand(w, hh, Z === ZONES.tall ? 160 : 110), M = 10, q = new V3();
+  const pts = Z.fit.map(([x, z]) => new V3(x, 0, z));
   const proj = (d, xc, zc) => { const look = new V3(xc, 0, zc); camera.position.copy(look).addScaledVector(dir, -d); camera.lookAt(look); camera.updateMatrixWorld(true);
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; for (const p of pts) { q.copy(p).project(camera); const sx = (q.x * 0.5 + 0.5) * w, sy = (-q.y * 0.5 + 0.5) * hh; x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy); }
     return { x0, x1, y0, y1 }; };
-  let xc = 0, zc = 1.9, d = 20.5;
+  let xc = 0, zc = zc0, d = 20.5;
   for (let it = 0; it < 5; it++) {
     let lo = 6, hi = 120; for (let k = 0; k < 30; k++) { const m = (lo + hi) / 2, r = proj(m, xc, zc); if (r.x1 - r.x0 <= band.r - band.l - 2 * M && r.y1 - r.y0 <= band.b - band.t) hi = m; else lo = m; } d = hi;
     // then move the view so the table sits in the middle of the band, across and down (a step of 0.5 measures how far it moves)
@@ -2318,15 +2347,21 @@ gl_FragColor.rgb += pmcIn * (1.0 - pmcBind) * pow(1.0 - pmcNv, 2.0) * 0.07 * mix
 const SLEEVE_HOOK = function (sh) {
   Object.assign(sh.uniforms, this.userData.u);
   sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vNw; varying vec3 vWp;").replace("#include <project_vertex>", "#include <project_vertex>\nvNw = normalize(mat3(modelMatrix) * normal); vWp = (modelMatrix * vec4(transformed, 1.0)).xyz;");
-  sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nuniform float uGloss; varying vec3 vNw; varying vec3 vWp;").replace("gl_FragColor = vec4( outgoingLight, diffuseColor.a );", `vec3 N = normalize(vNw), Vd = normalize(cameraPosition - vWp), L = normalize(vec3(0.0, 0.74, -0.67)), Hh = normalize(L + Vd);
+  // (VP2) the light is added in linear space, where a dark print is tiny: a broad term of even 0.08 lifts deep red and navy to a milky
+  // pink-grey, and with the old lamp direction every card on the table sat at the peak of it. So the lamp is now a point above the far
+  // side (its reflection is a small pool that drifts with the view, not a wash over every card), the broad terms are a few hundredths,
+  // and the print under the clear coat reads a shade richer instead of lighter: the back keeps its full colour and contrast. And the normal is
+  // turned to face the viewer, and the view direction comes from uCam (see camUni)
+  sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nuniform float uGloss; uniform vec3 uCam; varying vec3 vNw; varying vec3 vWp;").replace("gl_FragColor = vec4( outgoingLight, diffuseColor.a );", `vec3 Vd = normalize(uCam - vWp), N = faceforward(normalize(vNw), -Vd, normalize(vNw)), L = normalize(vec3(-2.0, 15.0, -7.0) - vWp), Hh = normalize(L + Vd);
   float nh = max(dot(N, Hh), 0.0), nv = max(dot(N, Vd), 0.0), e = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y)), plastic = smoothstep(0.018, 0.03, e);
-  float sp = uGloss * (pow(nh, 120.0) * 0.7 + pow(nh, 16.0) * 0.16) + (1.0 - uGloss) * pow(nh, 5.0) * 0.1;
-  float sw = vUv.x * 0.75 - vUv.y + dot(Vd.xz, vec2(1.4, 1.1)) * 1.6, streak = exp(-pow(fract(sw * 0.5) - 0.5, 2.0) * 60.0) * 0.09 * uGloss;
-  float fr = pow(1.0 - nv, 4.0) * mix(0.04, 0.16, uGloss);
-  gl_FragColor = vec4( outgoingLight + (sp * (0.35 + 0.65 * plastic) + (streak + fr) * plastic) * vec3(1.0, 0.98, 0.94), diffuseColor.a );`);
+  vec3 col = outgoingLight; float lum = dot(col, vec3(0.2126, 0.7152, 0.0722)); col = mix(col, max(mix(vec3(lum), col, 1.12) * 0.96, 0.0), plastic * uGloss);
+  float sp = uGloss * (pow(nh, 260.0) * 0.3 + pow(nh, 40.0) * 0.012) + (1.0 - uGloss) * pow(nh, 6.0) * 0.016;
+  float sw = vUv.x * 0.75 - vUv.y + dot(Vd.xz, vec2(1.4, 1.1)) * 1.6, sd = fract(sw * 0.5) - 0.5, streak = (exp(-sd * sd * 280.0) * 0.024 + exp(-sd * sd * 30.0) * 0.005) * uGloss;
+  float fr = pow(1.0 - nv, 5.0) * mix(0.015, 0.07, uGloss);
+  gl_FragColor = vec4( col + (sp * (0.35 + 0.65 * plastic) + (streak + fr) * plastic) * vec3(1.0, 0.985, 0.96), diffuseColor.a );`);
 };
 // the built-in backs (gold leaf, night glass, graphite) are laminated card stock: the sleeve's highlight at a softer gloss
-function glossBack(m) { m.userData.u = { uGloss: { value: 0.5 } }; m.onBeforeCompile = SLEEVE_HOOK; return m; }
+function glossBack(m) { m.userData.u = { uGloss: { value: 0.5 }, uCam: camUni() }; m.onBeforeCompile = SLEEVE_HOOK; return m; }
 // the side of a stack of cards (Deck, hell): one fine line per card, which fades into an even tone where the lines are finer than a pixel
 const PILE_HOOK = (sh) => {
   sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying float vPy;").replace("#include <project_vertex>", "#include <project_vertex>\nvPy = (modelMatrix * vec4(transformed, 1.0)).y;");
@@ -2334,7 +2369,7 @@ const PILE_HOOK = (sh) => {
   { float q = vPy / 0.0042, w = fwidth(q), l = smoothstep(0.25 - w, 0.25 + w, abs(fract(q) - 0.5)); diffuseColor.rgb *= mix(0.9, 0.8 + 0.2 * l, clamp(1.0 - w * 1.5, 0.0, 1.0)); }`);
 };
 const sleeveFin = () => { if (R && R.preview && R.pv.fin != null) return R.pv.fin; try { return localStorage.getItem("bot.sleeveFin") === "matte" ? 0 : 1; } catch { return 1; } };
-function sleeveMat(img) { const m = new THREE.MeshBasicMaterial({ map: sleeveTexture(img), color: 0xdedede, toneMapped: false }); m.userData.keep = true; m.userData.u = { uGloss: { value: sleeveFin() } }; m.onBeforeCompile = SLEEVE_HOOK; return m; }
+function sleeveMat(img) { const m = new THREE.MeshBasicMaterial({ map: sleeveTexture(img), color: 0xdedede, toneMapped: false }); m.userData.keep = true; m.userData.u = { uGloss: { value: sleeveFin() }, uCam: camUni() }; m.onBeforeCompile = SLEEVE_HOOK; return m; }
 // a player's card sleeve: their own picture (vault.js) once it has loaded, otherwise the Thai-pattern back
 function backFor(s, p) {
   const P = s && s.P && s.P[p], o = P && P.sleeve === "ph" ? phSleeve() : P && P.sleeve === "own" && custom.sleeve ? custom.sleeve(P) : null;
@@ -2455,13 +2490,12 @@ function wake(m, delay) {
   const w = m.want, g = m.grp, s = w.scale; m.busy = true;
   gsap.timeline({ delay, onComplete: () => done(m) })
     .to(g.position, { x: w.pos.x, z: w.pos.z, y: w.pos.y + 0.45, duration: 0.18, ease: "power2.out" }, 0)
-    .to(g.rotation, { x: 0, y: w.rotY, z: 0, duration: 0.32, ease: "back.out(2)" }, 0)
+    .to(g.rotation, { x: 0, y: w.rotY, z: 0, duration: 0.32, ease: "power3.out" }, 0) // (VP2) a card is stiff board: it turns into place and lands without overshoot, squash or wobble
     .to(g.scale, { x: s * 1.06, y: s * 1.06, z: s * 1.06, duration: 0.18, ease: "power2.out" }, 0)
     .add(() => { if (R) sweep(m, 0.9, 0.5); }, 0.1)
     .to(g.position, { y: w.pos.y, duration: 0.2, ease: "power2.in" }, 0.2)
-    .to(g.scale, { x: s * 1.05, y: s, z: s * 0.95, duration: 0.05, ease: "power2.out" }, 0.4)
-    .add(() => { if (R) dust(w.pos, s * 0.6, 5); }, 0.4)
-    .to(g.scale, { x: s, z: s, duration: 0.3, ease: "elastic.out(1.1,0.4)" }, 0.45);
+    .to(g.scale, { x: s, y: s, z: s, duration: 0.22, ease: "power2.out" }, 0.38)
+    .add(() => { if (R) dust(w.pos, s * 0.6, 5); }, 0.4);
 }
 function done(m) { m.busy = false; if (!R) return; home(m, 0.3); if (!m.pulse) gsap.to(m.glow.material, { opacity: m.sel ? GLOW.sel : GLOW.rest, duration: 0.4 }); }
 function settle(m, delay) { // the table as it stands (resuming a game): cards just come down into place
@@ -2502,12 +2536,11 @@ function summonIn(m, L, co, cHex) {
     .to(g.position, { y: hy + 0.14, duration: 0.24, ease: "sine.inOut" }, 0.5)
     .to(g.position, { x: P.x, y: P.y, z: P.z, duration: 0.22, ease: "power4.in" }, 0.76)
     .to(g.rotation, { x: 0, y: m.want.rotY, duration: 0.22, ease: "power3.in" }, 0.76)
-    .to(g.scale, { x: s * 0.94, y: s, z: s * 1.1, duration: 0.22, ease: "power3.in" }, 0.76) // stretched as it falls
+    .to(g.scale, { x: s, y: s, z: s, duration: 0.22, ease: "power3.in" }, 0.76) // (VP2) it keeps its shape as it falls: no rubber stretch and squash
     .add(() => { if (R && azure) azureFx(P, s); }, 0.06)
     .add(() => { if (!R) return; landFx(P, s, co, aHex); ringOut(ring, s); Sfx.play("summon", { color: co }); m.glow.material.opacity = 1; }, 0.98)
-    .to(g.scale, { x: s * 1.1, z: s * 0.9, duration: 0.05, ease: "power2.out" }, 0.98).to(g.scale, { x: s, z: s, duration: 0.45, ease: "elastic.out(1.2,0.35)" }, 1.03) // squashed by the slam
-    .to(g.position, { y: P.y + 0.12, duration: 0.08, ease: "power2.out" }, 0.98)
-    .to(g.position, { y: P.y, duration: 0.3, ease: "bounce.out" }, 1.06);
+    .to(g.position, { y: P.y + 0.035, duration: 0.07, ease: "power2.out" }, 0.98) // the weight of the slam: one small settle, not a rubber bounce
+    .to(g.position, { y: P.y, duration: 0.2, ease: "power2.inOut" }, 1.05);
 }
 // cards that arrive any other way (Magic, Constructs, Land, tokens) are laid down from the owner's side
 function placeIn(m, L) {
@@ -2573,7 +2606,7 @@ function knock(m, dir) {
     .fromTo(p, { x: x - 0.05 }, { x: x + 0.05, duration: 0.035, repeat: 1, yoyo: true, ease: "none" })
     .to(p, { x: x + dir.x * 0.38, z: z + dir.z * 0.38, y: m.restY + 0.18, duration: 0.09, ease: "power3.out" })
     .to(g.rotation, { x: tilt, duration: 0.09, ease: "power3.out" }, "<")
-    .to(p, { x, z, y: m.restY, duration: 0.45, ease: "elastic.out(1,0.45)" }).to(g.rotation, { x: 0, duration: 0.4, ease: "power2.out" }, "<");
+    .to(p, { x, z, y: m.restY, duration: 0.42, ease: "power3.out" }).to(g.rotation, { x: 0, duration: 0.4, ease: "power2.out" }, "<"); // (VP2) slides home, no spring wobble
 }
 // ---------- leaving the field ----------
 const EMBER = { "แดง": 0xff7a2a, "ฟ้า": 0x56c8ff, "เขียว": 0x6dff8a, "ม่วง": 0xc58aff };
@@ -2703,14 +2736,14 @@ async function animateEvent(ev, prev, s, V) {
     const aco = (s.cards[(E.locate(s, ev.att) || { x: {} }).x.c] || {}).co; const tint = aco ? colorHex(aco) : 0xfff1c9; Sfx.play("declare");
     await new Promise((res) => gsap.timeline({ onComplete: res })
       .to(m.grp.position, { x: wind.x, z: wind.z, y: 1.3, duration: 0.26, ease: "power2.out" }).to(m.glow.material, { opacity: 1, duration: 0.2 }, "<").to(m.grp.rotation, { x: mineSide(ev.by) ? -0.5 : 0.5, duration: 0.26, ease: "power2.out" }, "<")
-      .to(m.grp.position, { x: hit.x, z: hit.z, y: 0.6, duration: 0.2, ease: "power4.in" }).to(m.grp.scale, { x: s0 * 0.93, z: s0 * 1.12, duration: 0.2, ease: "power2.in" }, "<") /* stretched into the lunge */
+      .to(m.grp.position, { x: hit.x, z: hit.z, y: 0.6, duration: 0.2, ease: "power4.in" }).to(m.grp.scale, { x: s0, y: s0, z: s0, duration: 0.2, ease: "power2.in" }, "<") /* (VP2) rigid in the lunge: a card does not stretch */
       .add(() => {
         if (!R) return; Sfx.play("clash"); knock(T, dir); sweep(m, 1, 0.4); const sl = sprite(R.FX.slash_02, tint, 3.6, hit.clone().setY(1)); sl.material.rotation = Math.random() * 2;
         gsap.fromTo(sl.scale, { x: 0.5, y: 0.5 }, { x: 4.2, y: 4.2, duration: 0.25, ease: "power3.out" }); gsap.to(sl.material, { opacity: 0, duration: 0.35, delay: 0.1, onComplete: () => R && R.scene.remove(sl) });
         burst(hit.clone().setY(0.8), { n: 22, color: 0xffd27a, spread: 2.6, size: 0.24 }); burst(hit.clone().setY(0.8), { n: 6, map: R.FX.star_06, color: 0xfff1c9, spread: 1.6, size: 0.5, dur: 0.5 }); shockwave(hit, aco ? tint : 0xff8a4a, 5); if (aco) colorFx(hit, aco, 0.6); shake(0.42, 0.6, dir); flash("rgba(255,240,210,.5)", 0.2); /* the light is at the blow, not over the whole screen */
       })
-      .to(m.grp.scale, { x: s0 * 1.08, z: s0 * 0.88, duration: 0.05, ease: "power2.out" }).to({}, { duration: 0.07 }) /* squashed against it, and the blow holds for a beat (hit-stop) */
-      .to(m.grp.scale, { x: s0, y: s0, z: s0, duration: 0.35, ease: "elastic.out(1.1,0.4)" })
+      .to({}, { duration: 0.12 }) /* the blow holds for a beat (hit-stop) */
+      .to(m.grp.scale, { x: s0, y: s0, z: s0, duration: 0.35, ease: "power2.out" })
       .to(m.grp.position, { x: from.x, y: from.y, z: from.z, duration: 0.42, ease: "power2.out" }, "<").to(m.grp.rotation, { x: 0, duration: 0.42, ease: "power2.out" }, "<")
       .add(() => done(m)));
   } else if (ev.k === "life") {

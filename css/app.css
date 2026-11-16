@@ -1236,3 +1236,25 @@ kbd{font:600 .8rem/1.6 var(--f-mono,ui-monospace,monospace);padding:2px 8px;bord
 .rvbar{position:absolute;left:50%;transform:translateX(-50%);top:calc(64px + env(safe-area-inset-top,0px));z-index:30;display:flex;gap:10px;align-items:center;padding:8px 12px;border-radius:14px;max-width:calc(100vw - 32px);flex-wrap:wrap;justify-content:center;text-align:center}
 @media (max-width:760px){.rvbar{top:calc(56px + env(safe-area-inset-top,0px));font-size:.9em}}
 .rvpanel{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:14px;border:1px solid var(--gold,#d4af37)}
+
+/* VP2 (visual follow-up) */
+/* builder and library: every card name keeps two lines, so the "i" buttons of a row (and the library's set codes) line up */
+.libi .nm{min-height:2.6em}
+.editor .libi>.row{align-items:flex-start}
+/* an upright phone: the attack bar (choose an attacker, then a target) docks low over the hand, which is not used while declaring an attack,
+   as the box for answering an attack does; both Avatar rows stay in view. One short line of text over a row of 44px buttons; a long list scrolls in it */
+@media (max-width:760px){
+  body.arena-on .prompt.slim:not(.toss){bottom:calc(72px + env(safe-area-inset-bottom,0px));left:max(8px,env(safe-area-inset-left,0px));right:max(8px,env(safe-area-inset-right,0px));width:auto;max-width:none;max-height:min(40vh,224px);overflow:auto;overscroll-behavior:contain;z-index:6;padding:8px 10px;gap:6px 8px}
+  body.arena-on .prompt.slim>b{flex:1 1 100%;font-size:.86rem;line-height:1.3;margin:0}
+  body.arena-on .prompt.slim>.tiny{flex:1 1 100%;font-size:.72rem;line-height:1.3}
+  body.arena-on .prompt.slim .btn.sm{min-height:44px;height:auto}
+}
+/* an upright phone: a reveal of five cards fits on one row (the fifth wrapped alone under the sticky confirm bar) */
+@media (max-width:760px){body.arena-on .prompt .pick{grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:8px}}
+/* a phone held sideways (after "เล่นแนวนอนต่อ"): every prompt was placed for an upright screen, 282px up, so on a 342px-high screen it sat above
+   the top edge (the mulligan's buttons could not be reached). Prompts now sit over the hand, under the opponent's bar, and scroll inside;
+   the hand is a row of smaller cards, and the table is fitted in the band above it (arena3d fitTall) */
+@media (max-width:760px) and (orientation:landscape) and (max-height:500px){
+  .handrow{padding-top:10px} .handrow .hcard{width:58px}
+  body.arena-on .prompt:is(.glass):not(.toss){bottom:calc(64px + env(safe-area-inset-bottom,0px));max-height:calc(100vh - 124px - env(safe-area-inset-bottom,0px));overflow:auto;z-index:6}
+}
