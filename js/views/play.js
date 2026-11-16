@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261115183732";
-import { fxText, kwGloss } from "../fxtext.js?v=20261115183732";
-import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261115183732";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261115183732";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261115183732";
-import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261115183732";
-import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor, myWinFx } from "../achieve.js?v=20261115183732";
-import { themeCounts, officialStarters } from "../boxdecks.js?v=20261115183732";
-import { ladder, ladderReset } from "../ladder.js?v=20261115183732";
-import { notify } from "../notify.js?v=20261115183732";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261115183732";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261115183732";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261115183732";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261115183732";
-import { Music, MUSIC_STYLES } from "../music.js?v=20261115183732";
-import { Sfx } from "../sfx.js?v=20261115183732";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar, shareReplayDoc, loadSharedReplay } from "../fb.js?v=20261115183732";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261115183732";
-import { readAura, traits } from "../auras.js?v=20261115183732";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261115183732";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261116163733";
+import { fxText, kwGloss } from "../fxtext.js?v=20261116163733";
+import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261116163733";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261116163733";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261116163733";
+import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261116163733";
+import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor, myWinFx } from "../achieve.js?v=20261116163733";
+import { themeCounts, officialStarters } from "../boxdecks.js?v=20261116163733";
+import { ladder, ladderReset } from "../ladder.js?v=20261116163733";
+import { notify } from "../notify.js?v=20261116163733";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261116163733";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261116163733";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261116163733";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261116163733";
+import { Music, MUSIC_STYLES } from "../music.js?v=20261116163733";
+import { Sfx } from "../sfx.js?v=20261116163733";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar, shareReplayDoc, loadSharedReplay } from "../fb.js?v=20261116163733";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261116163733";
+import { readAura, traits } from "../auras.js?v=20261116163733";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261116163733";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -26,14 +26,14 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(s.id ? [`รีเพลย์ในเครื่องนี้: ${s.id}-${V}`] : []), "บันทึก 40 บรรทัดล่าสุด:\n" + s.log.slice(-40).map((l) => "· " + l.m).join("\n"), // so a report can be traced back to its game
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261115183732";
-import { customMat, customSleeve, customFig, customStand, setOnReady, onVault } from "../vault.js?v=20261115183732";
-import { openGlossSheet } from "../glossary.js?v=20261115183732";
-import { weekRule, weeklyPanel, weeklyWinNote, isoWeek, ruleChip, hudLine, eventPicker, eventOpt, seriesNext, seriesChip, seriesText, seriesAfter, seriesWinner } from "../weekly.js?v=20261115183732";
-import { openCoach } from "../coach.js?v=20261115183732";
-import { mullHint } from "../matchups.js?v=20261115183732";
-import { logged, check as checkMoves, idleReason, pickMap } from "../movelog.js?v=20261115183732";
-import { openSandbox, openFishRuns } from "../sandbox.js?v=20261115183732";
+import { allDecks, deckById } from "./decks.js?v=20261116163733";
+import { customMat, customSleeve, customFig, customStand, setOnReady, onVault } from "../vault.js?v=20261116163733";
+import { openGlossSheet } from "../glossary.js?v=20261116163733";
+import { weekRule, weeklyPanel, weeklyWinNote, isoWeek, ruleChip, hudLine, eventPicker, eventOpt, seriesNext, seriesChip, seriesText, seriesAfter, seriesWinner } from "../weekly.js?v=20261116163733";
+import { openCoach } from "../coach.js?v=20261116163733";
+import { mullHint } from "../matchups.js?v=20261116163733";
+import { logged, check as checkMoves, idleReason, pickMap } from "../movelog.js?v=20261116163733";
+import { openSandbox, openFishRuns } from "../sandbox.js?v=20261116163733";
 // the players' own mat picture, card sleeve and figure (vault.js): the table asks for them, and redraws when one loads or changes
 Arena.setCustom({ mat: customMat, sleeve: customSleeve, fig: customFig, stand: customStand, skins: (s) => setGameSkins(s && s.P, Me.uid) }); setOnReady((o) => Arena.customReady(o)); onVault(() => Arena.refreshCustom());
 { let sig = ""; Data.listeners.add(() => { const sh = Data.meta && Data.meta.show, now = sh ? Object.entries(sh).map(([k, x]) => k + ":" + (x && x.v) + ":" + (x && x.finish)).join() : ""; if (now !== sig) { sig = now; Arena.refreshCustom(); } }); }
@@ -244,7 +244,7 @@ function questPanel() {
 }
 // ---------- start / resume ----------
 const pickOpp = () => { const o = Setup.opp !== "random" && deckById(Setup.opp); if (o && !deckLocked(o)) return o; const st = allDecks().filter((d) => d.starter && !d.box); return st[Math.floor(Math.random() * st.length)]; };
-import { dupNames, ruleDeck, singlePanel, botSingle, NODUP_NEED } from "../weekly.js?v=20261115183732";
+import { dupNames, ruleDeck, singlePanel, botSingle, NODUP_NEED } from "../weekly.js?v=20261116163733";
 const pack = (d) => ({ ...deckToList(d), name: d.name, id: d.id });
 // ไต่ด่าน: the official Starter Decks one after another, the bot growing stronger; a step is passed by a win recorded with its number
 function gauntletSteps() { const lv = (k, n) => (k < 2 ? "easy" : k < Math.ceil(n * 0.6) ? "basic" : "hard"); const list = officialStarters().filter((d) => validateDeck(d).ok);
@@ -358,7 +358,10 @@ async function checkFair(id, g, V) {
   lsPut(V === 0 ? "bot.h." + id : "bot.hc." + id, ""); // each side forgets its own part once checked
   if (why && GG && G === GG && !GG.tamper) { GG.tamper = "seed: " + why; console.warn("fair shuffle check:", why); toast("⚠ " + why + " เกมนี้จะถูกบันทึกว่าน่าสงสัย", "bad"); }
 }
-async function createRoom(extra = {}) { if (!(await freshApp())) return; // extra: a tournament match ({ tour, vs, vsName }) only that friend may join
+/* HB2-7: one room action at a time (a second tap while the first is still talking to the database does nothing) */
+const oneAtATime = (fn) => async (...a) => { if (oneAtATime.busy) return; oneAtATime.busy = true; try { return await fn(...a); } finally { oneAtATime.busy = false; } };
+const createRoom = oneAtATime(createRoom0);
+async function createRoom0(extra = {}) { if (!(await freshApp())) return; // extra: a tournament match ({ tour, vs, vsName }) only that friend may join
   const ev = extra.tour ? {} : eventOpt(); let me = deckById(Setup.deck); if (!me) return;
   if (ev.rule === "nodup") { me = ruleDeck("nodup", me); if (!me) return toast(NODUP_NEED, "bad"); }
   if (extra.tour && biasedDeck(me)) { toast(BIASED_TOUR, "bad"); return; }
@@ -366,13 +369,14 @@ async function createRoom(extra = {}) { if (!(await freshApp())) return; // extr
   await F.setDoc(gameRef(id), { status: "waiting", hc, host: Me.uid, hostName: myName(), hostAva: myAvatar(), hostAv3: myFigure(), hostSig: mySigil(), hostMat: myMat(), hostSleeve: mySleeve(), hostSkins: skinsFor(me), hostDeck: pack(me), seats: [Me.uid], createdAt: Date.now(), updatedAt: Date.now(), ...clockOpt(), ...ev, ...extra });
   toast("สร้างห้องแล้ว รอเพื่อนเข้าร่วม"); openOnline(id, 0);
 }
-async function joinRoom(r) { if (!(await freshApp())) return;
+const joinRoom = oneAtATime(joinRoom0); /* HB2-7 */
+async function joinRoom0(r) { if (!(await freshApp())) return;
   let me = deckById(Setup.deck); if (!me) return;
   if (r.rule === "nodup") { me = ruleDeck("nodup", me); if (!me) return toast(NODUP_NEED, "bad"); }
   if (r.tour && biasedDeck(me)) { toast(BIASED_TOUR, "bad"); return; }
   try {
     await F.runTransaction(db, async (tx) => {
-      const snap = await tx.get(gameRef(r.id)); const g = snap.data(); if (!g || g.status !== "waiting") throw new Error("ห้องนี้เริ่มไปแล้ว"); if (g.vs && g.vs !== Me.uid) throw new Error("ห้องนี้เป็นแมตช์ทัวร์ของเพื่อนคนอื่น");
+      const snap = await tx.get(gameRef(r.id)); const g = snap.data(); if (!g || g.status !== "waiting") throw new Error(g ? "ห้องนี้เริ่มไปแล้ว" : "ห้องนี้ปิดไปแล้ว"); /* HB2-6: a withdrawn room is not "already started" */ if (g.vs && g.vs !== Me.uid) throw new Error("ห้องนี้เป็นแมตช์ทัวร์ของเพื่อนคนอื่น");
       if (g.rule === "nodup") { if (dupNames(g.hostDeck).length) throw new Error("ห้องนี้ห้ามการ์ดซ้ำ แต่เด็คของเจ้าของห้องมีการ์ดซ้ำ"); if (dupNames(pack(me)).length) throw new Error(NODUP_NEED); } // both Decks checked under ห้ามการ์ดซ้ำ
       if (g.hc) { // a fair shuffle: our random part and our Deck go in now; the host shows its secret next and starts the game
         lsPut("bot.hc." + r.id, g.hc);
@@ -384,14 +388,15 @@ async function joinRoom(r) { if (!(await freshApp())) return;
   } catch (e) { toast(e.message || "เข้าร่วมไม่ได้", "bad"); }
 }
 // rematch with the same friend: open a room only they may join, and leave a note on the finished game for them
-async function friendRematch() { if (!(await freshApp())) return;
+const friendRematch = oneAtATime(friendRematch0); /* HB2-7 */
+async function friendRematch0() { if (!(await freshApp())) return; if (!G || !G.s) return; /* HB2-7: the table may have gone while the version check ran */
   const g = G, s = g.s, V = g.V, opp = s.P[1 - V]; let deck = deckById(s.P[V].deckId) || deckById(Setup.deck); if (!deck) return toast("เลือกเด็คก่อน"); if (s.rule === "nodup") { deck = ruleDeck("nodup", deck); if (!deck) return toast(NODUP_NEED, "bad"); }
   const id = newGameId(); const hc = await lockSeed(id);
   try { await F.setDoc(gameRef(id), { status: "waiting", hc, host: Me.uid, hostName: myName(), hostAva: myAvatar(), hostAv3: myFigure(), hostSig: mySigil(), hostMat: myMat(), hostSleeve: mySleeve(), hostSkins: skinsFor(deck), hostDeck: pack(deck), seats: [Me.uid], createdAt: Date.now(), updatedAt: Date.now(), ...(g.clock && g.clock.sec ? { clock: g.clock } : {}), ...(s.rule ? { rule: s.rule } : {}), ...(g.series ? { series: seriesWinner(seriesAfter(g.series, s)) ? { of: g.series.of || 3, prev: [] } : { of: g.series.of || 3, prev: [...(g.seriesPrev || []), g.id].slice(-4) } } : {}), vs: opp.uid, vsName: opp.name });
     await F.updateDoc(gameRef(g.id), { rematch: { id, by: V } }); } catch { return toast("เปิดห้องไม่ได้", "bad"); }
   stopGame(true); openOnline(id, 0); toast(`เปิดห้องแล้ว รอ ${opp.name} รับคำท้า`);
 }
-function acceptRematch() { const id = G && G.offer; if (!id) return; stopGame(true); joinRoom({ id }); }
+function acceptRematch() { const id = G && G.offer; if (!id) return; stopGame(true); if (location.hash !== "#play") location.hash = "#play"; joinRoom({ id }); } /* HB2-6: the finished table is gone (G is cleared), so the setup page comes up under the join; a join that fails stays there instead of on a table whose buttons no longer do anything */
 // ---------- a restart vote (picked the wrong Deck?): either player asks, the other agrees or not within a minute ----------
 // Agreed, the game ends as a no-contest (no result, no reward, not counted in a series) and both pick a Deck again; the old
 // host opens a new room for the same friend with the same rule, clock and series (a new fair-shuffle seed and a new move
@@ -527,7 +532,7 @@ function endNoContest(note) {
 // finished game between the same two friends, linked in order, and neither player disputed it); nobody types it in
 function seriesFrom(g, id) {
   const sr = g.series; if (!sr) { G.series = null; return; }
-  const prev = Array.isArray(sr.prev) ? sr.prev.slice(0, 4) : [], key = id + "|" + prev.join(",");
+  const prev = Array.isArray(sr.prev) ? sr.prev.slice(0, 4) : [], key = id + "|" + prev.join(",") + "|" + ((g.seats || []).length); /* HB2-9: the host first sees its new room with one seat (nothing can be counted yet); the score is worked out again once the friend has joined */
   G.seriesPrev = prev; if (G.seriesKey === key) return; G.seriesKey = key; G.series = { of: sr.of || 3, w: {}, n: 1 };
   if (!prev.length || !g.seats || g.seats.length < 2) return;
   const same = (a) => Array.isArray(a) && a.length === 2 && [...a].sort().join() === [...g.seats].sort().join();
@@ -785,7 +790,7 @@ function lethalMove(s, p) {
 // player's own effects: run by themselves; stop only to ask for a choice or when unreadable
 const WHEN_TH = { tani2: "เป้าหมายที่ 2", summon: "จุติ", death: "คำสั่งเสีย", attack: "เมื่อโจมตี", attacked: "เมื่อถูกโจมตี", win: "เมื่อชนะการต่อสู้", mainStart: "ต้น Main Phase", end: "End Phase", activate: "สั่งใช้", cast: "ใช้การ์ด" };
 function humanTrig(s, p) {
-  const t = s.trig[0];
+  const t = s.trig[0]; if (!t) return; /* HB2-1: a second tap on a choice that has already resolved (nothing left to resolve) */
   if (G.tk !== t.id) { G.tk = t.id; G.tpicks = []; G.ask = null; G.askSel = []; G.tbusy = false; }
   if (G.tbusy) return;
   // Rule Book: when abilities of two or more of our cards come up together, we choose which goes first
@@ -832,7 +837,7 @@ function finish() {
     saveMatch(s.id + "-" + V, { ...(s.rule && !(s.ruleBad || []).includes(V) ? { rule: s.rule, wk: isoWeek(s.startedAt).key } : {}), ...(G.gs ? { gs: G.gs } : {}), ...(G.undos || G.tamper || G.void ? { noRw: 1 } : {}), ...(G.tamper ? { flag: "tamper" } : G.void ? { flag: "unverified" } : {}), rp: rp ? 1 : 0, undo: G.undos || 0, brain: rec.brain, lifeLost: rec.lifeLost, uid: Me.uid, mode: G.fish ? "goldfish" : G.mode, deckId: P.deckId, deckName: P.deckName, th, opp: O.name, oppDeck: O.deckName, result: G.mode === "friend" && (G.tamper || G.void) ? "draw" : s.winner === V ? "win" : s.winner == null ? "draw" : "loss", ...(G.mode === "friend" && (G.tamper || G.void) ? { nc: 1 } : {}), turns: s.turn, reason: G.mode === "friend" && (G.tamper || G.void) ? "ไม่นับผล: " + (s.reason || "") : s.reason, first: s.first === V, at: Date.now(), log: s.log.slice(-14).map((l) => l.m) }).catch((e) => console.warn(e));
   }
   lsDel(SAVE); draw(); if (G.mode === "friend") ladderReset();
-  if (G.rec && G.mode !== "friend") { const g = G; setTimeout(() => { if (G === g) openSummary(g); }, 2600); } // after the banner and the falling gold or ash
+  if (G.rec && G.mode !== "friend") { const g = G; setTimeout(() => { if (G === g && !g.sumSeen) openSummary(g); }, 2600); } /* HB2-5: not again when the player already opened it */ // after the banner and the falling gold or ash
 }
 
 // an achievement earned this game: a gold notice with what it opened up
@@ -846,7 +851,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261115183732").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261116163733").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", mat: botMat(), bot: true });
@@ -968,7 +973,7 @@ function gameStats(rec) {
   return st;
 }
 function openSummary(g) {
-  if (!g || !g.rec) return; const s = g.s, V = g.V, st = gameStats(g.rec), me = st[V], op = st[1 - V];
+  if (!g || !g.rec) return; g.sumSeen = true; /* HB2-5 */ const s = g.s, V = g.V, st = gameStats(g.rec), me = st[V], op = st[1 - V];
   const res = s.winner === V ? "ชนะ" : s.winner == null ? "เสมอ" : "แพ้", top = (o) => Object.entries(o.played).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([n, k]) => `${n}${k > 1 ? " ×" + k : ""}`).join(", ");
   const row = (t, a, b) => h("div", { class: "sumrow" }, h("span", null, t), h("b", { class: "num" }, a), h("b", { class: "num" }, b));
   openSheet((api) => [h("div", { class: "statrow" }, h("div", { class: "stat" }, h("span", { class: "eyebrow" }, "ผล"), h("b", { style: `color:${res === "ชนะ" ? "#8ee3b2" : res === "แพ้" ? "#ffb0b2" : "inherit"}` }, res)),
@@ -1473,13 +1478,14 @@ function clockChip(s) {
 function clockTick() {
   const s = G && G.s; if (!s || G.mode !== "friend" || !G.clock || !G.clock.sec || G.replay) return;
   const now = Date.now(), key = s.turn + "/" + s.active; let c = G.clk;
-  if (!c || c.key !== key) c = G.clk = { key, used: 0, last: now, warned: false, gave: false };
+  if (!c || c.key !== key) { const kept = G.watch ? null : lsGet("bot.clk", null); /* HB2-4: a reload (or reopening the game) keeps the time this turn has used */
+    c = G.clk = kept && kept.id === G.id && kept.key === key ? kept : { id: G.id, key, used: 0, last: now, warned: false, gave: false }; }
   if (["draw", "main", "battle", "end"].includes(s.phase) && whoActs(s) === s.active) c.used += Math.min(now - c.last, 2000);
-  c.last = now;
+  c.last = now; if (!G.watch) lsSet("bot.clk", c); /* HB2-4 */
   const n = clockLeft(), el = document.getElementById("gclock"); if (el) { el.textContent = "⏱ " + fmtClock(n); el.classList.toggle("low", n <= 10); }
   if (s.phase === "over") return;
   if (n <= 0 && !c.warned) { c.warned = true; toast(`⏱ หมดเวลาเทิร์นของ ${s.P[s.active].name} แล้ว` + (G.clock.loss ? ` เกินอีก ${GRACE} วินาทีจะแพ้` : ""), "bad"); }
-  if (G.clock.loss && n <= -GRACE && !c.gave && !G.watch && s.active === G.V) { c.gave = true; toast("หมดเวลา เกมนี้นับเป็นแพ้", "bad"); doAct({ type: "concede" }, G.V); }
+  if (G.clock.loss && n <= -GRACE && !c.gave && !G.watch && !G.lock && s.active === G.V) { /* HB2-4: not while another move is being sent (doAct would drop the give-up and it was never tried again) */ c.gave = true; toast("หมดเวลา เกมนี้นับเป็นแพ้", "bad"); doAct({ type: "concede" }, G.V); }
 }
 setInterval(clockTick, 500);
 // ---------- keys on a desktop: Space moves the turn on, A picks the next attacker, Esc lets go, ? lists them all ----------

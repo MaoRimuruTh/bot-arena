@@ -1,18 +1,18 @@
-import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261115183732";
-import { plain, isOwnerNow } from "../persona.js?v=20261115183732";
-import { fxText } from "../fxtext.js?v=20261115183732";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, limitKey, banlist, banMax, banPair, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice } from "../cards.js?v=20261115183732";
-import { Data, Me, saveDeck, deleteDeck, saveSkins, saveCiel } from "../fb.js?v=20261115183732";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261115183732";
-import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261115183732";
-import { filterBar, filterCards } from "./library.js?v=20261115183732";
-import { openingOdds, simGame } from "./lab.js?v=20261115183732";
-import { freeBuild } from "../builder.js?v=20261115183732";
-import { deckCode, deckText, parseDeck, printCard } from "../deckcode.js?v=20261115183732";
+import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261116163733";
+import { plain, isOwnerNow } from "../persona.js?v=20261116163733";
+import { fxText } from "../fxtext.js?v=20261116163733";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, limitKey, banlist, banMax, banPair, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice, banKey } from "../cards.js?v=20261116163733";
+import { Data, Me, saveDeck, deleteDeck, saveSkins, saveCiel } from "../fb.js?v=20261116163733";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261116163733";
+import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261116163733";
+import { filterBar, filterCards } from "./library.js?v=20261116163733";
+import { openingOdds, simGame } from "./lab.js?v=20261116163733";
+import { freeBuild } from "../builder.js?v=20261116163733";
+import { deckCode, deckText, parseDeck, printCard } from "../deckcode.js?v=20261116163733";
 // Ciel's decks are not imported here: they come from the owner's private data (see cielDecks)
-import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261115183732";
-import { deckLocked, deckLockAch } from "../achieve.js?v=20261115183732";
-import { noteBase, noteVersion, openVersions, openCardStats } from "../decktools.js?v=20261115183732";
+import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261116163733";
+import { deckLocked, deckLockAch } from "../achieve.js?v=20261116163733";
+import { noteBase, noteVersion, openVersions, openCardStats } from "../decktools.js?v=20261116163733";
 
 // Ciel's theme decks: print codes → card ids (resolved once the card data is loaded). They are Ciel's decks for Rimuru,
 // so only the owner's account sees them: other accounts get none (not in the deck list, the duel setup, the lab or the bot's picks)
@@ -22,7 +22,7 @@ let cielCache = null, cielMoving = false; const CIEL_REV = 2; // matches CIEL_RE
 function moveCiel() {
   if (cielMoving) return; cielMoving = true;
   // a failed load writes nothing (a network hiccup must never leave an empty list behind); it is tried again next visit
-  import("../cieldecks.js?v=20261115183732").then((m) => { if (m.CIEL_DECKS && m.CIEL_DECKS.length) return saveCiel(m.CIEL_DECKS, m.CIEL_REV || 1); }).catch((e) => console.warn("Ciel's decks: not moved yet", e));
+  import("../cieldecks.js?v=20261116163733").then((m) => { if (m.CIEL_DECKS && m.CIEL_DECKS.length) return saveCiel(m.CIEL_DECKS, m.CIEL_REV || 1); }).catch((e) => console.warn("Ciel's decks: not moved yet", e));
 }
 export function cielDecks() {
   const own = isOwnerNow(); if (!own || !Me.uid) return [];
@@ -46,7 +46,7 @@ export function addToDeck(d, id, delta = 1) {
   // together), and the two cards of a forbidden pair not together
   if (delta > 0) { const B = banlist(), mx = banMax(c, B);
     if (mx === 0) return toast(`${c.n} เป็นการ์ดบาป ห้ามใช้ (${B.name})`);
-    const inDeck = deckEntries(d).filter((e) => e.c.n === c.n).reduce((a, e) => a + e.n, 0) + (d.life || []).filter((x) => (card(x) || {}).n === c.n).length;
+    const inDeck = deckEntries(d).filter((e) => banKey(e.c.n) === banKey(c.n)).reduce((a, e) => a + e.n, 0) + (d.life || []).filter((x) => banKey((card(x) || {}).n) === banKey(c.n)).length; /* HB2-2: counted the way the ban list check counts (พญายักษ์ ทศกัณฑ์ BT04-028 = ทศกัณฐ์ CC02-039) */
     if (mx != null && inDeck >= mx) return toast(`${c.n} ใส่ได้ ${mx} ใบตาม${B.name}`);
     const pair = banPair(c, d, B); if (pair) return toast(`${c.n} ใส่คู่กับ ${pair} ไม่ได้ (${B.name})`); }
   if (c.t === "L") {
@@ -70,7 +70,7 @@ function flushSave(d) {
   clearTimeout(Save.t); Save.t = null; Save.pending = null;
   return (Save.p = (Save.p || Promise.resolve()).then(async () => {
     Save.state = "saving"; saveLabel();
-    try { const fresh = !d.id; d.id = await saveDeck(d); if (fresh) { d.owner = Me.uid; if (d === Editing && /^#decks\/(new|edit)/.test(location.hash)) history.replaceState(null, "", "#decks/edit/" + d.id); } Save.state = "saved"; noteVersion(d); }
+    try { const fresh = !d.id; if (!String(d.name || "").trim()) d.name = "เด็คใหม่"; /* HB2-8: never a deck without a name */ d.id = await saveDeck(d); if (fresh) { d.owner = Me.uid; if (d === Editing && /^#decks\/(new|edit)/.test(location.hash)) history.replaceState(null, "", "#decks/edit/" + d.id); } Save.state = "saved"; noteVersion(d); }
     catch (e) { console.warn(e); Save.state = "error"; }
     saveLabel();
   }));
@@ -451,15 +451,19 @@ export function openShare(d) {
 function openTextImport(target, done) {
   openSheet((api) => {
     const ta = h("textarea", { rows: 9, class: "sharebox", "aria-label": "โค้ดหรือรายการเด็ค", placeholder: "วางโค้ดเด็ค (BoT1|…) หรือรายการ เช่น\n3 พระอิศวร\n2x เทวดาแบงค์\nSD01-004\n2x BT01-038-SR (รายการจาก bottcg.com)" });
-    const out = h("div", { class: "stack small" });
+    const out = h("div", { class: "stack small" }); let base = null; /* HB2-3: the deck as it was before this box first read anything */
     const read = () => {
       const r = parseDeck(ta.value);
       // a link to a deck on another site: that site does not let other sites read its decks, so only its list can be pasted
       if (!r.items.length && !r.amb.length && /https?:\/\/\S+/.test(ta.value)) return out.replaceChildren(h("div", { class: "muted" }, "ลิงก์เด็คจากเว็บอื่นเปิดอ่านจากที่นี่ไม่ได้ เพราะเว็บนั้นไม่ให้เว็บอื่นดึงข้อมูลเด็ค ให้เปิดลิงก์นั้นเอง คัดลอกรายการการ์ด (เช่นที่ปุ่ม \"ดูรหัสเด็ค\" ของ bottcg.com ซึ่งเป็นบรรทัดแบบ 2x BT01-038-SR) แล้วนำมาวางที่นี่แทน"));
       if (!r.items.length && !r.amb.length) return out.replaceChildren(h("div", { class: "muted" }, ta.value.trim() ? "อ่านไม่ออกสักบรรทัด ลองตรวจชื่อการ์ดหรือรหัสอีกครั้ง" : "วางโค้ดหรือรายการก่อน"));
       const d = target(); const nm = ta.value.match(/^#\s*(.+)$/m); if (nm && !d.id && !deckCount(d)) d.name = nm[1].trim().slice(0, 60);
+      /* HB2-3: reading again (after fixing a line) replaces what the last read added instead of adding it all a second time */
+      if (!base) base = { main: { ...(d.main || {}) }, life: [...(d.life || [])] }; else { d.main = { ...base.main }; d.life = [...base.life]; }
+      const had = deckCount(d) + (d.life || []).length, want = r.items.reduce((a, x) => a + x.n, 0);
       for (const { c, n } of r.items) for (let k = 0; k < n; k++) addToDeck(d, baseId(c.i), 1);
-      out.replaceChildren(h("div", null, `เพิ่ม ${r.items.reduce((a, x) => a + x.n, 0)} ใบ · ตอนนี้ ${deckCount(d)} ใบ + LIFE ${(d.life || []).length} ใบ`),
+      const got = deckCount(d) + (d.life || []).length - had;
+      out.replaceChildren(h("div", null, `เพิ่ม ${got} ใบ · ตอนนี้ ${deckCount(d)} ใบ + LIFE ${(d.life || []).length} ใบ`), got < want ? h("div", { class: "muted" }, `ใส่ไม่ได้ ${want - got} ใบ (เกินจำนวนที่ใส่ได้ การ์ดบาป หรือ LIFE ครบแล้ว)`) : null,
         r.miss.length ? h("div", { class: "muted" }, "อ่านไม่ออก: " + r.miss.join(" · ")) : null,
         ...r.amb.map((a) => { const b = h("div", { class: "stack", style: "gap:4px" }, h("b", null, `"${a.name}" มี ${a.vers.length} เวอร์ชันที่ความสามารถต่างกัน เลือกใบที่ใช่ (×${a.n})`), h("div", { class: "pick" }, a.vers.map((v) => cardBtn(v.i, { badge: v.p, onclick: () => { for (let k = 0; k < a.n; k++) addToDeck(d, v.i, 1); b.remove(); done(d); } })))); return b; }),
         h("div", { class: "row" }, h("button", { class: "btn gold", onclick: () => { api.close(); done(d); } }, "เสร็จ")));

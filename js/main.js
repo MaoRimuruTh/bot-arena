@@ -1,25 +1,25 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261115183732";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261115183732";
-import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn, foilSetting } from "./arena3d.js?v=20261115183732";
-import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261115183732";
-import { Vault, startVault } from "./vault.js?v=20261115183732";
-import { tablePreview, pvHover, pvUnhover, pvPick, pvClose } from "./preview.js?v=20261115183732";
-import { vaultSection } from "./vaultui.js?v=20261115183732";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261115183732";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261115183732";
-import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261115183732";
-import { Sfx } from "./sfx.js?v=20261115183732";
-import { Music, MUSIC_STYLES } from "./music.js?v=20261115183732";
-import { Views, avatarEl } from "./ui.js?v=20261115183732";
-import { Ciel } from "./ai.js?v=20261115183732";
-import "./views/library.js?v=20261115183732";
-import "./views/decks.js?v=20261115183732";
-import "./views/lab.js?v=20261115183732";
-import "./views/rules.js?v=20261115183732";
-import "./views/unlocks.js?v=20261115183732";
-import "./views/history.js?v=20261115183732";
-import { openReport } from "./views/ask.js?v=20261115183732";
-import "./views/play.js?v=20261115183732";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261116163733";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261116163733";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn, foilSetting } from "./arena3d.js?v=20261116163733";
+import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261116163733";
+import { Vault, startVault } from "./vault.js?v=20261116163733";
+import { tablePreview, pvHover, pvUnhover, pvPick, pvClose } from "./preview.js?v=20261116163733";
+import { vaultSection } from "./vaultui.js?v=20261116163733";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261116163733";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261116163733";
+import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261116163733";
+import { Sfx } from "./sfx.js?v=20261116163733";
+import { Music, MUSIC_STYLES } from "./music.js?v=20261116163733";
+import { Views, avatarEl } from "./ui.js?v=20261116163733";
+import { Ciel } from "./ai.js?v=20261116163733";
+import "./views/library.js?v=20261116163733";
+import "./views/decks.js?v=20261116163733";
+import "./views/lab.js?v=20261116163733";
+import "./views/rules.js?v=20261116163733";
+import "./views/unlocks.js?v=20261116163733";
+import "./views/history.js?v=20261116163733";
+import { openReport } from "./views/ask.js?v=20261116163733";
+import "./views/play.js?v=20261116163733";
 
 const root = $("#view");
 // text size for the whole app (everything is sized in rem), kept per browser; Hearthstone and LoR offer the same for small screens
@@ -239,7 +239,7 @@ async function checkUpdate() {
   try {
     const r = await fetch("version.json?t=" + Date.now(), { cache: "no-store" }); if (!r.ok) return; const { v } = await r.json();
     if (!v || v === APP_V) return;
-    const busyNow = document.body.classList.contains("arena-on") || /^#decks\/(edit|new)/.test(location.hash) || document.querySelector(".scrim");
+    const busyNow = document.body.classList.contains("arena-on") || /^#decks\/./.test(location.hash) /* a deck page: its +/− edits save a moment later */ || document.querySelector(".scrim");
     if (!busyNow) return location.reload();
     if (!document.querySelector(".upd")) document.body.append(h("div", { class: "upd glass", role: "status" }, h("span", null, "มีเวอร์ชันใหม่ของเว็บ"), h("button", { class: "btn gold sm", onclick: () => location.reload() }, "โหลดเลย"), h("button", { class: "btn sm", onclick: (e) => e.currentTarget.parentElement.remove() }, "ไว้ก่อน")));
   } catch {}

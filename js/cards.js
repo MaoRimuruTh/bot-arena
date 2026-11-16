@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261115183732";
-import { h } from "./util.js?v=20261115183732";
-import { Data } from "./fb.js?v=20261115183732";
+import { CARD_SOURCE } from "./config.js?v=20261116163733";
+import { h } from "./util.js?v=20261116163733";
+import { Data } from "./fb.js?v=20261116163733";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -249,6 +249,7 @@ const BANLISTS = [{ name: "การ์ดบาป ส.ค. 2569", from: "2026-
     2: ["ชายจากอนาคต", "ความเจริญ", "ลูกแม่ศรีนวล", "การสละชีพของเทพธิดา", "แมลงปอมีพิษ", "ไอ นีด เมดิก", "กุมภกรรณ ทดน้ำ", "เพื่อชาติ", "อีช่า - สาวน้อยคนเก่ง", "เลือกมันสำหรับพวก จน !!!", "เจค นักฆ่ามือเก๋า", "งี่เง่า และ งอแง", "โคลัมบัส นักท่องเรือ", "อาเธอร์ ราชาแห่งอัศวินโต๊ะกลม", "อุบัติเหตุ!!!", "พระนารายณ์ เทพผู้พิทักษ์", "ไปเลยมอนตี้", "พี่หน่วง พิธีกรผมสวย", "มยุราซัง ไอดอลยุค 80"] },
   pairs: [["เจ้ากล้าดียังไง", "ริกกี้ นักปลอมแปลง"], ["พี่หน่วง พิธีกรผมสวย", "เลือกมันสำหรับพวก จน !!!"], ["จอมเวทย์ กาลู", "โคกอีสานนูน"], ["หมู่บ้านเห็ด", "คาถา เสกควายเข้าท้อง"]] }];
 const nn = (t) => String(t || "").replace(/\s+/g, " ").trim().replace(/ทศกัณ[ฑท]์/g, "ทศกัณฐ์"); // a spelling-only reprint is the same card (พญายักษ์ ทศกัณฑ์ BT04-028 = ทศกัณฐ์ CC02-039 / FPRO-006), as limitKey treats it
+export const banKey = (t) => nn(t); /* HB2-2: the ban list's own name match (spacing, spellings), for the deck builder */
 export function banlist(now = new Date()) { const day = new Date(now.getTime() + 7 * 3600e3).toISOString().slice(0, 10); return BANLISTS.filter((b) => b.from <= day).sort((a, b) => (a.from < b.from ? 1 : -1))[0] || null; }
 // how many copies the list allows of a card (null: no limit from the list)
 export function banMax(c, B = banlist()) { if (!B || !c) return null; const n = nn(c.n); if (B.ban.some((x) => nn(x) === n)) return 0; for (const [m, names] of Object.entries(B.max)) if (names.some((x) => nn(x) === n)) return +m; return null; }
