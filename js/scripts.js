@@ -2174,9 +2174,9 @@ Object.assign(SCRIPTS, {
   "BT07-073": { worn: () => 2, hostNoAttack: true, aura: (E, s, src, L) => (L.z === "mg" && src.on != null ? [{ seat: L.p, test: (x) => x.i !== src.on && grass(E, s, x), n: 1 }] : []),
     // the wearer cannot attack: it goes on ราชันย์ตั๊กแตนศตวรรษ first (it gets the LIFE ability from it), else on the weakest
     // ตั๊กแตน that is not หยิน / หยาง; the bot keeps it in the Construct Zone rather than stop a หยิน / หยาง from attacking
-    activate: { label: "ไปสวมใส่ให้ Avatar ตั๊กแตน (แนะนำราชันย์ตั๊กแตนศตวรรษ)", can: (E, s, x, L) => L.z === "cs" && s.phase === "main" && s.P[L.p].av.some((y) => grass(E, s, y) && (!s.P[L.p].bot || !yinYang(E, s, y))),
+    activate: { label: "ไปสวมใส่ให้ Avatar ตั๊กแตน (แนะนำราชันย์ตั๊กแตนศตวรรษ)", can: (E, s, x, L) => (L.z === "cs" || (L.z === "mg" && x.on != null)) && s.phase === "main" && s.P[L.p].av.some((y) => y.i !== x.on && grass(E, s, y) && (!s.P[L.p].bot || !yinYang(E, s, y))), // worn too: move it to another ตั๊กแตน (เทิร์นละครั้ง)
       run: (c) => { const { E, s, seat: p, self: x } = c; const king = (y) => (E.named(s, y, "ราชันย์ตั๊กแตนศตวรรษ") ? 1 : 0), yy = (y) => (yinYang(E, s, y) ? 1 : 0);
-        const pool = s.P[p].av.filter((y) => grass(E, s, y)).sort((a, b) => king(b) - king(a) || yy(a) - yy(b) || E.power(s, a) - E.power(s, b));
+        const pool = s.P[p].av.filter((y) => y.i !== x.on && grass(E, s, y)).sort((a, b) => king(b) - king(a) || yy(a) - yy(b) || E.power(s, a) - E.power(s, b));
         const h = c.choose(pool, 1, "เลือก Avatar ตั๊กแตนที่จะสวมใส่บัลลังก์ (ใบที่สวมจะโจมตีไม่ได้ · ราชันย์ตั๊กแตนศตวรรษได้ประโยชน์ที่สุด)", { exact: true })[0]; return h ? { explain: `${E.name(s, x)} สวมใส่ให้ ${E.name(s, h)}`, ops: [{ op: "attach", i: x.i, on: h.i }] } : { explain: "", ops: [] }; } } },
 });
 
