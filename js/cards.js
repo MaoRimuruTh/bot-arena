@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261117113842";
-import { h } from "./util.js?v=20261117113842";
-import { Data } from "./fb.js?v=20261117113842";
+import { CARD_SOURCE } from "./config.js?v=20261117115259";
+import { h } from "./util.js?v=20261117115259";
+import { Data } from "./fb.js?v=20261117115259";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -57,7 +57,7 @@ const SUB = { Normal: "N", Modification: "D", React: "R", Land: "L" };
 //   Magic GEM (the 558 Magic printings' diamonds): ช่วยโลกใบนี้ไว้ 4 (BT02-041 and PRMO-010 print 4, as CC02-051 does) ·
 //          วิชานินจา รุกรับพลิกผัน 1 · สัญญาเลือด 2 (both printings)
 // (A single printing that differs from all its reprints keeps the data, which follows the reprints.)
-const DATA_FIX = { "SD05-014": { st: "L" }, "SD05-020": { st: "R" }, "SD06-014": { st: "R" }, "ODY1-064": { st: "R" },
+const DATA_FIX = { "SD05-014": { st: "L" }, "SD05-020": { st: "R" }, "CC02-061": { st: "R" }, "APFD-002": { st: "R" }, "SD06-014": { st: "R" }, "ODY1-064": { st: "R" },
   "BT04-010": { pw: 7 }, "FPRO-007": { pw: 7 }, "BT04-019": { c: 5, pw: 6 }, "BT04-020": { pw: 4 }, "PRMO-137": { pw: 4 }, "ODY1-007": { pw: 3 },
   "BT04-005": { c: 5, g: 0 }, "BT04-007": { c: 6 }, "BT04-013": { c: 2 }, "BT04-029": { c: 4 }, "BT04-033": { c: 3 }, "BT04-034": { c: 2, g: 1 }, "BT06-035": { c: 4, g: 3 },
   "SD07-006": { g: 0 }, "PRMO-102": { g: 0 }, "BT03-033": { g: 3 }, "BT11-049": { g: 2 }, "ODY1-010": { g: 2 }, "BT04-030": { g: 3 }, "BT09-022": { g: 2 },
