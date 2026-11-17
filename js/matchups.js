@@ -2,12 +2,12 @@
 // Only the official decks (Starter Decks and box decks) come precomputed in data/matchups.json, made offline with the normal
 // (quick) bot; Ciel's decks and a player's own decks are simulated here in the browser, in small chunks, and kept on that device.
 // These are simulation numbers from our bot, not official data.
-import { h, busy, lsGet, lsSet, openSheet } from "./util.js?v=20261117153832";
-import { card, validateDeck, deckAce } from "./cards.js?v=20261117153832";
-import { E } from "./engine.js?v=20261117153832";
-import { allDecks } from "./views/decks.js?v=20261117153832";
-import { deckLocked } from "./achieve.js?v=20261117153832";
-import { simGame } from "./views/lab.js?v=20261117153832";
+import { h, busy, lsGet, lsSet, openSheet } from "./util.js?v=20261117153947";
+import { card, validateDeck, deckAce } from "./cards.js?v=20261117153947";
+import { E } from "./engine.js?v=20261117153947";
+import { allDecks } from "./views/decks.js?v=20261117153947";
+import { deckLocked } from "./achieve.js?v=20261117153947";
+import { simGame } from "./views/lab.js?v=20261117153947";
 
 // ---------- the opening hand: what a hand looks like, as a small pattern ----------
 // cheap: Avatars of Cost 2 or less (0 / 1 / 2+), big: cards of Cost 5 or more (0–1 / 2+), key: the deck's ace (its marked ace
