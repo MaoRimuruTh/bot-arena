@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261117161807";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261117161807";
-import { SCRIPTS } from "./scripts.js?v=20261117161807";
-import { newId, clone } from "./util.js?v=20261117161807";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261117162450";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261117162450";
+import { SCRIPTS } from "./scripts.js?v=20261117162450";
+import { newId, clone } from "./util.js?v=20261117162450";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -252,7 +252,7 @@ export const E = {
   summonedNow(s, p) { return s.sum && s.sum[p] && s.sum[p].t === s.turn ? s.sum[p].n : []; },
   // a Magic that may be used even though one of its kind was used this turn
   extraMagic(s, p, x) { const d = E.def(s, x); const sc = scriptOf(s, x);
-    if (d.st === "N") { if (fieldCards(s).some(({ x: y, L }) => L.p === p && !y.mute && (scriptOf(s, y) || {}).freeMagic && scriptOf(s, y).freeMagic(E, s, x))) return true; const xn = s.xN && s.xN[p]; return !!(xn && xn.t === s.turn && !xn.used && d.n !== xn.not && (!xn.only || String(d.n || "").includes(xn.only))); } if (d.st === "R") return !!(sc && sc.react && sc.react.ignoreLimit && !s.mu[p].R2) || E.skillExtra(s, p, x);
+    if (d.st === "N") { if (fieldCards(s).some(({ x: y, L }) => L.p === p && !y.mute && (scriptOf(s, y) || {}).freeMagic && scriptOf(s, y).freeMagic(E, s, x))) return true; return E.xGrants(s, p).some((g) => E.xFits(g, d)); } if (d.st === "R") return !!(sc && sc.react && sc.react.ignoreLimit && !s.mu[p].R2) || E.skillExtra(s, p, x);
     if (d.st === "D") { const two = s.two && s.two[p] && s.two[p].t === s.turn; return !!(two && !s.two[p].used && String(d.n || "").includes(s.two[p].name)); } return false; },
   // ขวัญตา เรื่องราว ครุฑเจ้าเวหา (from นักท่องเรื่องราว): one more React "Skill" a turn, with a name not used yet this turn
   skillExtra(s, p, x) { const d = E.def(s, x); if (d.t !== "M" || d.st !== "R" || !/^Skill\b/.test(String(d.n || ""))) return false;
@@ -603,6 +603,9 @@ export const E = {
       return !s.P[p].bot && !(sc && sc.canCast && !sc.canCast(E, s, p)); });
   },
   // after a summon or a Magic, the other player may answer with a React before effects resolve
+  // this turn's "one more Normal Magic" grants of player p (old saves kept one grant as a plain object)
+  xGrants(s, p) { const a = s.xN && s.xN[p]; return (Array.isArray(a) ? a : a ? [a] : []).filter((g) => g && g.t === s.turn); },
+  xFits(g, d) { return !g.used && d.n !== g.not && (!g.only || String(d.n || "").includes(g.only)); },
   openWindow(s, p, kind, i, extra) { const q = 1 - p; const on = { kind, by: p, i, ...(extra || {}) }; if (E.reactsFor(s, q, on).length) s.rw = on; },
 
   // s.na counts the actions; every ability that comes up during one is marked with it (t.b), so "at the same time" can be told
@@ -758,7 +761,7 @@ export const E = {
         if (st === "R" && ust === "R" && s.mu[p].R) { const scx = scriptOf(s, x); if (scx && scx.react && scx.react.ignoreLimit && !s.mu[p].R2) s.mu[p].R2 = true; else s.mu[p].RS = (+s.mu[p].RS || 0) + 1; } // a React allowed after another one (อย่าให้มีครั้งที่ 2 / an extra "Skill")
         if (st === "R" && /^Skill\b/.test(String(d.n || ""))) { s.skillUsed = s.skillUsed || [null, null]; const u = s.skillUsed[p] && s.skillUsed[p].t === s.turn ? s.skillUsed[p] : { t: s.turn, n: [] }; u.n.push(d.n); s.skillUsed[p] = u; }
         if (st === "D" && s.mu[p].D && E.extraMagic(s, p, x)) s.two[p].used = true;
-        if (st === "N" && s.mu[p].N && s.xN && s.xN[p] && s.xN[p].t === s.turn && !fieldCards(s).some(({ x: y, L }) => L.p === p && !y.mute && (scriptOf(s, y) || {}).freeMagic && scriptOf(s, y).freeMagic(E, s, x))) s.xN[p].used = true;
+        if (st === "N" && s.mu[p].N && !fieldCards(s).some(({ x: y, L }) => L.p === p && !y.mute && (scriptOf(s, y) || {}).freeMagic && scriptOf(s, y).freeMagic(E, s, x))) { const gs = E.xGrants(s, p).filter((g) => E.xFits(g, E.def(s, x))); const g = gs.find((z) => z.only) || gs.find((z) => z.not) || gs[0]; if (g) g.used = true; } /* the narrowest grant that fits is spent first */
         s.mu[p][ust] = true; { const Z = P.hand.includes(x) ? P.hand : P.hell; Z.splice(Z.indexOf(x), 1); if (Z === P.hell) E.log(s, p, `ใช้ ${E.name(s, x)} จากนรก`); }
         if (s.active === p) for (const { x: y, L: Ly } of fieldCards(s)) { if (Ly.p !== p) continue; const sy = scriptOf(s, y); if (sy && sy.onMagic) { const ops = sy.onMagic(E, s, y, Ly); if (ops && ops.length) E.ops(s, ops, p); } }
         s.played[p][x.c] = (s.played[p][x.c] || 0) + 1;
@@ -1311,7 +1314,7 @@ export const E = {
         const P = s.P[seat]; let k = 0; for (const z of ["mg", "av", "cs", "hand"]) for (const x of [...P[z]]) { if (!E.locate(s, x.i)) continue; E.moveTo(s, x.i, "hell"); k++; }
         for (const l0 of E.lands(s).filter((l) => l.o === seat)) { E.moveTo(s, l0.i, "hell"); k++; } E.log(s, by, `ส่งการ์ดบนสนามและบนมือของ ${P.name} ลงนรก ${k} ใบ`); return; }
       case "afterFight": { if (s.pend) (s.pend.af = s.pend.af || []).push(...(o.ops || []).slice(0, 6)); return; }
-      case "extraN": { s.xN = s.xN || [null, null]; s.xN[seat] = { t: s.turn, not: String(o.not || ""), only: String(o.only || "") }; E.log(s, by, `เทิร์นนี้ใช้ Normal Magic${o.only ? ` "${o.only}"` : ""} ได้อีก 1 ใบ`); return; }
+      case "extraN": { s.xN = s.xN || [null, null]; s.xN[seat] = [...E.xGrants(s, seat), { t: s.turn, not: String(o.not || ""), only: String(o.only || "") }]; /* grants add up (อะปัด + หอสมุด + เหนือฟ้า: each one more Normal Magic, FAQ หอสมุดจอมเวทย์ / เหนือฟ้าใต้หล้า) */ E.log(s, by, `เทิร์นนี้ใช้ Normal Magic${o.only ? ` "${o.only}"` : ""} ได้อีก 1 ใบ`); return; }
       case "noShieldAtk": { if (s.pend) { s.pend.nsh = true; E.log(s, by, "ฝ่ายตรงข้ามใช้โล่มนุษย์กับการโจมตีครั้งนี้ไม่ได้"); } return; }
       case "payPut": { // summon a card from the hand by paying its Cost, outside the summon action (นักรบ ฮอล)
         const P = s.P[seat]; const x = P.hand.find((y) => y.i === o.i); if (!x) return; const d = E.def(s, x); const cost = E.costOf(s, seat, x);
