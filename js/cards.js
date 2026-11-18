@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261117170413";
-import { h } from "./util.js?v=20261117170413";
-import { Data } from "./fb.js?v=20261117170413";
+import { CARD_SOURCE } from "./config.js?v=20261118075526";
+import { h } from "./util.js?v=20261118075526";
+import { Data } from "./fb.js?v=20261118075526";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -105,6 +105,10 @@ function transform(raw) {
   // line breaks and slashes are ignored (special-art reprints often re-wrap the text)
   const norm = (t) => String(t || "").replace(/[\s\/|]+/g, "").replace(/[“”]/g, '"');
   const groups = new Map(); const byPrint = new Map(); const out = [];
+  // a print whose data text is wrong takes the text of the printing it really is (the card picture is the truth):
+  // KD04-010 ลูกคนรวย is printed with BT04-008's text, but the data carries คนรวย's
+  { const TEXT_OF = { "KD04-010": "BT04-008" }; const src = (pr) => raw.find((y) => y.print === pr && y.mainEffect);
+    raw.forEach((c) => { const pr = TEXT_OF[c.print], y = pr && src(pr); if (y && y.name === c.name) c.mainEffect = y.mainEffect; }); }
   raw.forEach((c, i) => { const k = c.name + "|" + c.type + "|" + norm(c.mainEffect); const kp = c.name + "|" + c.type + "|" + c.print;
     const g = groups.has(k) ? groups.get(k) : byPrint.has(kp) ? byPrint.get(kp) : i; if (!groups.has(k)) groups.set(k, g); if (!byPrint.has(kp)) byPrint.set(kp, g); raw[i]._g = g; });
   // a reprint whose text is missing from the data (KD03-010 วูตาตู) belongs with the printing that has the same name, type,

@@ -3671,7 +3671,7 @@ Object.assign(SCRIPTS, {
   "PRE0-005-2": { summon: (c) => { const { E, s, seat: p, self: x } = c; if (!x) return { explain: "", ops: [] }; const pw = E.power(s, x); const t = c.choose(bestFoe(E, s, p).filter((y) => E.power(s, y) < pw), 1, `เลือก Avatar ฝ่ายตรงข้าม POWER น้อยกว่า ${pw}`, { exact: true })[0];
       return t ? { explain: `${E.name(s, t)} ไปอยู่ที่ Magic Zone ฝ่ายเรา`, ops: [{ op: "move", i: t.i, to: "mg", seat: p }] } : { explain: "ไม่มีเป้าหมาย", ops: [] }; } },
 });
-for (const [a, b] of [["KD01-005", "CC01-002"], ["KD01-008", "BT02-008"], ["KD01-009", "BT03-002"], ["KD01-016", "BT03-055"], ["KD01-020", "BT02-060"], ["KD02-008", "SD03-004"], ["KD04-003", "BT03-004"], ["KD04-007", "BT03-005"], ["KD04-010", "CC02-022"],
+for (const [a, b] of [["KD01-005", "CC01-002"], ["KD01-008", "BT02-008"], ["KD01-009", "BT03-002"], ["KD01-016", "BT03-055"], ["KD01-020", "BT02-060"], ["KD02-008", "SD03-004"], ["KD04-003", "BT03-004"], ["KD04-007", "BT03-005"],
   ["CC02-052", "BT03-046"], ["KD04-014", "BT04-053"], ["KD04-015", "BT05-063"], ["SL02-001", "BT07-006"], ["SL02-006", "BT06-031"]]) if (SCRIPTS[b]) SCRIPTS[a] = SCRIPTS[b];
 
 // ── B2SA (น้อง Passion mini set)
