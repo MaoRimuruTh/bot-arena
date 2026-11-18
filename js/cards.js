@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261118084655";
-import { h } from "./util.js?v=20261118084655";
-import { Data } from "./fb.js?v=20261118084655";
+import { CARD_SOURCE } from "./config.js?v=20261118090413";
+import { h } from "./util.js?v=20261118090413";
+import { Data } from "./fb.js?v=20261118090413";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -184,6 +184,7 @@ const baseOf = (x) => (x.b != null ? x.b : x.i);
 // game is on screen (null otherwise: then our own skins show, on the deck pages).
 export const GameSkins = { maps: null, sig: "" };
 export function setGameSkins(players, meUid) {
+  OwnArt.seat = players ? players.findIndex((P) => P && P.uid && P.uid === meUid) : null;
   if (!players) { GameSkins.maps = null; GameSkins.sig = ""; return; }
   const sig = JSON.stringify(players.map((P) => [P.skins || null, P.uid === meUid && P.skins == null])) + (Data.skinCodec && Data.skinCodec.ready() ? "+" : "");
   if (sig === GameSkins.sig) return; GameSkins.sig = sig;
@@ -211,8 +212,13 @@ export const isFav = (c) => !!(c && Data.favs && Data.favs[favKey(c)]);
 export const favCards = () => Object.keys((Data && Data.favs) || {}).map((k) => CARDS.find((c) => favKey(c) === k)).filter(Boolean);
 export const isSpecialArt = (c) => c.b != null || ["SCR", "CBR", "USEC"].includes(c.r);
 const goodUrl = new Map();
+// the owner's own pictures for some of his cards (his fan-art LIFE cards, kept in his private space and read by vault.js):
+// base id → a picture address on his device only. In a game they show on the seat he plays (OwnArt.seat), elsewhere always.
+export const OwnArt = { m: new Map(), seat: null };
+export const ownArt = (c, seat) => { if (!c || !OwnArt.m.size) return null; const u = OwnArt.m.get(String(baseId(c.i))); return u && (OwnArt.seat == null || (OwnArt.seat >= 0 && seat === OwnArt.seat)) ? u : null; };
 export function artUrl(c) { return goodUrl.get(c.i) || imgUrls(c)[0]; }
 export function artImg(c, cls = "cimg", alt, seat) {
+  { const ou = ownArt(c, seat); if (ou) return h("img", { class: cls, src: ou, alt: alt ?? c.n, decoding: "async", draggable: "false" }); }
   c = skinOf(c, seat); const urls = imgUrls(c); let k = urls.indexOf(goodUrl.get(c.i)); if (k < 0) k = 0;
   const img = h("img", { class: cls, src: urls[k], alt: alt ?? c.n, loading: "lazy", decoding: "async", draggable: "false" });
   img.addEventListener("load", () => goodUrl.set(c.i, img.src));
@@ -220,6 +226,7 @@ export function artImg(c, cls = "cimg", alt, seat) {
   return img;
 }
 export function resolveArt(c, seat) {
+  { const ou = ownArt(c, seat); if (ou) return Promise.resolve(ou); }
   c = skinOf(c, seat);
   if (goodUrl.has(c.i)) return Promise.resolve(goodUrl.get(c.i));
   const urls = imgUrls(c);

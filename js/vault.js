@@ -5,7 +5,8 @@
 // The figure can be shown too, as a lighter copy (fewer polygons: fine on the table, poor for printing). Shown copies are
 // stored scrambled, so browsing the database shows no picture or model file; that keeps out casual copying, not a determined
 // expert, since whatever a browser draws has to reach it.
-import { db, F, Me, Data, setMeta } from "./fb.js?v=20261118084655";
+import { db, F, Me, Data, setMeta } from "./fb.js?v=20261118090413";
+import { OwnArt, CARDS, baseId } from "./cards.js?v=20261118090413";
 
 const CHUNK = 700 * 1024, MAX = 6 * 1024 * 1024;
 const ref = (id) => F.doc(db, "users", Me.uid, "private", id);
@@ -20,9 +21,24 @@ let unsub = null;
 export function startVault() {
   if (unsub) { unsub(); unsub = null; } Vault.m = null;
   if (!isOwner()) return;
-  unsub = F.onSnapshot(ref("vault"), (s) => { Vault.m = s.exists() ? s.data() : {}; emit(); }, (e) => { console.warn(e); Vault.m = {}; emit(); });
+  unsub = F.onSnapshot(ref("vault"), (s) => { Vault.m = s.exists() ? s.data() : {}; loadOwnArt(); emit(); }, (e) => { console.warn(e); Vault.m = {}; emit(); });
 }
 
+// the owner's fan-art pictures for his cards: entries "art_<print>" ({ p: the card's print code }); a picture shows on
+// every print of that card (cards.js OwnArt), on his own screen only
+const artUrls = new Map(); let artTry = null;
+export let onArt = null; export const setOnArt = (f) => { onArt = f; };
+export function loadOwnArt() {
+  if (!isOwner() || !Vault.m) { OwnArt.m.clear(); return; }
+  if (!CARDS || !CARDS.length) { clearTimeout(artTry); artTry = setTimeout(loadOwnArt, 1500); return; } // the card list is still loading
+  const want = new Map();
+  for (const [k, it] of Object.entries(Vault.m)) if (k.startsWith("art_") && it && it.parts && it.p) { const c = CARDS.find((x) => x.p === it.p); if (c) want.set(String(baseId(c.i)), [k, k + ":" + it.v]); }
+  for (const b of [...OwnArt.m.keys()]) if (!want.has(b)) OwnArt.m.delete(b);
+  for (const [b, [k, kv]] of want) {
+    if (artUrls.has(kv)) { OwnArt.m.set(b, artUrls.get(kv)); continue; }
+    vaultBlob(k).then((bl) => { if (!bl) return; const u = URL.createObjectURL(bl); artUrls.set(kv, u); OwnArt.m.set(b, u); if (onArt) onArt(); emit(); }).catch((e) => console.warn("own art", e));
+  }
+}
 // a stored file comes back in pieces of up to 700 KB (a database document holds at most 1 MB); the copy kept on this device
 // is used while it is the current version, so a picture is fetched again only after it changes
 async function readPart(kind, k, v) {
@@ -56,7 +72,7 @@ export async function vaultDrop(kind) {
   const old = Vault.m && Vault.m[kind];
   await F.setDoc(ref("vault"), { [kind]: F.deleteField() }, { merge: true });
   if (old) for (let k = 0; k < (old.parts || 0); k++) F.deleteDoc(partRef(kind, k)).catch(() => {});
-  if (kind !== "fig") await vaultShow(kind, null);
+  if (kind !== "fig" && !kind.startsWith("art_")) await vaultShow(kind, null);
 }
 // a symmetric scramble (xorshift keystream from the version): applying it twice gives the bytes back
 function mix(bytes, v) { const out = new Uint8Array(bytes.length); let x = (v % 2147483647) | 0 || 0x9e3779b9; for (let i = 0; i < bytes.length; i++) { x ^= x << 13; x ^= x >>> 17; x ^= x << 5; out[i] = bytes[i] ^ (x & 255); } return out; }

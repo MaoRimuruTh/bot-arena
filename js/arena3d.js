@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf } from "./cards.js?v=20261118084655";
-import { E } from "./engine.js?v=20261118084655";
-import { h } from "./util.js?v=20261118084655";
-import { Sfx } from "./sfx.js?v=20261118084655";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261118090413";
+import { E } from "./engine.js?v=20261118090413";
+import { h } from "./util.js?v=20261118090413";
+import { Sfx } from "./sfx.js?v=20261118090413";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -2097,9 +2097,10 @@ function faceMat(d, seat) {
   // (seat: the card's owner, whose skin it shows; a Token with a printed card of its own shows that card, any other is drawn here)
   const token = d.im == null, c = token ? null : skinOf(card(d.im), seat);
   const u = { uCam: camUni(), uBurn: { value: 0 }, uSweep: { value: -2 }, uSheen: { value: 0 }, uFoil: { value: (c && FOIL[c.r]) || 0 }, uFlash: { value: 0 }, uT: R.uT, uFoilK: R.uFoilK, uEdge: { value: new THREE.Color(0xff8a2a) }, uTint: { value: new THREE.Color(d.co ? colorHex(d.co) : 0xffd9a0) } };
-  const mat = new THREE.MeshBasicMaterial({ map: token ? tokenTexture(d) : R.texCache.get(c.i) || R.backTex, color: 0xdedede, toneMapped: false });
+  const ou = token ? null : ownArt(c, seat), tk = ou || (c && c.i); // the owner's own picture for this card (his seat only)
+  const mat = new THREE.MeshBasicMaterial({ map: token ? tokenTexture(d) : R.texCache.get(tk) || R.backTex, color: 0xdedede, toneMapped: false });
   mat.userData.u = u; mat.userData.own = token; mat.onBeforeCompile = FACE_HOOK;
-  if (!token && mat.map === R.backTex) resolveArt(c).then((url) => { if (!url || !R) return; R.loader.load(corsUrl(url), (t) => { if (!R) return t.dispose(); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; R.texCache.set(c.i, t); mat.map = t; mat.needsUpdate = true; }); });
+  if (!token && mat.map === R.backTex) (ou ? Promise.resolve(ou) : resolveArt(c)).then((url) => { if (!url || !R) return; R.loader.load(url.startsWith("blob:") ? url : corsUrl(url), (t) => { if (!R) return t.dispose(); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; R.texCache.set(tk, t); mat.map = t; mat.needsUpdate = true; }); });
   return mat;
 }
 const toScreen = (v, rect) => { const p = v.clone().project(R.camera); const r = rect || R.canvas.getBoundingClientRect(); return { x: r.left + (p.x * 0.5 + 0.5) * r.width, y: r.top + (-p.y * 0.5 + 0.5) * r.height }; };

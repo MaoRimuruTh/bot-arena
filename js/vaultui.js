@@ -1,11 +1,12 @@
 // Settings for the owner's own things (vault.js): a picture for his half of the mat, a picture for his card sleeves and a
 // 3D figure. A picture is framed here (drag to move it, slide to zoom) and saved twice: in full for his own screen, and
 // smaller for opponents if he lets them see it. Shown only to the owner account.
-import { h, toast, openSheet } from "./util.js?v=20261118084655";
-import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, shownBlob, isOwner, vaultBlob } from "./vault.js?v=20261118084655";
-import { matLines, sleeveFrame, veilPaint, MAT_ASPECT, FIG_FINISH, FIG_MOVES, figureViewer } from "./arena3d.js?v=20261118084655";
-import { pvFocus, pvHover, pvUnhover } from "./preview.js?v=20261118084655";
-import { setMeta, Data } from "./fb.js?v=20261118084655";
+import { h, toast, openSheet } from "./util.js?v=20261118090413";
+import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, shownBlob, isOwner, vaultBlob } from "./vault.js?v=20261118090413";
+import { matLines, sleeveFrame, veilPaint, MAT_ASPECT, FIG_FINISH, FIG_MOVES, figureViewer } from "./arena3d.js?v=20261118090413";
+import { pvFocus, pvHover, pvUnhover } from "./preview.js?v=20261118090413";
+import { setMeta, Data } from "./fb.js?v=20261118090413";
+import { CARDS, OwnArt, baseId } from "./cards.js?v=20261118090413";
 
 const MAT_A = MAT_ASPECT, SLEEVE_A = 1.5 / 2.04, STAND_A = 0.7; // a player's playmat on their side of the table (arena3d.js); a card
 const KIND = {
@@ -150,7 +151,23 @@ function rows() {
         has ? h("button", { class: "btn sm", onclick: () => light.click() }, shown ? "เปลี่ยนฉบับให้คู่แข่งเห็น" : "ให้คู่แข่งเห็น (ไฟล์เบา ≤ 420 KB)") : null,
         shown ? h("button", { class: "btn sm", onclick: () => vaultShow("fig", null).then(() => toast("ซ่อนจากคู่แข่งแล้ว")).catch(() => toast("ทำไม่สำเร็จ", "bad")) }, "ซ่อนจากคู่แข่ง") : null,
         has ? h("button", { class: "btn sm danger", onclick: () => vaultDrop("fig").then(() => vaultShow("fig", null)).then(() => toast("ลบแล้ว")).catch(() => toast("ลบไม่สำเร็จ", "bad")) }, "ลบ") : null))));
+  out.push(artRows());
   return out;
+}
+// fan-art LIFE cards: his own picture for a card he plays (shown on his screen only, on every print of that card)
+const shrinkCard = async (f) => { const im = await loadImage(f); const w = Math.min(750, im.width), hh = Math.round(im.height * (w / im.width)); const c = document.createElement("canvas"); c.width = w; c.height = hh; c.getContext("2d").drawImage(im, 0, 0, w, hh); return toBlob(c, 0.9); };
+const lifeCards = () => { const seen = new Set(); return CARDS.filter((c) => c.t === "L" && c.b == null).filter((c) => (seen.has(c.n) ? false : seen.add(c.n))).sort((a, b) => a.n.localeCompare(b.n, "th")); };
+function artRows() {
+  const items = Object.entries(Vault.m || {}).filter(([k, it]) => k.startsWith("art_") && it && it.parts && it.p);
+  const nameOf = (p) => (CARDS.find((c) => c.p === p) || {}).n || p;
+  const sel = h("select", { class: "inp", "aria-label": "การ์ด LIFE ที่จะใส่รูป" }, lifeCards().map((c) => h("option", { value: c.p }, c.n)));
+  const pick = filePick("image/*", async (f) => { const p = sel.value; try { await vaultPut("art_" + p.replace(/[^A-Za-z0-9]/g, "_"), await shrinkCard(f), { p }); toast("ใส่รูปให้ " + nameOf(p) + " แล้ว"); } catch (er) { toast("บันทึกไม่สำเร็จ: " + (er.message || er), "bad"); } });
+  return h("div", { class: "vitem" }, h("div", { class: "stack", style: "gap:8px;min-width:0;width:100%" }, h("b", null, "การ์ดแฟนอาร์ตของฉัน (LIFE)"),
+    h("span", { class: "tiny muted" }, "รูปการ์ดที่มาสเตอร์ทำเอง แทนรูปของ LIFE ใบนั้นทุกรุ่น เห็นแค่บนเครื่องของมาสเตอร์ ตอนเล่นเห็นเฉพาะฝั่งของมาสเตอร์"),
+    items.length ? h("div", { class: "row wrap", style: "gap:8px" }, items.map(([k, it]) => { const c = CARDS.find((x) => x.p === it.p); const u = c && OwnArt.m.get(String(baseId(c.i)));
+      return h("div", { class: "stack", style: "gap:4px;align-items:center;width:96px" }, u ? h("img", { src: u, alt: nameOf(it.p), style: "width:90px;border-radius:6px" }) : h("div", { class: "vthumb empty" }, "กำลังโหลด"),
+        h("span", { class: "tiny", style: "text-align:center" }, nameOf(it.p)), h("button", { class: "btn sm danger", onclick: () => vaultDrop(k).then(() => toast("ลบแล้ว")).catch(() => toast("ลบไม่สำเร็จ", "bad")) }, "ลบ")); })) : null,
+    h("div", { class: "row wrap" }, sel, pick, h("button", { class: "btn sm gold", onclick: () => pick.click() }, "เลือกรูปให้ใบนี้"))));
 }
 let live = null;
 export function vaultSection() {
