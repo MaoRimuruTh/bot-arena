@@ -3,13 +3,13 @@
 // look can be seen, and where it sits, before a game. Pointing at a choice (or reaching it with the keyboard) shows it for
 // a moment; choosing it keeps it. Without WebGL, on "แบบเรียบ 2D" or "ประหยัดเครื่อง", or while a game table is open, a flat
 // map of the same table marks the spot instead. Nothing here is saved or sent anywhere: it only draws.
-import { h, toast } from "./util.js?v=20261118080312";
-import { Arena, TablePreview, tableMap, MATS, gfxSetting } from "./arena3d.js?v=20261118080312";
-import { myFigure, myMat, myScene, mySleeve, mySigil, myWinFx } from "./achieve.js?v=20261118080312";
-import { Vault, onVault } from "./vault.js?v=20261118080312";
-import { CARDS, isBase } from "./cards.js?v=20261118080312";
-import { E } from "./engine.js?v=20261118080312";
-import { Me } from "./fb.js?v=20261118080312";
+import { h, toast } from "./util.js?v=20261118081243";
+import { Arena, TablePreview, tableMap, MATS, gfxSetting } from "./arena3d.js?v=20261118081243";
+import { myFigure, myMat, myScene, mySleeve, mySigil, myWinFx } from "./achieve.js?v=20261118081243";
+import { Vault, onVault } from "./vault.js?v=20261118081243";
+import { CARDS, isBase } from "./cards.js?v=20261118081243";
+import { E } from "./engine.js?v=20261118081243";
+import { Me } from "./fb.js?v=20261118081243";
 
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const tallNow = () => innerWidth / innerHeight < 0.9; // the table an upright phone gets (arena3d.js ZONES.tall)
