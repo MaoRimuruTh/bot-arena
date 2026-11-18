@@ -1,9 +1,9 @@
 // The words on the cards and what they mean: a glossary written in our own words from the official Rule Book 3.2 (the page it
 // comes from is noted on each entry), linked to the official FAQ, which is read live from the CDN like faq.js does.
 // Tapping (or long-pressing) a keyword in any card text opens its entry; hovering shows the short meaning.
-import { h, openSheet } from "./util.js?v=20261118135139";
-import { loadFaq } from "./faq.js?v=20261118135139";
-import { CARD_SOURCE } from "./config.js?v=20261118135139";
+import { h, openSheet } from "./util.js?v=20261118135328";
+import { loadFaq } from "./faq.js?v=20261118135328";
+import { CARD_SOURCE } from "./config.js?v=20261118135328";
 
 export const RULEBOOK_URL = "https://bottcg.com/rule";
 // group: what kind of word it is · s: one line · l: the longer explanation · pg: the Rule Book page · al: other spellings
