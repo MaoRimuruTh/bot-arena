@@ -2527,7 +2527,10 @@ Object.assign(SCRIPTS, {
       const say = [f && `เนรเทศ ${E.name(s, f)}`, hl && `เนรเทศ ${E.name(s, hl)} จากนรก`, hd && "สุ่มเนรเทศการ์ดบนมือ 1 ใบ"].filter(Boolean);
       return { explain: `ความสามารถเปลี่ยนแล้ว (ทำลาย Avatar ครบ 3 ใบ): ${say.join(" · ") || "ไม่มีเป้าหมาย"}`, ops: [...(f ? [{ op: "exile", i: f.i }] : []), ...(hl ? [{ op: "exile", i: hl.i }] : []), ...(hd ? [{ op: "exileRandom", seat: q, n: 1 }] : [])] }; }
     let left = 4; const got = []; const plan = bestSubset(E, s, bestFoe(E, s, p), 4); // bots: the set worth the most (each one destroyed also counts toward the 3)
-    for (let k = 0; k < 8; k++) { const cands = bestFoe(E, s, p).filter((y) => !got.includes(y) && Math.max(0, E.power(s, y)) <= left).sort((a, b) => plan.includes(b) - plan.includes(a)); if (!cands.length) break;
+    if (c.interactive) { // a player picks the whole set in one go (POWER total shown as they pick), not one Avatar per prompt
+      const all = bestFoe(E, s, p).filter((y) => Math.max(0, E.power(s, y)) <= 4).sort((a, b) => plan.includes(b) - plan.includes(a));
+      for (const y of c.choose(all, all.length, "เลือก Avatar ฝ่ายตรงข้ามที่จะทำลาย POWER รวมไม่เกิน 4", { min: 1, powMax: 4 })) { const w = Math.max(0, E.power(s, y)); if (w <= left) { got.push(y); left -= w; } } }
+    else for (let k = 0; k < 8; k++) { const cands = bestFoe(E, s, p).filter((y) => !got.includes(y) && Math.max(0, E.power(s, y)) <= left).sort((a, b) => plan.includes(b) - plan.includes(a)); if (!cands.length) break;
       const y = c.choose(cands, 1, `เลือก Avatar ฝ่ายตรงข้ามที่จะทำลาย (POWER รวมได้อีก ${left})`, { optional: got.length > 0 })[0]; if (!y) break; got.push(y); left -= Math.max(0, E.power(s, y)); }
     return { explain: got.length ? `ทำลาย ${got.map((y) => E.name(s, y)).join(", ")}` : "ไม่มีเป้าหมาย", ops: got.map((y) => ({ op: "destroy", i: y.i, why: "คาถา เสกควายเข้าท้อง" })) }; } },
   // ไต้ฝุ่น: destroy a card in the opponent's Magic Zone, or the Land · also as a React in the opponent's turn or our Battle Phase

@@ -1,9 +1,9 @@
 // Free effect reader: turns common card-text patterns into engine ops without any AI.
 // It is deliberately conservative — anything conditional or unusual returns null so the
 // player (or Ciel, with an API key) handles it instead of guessing wrong.
-import { readAura } from "./auras.js?v=20261118081243";
-import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261118081243";
-import { E, scriptOf } from "./engine.js?v=20261118081243";
+import { readAura } from "./auras.js?v=20261118083846";
+import { CARDS, card, TYPE_TH, nameText, syText, allSy, colorIs, hasFieldAlias, normName, nameHas, inRed } from "./cards.js?v=20261118083846";
+import { E, scriptOf } from "./engine.js?v=20261118083846";
 
 const BAIL = /POWER\s*[+\-−–]?\s*\d+\s*ต่อ|Text Box|ที่สุด|กี่ใบ|ต่อจำนวน|ตามจำนวน|เท่ากับจำนวน|ลูกเต๋า|ถ้า|หาก|แทน|ตราบ|เมื่อ|ทุกครั้ง|ไม่สามารถ|เปลี่ยนชื่อ|Token|โทเคน|ครั้งถัดไป|ทั้งหมดบนมือ|เปิดเผย|แสดง|ประกาศ|ตั้งต้น|ได้แค่|ได้เพียง|Cost\s*[+\-−–]|ไม่ถูก|จะไม่|ไม่ได้รับ|ไม่รับผล|ที่เหลือ(?:ทิ้ง|ส่ง)?ลงนรก|สลับ|คนละชื่อ|ฝ่ายตรงข้าม\s*เลือก|อย่างละ|(?<!ตั้ง)แต่|ได้อีก|เท่านั้น|ครึ่ง|ทอย|เหรียญ|โอน้อย|เป่ายิ้งฉุบ/;
 const KWS = "โล่มนุษย์|ลูกฮึด|สามัคคี|เตะไข่|แทงหลัง";
@@ -723,7 +723,7 @@ export function makeCtx(s, t, picks = [], interactive = false) {
       if (picks[idx] !== undefined) return picks[idx].map((i) => cands.find((x) => x.i === i)).filter(Boolean);
       if (!interactive || (!o.optional && !o.reveal && !o.gemSum && !(o.min && cands.length > o.min) && cands.length <= n)) return cands.slice(0, n); /* a range pick (min..n) asks whenever the player could take fewer */ /* a GEM-total pick always asks: the player picks which cards reach the total */
       // reveal: the cards shown (a list of ids); "reveal: true" only means "always ask, even with one choice"
-      throw { ask: { idx, prompt, options: cands.map((x) => x.i), n, optional: !!o.optional, exact: !!o.exact, gemSum: o.gemSum || 0, min: o.min || 0, costMax: o.costMax == null ? null : o.costMax, reveal: Array.isArray(o.reveal) ? o.reveal : null, why: o.why || (t.cut ? CUT_WHY : null) } };
+      throw { ask: { idx, prompt, options: cands.map((x) => x.i), n, optional: !!o.optional, exact: !!o.exact, gemSum: o.gemSum || 0, min: o.min || 0, costMax: o.costMax == null ? null : o.costMax, powMax: o.powMax == null ? null : o.powMax, reveal: Array.isArray(o.reveal) ? o.reveal : null, why: o.why || (t.cut ? CUT_WHY : null) } };
     },
     // pick one of several written options (เลือกปฏิบัติ); bots take `best`
     mode(labels, prompt, best = 0) { const idx = k++; if (picks[idx] !== undefined) return picks[idx][0]; if (!interactive || !labels.length) return best; /* HB6: never ask with no option to press */ throw { ask: { idx, prompt, modes: labels, options: [], n: 1, ...(t.cut ? { why: CUT_WHY } : {}) } }; },
