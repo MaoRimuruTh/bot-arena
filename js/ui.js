@@ -1,10 +1,10 @@
-import { h, openSheet, holo, toast, fmtDate } from "./util.js?v=20261118140309";
-import { fxText, kwGloss } from "./fxtext.js?v=20261118140309";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt, priceOf, setCode } from "./cards.js?v=20261118140309";
-import { Data, saveOwned, saveSkins, saveFavs, savePrices } from "./fb.js?v=20261118140309";
-import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261118140309";
-import { loadFaq, faqFor } from "./faq.js?v=20261118140309";
-import { CARD_SOURCE } from "./config.js?v=20261118140309";
+import { h, openSheet, holo, toast, fmtDate } from "./util.js?v=20261118140747";
+import { fxText, kwGloss } from "./fxtext.js?v=20261118140747";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt, priceOf, setCode } from "./cards.js?v=20261118140747";
+import { Data, saveOwned, saveSkins, saveFavs, savePrices } from "./fb.js?v=20261118140747";
+import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261118140747";
+import { loadFaq, faqFor } from "./faq.js?v=20261118140747";
+import { CARD_SOURCE } from "./config.js?v=20261118140747";
 
 // opts.seat: in a game, the card's owner (their skin shows) · opts.info: a way to read the card first (right-click or hold
 // it, or the magnifier in its corner) without choosing it
@@ -36,7 +36,7 @@ export function cardInfo(c) {
   add("GEM", c.g != null ? h("span", { class: "num" }, c.g + (c.gc ? " (สี" + c.gc + ")" : "")) : null);
   add("POWER", c.pw != null ? h("span", { class: "num" }, c.pw) : null);
   add("Symbol", c.sy); add("รหัส", h("span", { class: "num" }, c.p + " · " + c.r)); add("ชุด", setName(c) + (c.dr ? " · " + c.dr : ""));
-  add("จำกัด", c.o1 ? "Only #1 (1 ใบต่อเด็ค)" : c.lim ? c.lim + " ใบ" : "4 ใบต่อชื่อ");
+  add("จำกัด", c.o1 ? (c.lim > 1 ? `Only #1 (ใส่ได้สูงสุด ${c.lim} ใบ)` : "Only #1 (1 ใบต่อเด็ค)") : c.lim ? c.lim + " ใบ" : "4 ใบต่อชื่อ");
   if (c.fl) add("สถานะ", c.fl === "le" ? "ลำเอียง: ใช้แข่งทางการไม่ได้" : "โดนใจ: การ์ดคอลแลบ แข่งได้");
   add("ภาพโดย", c.ar);
   return h("dl", { class: "kv" }, kv);

@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261118140309";
-import { E } from "./engine.js?v=20261118140309";
-import { h } from "./util.js?v=20261118140309";
-import { Sfx } from "./sfx.js?v=20261118140309";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261118140747";
+import { E } from "./engine.js?v=20261118140747";
+import { h } from "./util.js?v=20261118140747";
+import { Sfx } from "./sfx.js?v=20261118140747";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 

@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261118140309";
-import { h } from "./util.js?v=20261118140309";
-import { Data } from "./fb.js?v=20261118140309";
+import { CARD_SOURCE } from "./config.js?v=20261118140747";
+import { h } from "./util.js?v=20261118140747";
+import { Data } from "./fb.js?v=20261118140747";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -148,7 +148,7 @@ export async function loadCards() {
 export const card = (i) => CARDS[+i];
 export const baseId = (i) => { const c = CARDS[+i]; return c && c.b != null ? c.b : +i; };
 export const isBase = (c) => c.b == null;
-export const limitOf = (c) => (c.o1 ? 1 : c.lim || 4);
+export const limitOf = (c) => (c.o1 ? c.lim || 1 : c.lim || 4); // an Only #1 card's own rule may allow more copies (พระไตรปิฎก: 3)
 
 // ----- art (loaded live from the official CDN) -----
 export function imgUrls(c) {
@@ -304,7 +304,7 @@ export function validateDeck(d) {
   for (const e of ents) for (const a of (e.c.al && e.c.al.an) || []) { const k = Object.keys(byName).find((n) => n !== limitKey(e.c) && nn(n) === nn(a)); if (k) { byName[k].n += e.n; byName[k].lim = Math.min(byName[k].lim, limitOf(e.c)); } }
   const over = Object.entries(byName).filter(([, v]) => v.n > v.lim);
   out.push({ ok: !over.length, msg: over.length ? "เกินจำนวนต่อชื่อ: " + over.map(([k, v]) => `${k} ${v.n}/${v.lim}`).join(", ") : "ชื่อเดียวกันไม่เกินจำนวนที่กำหนด" });
-  const o1 = ents.filter((e) => e.c.o1).reduce((a, e) => a + e.n, 0);
+  const o1 = new Set(ents.filter((e) => e.c.o1).map((e) => limitKey(e.c))).size; // one Only #1 card (name); its copies are capped by the per-name limit above
   // Rule Book: a card that may fill the whole Deck (รัททาทุย, up to 50) lets a Deck of 50 of that one card go without Only #1
   const one50 = o1 === 0 && total === 50 && ents.length === 1 && limitOf(ents[0].c) >= 50;
   out.push({ ok: o1 === 1 || one50, msg: o1 === 1 ? "มี Only #1 พอดี 1 ใบ" : one50 ? "ทั้ง Deck เป็นการ์ดใบเดียวกัน 50 ใบ ไม่ต้องมี Only #1" : `Only #1 ต้องมีพอดี 1 ใบ (ตอนนี้ ${o1})` });

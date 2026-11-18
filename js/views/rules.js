@@ -1,10 +1,10 @@
 // กฎและคำศัพท์: what the words on the cards mean (written in our own words from the official Rule Book 3.2), and a search over
 // every official FAQ answer, read live from the CDN like the card sheet does (nothing of it is stored here). #rules/k/<word>
 // opens one word; #rules/q/<text> runs a search, so a word in any card text can link straight to its rulings.
-import { h, busy } from "../util.js?v=20261118140309";
-import { Views, showCard } from "../ui.js?v=20261118140309";
-import { CARDS, artImg, isBase } from "../cards.js?v=20261118140309";
-import { GLOSS, GROUPS, glossEntry, faqSearch, marked, RULEBOOK_URL, FAQ_PAGE } from "../glossary.js?v=20261118140309";
+import { h, busy } from "../util.js?v=20261118140747";
+import { Views, showCard } from "../ui.js?v=20261118140747";
+import { CARDS, artImg, isBase } from "../cards.js?v=20261118140747";
+import { GLOSS, GROUPS, glossEntry, faqSearch, marked, RULEBOOK_URL, FAQ_PAGE } from "../glossary.js?v=20261118140747";
 
 let group = "all", query = "", shown = 30;
 const norm = (t) => String(t || "").replace(/\s+/g, " ").trim().toLowerCase();
