@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261120092008";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261120092008";
-import { SCRIPTS } from "./scripts.js?v=20261120092008";
-import { newId, clone } from "./util.js?v=20261120092008";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261120095519";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261120095519";
+import { SCRIPTS } from "./scripts.js?v=20261120095519";
+import { newId, clone } from "./util.js?v=20261120095519";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -783,6 +783,8 @@ export const E = {
           if (d.x) E.addTrig(s, p, x, "cast", { toHell: true }); else { P.mg.splice(P.mg.indexOf(x), 1); P.hell.push(x); }
           if (st === "R") { const k = s.trig.findIndex((t) => t.i === x.i); if (k > 0) { const [t] = s.trig.splice(k, 1); s.trig.unshift(t); } if (k >= 0) s.trig[0].on = on; s.rw = null; E.openWindow(s, p, "react", x.i); }
         }
+        // the discard Cost chosen together with the cast (a player's app asks it before the opponent can answer): kept on the trigger
+        if (Array.isArray(act.pre) && act.pre.every((g) => Array.isArray(g) && g.every((i) => Number.isInteger(i)))) { const t = s.trig.find((y) => y.i === x.i && y.when === "cast"); if (t) t.pre = act.pre.map((g) => g.slice()); }
         if (st !== "R") E.openWindow(s, p, "cast", x.i);
         return;
       }
