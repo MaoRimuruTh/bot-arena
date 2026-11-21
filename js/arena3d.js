@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261121083750";
-import { E } from "./engine.js?v=20261121083750";
-import { h } from "./util.js?v=20261121083750";
-import { Sfx } from "./sfx.js?v=20261121083750";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261121084328";
+import { E } from "./engine.js?v=20261121084328";
+import { h } from "./util.js?v=20261121084328";
+import { Sfx } from "./sfx.js?v=20261121084328";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -236,6 +236,7 @@ function mount(container, opts = {}) {
     const cr = R.canvas.getBoundingClientRect(); // the labels below read the layout once a frame and move by transform: no layout per label
     if (R.side) for (const o of R.side.piles.values()) { if (!o.grp.visible && !o.n) { o.el.style.display = "none"; continue; } o.el.style.display = ""; const lz = (R.zones && R.zones.side && R.zones.side.piles.lz) || 0.62; const sp = toScreen(o.grp.position.clone().add(new THREE.Vector3(0, 0.2, (o.mine ? lz : -lz))), cr); o.el.style.transform = `translate(${sp.x}px,${sp.y}px) translate(-50%,-50%)`; }
     for (const [i, el] of R.labels) { const m = R.meshes.get(i); if (!m) continue; const s = toScreen(m.grp.position.clone().add(new THREE.Vector3(-0.55 * m.scale, 0.1, (m.side === "me" ? 0.85 : -0.85) * m.scale)), cr); el.style.transform = `translate(${s.x}px,${s.y}px) translate(-50%,-50%)` + (el._pk && el._pk.k !== 1 ? ` scale(${el._pk.k})` : ""); }
+    if (R.links) for (const [i, el] of R.links) { const m = R.meshes.get(i); if (!m) continue; const sc = m.scale || 1; const q = toScreen(m.grp.position.clone().add(new THREE.Vector3(0.45 * sc, 0.1, (m.side === "me" ? -0.88 : 0.88) * sc)), cr); el.style.transform = `translate(${q.x}px,${q.y}px) translate(-50%,-50%)`; }
     if (R.preview) pvPin(camera);
     if (R.composer) R.composer.render(); else renderer.render(scene, camera);
     if (R.autoQ) watchFps(R.autoQ);
@@ -249,7 +250,7 @@ function mount(container, opts = {}) {
 function unmount() {
   document.querySelectorAll(".fxcuts,.rpsduel").forEach((x) => x.remove());
   if (!R) return; R.alive = false; if (R.pvOff) R.pvOff(); removeEventListener("resize", R.onResize); if (R.onVis) document.removeEventListener("visibilitychange", R.onVis); if (R.onHand) document.removeEventListener("pointerdown", R.onHand, true); gsap.globalTimeline.timeScale(1);
-  for (const el of R.labels.values()) el.remove(); if (R.side) for (const o of R.side.piles.values()) o.el.remove();
+  for (const el of R.labels.values()) el.remove(); if (R.links) for (const el of R.links.values()) el.remove(); if (R.side) for (const o of R.side.piles.values()) o.el.remove();
   R.renderer.dispose(); try { R.renderer.forceContextLoss(); } catch { /* already gone */ } R.canvas.remove(); R = null; // free the GPU now, not at the next garbage collection
 }
 
@@ -2467,7 +2468,7 @@ function label(s, m, x, instant) {
 function sync(s, V, drops, burned, instant) {
   const want = layout(s, V); let k = 0, hold = 0, nw = 0;
   for (const [i, m] of R.meshes) if (!want.has(i)) { // left the field
-    R.meshes.delete(i); const el = R.labels.get(i); if (el) { el.remove(); R.labels.delete(i); }
+    R.meshes.delete(i); const el = R.labels.get(i); if (el) { el.remove(); R.labels.delete(i); } const le = R.links && R.links.get(i); if (le) { le.remove(); R.links.delete(i); }
     hold = Math.max(hold, leave(s, V, m, burned.has(i)) || 0); // the others close ranks once it has gone
   }
   for (const [i, L] of want) {
@@ -2481,6 +2482,19 @@ function sync(s, V, drops, burned, instant) {
     } else if (!m.busy) { if (was != null && L.x.a !== false && Math.abs(was - m.want.rotY) > 1 && !reduce && !instant) wake(m, hold + 0.08 * nw++); else home(m, 0.4, hold); }
     label(s, m, L.x, instant);
   }
+  links(s);
+}
+// which Avatar wears which Modification: the Modification lies in the Magic Zone row, away from its Avatar, so the
+// two carry the same small tag (🔗A on the Avatar and on each card it wears; B for the next Avatar, …), in one colour each
+const LINK_CO = ["#5ec8ff", "#ffb35a", "#c88cff", "#5ef0a0", "#ff7aa8", "#f2e05a"];
+function links(s) {
+  if (R.preview) return; R.links = R.links || new Map(); const want = new Map(); let n = 0;
+  for (const P of s.P) for (const host of P.av) { const worn = []; for (const Q of s.P) for (const y of Q.mg) if (y.on === host.i) worn.push(y.i);
+    if (!worn.length) continue; const k = n++, tag = String.fromCharCode(65 + (k % 26)), co = LINK_CO[k % LINK_CO.length];
+    want.set(host.i, { t: `🔗${tag}${worn.length > 1 ? " ×" + worn.length : ""}`, co, host: true }); for (const i of worn) want.set(i, { t: "🔗" + tag, co }); }
+  for (const [i, el] of R.links) if (!want.has(i) || !R.meshes.has(i)) { el.remove(); R.links.delete(i); }
+  for (const [i, w] of want) { if (!R.meshes.has(i)) continue; let el = R.links.get(i); if (!el) { el = h("div", { class: "lnk" }); document.body.append(el); R.links.set(i, el); }
+    el.textContent = w.t; el.style.setProperty("--lc", w.co); el.title = w.host ? "Avatar ใบนี้สวมการ์ดที่มีป้ายเดียวกัน" : "สวมอยู่กับ Avatar ที่มีป้ายเดียวกัน"; }
 }
 // where a card belongs now: its place may have changed while it was busy animating
 function home(m, d = 0.4, delay = 0) {
