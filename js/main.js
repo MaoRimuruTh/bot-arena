@@ -1,25 +1,25 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261121082351";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261121082351";
-import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn, foilSetting } from "./arena3d.js?v=20261121082351";
-import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261121082351";
-import { Vault, startVault } from "./vault.js?v=20261121082351";
-import { tablePreview, pvHover, pvUnhover, pvPick, pvClose } from "./preview.js?v=20261121082351";
-import { vaultSection } from "./vaultui.js?v=20261121082351";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261121082351";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261121082351";
-import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261121082351";
-import { Sfx } from "./sfx.js?v=20261121082351";
-import { Music, MUSIC_STYLES } from "./music.js?v=20261121082351";
-import { Views, avatarEl } from "./ui.js?v=20261121082351";
-import { Ciel } from "./ai.js?v=20261121082351";
-import "./views/library.js?v=20261121082351";
-import "./views/decks.js?v=20261121082351";
-import "./views/lab.js?v=20261121082351";
-import "./views/rules.js?v=20261121082351";
-import "./views/unlocks.js?v=20261121082351";
-import "./views/history.js?v=20261121082351";
-import { openReport } from "./views/ask.js?v=20261121082351";
-import "./views/play.js?v=20261121082351";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261121082649";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261121082649";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn, foilSetting } from "./arena3d.js?v=20261121082649";
+import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261121082649";
+import { Vault, startVault } from "./vault.js?v=20261121082649";
+import { tablePreview, pvHover, pvUnhover, pvPick, pvClose } from "./preview.js?v=20261121082649";
+import { vaultSection } from "./vaultui.js?v=20261121082649";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261121082649";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261121082649";
+import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261121082649";
+import { Sfx } from "./sfx.js?v=20261121082649";
+import { Music, MUSIC_STYLES } from "./music.js?v=20261121082649";
+import { Views, avatarEl } from "./ui.js?v=20261121082649";
+import { Ciel } from "./ai.js?v=20261121082649";
+import "./views/library.js?v=20261121082649";
+import "./views/decks.js?v=20261121082649";
+import "./views/lab.js?v=20261121082649";
+import "./views/rules.js?v=20261121082649";
+import "./views/unlocks.js?v=20261121082649";
+import "./views/history.js?v=20261121082649";
+import { openReport } from "./views/ask.js?v=20261121082649";
+import "./views/play.js?v=20261121082649";
 
 const root = $("#view");
 // text size for the whole app (everything is sized in rem), kept per browser; Hearthstone and LoR offer the same for small screens
@@ -133,6 +133,7 @@ function soundSection() {
 // ผู้ช่วยในเกม: hints that are off unless the player wants them
 function helpSection() {
   return [h("div", { class: "eyebrow", style: "margin-top:12px" }, "ผู้ช่วยในเกม"),
+    h("label", { class: "chk" }, h("input", { type: "checkbox", checked: lsGet("bot.sure", false), onchange: (e) => lsSet("bot.sure", e.target.checked) }), h("span", null, "ถามย้ำก่อนใช้การ์ดและก่อนโจมตี (ใช้จริงไหม / ตีจริงไหม) กันกดพลาด")),
     h("label", { class: "chk" }, h("input", { type: "checkbox", checked: lsGet("bot.mullHint", false), onchange: (e) => lsSet("bot.mullHint", e.target.checked) }), h("span", null, "บอกคำแนะนำจากคู่มือเปลี่ยนมือตอนเริ่มเกม")),
     h("div", { class: "tiny muted" }, "มาจากบอทเล่นกันเอง ใช้ได้กับเด็คในเกม และเด็คของคุณที่กดจำลองไว้ในห้องทดลองแล้ว")];
 }
