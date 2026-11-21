@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261121092345";
-import { fxText, kwGloss } from "../fxtext.js?v=20261121092345";
-import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261121092345";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261121092345";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261121092345";
-import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261121092345";
-import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor, myWinFx } from "../achieve.js?v=20261121092345";
-import { themeCounts, officialStarters } from "../boxdecks.js?v=20261121092345";
-import { ladder, ladderReset } from "../ladder.js?v=20261121092345";
-import { notify } from "../notify.js?v=20261121092345";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261121092345";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261121092345";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261121092345";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261121092345";
-import { Music, MUSIC_STYLES } from "../music.js?v=20261121092345";
-import { Sfx } from "../sfx.js?v=20261121092345";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar, shareReplayDoc, loadSharedReplay } from "../fb.js?v=20261121092345";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261121092345";
-import { readAura, traits } from "../auras.js?v=20261121092345";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261121092345";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261121143540";
+import { fxText, kwGloss } from "../fxtext.js?v=20261121143540";
+import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261121143540";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261121143540";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261121143540";
+import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261121143540";
+import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor, myWinFx } from "../achieve.js?v=20261121143540";
+import { themeCounts, officialStarters } from "../boxdecks.js?v=20261121143540";
+import { ladder, ladderReset } from "../ladder.js?v=20261121143540";
+import { notify } from "../notify.js?v=20261121143540";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261121143540";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261121143540";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261121143540";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261121143540";
+import { Music, MUSIC_STYLES } from "../music.js?v=20261121143540";
+import { Sfx } from "../sfx.js?v=20261121143540";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar, shareReplayDoc, loadSharedReplay } from "../fb.js?v=20261121143540";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261121143540";
+import { readAura, traits } from "../auras.js?v=20261121143540";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261121143540";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -26,14 +26,14 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(s.id ? [`รีเพลย์ในเครื่องนี้: ${s.id}-${V}`] : []), "บันทึก 40 บรรทัดล่าสุด:\n" + s.log.slice(-40).map((l) => "· " + l.m).join("\n"), // so a report can be traced back to its game
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261121092345";
-import { customMat, customSleeve, customFig, customStand, setOnReady, onVault } from "../vault.js?v=20261121092345";
-import { openGlossSheet } from "../glossary.js?v=20261121092345";
-import { weekRule, weeklyPanel, weeklyWinNote, isoWeek, ruleChip, hudLine, eventPicker, eventOpt, seriesNext, seriesChip, seriesText, seriesAfter, seriesWinner } from "../weekly.js?v=20261121092345";
-import { openCoach } from "../coach.js?v=20261121092345";
-import { mullHint } from "../matchups.js?v=20261121092345";
-import { logged, check as checkMoves, idleReason, pickMap } from "../movelog.js?v=20261121092345";
-import { openSandbox, openFishRuns } from "../sandbox.js?v=20261121092345";
+import { allDecks, deckById } from "./decks.js?v=20261121143540";
+import { customMat, customSleeve, customFig, customStand, setOnReady, onVault } from "../vault.js?v=20261121143540";
+import { openGlossSheet } from "../glossary.js?v=20261121143540";
+import { weekRule, weeklyPanel, weeklyWinNote, isoWeek, ruleChip, hudLine, eventPicker, eventOpt, seriesNext, seriesChip, seriesText, seriesAfter, seriesWinner } from "../weekly.js?v=20261121143540";
+import { openCoach } from "../coach.js?v=20261121143540";
+import { mullHint } from "../matchups.js?v=20261121143540";
+import { logged, check as checkMoves, idleReason, pickMap } from "../movelog.js?v=20261121143540";
+import { openSandbox, openFishRuns } from "../sandbox.js?v=20261121143540";
 // the players' own mat picture, card sleeve and figure (vault.js): the table asks for them, and redraws when one loads or changes
 Arena.setCustom({ mat: customMat, sleeve: customSleeve, fig: customFig, stand: customStand, skins: (s) => setGameSkins(s && s.P, Me.uid) }); setOnReady((o) => Arena.customReady(o)); onVault(() => Arena.refreshCustom());
 { let sig = ""; Data.listeners.add(() => { const sh = Data.meta && Data.meta.show, now = sh ? Object.entries(sh).map(([k, x]) => k + ":" + (x && x.v) + ":" + (x && x.finish)).join() : ""; if (now !== sig) { sig = now; Arena.refreshCustom(); } }); }
@@ -244,7 +244,7 @@ function questPanel() {
 }
 // ---------- start / resume ----------
 const pickOpp = () => { const o = Setup.opp !== "random" && deckById(Setup.opp); if (o && !deckLocked(o)) return o; const st = allDecks().filter((d) => d.starter && !d.box); return st[Math.floor(Math.random() * st.length)]; };
-import { dupNames, ruleDeck, singlePanel, botSingle, NODUP_NEED } from "../weekly.js?v=20261121092345";
+import { dupNames, ruleDeck, singlePanel, botSingle, NODUP_NEED } from "../weekly.js?v=20261121143540";
 const pack = (d) => ({ ...deckToList(d), name: d.name, id: d.id });
 // ไต่ด่าน: the official Starter Decks one after another, the bot growing stronger; a step is passed by a win recorded with its number
 function gauntletSteps() { const lv = (k, n) => (k < 2 ? "easy" : k < Math.ceil(n * 0.6) ? "basic" : "hard"); const list = officialStarters().filter((d) => validateDeck(d).ok);
@@ -920,7 +920,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261121092345").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261121143540").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", mat: botMat(), bot: true });
@@ -1147,9 +1147,10 @@ function onDrag(kind, from, e, to) {
   if (kind === "start") { const L = from != null && from !== "life" && E.locate(s, from); G.dragFrom = L && !G.host && myBattle(s) && L.p === s.active && L.z === "av" && L.x.a ? from : null;
     // Main Phase: drag one of our Avatars (or Constructs) onto another of ours to swap their places on the table
     G.arrFrom = G.dragFrom == null && L && !G.host && !G.replay && mine(L.p) && s.active === L.p && s.phase === "main" && !s.trig.length && !s.rw && !s.pend && (L.z === "av" || L.z === "cs") ? from : null; return; }
-  if (G.arrFrom != null) { const f = G.arrFrom; if (kind === "move") { if (G.sel !== f) { G.sel = f; Arena.select(f); } return; }
-    G.arrFrom = null; if (kind !== "drop") return; const A = E.locate(s, f), B = to != null && to !== "life" && E.locate(s, to);
-    if (A && B && B.p === A.p && B.z === A.z && to !== f) { G.sel = null; Arena.select(null); doAct({ type: "arrange", z: A.z, a: f, b: to }, A.p); } else draw(); return; }
+  // (while dragging, no card preview opens: it would cover the card we are dropping onto; the ring shows the card held)
+  if (G.arrFrom != null) { const f = G.arrFrom; if (kind === "move") { if (!G.arrDrag) { G.arrDrag = true; G.sel = null; Arena.select(f); drawInspector(); } return; }
+    G.arrFrom = null; const was = G.arrDrag; G.arrDrag = false; if (kind !== "drop") { if (was) { Arena.select(null); drawInspector(); } return; } const A = E.locate(s, f), B = to != null && to !== "life" && E.locate(s, to);
+    G.sel = null; Arena.select(null); if (A && B && B.p === A.p && B.z === A.z && to !== f) doAct({ type: "arrange", z: A.z, a: f, b: to }, A.p); else draw(); return; }
   if (G.dragFrom == null) return;
   if (kind === "cancel") { G.dragFrom = null; attackArrow(); return; }
   if (kind === "move") { if (G.att !== G.dragFrom) { G.att = G.dragFrom; G.sel = null; Arena.select(G.att); draw(); } if (e) { ptr = { x: e.clientX, y: e.clientY }; attackArrow(); } return; }
@@ -1627,7 +1628,7 @@ function drawInspector() {
   const hi = G.hoverHand != null ? G.hoverHand : hov ?? G.sel; const L = hi != null && E.locate(s, hi);
   // aiming an attack: no big preview over the table at all (it covers the cards being aimed at, even when it shows our own
   // attacker); the arrow and the ring show what is going on, and a right-click still opens a card
-  const aiming = G.att != null && G.hoverHand == null;
+  const aiming = (G.att != null || G.arrDrag) && G.hoverHand == null;
   if (!L || aiming) { el.className = "inspector glass"; el.replaceChildren(); drawCardActs(); return; }
   const x = L.x, d = E.def(s, x); const c = d.im != null ? card(d.im) : null; const pinned = G.hoverHand == null && G.hover == null;
   const stat = [L.z === "hand" ? null : ZONE_TH[L.z], d.t === "M" ? "Magic " + SUB_TH[d.st] : d.t === "T" ? "Token" : "Cost " + (d.c ?? 0), "GEM " + (d.g || 0) + (d.gc ? " (" + d.gc + ")" : ""), d.t === "A" || d.t === "T" || d.t === "C" ? "POWER " + (L.z === "av" || L.z === "cs" ? E.power(s, x) : d.pw || 0) : null, L.z === "av" ? (x.a ? "ตื่น" : "นอน") : null, d.sy ? d.sy : null].filter(Boolean);
@@ -1994,7 +1995,9 @@ function promptBox0(s, p) {
     const slim = !!(Arena.on || G.flat);
     const pickAtt = (x) => { G.att = x.i; Arena.select(x.i); draw(); };
     // the bar stays one line so it never sits over the Avatars and their POWER; the list of names opens on request
-    const listBtn = h("button", { class: "btn sm", onclick: () => { G.slimList = !G.slimList; draw(); } }, G.slimList ? "ซ่อนรูปการ์ด" : "ดูเป็นรูปการ์ด");
+    // the card pictures open on request and stay as the player left them (closed: aim by dragging on the table)
+    G.slimList = lsGet("bot.atkPics", false);
+    const listBtn = h("button", { class: "btn sm", onclick: () => { lsSet("bot.atkPics", !G.slimList); draw(); } }, G.slimList ? "ปิดรูปการ์ด" : "ดูเป็นรูปการ์ด");
     const attIds = att.map((x) => x.i);
     if (!G.att) return slim
       ? h("div", { class: "prompt glass slim" }, h("b", null, touchy() ? "แตะหรือลาก Avatar ที่เรืองแสง" : "ลาก Avatar ที่เรืองแสงไปที่เป้าหมาย หรือคลิก"), listBtn, G.slimList ? h("div", { class: "pick" }, att.map((x) => pointAt(cardBtn(E.def(s, x).im, { seat: x.o, info: () => cardView(x), badge: copyTag(s, x.i, attIds) + "P" + E.power(s, x), onclick: () => pickAtt(x) }), x.i))) : null)
@@ -2004,7 +2007,8 @@ function promptBox0(s, p) {
     const ap = E.power(s, a.x), fate = (y) => { const tp = E.power(s, y); if (ap !== tp) return ap > tp ? "ชนะ" : "แพ้"; const m = E.kw(s, a.x, "ลูกฮึด"), t2 = E.kw(s, y, "ลูกฮึด"); return m && !t2 ? "ชนะ (ลูกฮึด)" : t2 && !m ? "แพ้ (ลูกฮึด)" : "เสมอ"; };
     const opts = [...O.av.map((y) => ({ t: `${E.name(s, y)} (P${E.power(s, y)}) · ${fate(y)}`, tk: "av", ti: y.i, win: fate(y).startsWith("ชนะ") })), ...O.cs.map((y) => ({ t: `Construct ${E.name(s, y)} (P${E.power(s, y)}) · ${fate(y)}`, tk: "cs", ti: y.i, win: fate(y).startsWith("ชนะ") }))];
     const beat = opts.filter((o) => o.win).map((o) => o.t.split(" (P")[0]); const shield = O.av.some((y) => y.a && E.kw(s, y, "โล่มนุษย์"));
-    const outlook = h("span", { class: "tiny muted" }, (beat.length ? `ตีชนะ: ${beat.slice(0, 3).join(", ")}${beat.length > 3 ? " …" : ""}` : "ยังไม่มีเป้าที่ตีชนะด้วย POWER ตอนนี้") + (shield ? " · ระวังโล่มนุษย์รับแทน" : ""));
+    // no list of names: the pictures (green badge = we win) and the table say it; only what the table cannot show
+    const outlook = h("span", { class: "tiny muted" }, (beat.length ? "" : "ยังไม่มีเป้าที่ตีชนะด้วย POWER ตอนนี้") + (shield ? (beat.length ? "" : " · ") + "ระวังโล่มนุษย์รับแทน" : ""));
     if ((E.lifeOpen(s, p, a.x) || E.kw(s, a.x, "เตะไข่")) && !E.noLife(s, a.x)) opts.push({ t: "LIFE ฝ่ายตรงข้าม (ตีบ้าน)", tk: "life" });
     // the targets are shown as their card pictures (players know a card by its art, not its name): POWER and the
     // fight's outcome on the badge, green on the ones we beat; LIFE stays a gold button
@@ -2012,7 +2016,7 @@ function promptBox0(s, p) {
     const tgtCards = opts.filter((o) => o.tk !== "life").map((o) => { const y = E.locate(s, o.ti).x; const f = fate(y);
       return pointAt(cardBtn(E.def(s, y).im, { seat: y.o, info: () => cardView(y), cls: o.win ? "win" : "", badge: (o.tk === "cs" ? "Construct " : "") + copyTag(s, y.i, tgtIds) + "P" + E.power(s, y) + " · " + f, onclick: () => attack(G.att, o.tk, o.ti) }), y.i); });
     const lifeBtn = opts.filter((o) => o.tk === "life").map((o) => h("button", { class: "btn sm gold", onclick: () => attack(G.att, o.tk, o.ti) }, o.t));
-    if (slim) return h("div", { class: "prompt glass slim" }, h("b", null, `${E.name(s, a.x)} (P${E.power(s, a.x)}) โจมตี: ${touchy() ? "แตะ" : "คลิก"}เป้าบนโต๊ะ`), outlook, ...lifeBtn,
+    if (slim) return h("div", { class: "prompt glass slim" }, h("b", null, `โจมตีด้วย P${E.power(s, a.x)}: ลากหรือ${touchy() ? "แตะ" : "คลิก"}เป้าบนโต๊ะ`), outlook, ...lifeBtn,
       h("button", { class: "btn sm", title: "Esc", onclick: closePicked }, "ยกเลิก"), listBtn, G.slimList && tgtCards.length ? h("div", { class: "pick" }, tgtCards) : null);
     return box(`${E.name(s, a.x)} (P${E.power(s, a.x)}) โจมตี…`, outlook, tgtCards.length ? h("div", { class: "pick" }, tgtCards) : null, lifeBtn.length ? h("div", { class: "opts" }, lifeBtn) : null);
   }
