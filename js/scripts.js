@@ -2064,7 +2064,9 @@ Object.assign(SCRIPTS, {
   // ตั๊กแตนหยิน: จุติ flip our top LIFE up, then turn one face down (even in critical state) · with the throne, discard 1: a face-up LIFE's ability works now
   // หยิน: flip our top LIFE, then turn one of our face-up LIFE cards face down (even in critical) — the player picks which;
   // the bot keeps the most useful ones face up for ราชันย์ / หยินหยางทอร์นาโด / its own ability to use
-  "BT07-036": { summon: (c) => { const { E, s, seat: p } = c; const P = s.P[p]; const top = P.life.find((y) => !y.up); const pool = [...P.life.filter((y) => y.up), ...(top ? [top] : [])];
+  // ---- รำวง (the bot's way with the rider deck, ciel-rider plan): หยาง only joins next to a หยิน (alone it is a P3 that
+  // dies), ราชา comes out early for its บัลลังก์ (the engine of the deck), and the combo pieces are not the GEM the bot pays with
+  "BT07-036": { keepV: () => 6, botHold: () => 1, summon: (c) => { const { E, s, seat: p } = c; const P = s.P[p]; const top = P.life.find((y) => !y.up); const pool = [...P.life.filter((y) => y.up), ...(top ? [top] : [])];
       if (!pool.length) return { explain: "ไม่มี LIFE ให้หงายหรือคว่ำ", ops: [] };
       const down = c.choose([...pool].sort((a, b) => lifeVal(E, s, p, a) - lifeVal(E, s, p, b)), 1, "ตั๊กแตนหยิน: หงาย LIFE ใบบนสุดแล้ว เลือก LIFE ที่จะคว่ำกลับ 1 ใบ (ใบแรกคือใบที่ใช้ประโยชน์น้อยที่สุด)", { exact: true, reveal: true })[0];
       return { explain: `หงาย LIFE ใบบนสุด แล้วคว่ำ ${down ? E.name(s, down) : "LIFE"} กลับ`, ops: [...(top ? [{ op: "lifeFlip" }] : []), { op: "lifeFlip", up: false, force: true, ...(down ? { i: down.i } : {}) }] }; },
@@ -2072,7 +2074,7 @@ Object.assign(SCRIPTS, {
       run: (c) => { const { E, s, seat: p } = c; const l = c.choose(s.P[p].life.filter((y) => y.up), 1, "เลือก LIFE ที่หงายอยู่", { exact: true })[0]; const pay = c.choose([...s.P[p].hand].sort(cheapCard(E, s)), 1, "ทิ้งการ์ดบนมือ 1 ใบ", { exact: true })[0];
         return l && pay ? { explain: `ทิ้ง ${E.name(s, pay)} · ใช้ความสามารถของ LIFE ${E.name(s, l)}`, ops: [{ op: "discard", seat: p, iids: [pay.i] }, { op: "lifeUse", i: l.i }] } : { explain: "", ops: [] }; } } },
   // ตั๊กแตนหยาง: with ตั๊กแตนหยิน +1 per face-up LIFE of ours, ลูกฮึด and โล่มนุษย์ in critical state · wears only {แมลง} cards
-  "BT07-037": { wearOnly: (E, s, m) => sy(E, s, m, "แมลง"), aura: (E, s, src, L) => { if (L.z !== "av") return []; /* two sentences, two conditions: the POWER needs ตั๊กแตนหยิน, the สาหัส keywords only need us in สาหัส (Yang guards on its own once Yin has fallen) */
+  "BT07-037": { keepV: () => 5, botHold: (E, s, x, p) => riderYangHold(E, s, p), wearOnly: (E, s, m) => sy(E, s, m, "แมลง"), aura: (E, s, src, L) => { if (L.z !== "av") return []; /* two sentences, two conditions: the POWER needs ตั๊กแตนหยิน, the สาหัส keywords only need us in สาหัส (Yang guards on its own once Yin has fallen) */
     const yin = s.P[L.p].av.some((y) => E.named(s, y, "ตั๊กแตนหยิน")), crit = E.critical(s.P[L.p]); return yin || crit ? [{ seat: L.p, test: (x) => x.i === src.i, n: yin ? facedUp(s, L.p) : 0, kw: crit ? ["ลูกฮึด", "โล่มนุษย์"] : [] }] : []; } },
   // วาฬทมิฬ ก้า: จุติ with a ตั๊กแตน and 2+ face-up LIFE: a "ตั๊กแตน" from hell to the hand
   "BT07-038": { summon: (c) => { const { E, s, seat: p } = c; if (!s.P[p].av.some((y) => E.named(s, y, "ตั๊กแตน")) || facedUp(s, p) < 2) return { explain: "เงื่อนไขไม่ครบ", ops: [] }; const t = c.choose([...s.P[p].hell].reverse().filter((y) => E.named(s, y, "ตั๊กแตน")), 1, "เลือกการ์ดตั๊กแตน จากนรกขึ้นมือ", { exact: true })[0];
@@ -2171,7 +2173,7 @@ Object.assign(SCRIPTS, {
     activate: { label: "Avatar 1 ใบได้รับโล่มนุษย์จนจบเทิร์นถัดไปของฝ่ายตรงข้าม", can: (E, s, x, L) => L.z === "cs" && s.phase === "main" && s.P[L.p].av.length > 0,
       run: (c) => { const { E, s, seat: p } = c; const t = c.choose([...s.P[p].av].sort((a, b) => worth(E, s, a) - worth(E, s, b)), 1, "เลือก Avatar", { exact: true })[0]; return t ? { explain: `${E.name(s, t)} ได้รับโล่มนุษย์`, ops: [{ op: "keyword", i: t.i, k: "โล่มนุษย์", until: "oppturn" }] } : { explain: "", ops: [] }; } } },
   // บัลลังก์ตั๊กแตนศตวรรษ (Construct): once per turn worn by a ตั๊กแตน: +2, cannot attack, other ตั๊กแตน of ours +1
-  "BT07-073": { worn: () => 2, hostNoAttack: true, aura: (E, s, src, L) => (L.z === "mg" && src.on != null ? [{ seat: L.p, test: (x) => x.i !== src.on && grass(E, s, x), n: 1 }] : []),
+  "BT07-073": { keepV: () => 9, botHold: (E, s, x, p) => (riderHas(E, s, p, "av", "ราชันย์ตั๊กแตนศตวรรษ") ? 5 : 1), /* รำวง: the throne is the deck's engine, never the GEM paid */ worn: () => 2, hostNoAttack: true, aura: (E, s, src, L) => (L.z === "mg" && src.on != null ? [{ seat: L.p, test: (x) => x.i !== src.on && grass(E, s, x), n: 1 }] : []),
     // the wearer cannot attack: it goes on ราชันย์ตั๊กแตนศตวรรษ first (it gets the LIFE ability from it), else on the weakest
     // ตั๊กแตน that is not หยิน / หยาง; the bot keeps it in the Construct Zone rather than stop a หยิน / หยาง from attacking
     activate: { label: "ไปสวมใส่ให้ Avatar ตั๊กแตน (แนะนำราชันย์ตั๊กแตนศตวรรษ)", can: (E, s, x, L) => (L.z === "cs" || (L.z === "mg" && x.on != null)) && s.phase === "main" && s.P[L.p].av.some((y) => y.i !== x.on && grass(E, s, y) && (!s.P[L.p].bot || !yinYang(E, s, y))), // worn too: move it to another ตั๊กแตน (เทิร์นละครั้ง)
@@ -2692,6 +2694,18 @@ Object.assign(SCRIPTS, {
 });
 const ANYR = ["attack", "summon", "cast", "activate", "battle", "react"];
 const onlyNinja = (E, s, p) => s.P[p].av.length > 0 && s.P[p].av.every((y) => ninja(E, s, y));
+// รำวง helpers (see BT07-036): a หยิน next to it now, in hand, or to come from ศิลาหยินหยาง this turn
+const riderHas = (E, s, p, z, n) => s.P[p][z].some((y) => E.named(s, y, n));
+const throneOut = (E, s, p) => [...s.P[p].mg, ...s.P[p].cs, ...s.P[p].hand].some((y) => E.named(s, y, "บัลลังก์ตั๊กแตนศตวรรษ"));
+// ราชา (P2) alone is killed before its บัลลังก์ is on it: it comes out when the throne goes on it the same turn (the
+// throne in hell is worn at once; from the Deck it needs Cost 4 + 2 paid this turn), or when the throne is already out
+const rajaHold = (E, s, x, p) => { const P = s.P[p];
+  if (P.hell.some((y) => E.named(s, y, "บัลลังก์ตั๊กแตนศตวรรษ"))) return 6;
+  if ([...P.mg, ...P.cs].some((y) => E.named(s, y, "บัลลังก์ตั๊กแตนศตวรรษ"))) return 3;
+  const td = E.def(s, x); const gems = P.hand.filter((y) => y.i !== x.i).reduce((t, y) => t + (E.gemOf(s, p, y, td) || 0), 0);
+  if (gems >= E.costOf(s, p, x) + 2) return 4.5; return s.turn >= 9 || E.critical(P) ? 0 : -6; };
+const riderYangHold = (E, s, p) => { const up = s.P[p].life.filter((y) => y.up).length;
+  if (riderHas(E, s, p, "av", "ตั๊กแตนหยิน")) return 1 + up / 2; if (riderHas(E, s, p, "hand", "ตั๊กแตนหยิน") || riderHas(E, s, p, "hand", "ศิลาหยินหยาง")) return 0; return E.critical(s.P[p]) ? 0 : -8; };
 const isThrone = (E, s, y) => E.named(s, y, "บัลลังก์ตั๊กแตนศตวรรษ");
 const throneOn = (E, s, x) => [...s.P[0].mg, ...s.P[1].mg].some((m) => m.on === x.i && isThrone(E, s, m));
 const lifeUp = (s, p) => s.P[p].life.filter((y) => y.up);
@@ -2750,7 +2764,7 @@ Object.assign(SCRIPTS, {
   "BT10-043": { summon: (c) => { const { E, s, seat: p } = c; const n = Math.min(2, freeAv(E, s, p)); const ts = c.choose(s.P[p].deck.filter((y) => giant(E, s, y) && (E.def(s, y).c || 0) <= 3 && !String(E.def(s, y).x || "").trim()).sort((a, b) => worth(E, s, b) - worth(E, s, a)), n, "เลือกยักษ์ Cost ไม่เกิน 3 ที่ไม่มี Text Box", { exact: true });
     return { explain: ts.length ? `อัญเชิญ ${ts.map((y) => E.name(s, y)).join(", ")}` : "ไม่มียักษ์ที่ตรงเงื่อนไข", ops: [...ts.map((y) => ({ op: "put", i: y.i })), { op: "shuffle", seat: p }] }; } },
   // ราชันย์ตั๊กแตนศตวรรษ: จุติ wear บัลลังก์ from hell, or flip our LIFE and take it from the Deck · wearing it: at the start of our Main Phase use a face-up LIFE of ours
-  "BT10-044": { summon: (c) => { const { E, s, seat: p, self: x } = c; const h = s.P[p].hell.find((y) => isThrone(E, s, y)); const d = s.P[p].deck.find((y) => isThrone(E, s, y)); const opts = [...(h ? [0] : []), ...(d ? [1] : [])]; if (!opts.length || !x) return { explain: "ไม่มีบัลลังก์ตั๊กแตนศตวรรษ", ops: [] };
+  "BT10-044": { keepV: () => 7, botHold: (E, s, x, p) => rajaHold(E, s, x, p), summon: (c) => { const { E, s, seat: p, self: x } = c; const h = s.P[p].hell.find((y) => isThrone(E, s, y)); const d = s.P[p].deck.find((y) => isThrone(E, s, y)); const opts = [...(h ? [0] : []), ...(d ? [1] : [])]; if (!opts.length || !x) return { explain: "ไม่มีบัลลังก์ตั๊กแตนศตวรรษ", ops: [] };
       const m = opts[c.mode(opts.map((k) => (k === 0 ? "1) นำบัลลังก์ตั๊กแตนศตวรรษจากนรกมาสวมใส่" : "2) หงาย LIFE 1 ใบ: นำบัลลังก์ตั๊กแตนศตวรรษจาก Deck ขึ้นมือ")), "ราชันย์ตั๊กแตนศตวรรษ", 0)];
       return m === 0 ? { explain: `${E.name(s, h)} สวมใส่ให้ ${E.name(s, x)}`, ops: [{ op: "attach", i: h.i, on: x.i }] } : { explain: `หงาย LIFE · ${E.name(s, d)} ขึ้นมือ`, ops: [{ op: "lifeFlip", seat: p }, { op: "search", seat: p, take: d.i, to: "hand" }] }; },
     mainStartOk: (E, s, x) => { const L = E.locate(s, x.i); return !!L && L.z === "av" && throneOn(E, s, x) && lifeUp(s, L.p).length > 0; }, mainStart: (c) => useLife(c, false) },
@@ -2796,7 +2810,7 @@ Object.assign(SCRIPTS, {
       const ts = []; let sum = 0; for (const y of picks) { const k = E.def(s, y).c || 0; if (ts.length < room && sum + k <= 6) { ts.push(y); sum += k; } }
       return { explain: ts.length ? `อัญเชิญ ${ts.map((y) => E.name(s, y)).join(", ")} (Cost รวม ${sum})` : "ไม่มีทหารหิมะใน Deck", ops: [...ts.map((y) => ({ op: "put", i: y.i })), { op: "shuffle", seat: p }, ...(ts.length ? [{ op: "atEnd", turn: s.turn, why: "พายุหิมะเริงระบำ: ทหารหิมะลงนรก", ops: [...ts.map((y) => ({ op: "move", i: y.i, to: "hell", onlyFrom: "av" })), { op: "putNamed", seat: p, from: "deck", name: "ราชาหิมะ", shuffle: true }] }] : [])] }; } },
   // ศิลาหยินหยาง: flip our LIFE (free while สาหัส): ตั๊กแตนหยิน or ตั๊กแตนหยาง from the Deck
-  "BT10-059": { canCast: (E, s, p) => E.avatars(s.P[p]) < 4 && s.P[p].deck.some((y) => isAv(E, s, y) && (E.named(s, y, "ตั๊กแตนหยิน") || E.named(s, y, "ตั๊กแตนหยาง"))),
+  "BT10-059": { keepV: () => 6, canCast: (E, s, p) => E.avatars(s.P[p]) < 4 && s.P[p].deck.some((y) => isAv(E, s, y) && (E.named(s, y, "ตั๊กแตนหยิน") || E.named(s, y, "ตั๊กแตนหยาง"))),
     cast: (c) => { const { E, s, seat: p } = c; const opts = ["ตั๊กแตนหยิน", "ตั๊กแตนหยาง"].filter((n) => s.P[p].deck.some((y) => isAv(E, s, y) && E.named(s, y, n))); if (!opts.length) return { explain: "", ops: [] }; const best = Math.max(0, opts.indexOf(s.P[p].av.some((y) => E.named(s, y, "ตั๊กแตนหยิน")) ? "ตั๊กแตนหยาง" : "ตั๊กแตนหยิน"));
       const n = opts[c.mode(opts.map((o, k) => `${k + 1}) อัญเชิญ ${o} จาก Deck`), "ศิลาหยินหยาง", best)]; const t = s.P[p].deck.find((y) => isAv(E, s, y) && E.named(s, y, n)); const crit = E.critical(s.P[p]);
       return { explain: `${crit ? "" : "หงาย LIFE 1 ใบ · "}อัญเชิญ ${E.name(s, t)}`, ops: [...(crit ? [] : [{ op: "lifeFlip", seat: p }]), { op: "put", i: t.i }, { op: "shuffle", seat: p }] }; } },

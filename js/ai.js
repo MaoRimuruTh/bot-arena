@@ -1,11 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261121165259";
-import { plain } from "./persona.js?v=20261121165259";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261121165259";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261121165259";
-import { modPowerFor } from "./auras.js?v=20261121165259";
-import { Data } from "./fb.js?v=20261121165259";
-import { lsGet, clone } from "./util.js?v=20261121165259";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261121173624";
+import { plain } from "./persona.js?v=20261121173624";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261121173624";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261121173624";
+import { modPowerFor } from "./auras.js?v=20261121173624";
+import { Data } from "./fb.js?v=20261121173624";
+import { lsGet, clone } from "./util.js?v=20261121173624";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -124,7 +124,7 @@ export const H = {
   // mcLite: in Main Phase the two best-looking plays and going to battle are each played out once to our next turn
   // (the pro bot's way, one play-out each) and the best is taken: 55.4% of 6000 games alone; with the three above
   // 57.8% of 6000 games (57.9, 57.8, 57.7), 59.3% of 1000 on the ciel decks, no draws; about 18 ms a decision
-  X: { battleRoll: 1, tieClear: 1, tieDoom: 1, mcLite: 2 },
+  X: { battleRoll: 1, tieClear: 1, tieDoom: 1, mcLite: 2, hold: 1, holdMc: 0.35 },
   // how good the table looks for p (used by the one-step lookahead): board, hand, LIFE still face down, Deck running out
   evalBoard(s, p) {
     if (s.phase === "over") return s.winner === p ? 999 : -999;
@@ -266,7 +266,9 @@ export const H = {
         if (a.via != null) sc += 4; // ซาร์อึก: a dragon for almost nothing
         cand.push({ m, sc, bias });
       }
-      cand.sort((a, b) => b.sc - a.sc);
+      // a card's script may say it is better kept for now, or wanted out now (botHold: the รำวง of a combo deck): that word
+      // counts in the order the bot tries its plays, in its quick play-outs as much as in its own turn
+      const want = (z) => z.sc + (z.bias || 0) * H.X.hold; cand.sort((a, b) => want(b) - want(a));
       // a free Magic about to be paid away as GEM for the chosen play, while that play can still be paid for without it:
       // cast it first (the play comes next, paid with the other cards)
       const first = (m) => { if (!m || !["summon", "build"].includes(m.a.type) || m.a.via != null || !(m.a.pay || []).length) return m;
@@ -276,10 +278,10 @@ export const H = {
         for (const z of top) z.lv = H.lookahead(s, p, z.m.a);
         const ranked = top.filter((z) => z.lv != null).map((z) => ({ ...z, tot: z.lv + z.sc * 0.25 + (z.bias || 0) })).sort((a, b) => b.tot - a.tot);
         if (H.X.mcLite && ranked.length) { const bm = moves.find((m) => m.a.type === "battle"); const opts = [...ranked.slice(0, H.X.mcLite).map((z) => z.m), ...(bm ? [bm] : [])]; let best = null;
-          for (const m of opts) { const v = H.rollout(s, p, m.a, 0); if (v != null && (!best || v > best.v)) best = { v, m }; }
+          for (const m of opts) { const z = ranked.find((y) => y.m === m); const v0 = H.rollout(s, p, m.a, 0); const v = v0 == null ? null : v0 + (z ? (z.bias || 0) * H.X.holdMc : 0); if (v != null && (!best || v > best.v)) best = { v, m }; }
           if (best) return best.m === bm ? bm : first(best.m); }
         if (ranked.length) return ranked[0].tot >= H.W.thr || (ranked[0].sc >= 1.5 && ranked[0].lv > -1) ? first(ranked[0].m) : moves.find((m) => m.a.type === "battle"); }
-      if (cand.length && cand[0].sc >= 1.5) return first(cand[0].m);
+      if (cand.length && want(cand[0]) >= 1.5 && cand[0].sc > -20) return first(cand[0].m);
       return moves.find((m) => m.a.type === "battle");
     }
     if (s.phase === "battle") {
