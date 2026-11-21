@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261121090534";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261121090534";
-import { SCRIPTS } from "./scripts.js?v=20261121090534";
-import { newId, clone } from "./util.js?v=20261121090534";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261121092345";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261121092345";
+import { SCRIPTS } from "./scripts.js?v=20261121092345";
+import { newId, clone } from "./util.js?v=20261121092345";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -1082,6 +1082,9 @@ export const E = {
         if (E.immuneNow(s, L.x, "power")) { E.log(s, by, `${E.name(s, L.x)} ไม่รับผลความสามารถนี้`); return; }
         let v = Math.max(-20, Math.min(20, o.n | 0)); if (v < 0 && by !== L.p && s.cur != null && s.cards[s.cur] && ["A", "T"].includes(s.cards[s.cur].t) && E.named(s, L.x, "หิมะ") && fieldCards(s).some(({ x: y, L: Ly }) => Ly.p === L.p && !y.mute && (scriptOf(s, y) || {}).snowFlip)) { v = -v; E.log(s, L.p, "ผลลด POWER ถูกเปลี่ยนเป็นเพิ่ม POWER (นายพลทหารหิมะ หลินอัน)"); } if (v > 0) L.x.ups = (L.x.ups || 0) + 1; // counted for "ได้รับผลเพิ่ม POWER ไปแล้ว 3 ครั้ง" (ยายกบ 1954)
         if (v < 0 && L.z === "av" && [...s.P[0].mg, ...s.P[1].mg].some((m) => { if (m.on !== L.x.i || m.mute) return false; const nl = (scriptOf(s, m) || {}).noLower; return typeof nl === "function" ? !!nl(E, s, m, L.x) : !!nl; })) { E.log(s, by, `${E.name(s, L.x)} ไม่ถูกลด POWER`); return; } /* FAQ ถาดหลุม: wearing ยาแก้ไอน้ำดำ a -POWER is not received, so it does not eat into gains */
+        // POWER never goes under 0, and a cut bigger than the POWER there is lost (ไปเลยมอนตี้ -20 on a POWER 5 takes 5):
+        // a later +1 then shows on the card as 1, as players expect, instead of being eaten by a hidden debt
+        if (v < 0 && (L.z === "av" || L.z === "cs")) v = Math.max(v, -Math.max(0, E.power(s, L.x)));
         const thru = o.temp === "myturn" && s.active !== by; // "จนจบเทิร์นเรา" given in the other player's turn: it lasts through our next turn (until their turn after it starts)
         if (o.temp === false) L.x.pm = (L.x.pm || 0) + v; else if (o.temp === "next" || thru) { const k = thru ? 1 - by : by; L.x.tn = L.x.tn || {}; L.x.tn[k] = (L.x.tn[k] || 0) + v; } else if (o.temp === "fight") L.x.fm = (L.x.fm || 0) + v; else L.x.tm = (L.x.tm || 0) + v;
         E.log(s, by, `${E.name(s, L.x)} POWER ${v >= 0 ? "+" : ""}${v}${o.temp === false ? "" : o.temp === "next" ? " จนถึง Draw Phase ถัดไป" : o.temp === "fight" ? " จนจบการต่อสู้" : thru ? ` จนจบเทิร์นของ ${s.P[by].name}` : " จนจบเทิร์น"} (ตอนนี้ ${E.power(s, L.x)})`); return;
