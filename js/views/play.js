@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261121144020";
-import { fxText, kwGloss } from "../fxtext.js?v=20261121144020";
-import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261121144020";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261121144020";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261121144020";
-import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261121144020";
-import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor, myWinFx } from "../achieve.js?v=20261121144020";
-import { themeCounts, officialStarters } from "../boxdecks.js?v=20261121144020";
-import { ladder, ladderReset } from "../ladder.js?v=20261121144020";
-import { notify } from "../notify.js?v=20261121144020";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261121144020";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261121144020";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261121144020";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261121144020";
-import { Music, MUSIC_STYLES } from "../music.js?v=20261121144020";
-import { Sfx } from "../sfx.js?v=20261121144020";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar, shareReplayDoc, loadSharedReplay } from "../fb.js?v=20261121144020";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261121144020";
-import { readAura, traits } from "../auras.js?v=20261121144020";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261121144020";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261121150856";
+import { fxText, kwGloss } from "../fxtext.js?v=20261121150856";
+import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261121150856";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261121150856";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261121150856";
+import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261121150856";
+import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor, myWinFx } from "../achieve.js?v=20261121150856";
+import { themeCounts, officialStarters } from "../boxdecks.js?v=20261121150856";
+import { ladder, ladderReset } from "../ladder.js?v=20261121150856";
+import { notify } from "../notify.js?v=20261121150856";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261121150856";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261121150856";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261121150856";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261121150856";
+import { Music, MUSIC_STYLES } from "../music.js?v=20261121150856";
+import { Sfx } from "../sfx.js?v=20261121150856";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar, shareReplayDoc, loadSharedReplay } from "../fb.js?v=20261121150856";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261121150856";
+import { readAura, traits } from "../auras.js?v=20261121150856";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261121150856";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -26,14 +26,14 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(s.id ? [`รีเพลย์ในเครื่องนี้: ${s.id}-${V}`] : []), "บันทึก 40 บรรทัดล่าสุด:\n" + s.log.slice(-40).map((l) => "· " + l.m).join("\n"), // so a report can be traced back to its game
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261121144020";
-import { customMat, customSleeve, customFig, customStand, setOnReady, onVault } from "../vault.js?v=20261121144020";
-import { openGlossSheet } from "../glossary.js?v=20261121144020";
-import { weekRule, weeklyPanel, weeklyWinNote, isoWeek, ruleChip, hudLine, eventPicker, eventOpt, seriesNext, seriesChip, seriesText, seriesAfter, seriesWinner } from "../weekly.js?v=20261121144020";
-import { openCoach } from "../coach.js?v=20261121144020";
-import { mullHint } from "../matchups.js?v=20261121144020";
-import { logged, check as checkMoves, idleReason, pickMap } from "../movelog.js?v=20261121144020";
-import { openSandbox, openFishRuns } from "../sandbox.js?v=20261121144020";
+import { allDecks, deckById } from "./decks.js?v=20261121150856";
+import { customMat, customSleeve, customFig, customStand, setOnReady, onVault } from "../vault.js?v=20261121150856";
+import { openGlossSheet } from "../glossary.js?v=20261121150856";
+import { weekRule, weeklyPanel, weeklyWinNote, isoWeek, ruleChip, hudLine, eventPicker, eventOpt, seriesNext, seriesChip, seriesText, seriesAfter, seriesWinner } from "../weekly.js?v=20261121150856";
+import { openCoach } from "../coach.js?v=20261121150856";
+import { mullHint } from "../matchups.js?v=20261121150856";
+import { logged, check as checkMoves, idleReason, pickMap } from "../movelog.js?v=20261121150856";
+import { openSandbox, openFishRuns } from "../sandbox.js?v=20261121150856";
 // the players' own mat picture, card sleeve and figure (vault.js): the table asks for them, and redraws when one loads or changes
 Arena.setCustom({ mat: customMat, sleeve: customSleeve, fig: customFig, stand: customStand, skins: (s) => setGameSkins(s && s.P, Me.uid) }); setOnReady((o) => Arena.customReady(o)); onVault(() => Arena.refreshCustom());
 { let sig = ""; Data.listeners.add(() => { const sh = Data.meta && Data.meta.show, now = sh ? Object.entries(sh).map(([k, x]) => k + ":" + (x && x.v) + ":" + (x && x.finish)).join() : ""; if (now !== sig) { sig = now; Arena.refreshCustom(); } }); }
@@ -244,7 +244,7 @@ function questPanel() {
 }
 // ---------- start / resume ----------
 const pickOpp = () => { const o = Setup.opp !== "random" && deckById(Setup.opp); if (o && !deckLocked(o)) return o; const st = allDecks().filter((d) => d.starter && !d.box); return st[Math.floor(Math.random() * st.length)]; };
-import { dupNames, ruleDeck, singlePanel, botSingle, NODUP_NEED } from "../weekly.js?v=20261121144020";
+import { dupNames, ruleDeck, singlePanel, botSingle, NODUP_NEED } from "../weekly.js?v=20261121150856";
 const pack = (d) => ({ ...deckToList(d), name: d.name, id: d.id });
 // ไต่ด่าน: the official Starter Decks one after another, the bot growing stronger; a step is passed by a win recorded with its number
 function gauntletSteps() { const lv = (k, n) => (k < 2 ? "easy" : k < Math.ceil(n * 0.6) ? "basic" : "hard"); const list = officialStarters().filter((d) => validateDeck(d).ok);
@@ -312,7 +312,7 @@ function persist() { if (!G || G.replay || G.watch) return; if (G.mode === "frie
 function stopGame(clear) {
   if (!G) return; try { sessionStorage.removeItem(RESUME); } catch { /* storage may be off */ } if (G.unsub) G.unsub(); if (clear) { if (!G.watch) lsDel(SAVE); } else persist(); // a watcher never touches their own saved game
   if (G.mode === "friend" && !G.watch && G.s && G.s.phase === "over") trimGame(G.id, G.s);
-  clearInterval(G.idleTick); clearInterval(G.dog); clearInterval(G.rvTick); Arena.unmount(); Music.stop(); setGameSkins(null); document.body.classList.remove("arena-on", "tossing"); document.querySelectorAll(".banner,.dmg,.emo,.showcase,.flatfx,.fxcuts,.dragghost,#atkarrow,#foearrow").forEach((e) => e.remove()); G = null;
+  clearInterval(G.idleTick); clearInterval(G.dog); clearInterval(G.rvTick); Arena.unmount(); Music.stop(); setGameSkins(null); document.body.classList.remove("arena-on", "tossing"); document.querySelectorAll(".banner,.dmg,.emo,.showcase,.flatfx,.fxcuts,.dragghost,#atkarrow,#foearrow,.xcpanel").forEach((e) => e.remove()); G = null;
 }
 // ---------- friends ----------
 // Rule Book 3.2 (Deck Set 3): a card marked "ลำเอียง" cannot go in a Deck used in a competition, so tournament matches turn such a Deck away (other games play it as usual)
@@ -920,7 +920,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261121144020").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261121150856").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", mat: botMat(), bot: true });
@@ -1341,7 +1341,7 @@ function tension(s) {
 }
 function afterDraw(s, V, op, myTurn) {
   const me = s.P[V]; Music.mood(musicMood(s, V)); Music.level(tension(s)); if (G.replay) G.hud.append(replayBar());
-  drawInspector();
+  drawInspector(); drawXc(s, V);
   const targets = [];
   if (G.att) { targets.push(...op.av.map((x) => x.i), ...op.cs.map((x) => x.i)); }
   else if (myTurn && s.phase === "battle" && !s.pend && !s.trig.length) targets.push(...me.av.filter((x) => x.a).map((x) => x.i));
@@ -1621,6 +1621,43 @@ function turnButtons0(s, p) {
   return [];
 }
 // desktop: big hover preview (image + readable text side by side); pinned to the selected card otherwise
+// ลำดับผล: once a chain in which someone answered with a React has finished, a small table shows it twice: the order the
+// cards were USED (the answer comes second) and the order they WORKED (the answer works first, and what it cancelled never
+// works at all). Off in Settings › ผู้ช่วยในเกม. Built from s.xc (engine xcStart / xcEnd), the same for both players.
+// the log lines an effect wrote, cut down to what it did ("เอฟเฟกต์ X: อ่านอัตโนมัติ: …" and repeats dropped)
+const xcSay = (m) => { const out = []; for (let t of String(m).split(" · ")) { t = t.replace(/^เอฟเฟกต์ [^:]+:\s*/, "").replace(/^อ่านอัตโนมัติ:\s*/, "").trim();
+  if (!t || /^ใช้ (Normal |React )?Magic|^ความสามารถนี้ถูกยกเลิก$/.test(t) || out.some((o) => o.includes(t) || t.includes(o) && (out[out.indexOf(o)] = t))) continue; out.push(t); }
+  const j = out.join(" · "); return j.length > 90 ? j.slice(0, 88) + "…" : j; };
+function drawXc(s, V) {
+  if (!lsGet("bot.xc", true) || G.replay) return; const id = s.xcDone;
+  if (id && id === s.xcId && id !== G.xcSeen && Array.isArray(s.xc) && s.xc.some((e) => e.w && e.i != null)) { G.xcSeen = id; G.xcShow = JSON.parse(JSON.stringify(s.xc)); G.xcCards = s.cards; G.xcTurn = s.turn; }
+  if (G.xcShow && G.xcTurn !== s.turn) G.xcShow = null; // it explains a moment of this turn: the next turn clears it
+  const old = document.querySelector(".xcpanel"); if (!G.xcShow) { if (old) old.remove(); return; } if (old && old.dataset.id === String(G.xcSeen)) return; if (old) old.remove();
+  const xc = G.xcShow, cards = G.xcCards || s.cards, who = (p) => (p === V ? "คุณ" : s.P[p].name), nm = (c) => (cards[c] && cards[c].n) || "การ์ด";
+  const pic = (c, badge) => { const d = cards[c]; return h("div", { class: "gcard xcc" }, d && d.im != null ? cardBtn(d.im, { badge, onclick: () => showCard(d.im) }) : h("span", { class: "gword" }, nm(c))); };
+  const uses = xc.filter((e) => e.i != null && e.k !== "res" && /^(cast|summon|build|activate|attack|lifeUse)$/.test(e.k));
+  const num = (e) => uses.indexOf(e) + 1, circ = (n) => "①②③④⑤⑥⑦⑧⑨"[n - 1] || String(n);
+  const verb = { cast: "ใช้", summon: "อัญเชิญ", build: "สร้าง", activate: "สั่งใช้", attack: "โจมตีด้วย", lifeUse: "ใช้ LIFE" };
+  const useRow = uses.map((e, k) => [k ? h("span", { class: "garrow" }, "→") : null, h("div", { class: "gstep" }, pic(e.c, circ(k + 1)),
+    h("div", { class: "gcap" }, `${who(e.p)} ${verb[e.k] || "ใช้"} ${nm(e.c)}${e.k === "attack" && e.tc ? " ตี " + (e.tc === "life" ? "LIFE" : nm(e.tc)) : ""}`, e.w ? h("b", { class: "xctag" }, " ตอบโต้") : null))]).flat();
+  // what worked: each effect as it resolved; a card used that never resolved (cancelled before its turn) at the end, crossed
+  const res = xc.filter((e) => e.k === "res");
+  const done = new Set(res.map((e) => e.i)); const never = uses.filter((e) => (e.k === "cast" || e.k === "activate") && !done.has(e.i));
+  const fight = xc.filter((e) => (e.k === "respond" || e.k === "pass") && e.m && /ชนะ|แพ้|เสมอ|ทำลาย|ต่อสู้|LIFE/.test(e.m)).slice(-1);
+  const resRow = [...res.map((e) => ({ e, ok: !e.cut })), ...never.map((e) => ({ e, ok: false, gone: true })), ...fight.map((e) => ({ e, ok: true, fight: true }))].map(({ e, ok, gone, fight: f }, k) => {
+    const u = uses.find((x) => x.i === e.i); const tag = u ? circ(num(u)) : ""; const lab = f ? "ตัดสินการต่อสู้" : ok ? "ทำงาน" : gone ? "ไม่ได้ทำงาน (ถูกยกเลิก)" : "ถูกยกเลิก";
+    return [k ? h("span", { class: "garrow" }, "→") : null, h("div", { class: "gstep" + (ok ? "" : " xcx") }, f ? h("div", { class: "gword" }, "⚔") : pic(e.c, tag),
+      h("div", { class: "gcap" }, h("b", { class: ok ? "xcok" : "xcno" }, (ok ? "✓ " : "✗ ") + lab), e.m ? h("div", { class: "xcm" }, xcSay(e.m)) : null))]; }).flat();
+  const anyCut = resRow.length && (res.some((e) => e.cut) || never.length);
+  const el = h("div", { class: "xcpanel glass", "data-id": String(G.xcSeen), role: "dialog", "aria-label": "ลำดับผลที่เพิ่งเกิด" },
+    h("div", { class: "row", style: "gap:8px;align-items:center" }, h("b", { class: "grow" }, "ลำดับผลที่เพิ่งเกิด"),
+      h("button", { class: "btn sm", onclick: () => { lsSet("bot.xc", false); G.xcShow = null; drawXc(s, V); toast("ปิดคำอธิบายลำดับผลแล้ว เปิดใหม่ได้ที่ ตั้งค่า › ผู้ช่วยในเกม"); } }, "ไม่ต้องแสดงอีก"),
+      h("button", { class: "btn sm", "aria-label": "ปิด", onclick: () => { G.xcShow = null; drawXc(s, V); } }, "✕")),
+    h("div", { class: "tiny muted" }, "ลำดับที่ใช้การ์ด"), h("div", { class: "gtable" }, h("div", { class: "gfelt" }, h("div", { class: "gclause" }, ...useRow))),
+    h("div", { class: "tiny muted" }, "ลำดับที่ทำงานจริง"), h("div", { class: "gtable" }, h("div", { class: "gfelt" }, h("div", { class: "gclause" }, ...resRow))),
+    h("div", { class: "small xcnote" }, "React ที่ใช้ตอบโต้จะทำงานก่อนการ์ดที่มันตอบโต้เสมอ (ใช้ทีหลัง แต่ได้ทำก่อน)" + (anyCut ? " · การ์ดที่ถูกยกเลิกไม่ได้ทำงานพลาดนะ มันโดนขัดก่อนถึงคิวทำงาน และ Cost ที่จ่ายไปแล้วไม่ได้คืน" : "")));
+  document.body.append(el);
+}
 function drawInspector() {
   const el = document.getElementById("insp"); if (!el || !G) return; const s = G.s;
   // the card just attacked stays quiet under the pointer (no preview popping up after the attack) until the pointer leaves it

@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261121144020";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261121144020";
-import { SCRIPTS } from "./scripts.js?v=20261121144020";
-import { newId, clone } from "./util.js?v=20261121144020";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261121150856";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261121150856";
+import { SCRIPTS } from "./scripts.js?v=20261121150856";
+import { newId, clone } from "./util.js?v=20261121150856";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -609,7 +609,21 @@ export const E = {
   openWindow(s, p, kind, i, extra) { const q = 1 - p; const on = { kind, by: p, i, ...(extra || {}) }; if (E.reactsFor(s, q, on).length) s.rw = on; },
 
   // s.na counts the actions; every ability that comes up during one is marked with it (t.b), so "at the same time" can be told
-  apply(s, act, p) { E.sync(s); s.na = (s.na || 0) + 1; try { return E.act0(s, act, p); } finally { E.runHeld(s); E.sync(s); E.odPrune(s); E.hfPrune(s); E.deckOut(s); for (const t of s.trig) if (t.b == null) t.b = s.na; } },
+  apply(s, act, p) { E.sync(s); s.na = (s.na || 0) + 1; try { const xe = E.xcStart(s, act, p); const r = E.act0(s, act, p); E.xcEnd(s, xe); return r; } finally { E.runHeld(s); E.sync(s); E.odPrune(s); E.hfPrune(s); E.deckOut(s); for (const t of s.trig) if (t.b == null) t.b = s.na; } },
+  // ลำดับผล (what happened, in order, when someone answered with a React): every move from a quiet table until the table is
+  // quiet again is one chain in s.xc. A move that uses a card ("use": cast / summon / build / activate / attack) notes
+  // whether it answered a window (w), an effect resolving ("res") notes whether it had been cancelled (cut); each keeps
+  // the log lines it wrote. s.xcDone marks a finished chain so the table can explain it once. Kept in the game state, so
+  // both players of a friend game see the same; only the moves themselves are recorded, nothing is decided here.
+  xcStart(s, act, p) { if (!act || /^(note|arrange|toss|mull|concede|trigFirst)/.test(act.type)) return null;
+    const fresh = !s.trig.length && !s.rw && !s.pend && act.type !== "trig"; // (the state is only touched once the move has gone through: xcEnd)
+    if (!fresh && !Array.isArray(s.xc)) return null; const e = { p, k: act.type, l: s.log.length, fresh };
+    if (act.type === "trig") { const t = s.trig.find((y) => y.id === act.id); if (!t) return null; Object.assign(e, { k: "res", i: t.i, c: t.c, when: t.when, cut: !!t.cut }); }
+    else if (act.i != null) { const L = E.locate(s, act.i); if (L) Object.assign(e, { i: act.i, c: L.x.c }); const w = s.rw && s.rw.by !== p ? s.rw.kind : s.pend && s.pend.by !== p ? "attack" : null; if (w) e.w = w; if (act.ti != null) { const T = E.locate(s, act.ti); if (T) e.tc = T.x.c; } if (act.tk === "life") e.tc = "life"; }
+    return e; },
+  xcEnd(s, e) { if (!e) return; if (e.fresh) { s.xcId = (s.xcId || 0) + 1; s.xc = []; s.xcDone = null; } delete e.fresh; if (!Array.isArray(s.xc)) return; const lines = s.log.slice(e.l).map((y) => y.m).filter(Boolean); delete e.l; if (lines.length) e.m = lines.slice(0, 3).join(" · ").slice(0, 220);
+    if (e.k === "res" || e.i != null || e.m) { s.xc.push(e); if (s.xc.length > 14) s.xc.splice(0, s.xc.length - 14); }
+    if (!s.trig.length && !s.rw && !s.pend && !s.xcDone) s.xcDone = s.xcId || 0; },
   // a hand ability offered for a fight (เมย์ แวมไพร์โกธิค) is offered one card at a time: once one has been used, the others waiting are
   // checked again and dropped when their condition no longer holds (FAQ เมย์: the second finds a เมย์ already in the dark dimension)
   hfPrune(s) { if (!s.trig.some((t) => t.when === "handFight")) return; s.trig = s.trig.filter((t) => { if (t.when !== "handFight" || t.held) return true; const L = E.locate(s, t.i), F = t.fighter != null ? E.locate(s, t.fighter) : null; const sc = L && L.z === "hand" ? scriptOf(s, L.x) : null; return !!(sc && sc.handFightOk && F && F.z === "av" && sc.handFightOk(E, s, L.x, F.x)); }); },

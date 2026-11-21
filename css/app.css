@@ -1284,3 +1284,18 @@ kbd{font:600 .8rem/1.6 var(--f-mono,ui-monospace,monospace);padding:2px 8px;bord
 .gstep.words{align-self:center}
 .gword{max-width:170px;padding:8px 10px;border-radius:10px;font-size:.74rem;line-height:1.35;text-align:center;background:rgba(10,8,6,.55);border:1px dashed rgba(217,180,90,.45);color:#f1e9da}
 @media (prefers-reduced-motion:reduce){.gcard{transition:none}}
+
+/* ลำดับผลที่เพิ่งเกิด: the chain just played out, as two small tables (used / worked) */
+.xcpanel{position:fixed;left:max(12px,env(safe-area-inset-left,0px));top:calc(64px + env(safe-area-inset-top,0px));z-index:30;width:min(560px,calc(100vw - 24px));max-height:calc(100vh - 140px);overflow:auto;padding:12px 14px;border-radius:16px;display:flex;flex-direction:column;gap:6px}
+.xcpanel>*{min-width:0}
+.xcpanel .gtable{max-width:100%}
+.xcpanel .gfelt{transform:rotateX(10deg);padding:12px;min-width:0}
+.xcpanel .gcard{width:58px}
+.xcpanel .gstep{max-width:150px}
+.xctag{color:#ffb35a;font-size:.72rem}
+.xcok{color:#7fe3a8}.xcno{color:#ff8a8a}
+.xcm{font-size:.68rem;opacity:.85;margin-top:2px}
+.gstep.xcx .gcard{filter:grayscale(.85) brightness(.7)}
+.gstep.xcx .gcard::after{content:"✕";position:absolute;inset:0;display:grid;place-items:center;font:900 2.2rem var(--f-display);color:#ff6b6b;text-shadow:0 2px 6px #000;pointer-events:none}
+.gcard{position:relative}
+.xcnote{color:#efe6d6;line-height:1.45}
