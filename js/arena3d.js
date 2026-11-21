@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261121173624";
-import { E } from "./engine.js?v=20261121173624";
-import { h } from "./util.js?v=20261121173624";
-import { Sfx } from "./sfx.js?v=20261121173624";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261121192228";
+import { E } from "./engine.js?v=20261121192228";
+import { h } from "./util.js?v=20261121192228";
+import { Sfx } from "./sfx.js?v=20261121192228";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -2233,6 +2233,9 @@ const tallScreen = (el) => (el.clientWidth || innerWidth) / (el.clientHeight || 
 function tallBand(w, hh, minH = 160) {
   const top = document.querySelector(".hud .oppbar"), hand = document.querySelector(".hud .handrow") || document.querySelector(".hud .handzone"), side = document.querySelector(".hud .matchp");
   const t = top ? top.getBoundingClientRect().bottom + 6 : 64; const hr = hand && hand.getBoundingClientRect(); const sr = side && side.getBoundingClientRect();
+  // a phone held sideways keeps its hand in a column on the right: the table takes the rest, down to the bottom bar
+  if (hr && hand.classList.contains("handrow") && hr.left > w * 0.5 && hr.height > 100) { const bar = document.querySelector(".hud .mbar"), br = bar && bar.getBoundingClientRect();
+    return { t, b: Math.max(t + minH, br && br.height ? br.top - 4 : hh - 66), l: 0, r: hr.left - 4 }; }
   const handTop = hr && hr.height > 40 ? hr.top + (hand.classList.contains("handrow") ? 6 : 30) : hh - 205;
   // a tablet held upright keeps the side panel of the wide screen: the table moves left of it
   const r = sr && sr.width > 40 && sr.left > w * 0.45 ? sr.left - 4 : w;

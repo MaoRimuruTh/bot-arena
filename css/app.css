@@ -267,7 +267,7 @@ body.arena-on main{padding:0;max-width:none}
 .fcard.sel{box-shadow:0 0 0 3px var(--gold-hi),0 0 18px rgba(216,168,74,.7)}
 .fcard:hover,.fcard:focus-visible{box-shadow:0 0 0 2px var(--gold),0 0 18px rgba(216,168,74,.5)}
 .fside.fopp .fz-av{border-color:rgba(198,59,46,.4)}
-@media (max-width:760px){
+@media (max-width:760px),(pointer:coarse) and (orientation:landscape) and (max-height:500px){
   .flatboard{left:max(8px,env(safe-area-inset-left,0px));right:max(8px,env(safe-area-inset-right,0px));gap:6px}
   .fside,.frow{gap:6px} .fzone{padding:6px;gap:4px} .fcard .fpow{font-size:.62rem;min-width:18px;right:-4px;bottom:-4px}
 }
@@ -311,7 +311,7 @@ body.arena-on main{padding:0;max-width:none}
 .pwl.opp{border-color:rgba(198,59,46,.7);color:#ffb0b3} .pwl.up{background:#1a5c37;color:#c9ffe0} .pwl.down{background:#6b1a1f;color:#ffd0d2} .pwl.sleep{opacity:.55}
 .arena-exit{position:absolute;left:max(16px,env(safe-area-inset-left,0px));bottom:max(14px,env(safe-area-inset-bottom,0px))}
 @media (max-width:1100px){.inspector{display:none}}
-@media (max-width:760px){
+@media (max-width:760px),(pointer:coarse) and (orientation:landscape) and (max-height:500px){
   .matchp{top:auto;bottom:calc(150px + env(safe-area-inset-bottom,0px));width:auto;right:10px;padding:10px;gap:8px}
   .matchp .glog,.matchp .coachbox,.matchp .piles,.matchp .hidem{display:none}
   .turnline b{font-size:1.15rem}
@@ -399,7 +399,7 @@ body.arena-on main{padding:0;max-width:none}
 @media (max-width:640px){.cview{grid-template-columns:1fr}.cview .ccard.big{max-width:min(78vw,300px);margin:0 auto}}
 .hcard .zoom{position:absolute;left:5px;top:5px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:.9rem;background:rgba(14,8,7,.85);color:var(--gold-hi);border:1px solid rgba(216,168,74,.55)}
 /* phones: arena gets the whole screen */
-@media (max-width:760px){
+@media (max-width:760px),(pointer:coarse) and (orientation:landscape) and (max-height:500px){
   body.arena-on .top{display:none}
   body.arena-on .hud{padding-top:env(safe-area-inset-top,0px)}
   body.arena-on .oppbar{top:calc(8px + env(safe-area-inset-top,0px));left:max(10px,env(safe-area-inset-left,0px));right:max(10px,env(safe-area-inset-right,0px));transform:none;justify-content:space-between;padding:6px 10px}
@@ -482,7 +482,7 @@ body.arena-on main{padding:0;max-width:none}
 .upd{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:60;display:flex;align-items:center;gap:10px;padding:10px 14px;font-size:.86rem}
 /* in a game the bottom of the screen is the hand and the turn buttons: the notice waits in the top corner instead */
 body.arena-on .upd{top:calc(70px + env(safe-area-inset-top,0px));bottom:auto;left:max(16px,env(safe-area-inset-left,0px));transform:none;padding:6px 10px;gap:8px;font-size:.8rem}
-@media (max-width:760px){body.arena-on .upd{top:calc(100px + env(safe-area-inset-top,0px));left:max(10px,env(safe-area-inset-left,0px));max-width:calc(100vw - 20px)}}
+@media (max-width:760px),(pointer:coarse) and (orientation:landscape) and (max-height:500px){body.arena-on .upd{top:calc(100px + env(safe-area-inset-top,0px));left:max(10px,env(safe-area-inset-left,0px));max-width:calc(100vw - 20px)}}
 /* when a prompt is open (pay / choose / confirm) keep it on top and move the card preview out of its way */
 .prompt{z-index:10}
 body:has(.prompt) .inspector{top:calc(80px + env(safe-area-inset-top,0px));transform:none;max-width:min(560px,40vw)}
@@ -628,7 +628,7 @@ table.t th{white-space:nowrap}
 @keyframes tutorIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.tutor.fresh{animation:none}}
 @media (max-width:1100px){.tutor{width:min(320px,40vw)}}
-@media (max-width:760px){body.arena-on .tutor{left:10px;right:10px;width:auto;bottom:auto;top:calc(96px + env(safe-area-inset-top,0px))} .tutor ul{font-size:.82rem}}
+@media (max-width:760px),(pointer:coarse) and (orientation:landscape) and (max-height:500px){body.arena-on .tutor{left:10px;right:10px;width:auto;bottom:auto;top:calc(96px + env(safe-area-inset-top,0px))} .tutor ul{font-size:.82rem}}
 .modes{grid-template-columns:repeat(4,1fr)}
 @media (max-width:1180px){.modes{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:560px){.modes{grid-template-columns:1fr}}
@@ -636,7 +636,7 @@ table.t th{white-space:nowrap}
 .rpbar{position:absolute;left:max(16px,env(safe-area-inset-left,0px));bottom:calc(66px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:14px;max-width:calc(100vw - 32px)}
 .rpbar input[type=range]{width:min(190px,28vw);min-width:0;accent-color:var(--gold)}
 .rpbar .num{min-width:4.2em;text-align:center}
-@media (max-width:760px){body.arena-on .rpbar{left:50%;transform:translateX(-50%);bottom:auto;top:calc(96px + env(safe-area-inset-top,0px));gap:4px;padding:4px 6px}body.arena-on .rpbar .btn.sm{padding:0 9px}body.arena-on .rpbar input[type=range]{width:min(120px,24vw)}body.arena-on .rpbar .num{display:none}}
+@media (max-width:760px),(pointer:coarse) and (orientation:landscape) and (max-height:500px){body.arena-on .rpbar{left:50%;transform:translateX(-50%);bottom:auto;top:calc(96px + env(safe-area-inset-top,0px));gap:4px;padding:4px 6px}body.arena-on .rpbar .btn.sm{padding:0 9px}body.arena-on .rpbar input[type=range]{width:min(120px,24vw)}body.arena-on .rpbar .num{display:none}}
 .sumtab{display:grid;gap:2px;border:1px solid var(--line-2);border-radius:12px;overflow:hidden}
 .sumrow{display:grid;grid-template-columns:minmax(0,1fr) 4.6em 4.6em;gap:8px;padding:8px 12px;background:var(--panel);align-items:center}
 .sumrow b{text-align:right;font:600 1rem var(--f-mono)}
@@ -647,7 +647,7 @@ table.t th{white-space:nowrap}
 .emo b{color:var(--gold);font-weight:600}
 .emogrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .idlebar{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(210px + env(safe-area-inset-bottom,0px));display:flex;gap:10px;align-items:center;padding:8px 12px;border-radius:14px;max-width:calc(100vw - 32px);flex-wrap:wrap;justify-content:center}
-@media (max-width:760px){.idlebar{bottom:calc(150px + env(safe-area-inset-bottom,0px))}}
+@media (max-width:760px),(pointer:coarse) and (orientation:landscape) and (max-height:500px){.idlebar{bottom:calc(150px + env(safe-area-inset-bottom,0px))}}
 .meplate .emobtn{margin-left:auto;padding:0 9px;min-height:30px;font-size:.95rem}
 /* achievements */
 .achlist{display:grid;gap:6px}
@@ -672,7 +672,7 @@ table.t th{white-space:nowrap}
 .watchhand .backs{flex-wrap:nowrap;overflow:hidden}
 .watchhand>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}
 .watchhand .backs i{width:20px;height:29px}
-@media (max-width:760px){.watchhand{bottom:calc(70px + env(safe-area-inset-bottom,0px));padding:6px 12px;gap:8px}.watchhand .backs i{width:14px;height:20px}}
+@media (max-width:760px),(pointer:coarse) and (orientation:landscape) and (max-height:500px){.watchhand{bottom:calc(70px + env(safe-area-inset-bottom,0px));padding:6px 12px;gap:8px}.watchhand .backs i{width:14px;height:20px}}
 .vsava{display:flex;flex:none}
 .vsava>*+*{margin-left:-10px}
 /* friends' ladder on the history page */
@@ -702,7 +702,7 @@ table.t th{white-space:nowrap}
 .fxcut .fxtx{display:flex;flex-direction:column;gap:2px;min-width:0}
 .fxcut .fxtx b{font:700 .86rem var(--f-display);line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fxcut .fxtx span{font-size:.8rem;line-height:1.4;color:var(--fg);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-@media (max-width:760px){.fxcuts{top:calc(64px + env(safe-area-inset-top,0px))}.fxcut .fxart{width:38px}.fxcut .fxtx span{-webkit-line-clamp:2}}
+@media (max-width:760px),(pointer:coarse) and (orientation:landscape) and (max-height:500px){.fxcuts{top:calc(64px + env(safe-area-inset-top,0px))}.fxcut .fxart{width:38px}.fxcut .fxtx span{-webkit-line-clamp:2}}
 
 /* narrow phones: the turn line and our LIFE stack, so both buttons keep their whole label */
 @media (max-width:380px){
@@ -796,7 +796,7 @@ body.arena-on .prompt.toss{top:50%;bottom:auto;max-height:86vh}
 @media (max-width:860px){.setup > .stack:first-child{display:contents} .setup > .stack:first-child > .questwrap{order:3}}
 @media (max-width:640px){.deckhint{flex-basis:100%;order:3}}
 @media (min-width:861px){.startbar{left:auto;right:max(24px,calc((100vw - 1240px)/2));transform:none}}
-@media (max-width:760px){body.arena-on .prompt:not(.low):not(.toss){bottom:calc(282px + env(safe-area-inset-bottom,0px));max-height:calc(100vh - 352px)}} /* phone: prompts sit above the hand (hand top = 276px up), not over it */
+@media (max-width:760px),(pointer:coarse) and (orientation:landscape) and (max-height:500px){body.arena-on .prompt:not(.low):not(.toss){bottom:calc(282px + env(safe-area-inset-bottom,0px));max-height:calc(100vh - 352px)}} /* phone: prompts sit above the hand (hand top = 276px up), not over it */
 .setgroup{border:1px solid var(--line-2);border-radius:12px;padding:0 12px;background:rgba(255,255,255,.02)}
 .setgroup>summary{cursor:pointer;list-style:none;min-height:44px;display:flex;align-items:center;gap:8px;font:600 .8rem var(--f-display,inherit);letter-spacing:.04em;color:var(--gold-hi)}
 .setgroup>summary::-webkit-details-marker{display:none} .setgroup>summary::after{content:"▾";margin-left:auto;transition:transform .2s} .setgroup:not([open])>summary::after{transform:rotate(-90deg)}
@@ -991,7 +991,7 @@ html.ui-pro .feed{background:rgba(14,16,20,.6)}
 :where(html.ui-glass) .die.blank{background:linear-gradient(145deg,#19306b,#0e1a3a)}
 :where(html.ui-glass) .coin .face{background:radial-gradient(circle at 32% 28%,#d6eeff,#82c4ff 55%,#2454a0);box-shadow:inset 0 0 0 5px rgba(36,84,160,.55),inset 0 0 0 8px rgba(214,238,255,.5),0 10px 24px rgba(0,0,0,.5)}
 :where(html.ui-glass) .btn.gold{box-shadow:0 0 0 1px rgba(214,238,255,.35) inset,0 2px 0 rgba(0,0,0,.35)}
-@media (max-width:760px){
+@media (max-width:760px),(pointer:coarse) and (orientation:landscape) and (max-height:500px){
 :where(html.ui-glass) body.arena-on .prompt>.row:last-child{background:var(--panel-solid,#091228)}
 }
 @media (max-width:640px){
@@ -1079,7 +1079,7 @@ html.ui-pro .feed{background:rgba(14,16,20,.6)}
 :where(html.ui-pro) .die.blank{background:linear-gradient(145deg,#343943,#1c1e24)}
 :where(html.ui-pro) .coin .face{background:radial-gradient(circle at 32% 28%,#a9bfff,#4f7dff 55%,#263e8c);box-shadow:inset 0 0 0 5px rgba(38,62,140,.55),inset 0 0 0 8px rgba(169,191,255,.5),0 10px 24px rgba(0,0,0,.5)}
 :where(html.ui-pro) .btn.gold{box-shadow:0 0 0 1px rgba(169,191,255,.35) inset,0 2px 0 rgba(0,0,0,.35)}
-@media (max-width:760px){
+@media (max-width:760px),(pointer:coarse) and (orientation:landscape) and (max-height:500px){
 :where(html.ui-pro) body.arena-on .prompt>.row:last-child{background:var(--panel-solid,#131519)}
 }
 @media (max-width:640px){
@@ -1121,7 +1121,7 @@ html.ui-pro .feed{background:rgba(14,16,20,.6)}
 .pvover .pvpane{position:relative;top:auto;margin:0;flex:1;display:flex;flex-direction:column;min-height:0}
 .pvover .pvstage{flex:1;aspect-ratio:auto;max-height:none}
 .pvover .pvclose{position:absolute;z-index:6;top:max(18px,calc(env(safe-area-inset-top,0px) + 8px));right:max(18px,calc(env(safe-area-inset-right,0px) + 8px))}
-@media (max-width:760px){.pvstage{aspect-ratio:16/10}.pvcap{font-size:.74rem;padding:5px 9px 6px}}
+@media (max-width:760px),(pointer:coarse) and (orientation:landscape) and (max-height:500px){.pvstage{aspect-ratio:16/10}.pvcap{font-size:.74rem;padding:5px 9px 6px}}
 @media (max-height:600px){.pvpane{position:relative;top:auto}}
 :where(html.ui-glass) .pvstage,:where(html.ui-glass) .pvcap{border-color:rgba(130,196,255,.35)}
 :where(html.ui-pro) .pvstage,:where(html.ui-pro) .pvcap{border-color:rgba(79,125,255,.35)}
@@ -1184,7 +1184,7 @@ kbd{font:600 .8rem/1.6 var(--f-mono,ui-monospace,monospace);padding:2px 8px;bord
 .clockpick select{min-height:40px;max-width:100%}
 .clockpick label{flex-wrap:wrap;gap:8px}
 .rpbar .rpturn{max-width:8em;min-height:32px}
-@media (max-width:760px){body.arena-on .rpbar{flex-wrap:wrap;justify-content:center;max-width:calc(100vw - 24px)}.faqhit{grid-template-columns:56px minmax(0,1fr)}.faqhit-img{width:56px}}
+@media (max-width:760px),(pointer:coarse) and (orientation:landscape) and (max-height:500px){body.arena-on .rpbar{flex-wrap:wrap;justify-content:center;max-width:calc(100vw - 24px)}.faqhit{grid-template-columns:56px minmax(0,1fr)}.faqhit-img{width:56px}}
 
 /* สนามซ้อม (js/sandbox.js): the set-up sheet and the training-dummy runs */
 .sbbox{border:1px solid var(--line-2);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
@@ -1240,7 +1240,7 @@ kbd{font:600 .8rem/1.6 var(--f-mono,ui-monospace,monospace);padding:2px 8px;bord
 
 /* restart vote (friend duels): the request bar on the table and the panel on the Deck shelf */
 .rvbar{position:absolute;left:50%;transform:translateX(-50%);top:calc(64px + env(safe-area-inset-top,0px));z-index:30;display:flex;gap:10px;align-items:center;padding:8px 12px;border-radius:14px;max-width:calc(100vw - 32px);flex-wrap:wrap;justify-content:center;text-align:center}
-@media (max-width:760px){.rvbar{top:calc(56px + env(safe-area-inset-top,0px));font-size:.9em}}
+@media (max-width:760px),(pointer:coarse) and (orientation:landscape) and (max-height:500px){.rvbar{top:calc(56px + env(safe-area-inset-top,0px));font-size:.9em}}
 .rvpanel{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:14px;border:1px solid var(--gold,#d4af37)}
 
 /* VP2 (visual follow-up) */
@@ -1249,20 +1249,25 @@ kbd{font:600 .8rem/1.6 var(--f-mono,ui-monospace,monospace);padding:2px 8px;bord
 .editor .libi>.row{align-items:flex-start}
 /* an upright phone: the attack bar (choose an attacker, then a target) docks low over the hand, which is not used while declaring an attack,
    as the box for answering an attack does; both Avatar rows stay in view. One short line of text over a row of 44px buttons; a long list scrolls in it */
-@media (max-width:760px){
+@media (max-width:760px),(pointer:coarse) and (orientation:landscape) and (max-height:500px){
   body.arena-on .prompt.slim:not(.toss){bottom:calc(72px + env(safe-area-inset-bottom,0px));left:max(8px,env(safe-area-inset-left,0px));right:max(8px,env(safe-area-inset-right,0px));width:auto;max-width:none;max-height:min(40vh,224px);overflow:auto;overscroll-behavior:contain;z-index:6;padding:8px 10px;gap:6px 8px}
   body.arena-on .prompt.slim>b{flex:1 1 100%;font-size:.86rem;line-height:1.3;margin:0}
   body.arena-on .prompt.slim>.tiny{flex:1 1 100%;font-size:.72rem;line-height:1.3}
   body.arena-on .prompt.slim .btn.sm{min-height:44px;height:auto}
 }
 /* an upright phone: a reveal of five cards fits on one row (the fifth wrapped alone under the sticky confirm bar) */
-@media (max-width:760px){body.arena-on .prompt .pick{grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:8px}}
+@media (max-width:760px),(pointer:coarse) and (orientation:landscape) and (max-height:500px){body.arena-on .prompt .pick{grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:8px}}
 /* a phone held sideways (after "เล่นแนวนอนต่อ"): every prompt was placed for an upright screen, 282px up, so on a 342px-high screen it sat above
    the top edge (the mulligan's buttons could not be reached). Prompts now sit over the hand, under the opponent's bar, and scroll inside;
    the hand is a row of smaller cards, and the table is fitted in the band above it (arena3d fitTall) */
-@media (max-width:760px) and (orientation:landscape) and (max-height:500px){
-  .handrow{padding-top:10px} .handrow .hcard{width:58px}
-  body.arena-on .prompt:is(.glass):not(.toss){bottom:calc(64px + env(safe-area-inset-bottom,0px));max-height:calc(100vh - 124px - env(safe-area-inset-bottom,0px));overflow:auto;z-index:6}
+@media (pointer:coarse) and (orientation:landscape) and (max-height:500px){
+  /* the hand is a column of small cards on the right (the table gets the rest of the width and the full height between the bars) */
+  body.arena-on .hud .handrow{left:auto;right:max(8px,env(safe-area-inset-right,0px));top:calc(62px + env(safe-area-inset-top,0px));bottom:calc(70px + env(safe-area-inset-bottom,0px));height:auto;max-height:none;width:min(232px,30vw);
+    flex-wrap:wrap;align-content:flex-end;justify-content:flex-end;overflow-x:hidden;overflow-y:auto;padding:4px;gap:5px;scroll-snap-type:none}
+  .handrow .hcard{width:52px} .handrow .hcard.sel{transform:translateY(-6px)} .handrow .hcard .gem{font-size:.58rem}
+  body.arena-on .prompt:is(.glass):not(.toss){bottom:calc(64px + env(safe-area-inset-bottom,0px));max-height:calc(100vh - 124px - env(safe-area-inset-bottom,0px));overflow:auto;z-index:6;
+    left:max(8px,env(safe-area-inset-left,0px));right:calc(min(232px,30vw) + 16px + env(safe-area-inset-right,0px));width:auto;transform:none} /* over the table, beside the hand column */
+  body.arena-on .sheet img{max-height:calc(100vh - 110px);width:auto;max-width:100%;object-fit:contain}
 }
 
 /* คู่มือเด็คแบบภาพ: each phase is a small tilted table with the combo's cards lying on it, steps joined by arrows */
