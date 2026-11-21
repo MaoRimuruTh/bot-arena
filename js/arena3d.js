@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261121083257";
-import { E } from "./engine.js?v=20261121083257";
-import { h } from "./util.js?v=20261121083257";
-import { Sfx } from "./sfx.js?v=20261121083257";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261121083750";
+import { E } from "./engine.js?v=20261121083750";
+import { h } from "./util.js?v=20261121083750";
+import { Sfx } from "./sfx.js?v=20261121083750";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -585,14 +585,16 @@ export const MAT_ASPECT = (2 * PM.x) / (MD / 2 - PM.z0 - PM.z1); // the shape of
 // where the screen is too narrow for the wide table: the Land Magic Zone moves in from the left edge to the middle
 // band, the Construct and Magic Zones close in, and five or six Avatars stand closer together, so every card fits
 // on the screen and can be tapped
+// the step between cards in a zone row: the usual gap, or less when n cards would run past the zone (room = first to last centre)
+const fitStep = (step, n, room) => (n > 1 ? Math.min(step, room / (n - 1)) : step);
 const ZONES = {
-  wide: { avGap: (n) => (n > 4 ? Math.min(2.05, 9.2 / (n - 1)) : 2.05) /* five or six Avatars close up a little */, cs: [-5.8, -1.8], mg: [-1.2, 5.8], csX: (k) => -5.1 + k * 1.3, csS: 0.68, mgX: (k) => 5.1 - k * 1.15, mgS: 0.6,
+  wide: { avGap: (n) => (n > 4 ? Math.min(2.05, 9.2 / (n - 1)) : 2.05) /* five or six Avatars close up a little */, cs: [-5.8, -1.8], mg: [-1.2, 5.8], csX: (k, n = 1) => -5.1 + k * fitStep(1.3, n, 2.8) /* many Constructs close up instead of running off the zone */, csS: 0.68, mgX: (k, n = 1) => 5.1 - k * fitStep(1.15, n, 5.75) /* many Magic / worn Modifications close up instead of running off the table */, mgS: 0.6,
     // the Land Magic Zone sits in the middle of the table, between the two sides (it is shared: one Land for both players)
     land: { x0: -1.25, x1: 1.25, dz: 0.92, x: 0, s: 0.72, s2: 0.6, dx2: 0.7, lx: 1.42, lz: MZ, align: "left", center: true }, band: [-4.35, 4.35],
     // each player's own left: LIFE laid sideways down the side like a damage zone; their right: Deck, hell and the dark zone
     side: { life: { x: -6.3, z0: 0.5, dz: 0.6, s: 0.46 }, piles: { x: 6.3, s: 0.46, deck: 2.85, hell: 1.7, dark: 0.55 } },
     fit: [[-6.95, -5.2], [6.95, -5.2], [-6.95, 4.9], [6.95, 4.9]] }, // the outer cards of a full table
-  tall: { avGap: (n) => (n > 4 ? Math.min(2.05, 8.1 / (n - 1)) : 2.05), cs: [-4.35, -1.15], mg: [-0.75, 4.35], csX: (k) => -3.75 + k * 1.0, csS: 0.6, mgX: (k) => 3.8 - k * 0.92, mgS: 0.55,
+  tall: { avGap: (n) => (n > 4 ? Math.min(2.05, 8.1 / (n - 1)) : 2.05), cs: [-4.35, -1.15], mg: [-0.75, 4.35], csX: (k, n = 1) => -3.75 + k * fitStep(1.0, n, 2.15), csS: 0.6, mgX: (k, n = 1) => 3.8 - k * fitStep(0.92, n, 4.15), mgS: 0.55,
     land: { x0: -4.45, x1: -2.85, dz: 1.08, x: -3.65, s: 0.62, s2: 0.5, dz2: 0.55, lx: -2.65, lz: MZ - 0.62, align: "left" }, band: [-2.45, 2.15],
     // an upright phone: the Deck, the hell and the dark zone of both players at the right end of the middle band (ours on our half, theirs on
     // theirs, the same side for both); LIFE stays in the bars at the top and the bottom
@@ -2431,8 +2433,8 @@ function layout(s, V) {
   for (const p of [0, 1]) {
     const side = p === V ? "me" : "opp"; const P = s.P[p]; const zs = side === "me" ? 1 : -1;
     const n = P.av.length, gap = Z.avGap(n); P.av.forEach((x, k) => out.set(x.i, { x, p, side, zone: "av", pos: new THREE.Vector3((k - (n - 1) / 2) * gap, 0.04, side === "me" ? 2.15 : -2.55), scale: 1 }));
-    P.cs.forEach((x, k) => out.set(x.i, { x, p, side, zone: "cs", pos: new THREE.Vector3(Z.csX(k), 0.04, zs * 4.15 - (side === "me" ? 0 : 0.35)), scale: Z.csS }));
-    P.mg.forEach((x, k) => out.set(x.i, { x, p, side, zone: "mg", pos: new THREE.Vector3(Z.mgX(k), 0.04, zs * 4.15 - (side === "me" ? 0 : 0.35)), scale: Z.mgS }));
+    P.cs.forEach((x, k) => out.set(x.i, { x, p, side, zone: "cs", pos: new THREE.Vector3(Z.csX(k, P.cs.length), 0.04, zs * 4.15 - (side === "me" ? 0 : 0.35)), scale: Z.csS }));
+    P.mg.forEach((x, k) => out.set(x.i, { x, p, side, zone: "mg", pos: new THREE.Vector3(Z.mgX(k, P.mg.length), 0.04, zs * 4.15 - (side === "me" ? 0 : 0.35)), scale: Z.mgS }));
   }
   { const two = !!(s.land && s.land2), Ld = Z.land; for (const l of [s.land, s.land2]) if (l) out.set(l.i, { x: l, p: l.o, side: l.o === V ? "me" : "opp", zone: "land", pos: Ld.center ? new THREE.Vector3(two ? (l.o === V ? -Ld.dx2 : Ld.dx2) : Ld.x, 0.04, MZ) : new THREE.Vector3(Ld.x, 0.04, MZ + (two ? (l.o === V ? Ld.dz2 : -Ld.dz2) : 0)), scale: two ? Ld.s2 : Ld.s }); } // แบ่งแยกดินแดน: one Land per side
   return out;
