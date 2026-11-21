@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261121090339";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261121090339";
-import { SCRIPTS } from "./scripts.js?v=20261121090339";
-import { newId, clone } from "./util.js?v=20261121090339";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261121090534";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261121090534";
+import { SCRIPTS } from "./scripts.js?v=20261121090534";
+import { newId, clone } from "./util.js?v=20261121090534";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -674,6 +674,10 @@ export const E = {
     const need = (cond, msg) => { if (!cond) throw new RuleError(msg); };
     if (s.phase === "toss") need(["tossVote", "tossRoll", "tossPick", "concede", "note"].includes(act.type), "ต้องตัดสินก่อนว่าใครได้เลือกเริ่มก่อนหรือทีหลัง");
     switch (act.type) {
+      // our own Avatars or Constructs change places on the table (dragged one onto another): only where they lie, nothing in the rules
+      case "arrange": { need(s.active === p && s.phase === "main" && !s.trig.length && !s.rw && !s.pend, "จัดตำแหน่งการ์ดได้ใน Main Phase ของเรา");
+        const Z = act.z === "cs" ? P.cs : P.av; const a = Z.findIndex((x) => x.i === act.a), b = Z.findIndex((x) => x.i === act.b); need(a >= 0 && b >= 0 && a !== b, "สลับได้เฉพาะการ์ดของเราในโซนเดียวกัน");
+        [Z[a], Z[b]] = [Z[b], Z[a]]; return; }
       case "tossVote": { const t = s.toss; const TH = { dice: "ทอยเต๋า", coin: "โยนเหรียญ" };
         need(s.phase === "toss" && t && t.m == null && t.vote[p] == null, "เลือกไปแล้ว"); need(TH[act.m], "เลือกได้แค่ทอยเต๋าหรือโยนเหรียญ"); t.vote[p] = act.m;
         if (t.vote[0] && t.vote[1]) { const [a, b] = t.vote; t.split = a !== b; t.m = a === b ? a : E.rnd(s) < 0.5 ? a : b;
