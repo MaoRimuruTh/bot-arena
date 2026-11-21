@@ -1521,7 +1521,7 @@ Object.assign(SCRIPTS, {
       const cst = E.costNow(s, t), pw = E.power(s, t); return { explain: `${E.name(s, t)}: Cost ${cst} ↔ POWER ${pw} จนจบการต่อสู้`, ops: [{ op: "setPower", i: t.i, v: cst, temp: "fight" }, { op: "setCost", i: t.i, v: pw, temp: "fight" }] }; } },
   // ไบโพล่า ชิลด์: worn only by "ผู้กล้า" robots · once per turn, when the wearer would leave the field by an opposing card: a die, even keeps it
   "BT04-053": { modOnly: (E, s, host) => sy(E, s, host, "หุ่นยนต์") && E.named(s, host, "ผู้กล้า"), worn: () => 0,
-    hostSave: (E, s, m, host, o) => { if (!o.fromOpp) return null; const r = 1 + Math.floor(E.rnd(s) * 6); E.log(s, (E.locate(s, host.i) || {}).p, `${E.name(s, m)}: ทอยลูกเต๋าได้ ${r}${r % 2 === 0 ? " (คู่) ไม่ถูกนำออกจากสนาม" : ""}`); return r % 2 === 0; } },
+    hostSave: (E, s, m, host, o) => { if (!o.fromOpp) return null; const r = 1 + Math.floor(E.rnd(s) * 6); E.ev(s, { k: "roll", p: (E.locate(s, host.i) || {}).p ?? 0, sides: 6, r, why: E.name(s, m) }); E.log(s, (E.locate(s, host.i) || {}).p, `${E.name(s, m)}: ทอยลูกเต๋าได้ ${r}${r % 2 === 0 ? " (คู่) ไม่ถูกนำออกจากสนาม" : ""}`); return r % 2 === 0; } },
   // ดาบพิฆาตสวรรค์: the wearer's Cost +2; at Cost 6 or more it also gets POWER +1
   "BT04-055": { wornCost: 2, worn: (E, s, m, host) => (E.costNow(s, host) >= 6 ? 1 : 0) },
   // ปืนเล็กยาว: worn only by "ทหาร" or "รด." {คน} Avatars · POWER +3

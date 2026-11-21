@@ -1,8 +1,8 @@
 // Game engine — official Rule Book 3.2; card text effects are resolved by players or Ciel through ops.
-import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261121083122";
-import { readAura, traits, modPowerFor } from "./auras.js?v=20261121083122";
-import { SCRIPTS } from "./scripts.js?v=20261121083122";
-import { newId, clone } from "./util.js?v=20261121083122";
+import { card, kwHas, kwWhere, SUB_TH, CARDS, baseId, nameText, syText, allSy, hasFieldAlias, normName, nameHas, colorIs } from "./cards.js?v=20261121083257";
+import { readAura, traits, modPowerFor } from "./auras.js?v=20261121083257";
+import { SCRIPTS } from "./scripts.js?v=20261121083257";
+import { newId, clone } from "./util.js?v=20261121083257";
 // Symbol names some card texts use for a Symbol the cards print under another name ({symbol มนุษย์} on เยี่ยวรดศาล
 // means the คน Avatars; the KD04 reprint of "GHD โคลค" says เครื่องจักร for หุ่นยนต์)
 const SY_ALIAS = { "มนุษย์": "คน", "เครื่องจักร": "หุ่นยนต์" };
@@ -1278,7 +1278,7 @@ export const E = {
         const win = (W, D) => { const sc = !W.x.mute && scriptOf(s, W.x); if (sc && sc.kill && !E.locate(s, D.x.i)?.z?.startsWith("av")) s.trig.push({ id: tid(s), seat: W.p, i: W.x.i, c: W.x.c, when: "kill", dead: D.x.i }); };
         if (ap > bp) { E.destroy(s, B.x.i, `แพ้การต่อสู้ ${bp} ต่อ ${ap}`); win(A, B); } else if (bp > ap) { E.destroy(s, A.x.i, `แพ้การต่อสู้ ${ap} ต่อ ${bp}`); win(B, A); } else if (ap > 0) { E.destroy(s, A.x.i, `พลังเท่ากัน ${ap}`); E.destroy(s, B.x.i, `พลังเท่ากัน ${bp}`); } return; }
       case "rollOff": { // ลุ้นเยี่ยวเหนียว: both roll, the lower one's Avatars go under their owners' Decks
-        let r0 = 0, r1 = 0, k = 0; do { r0 = 1 + Math.floor(E.rnd(s) * 6); r1 = 1 + Math.floor(E.rnd(s) * 6); k++; } while (r0 === r1 && k < 6); E.log(s, by, `${s.P[0].name} ทอยได้ ${r0} · ${s.P[1].name} ทอยได้ ${r1}`); if (r0 === r1) return;
+        let r0 = 0, r1 = 0, k = 0; do { r0 = 1 + Math.floor(E.rnd(s) * 6); r1 = 1 + Math.floor(E.rnd(s) * 6); k++; E.ev(s, { k: "roll", p: 0, sides: 6, r: r0, why: "ลุ้นเยี่ยวเหนียว" }); E.ev(s, { k: "roll", p: 1, sides: 6, r: r1, why: "ลุ้นเยี่ยวเหนียว" }); } while (r0 === r1 && k < 6); E.log(s, by, `${s.P[0].name} ทอยได้ ${r0} · ${s.P[1].name} ทอยได้ ${r1}`); if (r0 === r1) return;
         const lo = r0 < r1 ? 0 : 1; for (const x of [...s.P[lo].av]) { if (!E.locate(s, x.i)) continue; E.moveTo(s, x.i, "deckBottom"); } E.log(s, by, `Avatar ทั้งหมดของ ${s.P[lo].name} กลับเข้าใต้ Deck`); if (s.pend) E.endFight(s, true); return; }
       case "fdPay": { // โรงเรียนเวทย์มนต์: summon a จอมเวทย์ from the hand, face-down Magic cards in our Magic Zone pay 1 GEM each
         const P = s.P[seat]; const x = P.hand.find((y) => y.i === o.i); if (!x) return; const cost = E.costOf(s, seat, x); const fd = P.mg.filter((m) => m.fd); const k = Math.min(fd.length, cost);
@@ -1303,7 +1303,7 @@ export const E = {
       case "resetPower": { const L = E.locate(s, o.i); if (!L) return; if (E.immuneNow(s, L.x, "power")) { E.log(s, by, `${E.name(s, L.x)} ไม่รับผลความสามารถนี้`); return; } for (const k of ["pm", "tm", "fm", "tn"]) delete L.x[k]; E.log(s, by, `${E.name(s, L.x)} POWER กลับเป็นค่าตั้งต้น (ตอนนี้ ${E.power(s, L.x)})`); return; }
       case "handToTop": { const P = s.P[seat]; if (!P.hand.length) return; const x = o.random ? P.hand[Math.floor(E.rnd(s) * P.hand.length)] : [...P.hand].sort((a, b) => ((E.def(s, a).pw || 0) + (E.def(s, a).c || 0)) - ((E.def(s, b).pw || 0) + (E.def(s, b).c || 0)))[0]; P.hand.splice(P.hand.indexOf(x), 1); P.deck.unshift(x); E.log(s, seat, `${P.name} แสดง ${E.name(s, x)} แล้ววางไว้บนสุดของ Deck`); return; }
       case "rollScout": { // แมรี่: roll a die, scout that many, an Avatar to the hand, the rest to the bottom
-        const P = s.P[seat]; const r = 1 + Math.floor(E.rnd(s) * 6); E.log(s, by, `ทอยลูกเต๋าได้ ${r} · สอดแนม ${Math.min(r, P.deck.length)} ใบ`);
+        const P = s.P[seat]; const r = 1 + Math.floor(E.rnd(s) * 6); E.ev(s, { k: "roll", p: seat, sides: 6, r, why: "แมรี่" }); E.log(s, by, `ทอยลูกเต๋าได้ ${r} · สอดแนม ${Math.min(r, P.deck.length)} ใบ`);
         if (o.ask != null) { const X = E.locate(s, o.ask); const k = Math.min(r, P.deck.length); if (X && k) { s.trig.unshift({ id: tid(s), seat, i: X.x.i, c: X.x.c, when: "maryPick", n: k }); return; } } // the player picks the Avatar
         const top = P.deck.splice(0, r); const av = top.filter((y) => ["A", "T"].includes(E.def(s, y).t)).sort((a, b) => ((E.def(s, b).pw || 0) + (E.def(s, b).c || 0)) - ((E.def(s, a).pw || 0) + (E.def(s, a).c || 0)))[0];
         if (av) { top.splice(top.indexOf(av), 1); P.hand.push(av); E.log(s, by, `${E.name(s, av)} ขึ้นมือ`); } P.deck.push(...top); return; }
