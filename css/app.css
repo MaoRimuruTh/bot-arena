@@ -1264,3 +1264,23 @@ kbd{font:600 .8rem/1.6 var(--f-mono,ui-monospace,monospace);padding:2px 8px;bord
   .handrow{padding-top:10px} .handrow .hcard{width:58px}
   body.arena-on .prompt:is(.glass):not(.toss){bottom:calc(64px + env(safe-area-inset-bottom,0px));max-height:calc(100vh - 124px - env(safe-area-inset-bottom,0px));overflow:auto;z-index:6}
 }
+
+/* คู่มือเด็คแบบภาพ: each phase is a small tilted table with the combo's cards lying on it, steps joined by arrows */
+.gphase{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.gnum{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--gold,#d9b45a);color:#1a1206;font:800 .78rem var(--f-display)}
+.gtable{perspective:900px;overflow-x:auto;overflow-y:visible;padding:4px 2px 2px;-webkit-overflow-scrolling:touch}
+.gfelt{display:flex;align-items:flex-start;gap:10px;width:max-content;min-width:100%;padding:16px 16px 12px;border-radius:16px;transform:rotateX(14deg);transform-origin:50% 100%;
+  background:radial-gradient(120% 140% at 50% 0%,rgba(46,96,78,.55),rgba(14,34,30,.85));border:1px solid rgba(217,180,90,.35);box-shadow:inset 0 0 30px rgba(0,0,0,.45),0 14px 24px -14px rgba(0,0,0,.7)}
+.gclause{display:flex;align-items:flex-start;gap:6px}
+.gsep{align-self:stretch;width:1px;margin:0 4px;background:linear-gradient(transparent,rgba(217,180,90,.55),transparent)}
+.garrow{align-self:center;margin-top:-18px;font:800 1.35rem var(--f-display);color:var(--gold-hi,#f3d27a);text-shadow:0 0 10px rgba(243,210,122,.55)}
+.gstep{display:flex;flex-direction:column;align-items:center;gap:6px;max-width:220px}
+.gcards{display:flex;justify-content:center}
+.gcard{width:clamp(64px,7vw,86px);margin-left:calc(var(--k) * -14px);transform:translateY(calc(var(--k) * 3px)) rotate(calc(var(--k) * 3deg));filter:drop-shadow(0 6px 6px rgba(0,0,0,.5));transition:transform .18s}
+.gcard:first-child{margin-left:0}
+.gcard:hover,.gcard:focus-within{transform:translateY(-6px) scale(1.06);z-index:2}
+.gcard .ccard{width:100%}
+.gcap{margin-top:4px;font-size:.78rem;line-height:1.4;text-align:center;color:#f1e9da;text-shadow:0 1px 2px rgba(0,0,0,.8);max-width:200px}
+.gstep.words{align-self:center}
+.gword{max-width:170px;padding:8px 10px;border-radius:10px;font-size:.74rem;line-height:1.35;text-align:center;background:rgba(10,8,6,.55);border:1px dashed rgba(217,180,90,.45);color:#f1e9da}
+@media (prefers-reduced-motion:reduce){.gcard{transition:none}}

@@ -1,18 +1,19 @@
-import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261121143540";
-import { plain, isOwnerNow } from "../persona.js?v=20261121143540";
-import { fxText } from "../fxtext.js?v=20261121143540";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, limitKey, banlist, banMax, banPair, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice, banKey } from "../cards.js?v=20261121143540";
-import { Data, Me, saveDeck, deleteDeck, saveSkins, saveCiel } from "../fb.js?v=20261121143540";
-import { Views, cardBtn, showCard } from "../ui.js?v=20261121143540";
-import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261121143540";
-import { filterBar, filterCards } from "./library.js?v=20261121143540";
-import { openingOdds, simGame } from "./lab.js?v=20261121143540";
-import { freeBuild } from "../builder.js?v=20261121143540";
-import { deckCode, deckText, parseDeck, printCard } from "../deckcode.js?v=20261121143540";
+import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261121144020";
+import { plain, isOwnerNow } from "../persona.js?v=20261121144020";
+import { fxText } from "../fxtext.js?v=20261121144020";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, limitKey, banlist, banMax, banPair, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice, banKey } from "../cards.js?v=20261121144020";
+import { Data, Me, saveDeck, deleteDeck, saveSkins, saveCiel } from "../fb.js?v=20261121144020";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261121144020";
+import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261121144020";
+import { filterBar, filterCards } from "./library.js?v=20261121144020";
+import { openingOdds, simGame } from "./lab.js?v=20261121144020";
+import { freeBuild } from "../builder.js?v=20261121144020";
+import { deckCode, deckText, parseDeck, printCard } from "../deckcode.js?v=20261121144020";
 // Ciel's decks are not imported here: they come from the owner's private data (see cielDecks)
-import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261121143540";
-import { deckLocked, deckLockAch } from "../achieve.js?v=20261121143540";
-import { noteBase, noteVersion, openVersions, openCardStats } from "../decktools.js?v=20261121143540";
+import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261121144020";
+import { deckLocked, deckLockAch } from "../achieve.js?v=20261121144020";
+import { openGuide, hasGuide } from "../guide.js?v=20261121144020";
+import { noteBase, noteVersion, openVersions, openCardStats } from "../decktools.js?v=20261121144020";
 
 // Ciel's theme decks: print codes → card ids (resolved once the card data is loaded). They are Ciel's decks for Rimuru,
 // so only the owner's account sees them: other accounts get none (not in the deck list, the duel setup, the lab or the bot's picks)
@@ -22,7 +23,7 @@ let cielCache = null, cielMoving = false; const CIEL_REV = 43; // matches CIEL_R
 function moveCiel() {
   if (cielMoving) return; cielMoving = true;
   // a failed load writes nothing (a network hiccup must never leave an empty list behind); it is tried again next visit
-  import("../cieldecks.js?v=20261121143540").then((m) => { if (m.CIEL_DECKS && m.CIEL_DECKS.length) return saveCiel(m.CIEL_DECKS, m.CIEL_REV || 1); }).catch((e) => console.warn("Ciel's decks: not moved yet", e)).finally(() => { cielMoving = false; }); // a failed save is tried again on the next look
+  import("../cieldecks.js?v=20261121144020").then((m) => { if (m.CIEL_DECKS && m.CIEL_DECKS.length) return saveCiel(m.CIEL_DECKS, m.CIEL_REV || 1); }).catch((e) => console.warn("Ciel's decks: not moved yet", e)).finally(() => { cielMoving = false; }); // a failed save is tried again on the next look
 }
 export function cielDecks() {
   const own = isOwnerNow(); if (!own || !Me.uid) return [];
@@ -245,7 +246,8 @@ Views.decks = {
         h("div", { class: "rows" }, ...Object.entries(groups).flatMap(([k, list]) => [h("div", { class: "eyebrow h" }, `${k} · ${list.reduce((a, e) => a + e.n, 0)}`), ...list.map(pill)]),
           h("div", { class: "eyebrow h" }, `LIFE (การ์ดบ้าน) · ${(d.life || []).length}`), ...(d.life || []).map((i) => pill({ c: card(i), n: 1, id: +i }))),
         h("aside", { class: "stack" }, h("div", { class: "panel" }, preview),
-          d.plan ? h("div", { class: "panel stack", style: "gap:6px" }, h("div", { class: "eyebrow" }, "แผนการเล่นจากชิเอล"), h("div", { class: "small", style: "white-space:pre-wrap;line-height:1.6" }, d.plan)) : null,
+          d.plan ? h("div", { class: "panel stack", style: "gap:6px" }, h("div", { class: "eyebrow" }, "แผนการเล่นจากชิเอล"), h("div", { class: "small", style: "white-space:pre-wrap;line-height:1.6" }, d.plan),
+            hasGuide(d) ? h("button", { class: "btn sm gold", style: "align-self:flex-start", onclick: () => openGuide(d) }, "ดูคู่มือแบบภาพ") : null) : null,
           h("div", { class: "panel stack", style: "gap:8px" }, h("div", { class: "eyebrow" }, "เส้น Cost แยกสี"),
             h("div", { class: "curve", role: "img", "aria-label": "เส้น Cost" }, st.curve.map((o) => { const tot = Object.values(o).reduce((a, b) => a + b, 0); return h("div", { class: "col" }, h("span", { class: "val" }, tot || ""), ...Object.entries(o).map(([k, n]) => h("span", { style: `height:${(n / mx) * 85}%;background:${colorOf(k === "ไร้สี" ? "" : k)}` }))); })),
             h("div", { class: "curve-l" }, [0, 1, 2, 3, 4, 5, 6, 7, "8+"].map((x) => h("span", null, x)))),
