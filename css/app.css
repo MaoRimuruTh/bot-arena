@@ -345,6 +345,9 @@ body.arena-on main{padding:0;max-width:none}
 .prompt.slim{flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:8px 12px;left:0;right:0;margin-inline:auto;transform:none;width:fit-content;max-width:min(900px,92vw)}
 .prompt.slim>b{font-size:.9rem;margin-right:4px}
 .prompt.slim .btn.sm{height:32px;padding:0 12px}
+.prompt.slim>.pick{flex:1 1 100%;width:100%;grid-template-columns:repeat(auto-fill,minmax(70px,90px));max-height:220px;overflow:auto}
+.pick .ccard .badge{white-space:nowrap}
+.pick .ccard.win .badge{background:rgba(70,195,123,.92);color:#05140b;border-color:rgba(70,195,123,.9)}
 .pick .ccard{aspect-ratio:388/528;min-height:0}
 .pick .ccard>img{width:100%;height:100%;object-fit:cover;display:block}
 .prompt .opts{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto}
