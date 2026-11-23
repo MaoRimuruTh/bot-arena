@@ -2,14 +2,14 @@
 // (how a card relates to winning when it is in the opening hand, drawn later, or played).
 // Versions are made only by the player's own saves of his own decks; nothing here ever changes a deck.
 // The games run a few at a time inside a time budget, so the page stays responsive, with a bar and a stop button.
-import { h, openSheet, lsGet, lsSet, toast } from "./util.js?v=20261123133543";
-import { card, deckEntries, validateDeck } from "./cards.js?v=20261123133543";
-import { E } from "./engine.js?v=20261123133543";
-import { F, db, Me, Data } from "./fb.js?v=20261123133543";
-import { simGame } from "./views/lab.js?v=20261123133543";
-import { showCard } from "./ui.js?v=20261123133543";
-import { allDecks } from "./views/decks.js?v=20261123133543";
-import { deckLocked } from "./achieve.js?v=20261123133543";
+import { h, openSheet, lsGet, lsSet, toast } from "./util.js?v=20261123133852";
+import { card, deckEntries, validateDeck } from "./cards.js?v=20261123133852";
+import { E } from "./engine.js?v=20261123133852";
+import { F, db, Me, Data } from "./fb.js?v=20261123133852";
+import { simGame } from "./views/lab.js?v=20261123133852";
+import { showCard } from "./ui.js?v=20261123133852";
+import { allDecks } from "./views/decks.js?v=20261123133852";
+import { deckLocked } from "./achieve.js?v=20261123133852";
 
 // ---------- versions ----------
 // kept in the player's private space (users/{uid}/private/deckvers): { v: { deckId: [{ at, m, l, s }] } }, newest last

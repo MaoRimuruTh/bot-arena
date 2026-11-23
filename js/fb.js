@@ -1,4 +1,4 @@
-import { firebaseConfig, FB_VERSION } from "./config.js?v=20261123133543";
+import { firebaseConfig, FB_VERSION } from "./config.js?v=20261123133852";
 const base = `https://www.gstatic.com/firebasejs/${FB_VERSION}/`;
 const { initializeApp } = await import(base + "firebase-app.js");
 const A = await import(base + "firebase-auth.js");
@@ -6,7 +6,8 @@ const F = await import(base + "firebase-firestore.js");
 
 export const app = initializeApp(firebaseConfig);
 export const auth = A.getAuth(app);
-export const db = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) });
+// (long polling is used where a network or proxy breaks the streaming connection, e.g. some office or school networks)
+export const db = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }), experimentalAutoDetectLongPolling: true });
 export { F };
 
 export async function signIn() {
@@ -29,12 +30,17 @@ export async function ensureProfile(user) {
   let snap = null, err = null;
   for (let k = 0; k < 3 && !snap; k++) { try { snap = await (k ? F.getDocFromServer(ref) : F.getDoc(ref)); } catch (e) { err = e; await new Promise((r) => setTimeout(r, 800 * (k + 1))); } }
   if (!snap) { const e = new Error("อ่านข้อมูลบัญชีไม่ได้ (" + ((err && (err.code || err.message)) || "?") + ") ลองใหม่อีกครั้ง"); e.retry = true; throw e; }
+  // "no profile" from this device's copy of the database may be stale: only the server can say an account is new
+  if (!snap.exists() || (snap.metadata && snap.metadata.fromCache)) {
+    try { snap = await F.getDocFromServer(ref); }
+    catch (e) { if (!snap.exists()) { const er = new Error("อ่านข้อมูลบัญชีจากเซิร์ฟเวอร์ไม่ได้ (" + (e.code || e.message) + ") ลองใหม่อีกครั้ง"); er.retry = true; throw er; } }
+  }
   if (!snap.exists()) {
     const baseDoc = { name: user.displayName || "ผู้เล่น", email: user.email || "", photo: user.photoURL || "", createdAt: Date.now(), lastSeen: Date.now() };
     // the very first account becomes the owner (rules allow it only while meta/owner does not exist)
     try { const b = F.writeBatch(db); b.set(ref, { ...baseDoc, status: "approved", role: "owner" }); b.set(F.doc(db, "meta", "owner"), { uid: user.uid, at: Date.now() }); await b.commit(); }
-    catch { await F.setDoc(ref, { ...baseDoc, status: "pending", role: "member" }); }
-    snap = await F.getDoc(ref);
+    catch { try { await F.setDoc(ref, { ...baseDoc, status: "pending", role: "member" }); } catch (e) { throw new Error("สร้างบัญชีใหม่ไม่ได้ (" + (e.code || e.message) + ")"); } }
+    snap = await F.getDocFromServer(ref);
   } else {
     F.updateDoc(ref, { lastSeen: Date.now(), name: user.displayName || snap.data().name, photo: user.photoURL || "" }).catch(() => {});
   }
