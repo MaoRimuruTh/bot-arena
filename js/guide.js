@@ -2,9 +2,9 @@
 // Each phase line is read as steps: "·" separates things done side by side, "→" is "then". In each step the cards of
 // the deck it names are found by name (full name, or a distinctive word of it), so the player sees the combo as the
 // cards themselves lying on a tilted table, with the line of text under it. A step that names no card shows its words.
-import { h, openSheet } from "./util.js?v=20261123131849";
-import { card, deckEntries } from "./cards.js?v=20261123131849";
-import { cardBtn, showCard } from "./ui.js?v=20261123131849";
+import { h, openSheet } from "./util.js?v=20261123132841";
+import { card, deckEntries } from "./cards.js?v=20261123132841";
+import { cardBtn, showCard } from "./ui.js?v=20261123132841";
 
 const PHASES = [["ต้นเกม", "เปิดเกม วางของ"], ["กลางเกม", "เดินคอมโบหลัก"], ["ปลายเกม", "ปิดเกม บุก LIFE"]];
 // a plan calls cards by a part of their name ("นักรบทอง", "หงอคง", "ดยุก"), so a step names a card when the longest run
