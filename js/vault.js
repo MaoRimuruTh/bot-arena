@@ -5,8 +5,8 @@
 // The figure can be shown too, as a lighter copy (fewer polygons: fine on the table, poor for printing). Shown copies are
 // stored scrambled, so browsing the database shows no picture or model file; that keeps out casual copying, not a determined
 // expert, since whatever a browser draws has to reach it.
-import { db, F, Me, Data, setMeta } from "./fb.js?v=20261123115909";
-import { OwnArt, CARDS, baseId, lifeArtMap } from "./cards.js?v=20261123115909";
+import { db, F, Me, Data, setMeta } from "./fb.js?v=20261123130733";
+import { OwnArt, CARDS, baseId, lifeArtMap } from "./cards.js?v=20261123130733";
 
 const CHUNK = 700 * 1024, MAX = 6 * 1024 * 1024;
 const ref = (id) => F.doc(db, "users", Me.uid, "private", id);
@@ -71,6 +71,16 @@ export function syncShownArt(players) {
     OwnArt.sm = m; me.ready = true; if (m.size) { OwnArt.oseat = q; if (onArt) onArt(); emit(); }
   }).catch((e) => console.warn("shown art", e));
 }
+// a stored file comes back in pieces of up to 700 KB (a database document holds at most 1 MB); the copy kept on this device
+// is used while it is the current version, so a picture is fetched again only after it changes
+async function readPart(kind, k, v) {
+  const r = partRef(kind, k);
+  try { const c = await F.getDocFromCache(r); if (c.exists() && c.data().v === v) return c.data().b; } catch { /* not on this device yet */ }
+  const s = await F.getDocFromServer(r);
+  if (!s.exists() || s.data().v !== v) throw new Error("ไฟล์ส่วนตัวไม่ครบ ลองอัปโหลดใหม่");
+  return s.data().b;
+}
+const blobs = new Map();
 export function vaultBlob(kind) {
   const it = Vault.has(kind) && Vault.m[kind]; if (!it) return Promise.resolve(null);
   const key = kind + ":" + it.v;
