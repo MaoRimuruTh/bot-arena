@@ -1,23 +1,23 @@
-import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261123112815";
-import { fxText, kwGloss } from "../fxtext.js?v=20261123112815";
-import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins } from "../cards.js?v=20261123112815";
-import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261123112815";
-import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261123112815";
-import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261123112815";
-import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor, myWinFx } from "../achieve.js?v=20261123112815";
-import { themeCounts, officialStarters } from "../boxdecks.js?v=20261123112815";
-import { ladder, ladderReset } from "../ladder.js?v=20261123112815";
-import { notify } from "../notify.js?v=20261123112815";
-import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261123112815";
-import { tourNow, tourPanel, newTour } from "../tour.js?v=20261123112815";
-import { puzzleState, solveTurn } from "../puzzles.js?v=20261123112815";
-import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261123112815";
-import { Music, MUSIC_STYLES } from "../music.js?v=20261123112815";
-import { Sfx } from "../sfx.js?v=20261123112815";
-import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar, shareReplayDoc, loadSharedReplay } from "../fb.js?v=20261123112815";
-import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261123112815";
-import { readAura, traits } from "../auras.js?v=20261123112815";
-import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261123112815";
+import { h, clone, toast, openSheet, confirmBox, busy, lsGet, lsSet, lsDel, newId, sleep, holo } from "../util.js?v=20261123114729";
+import { fxText, kwGloss } from "../fxtext.js?v=20261123114729";
+import { card, deckToList, validateDeck, deckAce, deckStats, artImg, cardLine, TYPE_TH, SUB_TH, COLORS, colorOf, skinsFor, setGameSkins, skinName } from "../cards.js?v=20261123114729";
+import { E, legalMoves, PHASE_TH, ZONE_TH, RuleError, scriptOf, uniqDeckActs } from "../engine.js?v=20261123114729";
+import { H, Ciel, cielPick, cielResolve, cielCoach, aiErr } from "../ai.js?v=20261123114729";
+import { Arena, animSetting, gfxSetting } from "../arena3d.js?v=20261123114729";
+import { myFigure, myMat, myScene, mySleeve, mySigil, newlyEarned, rewardName, earned, ACH, deckLocked, boxGoalsFor, myWinFx } from "../achieve.js?v=20261123114729";
+import { themeCounts, officialStarters } from "../boxdecks.js?v=20261123114729";
+import { ladder, ladderReset } from "../ladder.js?v=20261123114729";
+import { notify } from "../notify.js?v=20261123114729";
+import { dayOf, dayQuests, stars, questsDoneBy, doneToday } from "../quests.js?v=20261123114729";
+import { tourNow, tourPanel, newTour } from "../tour.js?v=20261123114729";
+import { puzzleState, solveTurn } from "../puzzles.js?v=20261123114729";
+import { autoEffect, resolveEffect, reactTiming, activations } from "../effects.js?v=20261123114729";
+import { Music, MUSIC_STYLES } from "../music.js?v=20261123114729";
+import { Sfx } from "../sfx.js?v=20261123114729";
+import { Data, Me, F, db, gameRef, newGameId, watchLobby, watchPlaying, saveMatch, myName, myAvatar, shareReplayDoc, loadSharedReplay } from "../fb.js?v=20261123114729";
+import { Views, cardBtn, showCard, avatarEl } from "../ui.js?v=20261123114729";
+import { readAura, traits } from "../auras.js?v=20261123114729";
+import { openAsk, openReport, addAskContext, isOwner } from "./ask.js?v=20261123114729";
 // a readable snapshot of the game for questions asked to Ciel from inside the app
 addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) return null; const s = G.s, V = G.V; const me = s.P[V], op = s.P[1 - V];
   const av = (P) => P.av.map((x) => `${E.name(s, x)} P${E.power(s, x)}${x.a ? "" : " (นอน)"}`).join(", ") || "-";
@@ -26,18 +26,20 @@ addAskContext(() => { if (!G || !G.s || !location.hash.startsWith("#play")) retu
     `สนามเรา: ${av(me)}`, `สนามคู่แข่ง: ${av(op)}`, `Deck เรา ${me.deck.length} · นรกเรา ${me.hell.length} · มือคู่แข่ง ${op.hand.length} ใบ`, "ล่าสุด: " + s.log.slice(-8).map((l) => l.m).join(" / "),
     ...(s.id ? [`รีเพลย์ในเครื่องนี้: ${s.id}-${V}`] : []), "บันทึก 40 บรรทัดล่าสุด:\n" + s.log.slice(-40).map((l) => "· " + l.m).join("\n"), // so a report can be traced back to its game
     ...(() => { const u = Object.entries(lsGet(UNREAD, {})); return u.length ? ["ความสามารถที่ระบบยังทำให้ไม่ได้: " + u.slice(0, 12).map(([k, v]) => `${k} ×${v.times}`).join(", ")] : []; })()].join("\n") }; });
-import { allDecks, deckById } from "./decks.js?v=20261123112815";
-import { customMat, customSleeve, customFig, customStand, setOnReady, onVault } from "../vault.js?v=20261123112815";
-import { openGlossSheet } from "../glossary.js?v=20261123112815";
-import { weekRule, weeklyPanel, weeklyWinNote, isoWeek, ruleChip, hudLine, eventPicker, eventOpt, seriesNext, seriesChip, seriesText, seriesAfter, seriesWinner } from "../weekly.js?v=20261123112815";
-import { openCoach } from "../coach.js?v=20261123112815";
-import { mullHint } from "../matchups.js?v=20261123112815";
-import { logged, check as checkMoves, idleReason, pickMap } from "../movelog.js?v=20261123112815";
-import { openSandbox, openFishRuns } from "../sandbox.js?v=20261123112815";
+import { allDecks, deckById } from "./decks.js?v=20261123114729";
+import { customMat, customSleeve, customFig, customStand, setOnReady, onVault } from "../vault.js?v=20261123114729";
+import { openGlossSheet } from "../glossary.js?v=20261123114729";
+import { weekRule, weeklyPanel, weeklyWinNote, isoWeek, ruleChip, hudLine, eventPicker, eventOpt, seriesNext, seriesChip, seriesText, seriesAfter, seriesWinner } from "../weekly.js?v=20261123114729";
+import { openCoach } from "../coach.js?v=20261123114729";
+import { mullHint } from "../matchups.js?v=20261123114729";
+import { logged, check as checkMoves, idleReason, pickMap } from "../movelog.js?v=20261123114729";
+import { openSandbox, openFishRuns } from "../sandbox.js?v=20261123114729";
 // the players' own mat picture, card sleeve and figure (vault.js): the table asks for them, and redraws when one loads or changes
 Arena.setCustom({ mat: customMat, sleeve: customSleeve, fig: customFig, stand: customStand, skins: (s) => setGameSkins(s && s.P, Me.uid) }); setOnReady((o) => Arena.customReady(o)); onVault(() => Arena.refreshCustom());
 { let sig = ""; Data.listeners.add(() => { const sh = Data.meta && Data.meta.show, now = sh ? Object.entries(sh).map(([k, x]) => k + ":" + (x && x.v) + ":" + (x && x.finish)).join() : ""; if (now !== sig) { sig = now; Arena.refreshCustom(); } }); }
 
+// the real name on a card that wears the picture of another card (a skin from another card of the same kind)
+const skinTag = (c, seat) => { const n = c ? skinName(c, seat) : null; return n ? h("span", { class: "skinname" }, n) : null; };
 const SAVE = "bot.game";
 const APP_V = (import.meta.url.match(/\?v=(\w+)/) || [])[1] || ""; // this app's version (its stamp): each friend-game move carries it
 const Setup = lsGet("bot.setup", { mode: "bot", deck: "", opp: "random", brain: "ciel" });
@@ -245,7 +247,7 @@ function questPanel() {
 }
 // ---------- start / resume ----------
 const pickOpp = () => { const o = Setup.opp !== "random" && deckById(Setup.opp); if (o && !deckLocked(o)) return o; const st = allDecks().filter((d) => d.starter && !d.box); return st[Math.floor(Math.random() * st.length)]; };
-import { dupNames, ruleDeck, singlePanel, botSingle, NODUP_NEED } from "../weekly.js?v=20261123112815";
+import { dupNames, ruleDeck, singlePanel, botSingle, NODUP_NEED } from "../weekly.js?v=20261123114729";
 const pack = (d) => ({ ...deckToList(d), name: d.name, id: d.id });
 // ไต่ด่าน: the official Starter Decks one after another, the bot growing stronger; a step is passed by a win recorded with its number
 function gauntletSteps() { const lv = (k, n) => (k < 2 ? "easy" : k < Math.ceil(n * 0.6) ? "basic" : "hard"); const list = officialStarters().filter((d) => validateDeck(d).ok);
@@ -922,7 +924,7 @@ function celebrate(list) {
 // ---------- puzzles (see puzzles.js): win before the turn passes; take-backs and hints as often as wanted ----------
 const PZ_DONE = "bot.pz";
 let puzzleList = null;
-const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261123112815").then((m) => m.PUZZLES));
+const loadPuzzles = () => (puzzleList = puzzleList || import("../puzzles-data.js?v=20261123114729").then((m) => m.PUZZLES));
 function startPuzzle(pz, k) {
   let s; try { s = puzzleState(pz); } catch (e) { return toast("เปิดโจทย์ไม่ได้: " + e.message, "bad"); }
   const V = pz.p; Object.assign(s.P[V], { uid: Me.uid, name: myName(), ava: myAvatar(), av3: myFigure(), sig: mySigil(), mat: myMat(), sleeve: mySleeve(), bot: false }); Object.assign(s.P[1 - V], { uid: null, name: "คู่แข่งในโจทย์", ava: "", av3: myFigure() ? "chang" : "", mat: botMat(), bot: true });
@@ -1364,7 +1366,7 @@ function drawFlat(s, V, lit, lifeOk) {
     const d = E.def(s, x), c = d.im != null ? card(d.im) : null, fights = z === "av" || z === "cs", host = x.on != null && E.locate(s, x.on);
     const b = h("button", { class: "fcard" + (z === "av" && !x.a ? " asleep" : "") + (z === "av" && x.a && myBattle(s) && (E.locate(s, x.i) || {}).p === s.active ? " drag" : "") + (G.att === x.i || G.sel === x.i ? " sel" : "") + (lit.has(x.i) ? " can" : ""), "data-i": x.i, "data-name": d.n,
       title: host ? `${d.n} · ติดอยู่กับ ${E.name(s, host.x)}` : d.n, "aria-label": `${d.n}${fights ? ` POWER ${E.power(s, x)}` : ""}${z === "av" && !x.a ? " (นอน)" : ""}`, onclick: () => fieldClick(x.i) },
-      c ? artImg(c, undefined, undefined, x.o) : h("span", { class: "fname" }, d.n), fights ? h("span", { class: "fpow num" }, E.power(s, x)) : null, z === "av" && !x.a ? h("span", { class: "fnap" }, "นอน") : null);
+      c ? artImg(c, undefined, undefined, x.o) : h("span", { class: "fname" }, d.n), skinTag(c, x.o), fights ? h("span", { class: "fpow num" }, E.power(s, x)) : null, z === "av" && !x.a ? h("span", { class: "fnap" }, "นอน") : null);
     b.addEventListener("contextmenu", (e) => { e.preventDefault(); cardView(x); });
     b.addEventListener("mouseenter", () => { G.hover = x.i; drawInspector(); });
     b.addEventListener("mouseleave", () => { if (G.hover === x.i) { G.hover = null; drawInspector(); } });
@@ -1680,7 +1682,7 @@ function drawInspector() {
   // what this card can do now: "คลิกการ์ดเพื่อสั่งใช้" while hovered, the buttons themselves once clicked (above the card), or why not
   const acts = L.z !== "hand" && !G.replay ? abilityActs(s, x, L, false) : [];
   const can = acts.filter((a) => a[1]).map(([t]) => t);
-  el.replaceChildren(c ? artImg(c, undefined, undefined, x.o) : h("div", { class: "tok" }, "Token"),
+  el.replaceChildren(c ? artImg(c, undefined, undefined, x.o) : h("div", { class: "tok" }, "Token"), skinTag(c, x.o),
     h("div", { class: "txt" }, h("b", null, d.n), h("div", { class: "row", style: "gap:5px" }, stat.map((t) => h("span", { class: "chip" + (/^POWER/.test(t) ? " gold" : "") }, t)), (x.kw || []).map((k) => h("span", { class: "chip good" }, k))),
       can.length ? h("div", { class: "cvnote canuse" }, (pinned ? "สั่งใช้ได้ (ปุ่มอยู่ที่การ์ด): " : "สั่งใช้ได้ คลิกที่การ์ด: ") + can.join(" · ")) : null,
       ...acts.filter((a) => !a[1]).map(([t]) => h("div", { class: "cvnote" }, t)),
@@ -1736,7 +1738,7 @@ function handZone(s, V, p) {
     const half = Math.max(1, (n - 1) / 2), f = off / half, dip = f * f * Math.min(26, 2.2 * half * half), turn = f * Math.min(16, 3.2 * half);
     const ok = can && can.has(x.c);
     const b = h("button", { class: "hcard" + (sel.includes(x.i) ? " sel" : "") + (fresh ? " fresh" : "") + (ok ? " can" : ""), "data-i": x.i, "data-name": d.n, "aria-label": `${d.n} ${TYPE_TH[d.t]} GEM ${d.g || 0}${ok ? " · เล่นได้ตอนนี้" : ""}`, style: (row ? "" : `width:${cw}px;left:${w / 2 - cw / 2 + off * gap}px;transform:translateY(${dip + (sel.includes(x.i) ? -26 : 0)}px) rotate(${turn}deg);z-index:${k};`) + (fresh ? `animation-delay:${Math.round(-age)}ms` : "") },
-      c ? artImg(c, undefined, undefined, x.o) : null, h("span", { class: "gem" }, (d.t === "M" ? SUB_TH[d.st][0] : "C" + (d.c ?? 0)) + " · G" + (d.g || 0)),
+      c ? artImg(c, undefined, undefined, x.o) : null, skinTag(c, x.o), h("span", { class: "gem" }, (d.t === "M" ? SUB_TH[d.st][0] : "C" + (d.c ?? 0)) + " · G" + (d.g || 0)),
       touchy() ? h("span", { class: "zoom", role: "button", "aria-label": "ดูการ์ด " + d.n, onclick: (e) => { e.stopPropagation(); cardView(x); } }, "⤢") : null);
     b.addEventListener("mouseenter", () => { G.hover = null; G.hoverEl = b; showHandInspect(x); });
     b.addEventListener("mouseleave", () => { G.hoverHand = null; drawInspector(); });

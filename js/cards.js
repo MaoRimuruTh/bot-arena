@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261123112815";
-import { h } from "./util.js?v=20261123112815";
-import { Data } from "./fb.js?v=20261123112815";
+import { CARD_SOURCE } from "./config.js?v=20261123114729";
+import { h } from "./util.js?v=20261123114729";
+import { Data } from "./fb.js?v=20261123114729";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -165,8 +165,13 @@ const byKey = (k) => { if (!keyIndex) { keyIndex = new Map(); for (const c of CA
 Data.skinCodec = {
   ready: () => CARDS.length > 0,
   encode: (map) => { const out = {}; for (const [b, v] of Object.entries(map || {})) { const B = CARDS[+b], V = CARDS[+v]; if (B && V) out[B.p + "-" + B.r] = V.p + "-" + V.r; } return out; },
-  decode: (prints) => { const out = {}; for (const [kb, kv] of Object.entries(prints || {})) { const B = byKey(kb), V = byKey(kv); if (!B || !V) continue; const base = B.b != null ? B.b : B.i; if (!artBases(base).includes(V.b != null ? V.b : V.i) || V.i === base) continue; out[String(base)] = V.i; } return out; },
+  decode: (prints) => { const out = {}; for (const [kb, kv] of Object.entries(prints || {})) { const B = byKey(kb), V = byKey(kv); if (!B || !V) continue; const base = B.b != null ? B.b : B.i; if (!skinFits(base, V) || V.i === base) continue; out[String(base)] = V.i; } return out; },
 };
+// what kind of card it is for a skin: its type, and for a Magic its sub-type (a LIFE takes a LIFE's art, a Land a Land's)
+export const skinKind = (c) => (c ? c.t + "|" + (c.t === "M" ? c.st || "" : "") : "");
+// a skin is the art of any print of the same card, or of any other card of the same kind (the ability stays the card's
+// own: only the picture changes, and a picture of another card shows the card's real name on it)
+export function skinFits(base, v) { const B = CARDS[base]; return !!(B && v) && (artBases(base).includes(v.b != null ? v.b : v.i) || skinKind(B) === skinKind(v)); }
 // skins: the player can pick any alternate print of a card as the art shown everywhere
 export const SkinCtx = { on: true }; // skins show only on the deck pages and in the arena (set by the router)
 // prints of the same card that the data keeps apart because their text is worded a little differently (a reprint such
@@ -191,9 +196,11 @@ export function setGameSkins(players, meUid) {
   // (a game saved before skins travelled with it: our own side shows our skins, the other side the plain arts)
   GameSkins.maps = players.map((P) => (P.skins ? (Data.skinCodec && Data.skinCodec.ready() ? Data.skinCodec.decode(P.skins) : {}) : P.uid && P.uid === meUid ? Data.skins || {} : {}));
 }
-const skinIn = (c, map) => { const v = map && map[String(c.i)]; const s = v != null ? CARDS[+v] : null; return s && artBases(c.i).includes(baseOf(s)) ? s : c; };
+const skinIn = (c, map) => { const v = map && map[String(c.i)]; const s = v != null ? CARDS[+v] : null; return s && skinFits(c.i, s) ? s : c; };
 // the art a card shows: `seat` is the owner of that card in the game on screen (in a game, a card of no known owner
 // shows its plain art)
+// the real name to show on a card whose skin is the picture of another card (null when the picture is its own)
+export function skinName(c, seat) { const s = skinOf(c, seat); return s && c && s !== c && sp1(s.n) !== sp1(c.n) ? c.n : null; }
 export function skinOf(c, seat) { if (!c || c.b != null || !SkinCtx.on) return c; if (GameSkins.maps) return seat != null ? skinIn(c, GameSkins.maps[seat]) : c; return skinIn(c, Data.skins); }
 // the skins we have chosen for the cards of a deck, by print code, to carry into a game
 export function skinsFor(d) {

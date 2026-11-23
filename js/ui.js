@@ -1,16 +1,16 @@
-import { h, openSheet, holo, toast, fmtDate } from "./util.js?v=20261123112815";
-import { fxText, kwGloss } from "./fxtext.js?v=20261123112815";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt, priceOf, setCode } from "./cards.js?v=20261123112815";
-import { Data, saveOwned, saveSkins, saveFavs, savePrices } from "./fb.js?v=20261123112815";
-import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261123112815";
-import { loadFaq, faqFor } from "./faq.js?v=20261123112815";
-import { CARD_SOURCE } from "./config.js?v=20261123112815";
+import { h, openSheet, holo, toast, fmtDate } from "./util.js?v=20261123114729";
+import { fxText, kwGloss } from "./fxtext.js?v=20261123114729";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, colorOf, setName, artImg, ownedOf, variantsOf, favKey, isFav, isSpecialArt, priceOf, setCode, skinKind, skinName } from "./cards.js?v=20261123114729";
+import { Data, saveOwned, saveSkins, saveFavs, savePrices } from "./fb.js?v=20261123114729";
+import { Ciel, cielAceCheck, aiErr } from "./ai.js?v=20261123114729";
+import { loadFaq, faqFor } from "./faq.js?v=20261123114729";
+import { CARD_SOURCE } from "./config.js?v=20261123114729";
 
 // opts.seat: in a game, the card's owner (their skin shows) · opts.info: a way to read the card first (right-click or hold
 // it, or the magnifier in its corner) without choosing it
 export function cardBtn(id, opts = {}) {
   const c = card(id); const b = h("button", { class: "ccard" + (opts.cls ? " " + opts.cls : "") + (opts.note ? " noted" : ""), type: "button", "aria-label": c ? c.n + (opts.note ? " · " + opts.note : "") : "การ์ด", title: c ? c.n + (opts.info ? " · คลิกขวาหรือกดค้างเพื่อดูรายละเอียด" : "") : "", onclick: opts.onclick });
-  if (c) b.append(artImg(c, undefined, undefined, opts.seat));
+  if (c) { b.append(artImg(c, undefined, undefined, opts.seat)); const rn = skinName(c, opts.seat); if (rn) b.append(h("span", { class: "skinname" }, rn)); }
   if (opts.info) {
     // a touch held on the card opens it (its timer, then `swallow` so the lift that follows does not also choose it);
     // right-click, the menu key or Shift+F10 open it through contextmenu, and so does a long-press on Android
@@ -104,14 +104,36 @@ function favButton(c) {
   b.onclick = () => { toggleFav(c); paint(); }; paint();
   return h("div", { class: "row", style: "gap:8px" }, b, isSpecialArt(c) ? h("span", { class: "chip gold" }, "✦ ภาพพิเศษ " + c.r) : null);
 }
-// choose which print of this card is shown everywhere (decks, hand, 3D arena)
+// choose which print of this card is shown everywhere (decks, hand, 3D arena), or the picture of another card of the
+// same kind (openSkinSearch)
 function skinPicker(c, api, extra) {
-  const all = variantsOf(c); if (all.length < 2) return null; const b = baseId(c.i);
+  const all = variantsOf(c); const b = baseId(c.i); const other = skinBox(c, () => { api.close(); showCard(c.i, extra); });
+  if (all.length < 2) return other;
   const cur = Data.skins[String(b)] != null ? +Data.skins[String(b)] : b;
   return h("div", { class: "stack", style: "gap:6px" }, h("div", { class: "eyebrow" }, `สกินการ์ด · ${all.length} ภาพ`),
     h("div", { class: "pick" }, all.map((v) => h("div", { class: "stack", style: "gap:4px" },
       h("button", { class: "ccard" + (cur === v.i ? " sel" : ""), "aria-label": `${v.n} ${v.r}`, onclick: () => { api.close(); showCard(v.i, extra); } }, artImgRaw(v), h("span", { class: "badge" }, v.r)),
-      cur === v.i ? h("span", { class: "chip gold", style: "justify-content:center" }, "ใช้อยู่") : h("button", { class: "btn sm", onclick: () => { if (v.i === b) delete Data.skins[String(b)]; else Data.skins[String(b)] = v.i; saveSkins(); api.close(); showCard(baseId(v.i) === b ? v.i : c.i, extra); } }, "ใช้ภาพนี้")))));
+      cur === v.i ? h("span", { class: "chip gold", style: "justify-content:center" }, "ใช้อยู่") : h("button", { class: "btn sm", onclick: () => { if (v.i === b) delete Data.skins[String(b)]; else Data.skins[String(b)] = v.i; saveSkins(); api.close(); showCard(baseId(v.i) === b ? v.i : c.i, extra); } }, "ใช้ภาพนี้")))), other);
+}
+// a skin from another card of the same kind: what is used now, a way back to the card's own picture, and the search
+export function skinBox(c, after) {
+  const b = baseId(c.i); const cur = Data.skins[String(b)] != null ? card(+Data.skins[String(b)]) : null; const cross = cur && skinName(c) ? cur : null;
+  return h("div", { class: "row", style: "gap:8px;flex-wrap:wrap" },
+    cross ? h("span", { class: "chip gold" }, "ใช้รูปของ " + cross.n) : null,
+    cross ? h("button", { class: "btn sm", onclick: () => { delete Data.skins[String(b)]; saveSkins(); after && after(); } }, "กลับเป็นรูปเดิม") : null,
+    h("button", { class: "btn sm", onclick: () => openSkinSearch(c, after) }, "ใช้รูปจากการ์ดอื่น"));
+}
+// pick the picture of any other card of the same kind (a LIFE for a LIFE, a Land for a Land) as this card's skin:
+// the ability stays this card's own, only the picture changes, and the picture carries the real name
+export function openSkinSearch(c, after) {
+  const b = baseId(c.i), kind = skinKind(c); let q = "";
+  openSheet((api) => {
+    const list = h("div", { class: "pick" });
+    const draw = () => { const qq = q.trim(); const hits = CARDS.filter((v) => skinKind(v) === kind && baseId(v.i) !== b && (!qq || v.n.includes(qq))).slice(0, 40);
+      list.replaceChildren(...(hits.length ? hits.map((v) => h("button", { class: "ccard", type: "button", "aria-label": v.n + " " + v.r, title: v.n, onclick: () => { Data.skins[String(b)] = v.i; saveSkins(); api.close(); after && after(); } }, artImgRaw(v), h("span", { class: "badge" }, v.r))) : [h("div", { class: "muted" }, "ไม่พบการ์ดชื่อนี้")])); };
+    const inp = h("input", { type: "search", class: "input", placeholder: "ค้นชื่อการ์ด", "aria-label": "ค้นชื่อการ์ด", oninput: (e) => { q = e.target.value; draw(); } });
+    draw(); return [h("div", { class: "small muted" }, `ความสามารถยังเป็นของ ${c.n} เหมือนเดิม เปลี่ยนแค่รูป บนรูปจะมีป้ายชื่อจริงกำกับ และอีกฝ่ายเห็นรูปที่เลือก`), inp, list];
+  }, { title: "ใช้รูปจากการ์ดอื่น", sub: c.n, wide: true });
 }
 // art of exactly this print (ignores the player's skin choice)
 function artImgRaw(v) { const saved = Data.skins[String(baseId(v.i))]; if (saved == null) return artImg(v); delete Data.skins[String(baseId(v.i))]; const im = artImg(v); Data.skins[String(baseId(v.i))] = saved; return im; }
