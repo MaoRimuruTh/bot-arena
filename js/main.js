@@ -1,25 +1,25 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261123132841";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261123132841";
-import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn, foilSetting } from "./arena3d.js?v=20261123132841";
-import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261123132841";
-import { Vault, startVault } from "./vault.js?v=20261123132841";
-import { tablePreview, pvHover, pvUnhover, pvPick, pvClose } from "./preview.js?v=20261123132841";
-import { vaultSection } from "./vaultui.js?v=20261123132841";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261123132841";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261123132841";
-import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261123132841";
-import { Sfx } from "./sfx.js?v=20261123132841";
-import { Music, MUSIC_STYLES } from "./music.js?v=20261123132841";
-import { Views, avatarEl } from "./ui.js?v=20261123132841";
-import { Ciel } from "./ai.js?v=20261123132841";
-import "./views/library.js?v=20261123132841";
-import "./views/decks.js?v=20261123132841";
-import "./views/lab.js?v=20261123132841";
-import "./views/rules.js?v=20261123132841";
-import "./views/unlocks.js?v=20261123132841";
-import "./views/history.js?v=20261123132841";
-import { openReport } from "./views/ask.js?v=20261123132841";
-import "./views/play.js?v=20261123132841";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261123133543";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261123133543";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn, foilSetting } from "./arena3d.js?v=20261123133543";
+import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261123133543";
+import { Vault, startVault } from "./vault.js?v=20261123133543";
+import { tablePreview, pvHover, pvUnhover, pvPick, pvClose } from "./preview.js?v=20261123133543";
+import { vaultSection } from "./vaultui.js?v=20261123133543";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261123133543";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261123133543";
+import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261123133543";
+import { Sfx } from "./sfx.js?v=20261123133543";
+import { Music, MUSIC_STYLES } from "./music.js?v=20261123133543";
+import { Views, avatarEl } from "./ui.js?v=20261123133543";
+import { Ciel } from "./ai.js?v=20261123133543";
+import "./views/library.js?v=20261123133543";
+import "./views/decks.js?v=20261123133543";
+import "./views/lab.js?v=20261123133543";
+import "./views/rules.js?v=20261123133543";
+import "./views/unlocks.js?v=20261123133543";
+import "./views/history.js?v=20261123133543";
+import { openReport } from "./views/ask.js?v=20261123133543";
+import "./views/play.js?v=20261123133543";
 
 const root = $("#view");
 // text size for the whole app (everything is sized in rem), kept per browser; Hearthstone and LoR offer the same for small screens
@@ -259,7 +259,7 @@ onUser(async (user) => {
   if (!user) return loginScreen();
   gate(busy("กำลังตรวจสิทธิ์…"));
   let prof;
-  try { prof = await ensureProfile(user); } catch (e) { console.error(e); return gate(h("div", null, "เชื่อมต่อฐานข้อมูลไม่ได้"), h("div", { class: "small muted" }, e.message), h("button", { class: "btn", onclick: () => signOut() }, "ออกจากระบบ")); }
+  try { prof = await ensureProfile(user); } catch (e) { console.error(e); return gate(h("div", null, "เชื่อมต่อฐานข้อมูลไม่ได้"), h("div", { class: "small muted" }, e.message), h("div", { class: "row", style: "gap:8px;justify-content:center" }, h("button", { class: "btn gold", onclick: () => location.reload() }, "ลองใหม่"), h("button", { class: "btn", onclick: () => signOut() }, "ออกจากระบบ"))); }
   meUnsub = watchMe(async (p) => {
     if (!p) return;
     { const was = isOwnerNow(); applyPersona(); if (booted && was !== isOwnerNow()) route(); } // Ciel's name is for the owner account only

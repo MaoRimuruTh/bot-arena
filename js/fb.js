@@ -1,4 +1,4 @@
-import { firebaseConfig, FB_VERSION } from "./config.js?v=20261123132841";
+import { firebaseConfig, FB_VERSION } from "./config.js?v=20261123133543";
 const base = `https://www.gstatic.com/firebasejs/${FB_VERSION}/`;
 const { initializeApp } = await import(base + "firebase-app.js");
 const A = await import(base + "firebase-auth.js");
@@ -23,8 +23,13 @@ export const onUser = (cb) => A.onAuthStateChanged(auth, cb);
 export const Me = { user: null, profile: null, uid: null };
 export async function ensureProfile(user) {
   const ref = F.doc(db, "users", user.uid);
-  let snap = await F.getDoc(ref).catch(() => null);
-  if (!snap || !snap.exists()) {
+  // a read that fails (offline, a slow start, another tab holding the local cache) is not "no profile": try the server
+  // again, and if it still fails say so, rather than trying to create a profile over the existing one (which the rules
+  // refuse with "Missing or insufficient permissions")
+  let snap = null, err = null;
+  for (let k = 0; k < 3 && !snap; k++) { try { snap = await (k ? F.getDocFromServer(ref) : F.getDoc(ref)); } catch (e) { err = e; await new Promise((r) => setTimeout(r, 800 * (k + 1))); } }
+  if (!snap) { const e = new Error("อ่านข้อมูลบัญชีไม่ได้ (" + ((err && (err.code || err.message)) || "?") + ") ลองใหม่อีกครั้ง"); e.retry = true; throw e; }
+  if (!snap.exists()) {
     const baseDoc = { name: user.displayName || "ผู้เล่น", email: user.email || "", photo: user.photoURL || "", createdAt: Date.now(), lastSeen: Date.now() };
     // the very first account becomes the owner (rules allow it only while meta/owner does not exist)
     try { const b = F.writeBatch(db); b.set(ref, { ...baseDoc, status: "approved", role: "owner" }); b.set(F.doc(db, "meta", "owner"), { uid: user.uid, at: Date.now() }); await b.commit(); }
