@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, skinName, ownArt } from "./cards.js?v=20261123114729";
-import { E } from "./engine.js?v=20261123114729";
-import { h } from "./util.js?v=20261123114729";
-import { Sfx } from "./sfx.js?v=20261123114729";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261123115154";
+import { E } from "./engine.js?v=20261123115154";
+import { h } from "./util.js?v=20261123115154";
+import { Sfx } from "./sfx.js?v=20261123115154";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -2095,26 +2095,15 @@ function tokenTexture(d) {
   g.font = "700 64px sans-serif"; g.fillStyle = "#ffd986"; g.fillText(String(d.pw || 0), 128, 290);
   const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return t;
 }
-// the picture of another card used as a skin, with the card's real name on a band at its foot (falls back to the plain
-// picture if it cannot be drawn)
-function nameTex(t, name) {
-  try { const im = t.image, w = im.naturalWidth || im.width, H = im.naturalHeight || im.height; if (!w || !H) return t;
-    const cv = document.createElement("canvas"); cv.width = w; cv.height = H; const g = cv.getContext("2d"); g.drawImage(im, 0, 0, w, H);
-    const band = Math.round(H * 0.085), y = H - band - Math.round(H * 0.035), x = Math.round(w * 0.05);
-    g.fillStyle = "rgba(14,8,7,.86)"; g.fillRect(x, y, w - 2 * x, band); g.strokeStyle = "rgba(216,168,74,.7)"; g.lineWidth = Math.max(2, band * 0.05); g.strokeRect(x, y, w - 2 * x, band);
-    let fs = Math.round(band * 0.56); g.font = `700 ${fs}px "IBM Plex Sans Thai","Noto Sans Thai",sans-serif`; while (fs > 8 && g.measureText(name).width > w - 4 * x) { fs -= 2; g.font = `700 ${fs}px "IBM Plex Sans Thai","Noto Sans Thai",sans-serif`; }
-    g.fillStyle = "#f3cf7a"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(name, w / 2, y + band / 2);
-    const nt = new THREE.CanvasTexture(cv); nt.encoding = THREE.sRGBEncoding; nt.anisotropy = 4; t.dispose(); return nt; } catch { return t; }
-}
 function faceMat(d, seat) {
   // card faces are unlit so the official art keeps its real colours (no light/bloom wash-out); FACE_HOOK adds the sheen and the burn
   // (seat: the card's owner, whose skin it shows; a Token with a printed card of its own shows that card, any other is drawn here)
-  const token = d.im == null, c = token ? null : skinOf(card(d.im), seat), rn = token ? null : skinName(card(d.im), seat); // rn: a skin from another card shows the real name
+  const token = d.im == null, c = token ? null : skinOf(card(d.im), seat);
   const u = { uCam: camUni(), uBurn: { value: 0 }, uSweep: { value: -2 }, uSheen: { value: 0 }, uFoil: { value: (c && FOIL[c.r]) || 0 }, uFlash: { value: 0 }, uT: R.uT, uFoilK: R.uFoilK, uEdge: { value: new THREE.Color(0xff8a2a) }, uTint: { value: new THREE.Color(d.co ? colorHex(d.co) : 0xffd9a0) } };
-  const ou = token ? null : ownArt(c, seat), tk = ou || (c && (rn ? c.i + "|" + rn : c.i)); // the owner's own picture for this card (his seat only)
+  const ou = token ? null : ownArt(c, seat), tk = ou || (c && c.i); // the owner's own picture for this card (his seat only)
   const mat = new THREE.MeshBasicMaterial({ map: token ? tokenTexture(d) : R.texCache.get(tk) || R.backTex, color: 0xdedede, toneMapped: false });
   mat.userData.u = u; mat.userData.own = token; mat.onBeforeCompile = FACE_HOOK;
-  if (!token && mat.map === R.backTex) (ou ? Promise.resolve(ou) : resolveArt(c)).then((url) => { if (!url || !R) return; R.loader.load(url.startsWith("blob:") ? url : corsUrl(url), (t) => { if (!R) return t.dispose(); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; if (rn && !ou) t = nameTex(t, rn); R.texCache.set(tk, t); mat.map = t; mat.needsUpdate = true; }); });
+  if (!token && mat.map === R.backTex) (ou ? Promise.resolve(ou) : resolveArt(c)).then((url) => { if (!url || !R) return; R.loader.load(url.startsWith("blob:") ? url : corsUrl(url), (t) => { if (!R) return t.dispose(); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; R.texCache.set(tk, t); mat.map = t; mat.needsUpdate = true; }); });
   return mat;
 }
 const toScreen = (v, rect) => { const p = v.clone().project(R.camera); const r = rect || R.canvas.getBoundingClientRect(); return { x: r.left + (p.x * 0.5 + 0.5) * r.width, y: r.top + (-p.y * 0.5 + 0.5) * r.height }; };

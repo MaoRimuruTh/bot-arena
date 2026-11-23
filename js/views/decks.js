@@ -1,19 +1,19 @@
-import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261123114729";
-import { plain, isOwnerNow } from "../persona.js?v=20261123114729";
-import { fxText } from "../fxtext.js?v=20261123114729";
-import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, limitKey, banlist, banMax, banPair, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice, banKey } from "../cards.js?v=20261123114729";
-import { Data, Me, saveDeck, deleteDeck, saveSkins, saveCiel } from "../fb.js?v=20261123114729";
-import { Views, cardBtn, showCard, skinBox } from "../ui.js?v=20261123114729";
-import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261123114729";
-import { filterBar, filterCards } from "./library.js?v=20261123114729";
-import { openingOdds, simGame } from "./lab.js?v=20261123114729";
-import { freeBuild } from "../builder.js?v=20261123114729";
-import { deckCode, deckText, parseDeck, printCard } from "../deckcode.js?v=20261123114729";
+import { h, clone, toast, openSheet, confirmBox, busy, holo } from "../util.js?v=20261123115154";
+import { plain, isOwnerNow } from "../persona.js?v=20261123115154";
+import { fxText } from "../fxtext.js?v=20261123115154";
+import { CARDS, card, baseId, isBase, TYPE_TH, SUB_TH, COLORS, colorOf, setName, setCode, artImg, limitOf, limitKey, banlist, banMax, banPair, deckEntries, deckCount, validateDeck, deckStats, deckAce, shoppingList, ownedOf, cardLine, favCards, variantsOf, isSpecialArt, buyPrice, banKey } from "../cards.js?v=20261123115154";
+import { Data, Me, saveDeck, deleteDeck, saveSkins, saveCiel } from "../fb.js?v=20261123115154";
+import { Views, cardBtn, showCard } from "../ui.js?v=20261123115154";
+import { Ciel, aiErr, cielBuild, cielAnalyze, cielReadImport, STYLE_TH } from "../ai.js?v=20261123115154";
+import { filterBar, filterCards } from "./library.js?v=20261123115154";
+import { openingOdds, simGame } from "./lab.js?v=20261123115154";
+import { freeBuild } from "../builder.js?v=20261123115154";
+import { deckCode, deckText, parseDeck, printCard } from "../deckcode.js?v=20261123115154";
 // Ciel's decks are not imported here: they come from the owner's private data (see cielDecks)
-import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261123114729";
-import { deckLocked, deckLockAch } from "../achieve.js?v=20261123114729";
-import { openGuide, hasGuide } from "../guide.js?v=20261123114729";
-import { noteBase, noteVersion, openVersions, openCardStats } from "../decktools.js?v=20261123114729";
+import { officialStarters, boxDecks, topUpNote, themeCounts } from "../boxdecks.js?v=20261123115154";
+import { deckLocked, deckLockAch } from "../achieve.js?v=20261123115154";
+import { openGuide, hasGuide } from "../guide.js?v=20261123115154";
+import { noteBase, noteVersion, openVersions, openCardStats } from "../decktools.js?v=20261123115154";
 
 // Ciel's theme decks: print codes → card ids (resolved once the card data is loaded). They are Ciel's decks for Rimuru,
 // so only the owner's account sees them: other accounts get none (not in the deck list, the duel setup, the lab or the bot's picks)
@@ -23,7 +23,7 @@ let cielCache = null, cielMoving = false; const CIEL_REV = 46; // matches CIEL_R
 function moveCiel() {
   if (cielMoving) return; cielMoving = true;
   // a failed load writes nothing (a network hiccup must never leave an empty list behind); it is tried again next visit
-  import("../cieldecks.js?v=20261123114729").then((m) => { if (m.CIEL_DECKS && m.CIEL_DECKS.length) return saveCiel(m.CIEL_DECKS, m.CIEL_REV || 1); }).catch((e) => console.warn("Ciel's decks: not moved yet", e)).finally(() => { cielMoving = false; }); // a failed save is tried again on the next look
+  import("../cieldecks.js?v=20261123115154").then((m) => { if (m.CIEL_DECKS && m.CIEL_DECKS.length) return saveCiel(m.CIEL_DECKS, m.CIEL_REV || 1); }).catch((e) => console.warn("Ciel's decks: not moved yet", e)).finally(() => { cielMoving = false; }); // a failed save is tried again on the next look
 }
 export function cielDecks() {
   const own = isOwnerNow(); if (!own || !Me.uid) return [];
@@ -401,15 +401,13 @@ export function openFavBuilder() {
 // ---------- skins for every card in a deck ----------
 export function openSkins(d) {
   openSheet((api) => {
-    // every card can take a skin now: its other prints, or the picture of another card of the same kind (skinBox)
-    const rows = [...deckEntries(d), ...(d.life || []).map((i) => ({ c: card(i), id: +i, n: 1 }))].filter((e) => e.c);
-    if (!rows.length) return [h("div", { class: "muted" }, "เด็คนี้ยังไม่มีการ์ด")];
+    const rows = [...deckEntries(d), ...(d.life || []).map((i) => ({ c: card(i), id: +i, n: 1 }))].filter((e) => e.c && variantsOf(e.c).length > 1);
+    if (!rows.length) return [h("div", { class: "muted" }, "การ์ดในเด็คนี้ยังไม่มีภาพพิเศษให้เลือก")];
     const body = h("div", { class: "stack", style: "gap:14px" });
     const draw = () => body.replaceChildren(...rows.map((e) => { const b = baseId(e.c.i); const cur = Data.skins[String(b)] != null ? +Data.skins[String(b)] : b;
       return h("div", { class: "stack", style: "gap:6px" }, h("div", { class: "row small" }, h("b", null, e.c.n), h("span", { class: "muted" }, `${variantsOf(e.c).length} ภาพ`)),
-        skinBox(e.c, draw),
-        variantsOf(e.c).length < 2 ? null : h("div", { class: "pick" }, variantsOf(e.c).map((v) => { const btn = h("button", { class: "ccard" + (cur === v.i ? " sel" : ""), "aria-label": `${v.n} ${v.r}`, "aria-pressed": cur === v.i ? "true" : "false", onclick: () => { if (v.i === b) delete Data.skins[String(b)]; else Data.skins[String(b)] = v.i; saveSkins(); draw(); } }, rawArt(v), h("span", { class: "badge" }, (isSpecialArt(v) ? "✦ " : "") + v.r)); return btn; }))); }));
-    draw(); return [h("div", { class: "small muted" }, "แตะภาพที่อยากใช้ หรือใช้รูปจากการ์ดอื่นประเภทเดียวกัน ภาพที่เลือกจะแสดงในหน้าเด็คและในสนาม อีกฝ่ายก็เห็นด้วย"), body];
+        h("div", { class: "pick" }, variantsOf(e.c).map((v) => { const btn = h("button", { class: "ccard" + (cur === v.i ? " sel" : ""), "aria-label": `${v.n} ${v.r}`, "aria-pressed": cur === v.i ? "true" : "false", onclick: () => { if (v.i === b) delete Data.skins[String(b)]; else Data.skins[String(b)] = v.i; saveSkins(); draw(); } }, rawArt(v), h("span", { class: "badge" }, (isSpecialArt(v) ? "✦ " : "") + v.r)); return btn; }))); }));
+    draw(); return [h("div", { class: "small muted" }, "แตะภาพที่อยากใช้ ภาพที่เลือกจะแสดงในหน้าเด็คและในสนาม"), body];
   }, { title: "เลือกสกินทั้งเด็ค", sub: d.name, wide: true });
 }
 // the art of exactly this print, ignoring the current skin choice
