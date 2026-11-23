@@ -1,4 +1,4 @@
-import { firebaseConfig, FB_VERSION } from "./config.js?v=20261123133852";
+import { firebaseConfig, FB_VERSION } from "./config.js?v=20261123134716";
 const base = `https://www.gstatic.com/firebasejs/${FB_VERSION}/`;
 const { initializeApp } = await import(base + "firebase-app.js");
 const A = await import(base + "firebase-auth.js");
@@ -6,8 +6,10 @@ const F = await import(base + "firebase-firestore.js");
 
 export const app = initializeApp(firebaseConfig);
 export const auth = A.getAuth(app);
-// (long polling is used where a network or proxy breaks the streaming connection, e.g. some office or school networks)
-export const db = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }), experimentalAutoDetectLongPolling: true });
+// Long polling always: on some networks (office or school proxies) the streaming connection breaks ("Listen stream
+// transport errored") and reads then came back as if documents did not exist (Rimuru's mat, sleeve, figure and
+// settings "gone"), while the data was safe on the server. Auto-detection did not catch it; long polling works everywhere.
+export const db = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }), experimentalForceLongPolling: true });
 export { F };
 
 export async function signIn() {
