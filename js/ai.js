@@ -1,11 +1,11 @@
 // Bot heuristics + optional Ciel (Claude API with the player's own key, kept only in this browser).
-import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261123100550";
-import { plain } from "./persona.js?v=20261123100550";
-import { autoEffect, resolveEffect } from "./effects.js?v=20261123100550";
-import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261123100550";
-import { modPowerFor } from "./auras.js?v=20261123100550";
-import { Data } from "./fb.js?v=20261123100550";
-import { lsGet, clone } from "./util.js?v=20261123100550";
+import { E, legalMoves, PHASE_TH, ZONE_TH, modBonus, scriptOf } from "./engine.js?v=20261123105311";
+import { plain } from "./persona.js?v=20261123105311";
+import { autoEffect, resolveEffect } from "./effects.js?v=20261123105311";
+import { CARDS, card, isBase, TYPE_TH, SUB_TH, COLORS, cardLine, limitOf, deckEntries, deckStats } from "./cards.js?v=20261123105311";
+import { modPowerFor } from "./auras.js?v=20261123105311";
+import { Data } from "./fb.js?v=20261123105311";
+import { lsGet, clone } from "./util.js?v=20261123105311";
 
 export const Ciel = {
   key: () => lsGet("bot.apiKey", ""),
@@ -248,6 +248,7 @@ export const H = {
       for (const m of moves) {
         const a = m.a; if (a.type === "battle") continue;
         if (a.type === "activate") { const L = E.locate(s, a.i); const nm = L ? E.name(s, L.x) : ""; const fx = L ? H.opsScore(s, p, H.preview(s, { i: L.x.i, c: L.x.c, when: "activate", seat: p, ...(a.k != null ? { k: a.k } : {}) })) : 0;
+          /* a script that says what its ability is worth to the bot right now (botV) is taken at its word */ const acv = L && (scriptOf(s, L.x) || {}).activate; if (acv && acv.botV) { let v = -99; try { v = acv.botV(E, s, L.x, L, p); } catch { v = -99; } cand.push({ m, sc: v }); continue; }
           cand.push({ m, sc: /นักท่องเรื่องราว/.test(nm) ? 7 : /มิติมืด/.test(m.d) ? 5 : fx < 0 ? fx : 1.5 + Math.min(6, fx) }); continue; }
         const x = P.hand.find((y) => y.i === a.i) || (a.from === "hell" ? P.hell.find((y) => y.i === a.i) : null); if (!x) continue; const d = E.def(s, x);
         const payLoss = (a.pay || []).reduce((t, i) => t + H.keep(s, p, P.hand.find((y) => y.i === i)), 0);
