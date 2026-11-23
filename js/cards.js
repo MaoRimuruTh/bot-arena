@@ -1,6 +1,6 @@
-import { CARD_SOURCE } from "./config.js?v=20261123115154";
-import { h } from "./util.js?v=20261123115154";
-import { Data } from "./fb.js?v=20261123115154";
+import { CARD_SOURCE } from "./config.js?v=20261123115909";
+import { h } from "./util.js?v=20261123115909";
+import { Data } from "./fb.js?v=20261123115909";
 
 export let CARDS = [];
 export const TYPE_TH = { A: "Avatar", M: "Magic", C: "Construct", L: "LIFE", T: "Token" };
@@ -185,7 +185,7 @@ const baseOf = (x) => (x.b != null ? x.b : x.i);
 export const GameSkins = { maps: null, sig: "" };
 export function setGameSkins(players, meUid) {
   OwnArt.seat = players ? players.findIndex((P) => P && P.uid && P.uid === meUid) : null;
-  if (!players) { GameSkins.maps = null; GameSkins.sig = ""; return; }
+  if (!players) { GameSkins.maps = null; GameSkins.sig = ""; OwnArt.oseat = null; return; }
   const sig = JSON.stringify(players.map((P) => [P.skins || null, P.uid === meUid && P.skins == null])) + (Data.skinCodec && Data.skinCodec.ready() ? "+" : "");
   if (sig === GameSkins.sig) return; GameSkins.sig = sig;
   // (a game saved before skins travelled with it: our own side shows our skins, the other side the plain arts)
@@ -214,8 +214,21 @@ export const isSpecialArt = (c) => c.b != null || ["SCR", "CBR", "USEC"].include
 const goodUrl = new Map();
 // the owner's own pictures for some of his cards (his fan-art LIFE cards, kept in his private space and read by vault.js):
 // base id → a picture address on his device only. In a game they show on the seat he plays (OwnArt.seat), elsewhere always.
-export const OwnArt = { m: new Map(), seat: null };
-export const ownArt = (c, seat) => { if (!c || !OwnArt.m.size) return null; const u = OwnArt.m.get(String(baseId(c.i))); return u && (OwnArt.seat == null || (OwnArt.seat >= 0 && seat === OwnArt.seat)) ? u : null; };
+// OwnArt.sm / oseat: on an opponent's screen, the pictures the owner chose to show and the seat he plays.
+export const OwnArt = { m: new Map(), seat: null, sm: new Map(), oseat: null };
+export const ownArt = (c, seat) => { if (!c) return null; const b = String(baseId(c.i));
+  if (OwnArt.oseat != null && seat === OwnArt.oseat) return OwnArt.sm.get(b) || null;
+  if (!OwnArt.m.size) return null; const u = OwnArt.m.get(b); return u && (OwnArt.seat == null || (OwnArt.seat >= 0 && seat === OwnArt.seat)) ? u : null; };
+// a fan-art LIFE picture goes with the ability, not the name (Rimuru): it shows on its own card first, and on every other
+// LIFE card worded the same, so a deck of differently named LIFE cards with one ability all show it.
+// entries: [[print code, picture], ...] in a fixed order (the first picture of an ability wins) → base id → picture
+const lifeAbility = (c) => (c && c.t === "L" && c.x ? c.x.replace(/\s+/g, "").toLowerCase() : "");
+export function lifeArtMap(entries) {
+  const exact = new Map(), byAb = new Map();
+  for (const [p, u] of entries) { const c = CARDS.find((x) => x.p === p && x.b == null) || CARDS.find((x) => x.p === p); if (!c) continue; const b = baseId(c.i); if (!exact.has(String(b))) exact.set(String(b), u); const k = lifeAbility(CARDS[b]); if (k && !byAb.has(k)) byAb.set(k, u); }
+  const out = new Map(); for (const c of CARDS) { if (c.b != null || c.t !== "L") continue; const u = exact.get(String(c.i)) || byAb.get(lifeAbility(c)); if (u) out.set(String(c.i), u); }
+  for (const [b, u] of exact) if (!out.has(b)) out.set(b, u); return out;
+}
 export function artUrl(c) { return goodUrl.get(c.i) || imgUrls(c)[0]; }
 export function artImg(c, cls = "cimg", alt, seat) {
   { const ou = ownArt(c, seat); if (ou) return h("img", { class: cls, src: ou, alt: alt ?? c.n, decoding: "async", draggable: "false" }); }

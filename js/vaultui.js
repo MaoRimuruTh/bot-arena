@@ -1,12 +1,12 @@
 // Settings for the owner's own things (vault.js): a picture for his half of the mat, a picture for his card sleeves and a
 // 3D figure. A picture is framed here (drag to move it, slide to zoom) and saved twice: in full for his own screen, and
 // smaller for opponents if he lets them see it. Shown only to the owner account.
-import { h, toast, openSheet } from "./util.js?v=20261123115154";
-import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, shownBlob, isOwner, vaultBlob } from "./vault.js?v=20261123115154";
-import { matLines, sleeveFrame, veilPaint, MAT_ASPECT, FIG_FINISH, FIG_MOVES, figureViewer } from "./arena3d.js?v=20261123115154";
-import { pvFocus, pvHover, pvUnhover } from "./preview.js?v=20261123115154";
-import { setMeta, Data } from "./fb.js?v=20261123115154";
-import { CARDS, OwnArt, baseId } from "./cards.js?v=20261123115154";
+import { h, toast, openSheet } from "./util.js?v=20261123115909";
+import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, shownBlob, isOwner, vaultBlob, ShownArt, artShow } from "./vault.js?v=20261123115909";
+import { matLines, sleeveFrame, veilPaint, MAT_ASPECT, FIG_FINISH, FIG_MOVES, figureViewer } from "./arena3d.js?v=20261123115909";
+import { pvFocus, pvHover, pvUnhover } from "./preview.js?v=20261123115909";
+import { setMeta, Data } from "./fb.js?v=20261123115909";
+import { CARDS, OwnArt, baseId } from "./cards.js?v=20261123115909";
 
 const MAT_A = MAT_ASPECT, SLEEVE_A = 1.5 / 2.04, STAND_A = 0.7; // a player's playmat on their side of the table (arena3d.js); a card
 const KIND = {
@@ -163,10 +163,14 @@ function artRows() {
   const sel = h("select", { class: "inp", "aria-label": "การ์ด LIFE ที่จะใส่รูป" }, lifeCards().map((c) => h("option", { value: c.p }, c.n)));
   const pick = filePick("image/*", async (f) => { const p = sel.value; try { await vaultPut("art_" + p.replace(/[^A-Za-z0-9]/g, "_"), await shrinkCard(f), { p }); toast("ใส่รูปให้ " + nameOf(p) + " แล้ว"); } catch (er) { toast("บันทึกไม่สำเร็จ: " + (er.message || er), "bad"); } });
   return h("div", { class: "vitem" }, h("div", { class: "stack", style: "gap:8px;min-width:0;width:100%" }, h("b", null, "การ์ดแฟนอาร์ตของฉัน (LIFE)"),
-    h("span", { class: "tiny muted" }, "รูปการ์ดที่มาสเตอร์ทำเอง แทนรูปของ LIFE ใบนั้นทุกรุ่น เห็นแค่บนเครื่องของมาสเตอร์ ตอนเล่นเห็นเฉพาะฝั่งของมาสเตอร์"),
+    h("span", { class: "tiny muted" }, "รูปการ์ดที่มาสเตอร์ทำเอง แทนรูปของ LIFE ใบนั้นทุกรุ่น และ LIFE ทุกใบที่ความสามารถเหมือนกัน (ถ้าใบนั้นยังไม่มีรูปของตัวเอง) กด \"ให้คู่แข่งเห็น\" แล้วคู่แข่งจะเห็นรูปเต็มบนฝั่งของมาสเตอร์ตอนเล่นออนไลน์"),
+    ShownArt.err ? h("span", { class: "tiny", style: "color:var(--bad,#e57373)" }, "ยังให้คู่แข่งเห็นไม่ได้: ต้อง publish กฎฐานข้อมูลชุดใหม่ (ส่วน shown) ใน Firebase ก่อน") : null,
     items.length ? h("div", { class: "row wrap", style: "gap:8px" }, items.map(([k, it]) => { const c = CARDS.find((x) => x.p === it.p); const u = c && OwnArt.m.get(String(baseId(c.i)));
       return h("div", { class: "stack", style: "gap:4px;align-items:center;width:96px" }, u ? h("img", { src: u, alt: nameOf(it.p), style: "width:90px;border-radius:6px" }) : h("div", { class: "vthumb empty" }, "กำลังโหลด"),
-        h("span", { class: "tiny", style: "text-align:center" }, nameOf(it.p)), h("button", { class: "btn sm danger", onclick: () => vaultDrop(k).then(() => toast("ลบแล้ว")).catch(() => toast("ลบไม่สำเร็จ", "bad")) }, "ลบ")); })) : null,
+        h("span", { class: "tiny", style: "text-align:center" }, nameOf(it.p)),
+        ShownArt.mine.has(it.p) ? h("button", { class: "btn sm", onclick: () => artShow(it.p, false).then(() => toast("ซ่อนจากคู่แข่งแล้ว")).catch((e) => toast("ทำไม่สำเร็จ: " + (e.message || e), "bad")) }, "ซ่อนจากคู่แข่ง")
+          : h("button", { class: "btn sm gold", onclick: () => artShow(it.p, true).then(() => toast("คู่แข่งจะเห็นรูปนี้แล้ว")).catch((e) => toast("ทำไม่สำเร็จ: " + (e.message || e), "bad")) }, "ให้คู่แข่งเห็น"),
+        h("button", { class: "btn sm danger", onclick: () => vaultDrop(k).then(() => toast("ลบแล้ว")).catch(() => toast("ลบไม่สำเร็จ", "bad")) }, "ลบ")); })) : null,
     h("div", { class: "row wrap" }, sel, pick, h("button", { class: "btn sm gold", onclick: () => pick.click() }, "เลือกรูปให้ใบนี้"))));
 }
 let live = null;

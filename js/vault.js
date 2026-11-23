@@ -5,8 +5,8 @@
 // The figure can be shown too, as a lighter copy (fewer polygons: fine on the table, poor for printing). Shown copies are
 // stored scrambled, so browsing the database shows no picture or model file; that keeps out casual copying, not a determined
 // expert, since whatever a browser draws has to reach it.
-import { db, F, Me, Data, setMeta } from "./fb.js?v=20261123115154";
-import { OwnArt, CARDS, baseId } from "./cards.js?v=20261123115154";
+import { db, F, Me, Data, setMeta } from "./fb.js?v=20261123115909";
+import { OwnArt, CARDS, baseId, lifeArtMap } from "./cards.js?v=20261123115909";
 
 const CHUNK = 700 * 1024, MAX = 6 * 1024 * 1024;
 const ref = (id) => F.doc(db, "users", Me.uid, "private", id);
@@ -22,33 +22,55 @@ export function startVault() {
   if (unsub) { unsub(); unsub = null; } Vault.m = null;
   if (!isOwner()) return;
   unsub = F.onSnapshot(ref("vault"), (s) => { Vault.m = s.exists() ? s.data() : {}; loadOwnArt(); emit(); }, (e) => { console.warn(e); Vault.m = {}; emit(); });
+  watchShown();
 }
 
 // the owner's fan-art pictures for his cards: entries "art_<print>" ({ p: the card's print code }); a picture shows on
-// every print of that card (cards.js OwnArt), on his own screen only
-const artUrls = new Map(); let artTry = null;
+// every print of that card and on every other LIFE card with the same ability (cards.js lifeArtMap), on his own screen
+const artUrls = new Map(), artBusy = new Set(); let artTry = null;
 export let onArt = null; export const setOnArt = (f) => { onArt = f; };
 export function loadOwnArt() {
   if (!isOwner() || !Vault.m) { OwnArt.m.clear(); return; }
   if (!CARDS || !CARDS.length) { clearTimeout(artTry); artTry = setTimeout(loadOwnArt, 1500); return; } // the card list is still loading
-  const want = new Map();
-  for (const [k, it] of Object.entries(Vault.m)) if (k.startsWith("art_") && it && it.parts && it.p) { const c = CARDS.find((x) => x.p === it.p); if (c) want.set(String(baseId(c.i)), [k, k + ":" + it.v]); }
-  for (const b of [...OwnArt.m.keys()]) if (!want.has(b)) OwnArt.m.delete(b);
-  for (const [b, [k, kv]] of want) {
-    if (artUrls.has(kv)) { OwnArt.m.set(b, artUrls.get(kv)); continue; }
-    vaultBlob(k).then((bl) => { if (!bl) return; const u = URL.createObjectURL(bl); artUrls.set(kv, u); OwnArt.m.set(b, u); if (onArt) onArt(); emit(); }).catch((e) => console.warn("own art", e));
-  }
+  const items = Object.entries(Vault.m).filter(([k, it]) => k.startsWith("art_") && it && it.parts && it.p).sort(([a], [b]) => a.localeCompare(b));
+  const apply = () => { const m = lifeArtMap(items.filter(([k, it]) => artUrls.has(k + ":" + it.v)).map(([k, it]) => [it.p, artUrls.get(k + ":" + it.v)])); OwnArt.m.clear(); for (const [b, u] of m) OwnArt.m.set(b, u); };
+  apply();
+  for (const [k, it] of items) { const kv = k + ":" + it.v; if (artUrls.has(kv) || artBusy.has(kv)) continue; artBusy.add(kv);
+    vaultBlob(k).then((bl) => { artBusy.delete(kv); if (!bl) return; artUrls.set(kv, URL.createObjectURL(bl)); apply(); if (onArt) onArt(); emit(); }).catch((e) => { artBusy.delete(kv); console.warn("own art", e); }); }
 }
-// a stored file comes back in pieces of up to 700 KB (a database document holds at most 1 MB); the copy kept on this device
-// is used while it is the current version, so a picture is fetched again only after it changes
-async function readPart(kind, k, v) {
-  const r = partRef(kind, k);
-  try { const c = await F.getDocFromCache(r); if (c.exists() && c.data().v === v) return c.data().b; } catch { /* not on this device yet */ }
-  const s = await F.getDocFromServer(r);
-  if (!s.exists() || s.data().v !== v) throw new Error("ไฟล์ส่วนตัวไม่ครบ ลองอัปโหลดใหม่");
-  return s.data().b;
+// ---------- the fan-art LIFE pictures shown to opponents (full quality) ----------
+// Each one he chooses to show is copied, scrambled like the other shown things, into its own document in "shown" (the
+// database's rules: every approved member reads, only the owner writes), so a picture can be as large as the original.
+const shownRef = (p) => F.doc(db, "shown", "art-" + String(p).replace(/[^A-Za-z0-9]/g, "_"));
+export const ShownArt = { mine: new Set(), err: "" };
+let shownUnsub = null;
+function watchShown() {
+  if (shownUnsub) { shownUnsub(); shownUnsub = null; } ShownArt.mine = new Set(); ShownArt.err = "";
+  if (!isOwner() || !F.collection || !F.query) return; // (the local test database has no queries)
+  try { shownUnsub = F.onSnapshot(F.query(F.collection(db, "shown"), F.where("by", "==", Me.uid)), (q) => { ShownArt.mine = new Set(q.docs.map((d) => d.data().p)); ShownArt.err = ""; emit(); },
+    (e) => { console.warn("shown", e); ShownArt.err = "rules"; emit(); }); } catch (e) { console.warn("shown", e); }
 }
-const blobs = new Map();
+export async function artShow(p, on) {
+  if (!isOwner()) return;
+  if (!on) { await F.deleteDoc(shownRef(p)); return; }
+  const bl = await vaultBlob("art_" + String(p).replace(/[^A-Za-z0-9]/g, "_")); if (!bl) throw new Error("ยังโหลดรูปไม่เสร็จ");
+  if (bl.size > 950 * 1024) throw new Error("รูปใหญ่เกิน 950 KB");
+  const v = Date.now(); await F.setDoc(shownRef(p), { img: F.Bytes.fromUint8Array(mix(new Uint8Array(await bl.arrayBuffer()), v)), v, by: Me.uid, type: bl.type || "image/jpeg", p });
+}
+// on anyone's screen in a game: the pictures the other player (if he is the owner) chose to show, on his seat
+let shownFor = null;
+export function syncShownArt(players) {
+  const q = players ? players.findIndex((P) => P && P.uid && P.uid !== Me.uid) : -1, P = q >= 0 ? players[q] : null;
+  if (!P) { OwnArt.oseat = null; return; }
+  if (shownFor && shownFor.uid === P.uid) { OwnArt.oseat = shownFor.ready ? q : null; return; }
+  shownFor = { uid: P.uid, ready: false }; const me = shownFor; OwnArt.sm = new Map(); OwnArt.oseat = null;
+  if (!F.getDocs || !F.query) return;
+  Promise.resolve().then(() => F.getDocs(F.query(F.collection(db, "shown"), F.where("by", "==", P.uid)))).then((qs) => {
+    if (shownFor !== me) return; const items = qs.docs.map((d) => d.data()).filter((d) => d && d.img && d.p).sort((a, b) => String(a.p).localeCompare(String(b.p)));
+    const m = lifeArtMap(items.map((d) => [d.p, URL.createObjectURL(new Blob([mix(d.img.toUint8Array(), d.v)], { type: d.type || "image/jpeg" }))]));
+    OwnArt.sm = m; me.ready = true; if (m.size) { OwnArt.oseat = q; if (onArt) onArt(); emit(); }
+  }).catch((e) => console.warn("shown art", e));
+}
 export function vaultBlob(kind) {
   const it = Vault.has(kind) && Vault.m[kind]; if (!it) return Promise.resolve(null);
   const key = kind + ":" + it.v;
@@ -73,6 +95,7 @@ export async function vaultDrop(kind) {
   await F.setDoc(ref("vault"), { [kind]: F.deleteField() }, { merge: true });
   if (old) for (let k = 0; k < (old.parts || 0); k++) F.deleteDoc(partRef(kind, k)).catch(() => {});
   if (kind !== "fig" && !kind.startsWith("art_")) await vaultShow(kind, null);
+  if (kind.startsWith("art_") && old && old.p) await artShow(old.p, false).catch(() => {});
 }
 // a symmetric scramble (xorshift keystream from the version): applying it twice gives the bytes back
 function mix(bytes, v) { const out = new Uint8Array(bytes.length); let x = (v % 2147483647) | 0 || 0x9e3779b9; for (let i = 0; i < bytes.length; i++) { x ^= x << 13; x ^= x >>> 17; x ^= x << 5; out[i] = bytes[i] ^ (x & 255); } return out; }

@@ -22,6 +22,12 @@ service cloud.firestore {
       allow read: if approved();
       allow write: if isOwner();
     }
+    // the owner's fan-art LIFE pictures he chose to show his opponents (one document each, scrambled): every approved
+    // member reads them, only the owner writes
+    match /shown/{doc} {
+      allow read: if approved();
+      allow write: if isOwner();
+    }
     match /users/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isOwner());
       allow create: if signedIn() && request.auth.uid == uid && (
