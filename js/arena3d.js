@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261125120653";
-import { E } from "./engine.js?v=20261125120653";
-import { h } from "./util.js?v=20261125120653";
-import { Sfx } from "./sfx.js?v=20261125120653";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261125121113";
+import { E } from "./engine.js?v=20261125121113";
+import { h } from "./util.js?v=20261125121113";
+import { Sfx } from "./sfx.js?v=20261125121113";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -2566,7 +2566,7 @@ function summonIn(m, L, co, cHex) {
     .to(g.position, { x: P.x, z: hz, duration: 0.5, ease: "power2.out" }, 0).to(g.position, { y: hy + 0.5, duration: 0.3, ease: "sine.out" }, 0).to(g.position, { y: hy, duration: 0.2, ease: "sine.inOut" }, 0.3) /* an arc, not a straight line */
     .to(g.rotation, { x: Math.PI / 2 - 0.12, z: 0, duration: 0.55, ease: "power2.inOut" }, 0.02)
     .to(g.scale, { x: s * 1.3, y: s * 1.3, z: s * 1.3, duration: 0.5, ease: "power2.out" }, 0)
-    .add(() => R && sweep(m, 1.2, 0.55), 0.34)
+    .add(() => R && sweep(m, 0.55, 0.55), 0.34) // a soft sheen: at 1.2 the band washed the art out on the one frame the player looks at it
     .to(m, { shOp: 0.6, duration: 0.5 }, 0.3)
     .to(g.position, { y: hy + 0.14, duration: 0.24, ease: "sine.inOut" }, 0.5)
     .to(g.position, { x: P.x, y: P.y, z: P.z, duration: 0.22, ease: "power4.in" }, 0.76)
