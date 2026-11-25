@@ -214,6 +214,7 @@ body.arena-on main{padding:0;max-width:none}
 .hud{position:fixed;inset:0;z-index:5;pointer-events:none;padding:calc(64px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .hud>*{pointer-events:auto}
 .vign{position:fixed;inset:0;pointer-events:none;z-index:2;background:radial-gradient(ellipse 75% 70% at 50% 45%,transparent 55%,rgba(8,4,3,.78) 100%)}
+@media (max-width:760px){.vign{background:radial-gradient(ellipse 85% 80% at 50% 45%,transparent 62%,rgba(8,4,3,.55) 100%)}} /* a phone screen is all table: a lighter edge */
 .oppbar{position:absolute;left:50%;transform:translateX(-50%);top:calc(68px + env(safe-area-inset-top,0px));display:flex;align-items:center;gap:12px;padding:8px 14px}
 .ava{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font:700 .9rem var(--f-display);flex:none;background:linear-gradient(135deg,#ff6a70,#7a1f2b);box-shadow:0 0 18px rgba(198,59,46,.5);overflow:hidden}
 .ava img{width:100%;height:100%;object-fit:cover}
@@ -456,7 +457,7 @@ body.arena-on main{padding:0;max-width:none}
 @media (max-width:980px){.inspector{grid-template-columns:auto minmax(180px,250px)}}
 /* match panel never scrolls sideways; compact on short screens */
 .matchp{overflow-x:hidden;overflow-y:auto}
-.handzone{height:clamp(140px,30vh,210px)}
+.handzone:not(.handrow){height:clamp(140px,30vh,210px)} /* the phone hand row keeps height:auto: a fixed height stretched every card and cut off COST and POWER */
 @media (max-height:700px){
   .matchp{top:calc(110px + env(safe-area-inset-top,0px));padding:10px;gap:8px;width:240px;max-height:calc(100vh - 124px)}
   .matchp .turnline b{font-size:1.15rem} .matchp .piles b{font-size:.95rem} .matchp .glog{max-height:90px}

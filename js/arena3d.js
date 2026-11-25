@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261125120432";
-import { E } from "./engine.js?v=20261125120432";
-import { h } from "./util.js?v=20261125120432";
-import { Sfx } from "./sfx.js?v=20261125120432";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261125120653";
+import { E } from "./engine.js?v=20261125120653";
+import { h } from "./util.js?v=20261125120653";
+import { Sfx } from "./sfx.js?v=20261125120653";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -84,7 +84,7 @@ function mount(container, opts = {}) {
 
   // the play mat: black lacquer with gold-leaf line-work (ลายรดน้ำ), stepped corners (ย่อมุม) round every zone
   const small = innerWidth < 760; R.small = small; R.Q = Q; R.watch = !!opts.watch; /* a friend looking on: no "your turn", and the winner gets the banner */ R.matKey = [small || Q === "low", { near: MATS[opts.mat] || MATS.black, far: MATS[opts.farMat] || MATS[opts.mat] || MATS.black }]; R.zones = tallScreen(R.preview ? document.documentElement : container) ? ZONES.tall : ZONES.wide; const mt = matTextures(...R.matKey, R.zones);
-  R.matMat = new THREE.MeshStandardMaterial({ map: mt.base, emissiveMap: mt.glow, emissive: new THREE.Color(mt.emis), emissiveIntensity: 0.2, roughness: Q === "high" ? 1 : 0.8, roughnessMap: Q === "high" ? mt.rough : null, metalness: 0 }); R.matGlow = mt.glow; // (below high nothing reflects in the mat: a constant roughness, one texture fewer)
+  R.matMat = new THREE.MeshStandardMaterial({ map: mt.base, emissiveMap: mt.glow, emissive: new THREE.Color(mt.emis), emissiveIntensity: Q === "high" ? 0.2 : 0.5, roughness: Q === "high" ? 1 : 0.8, roughnessMap: Q === "high" ? mt.rough : null, metalness: 0 }); R.matGlow = mt.glow; // (below high nothing reflects in the mat: a constant roughness, one texture fewer)
   clothMat(R.matMat, mt, Q); // a fine weave and a soft sheen: the mat is cloth, not a sheet of plastic
   pmClothHook(R.matMat, mt.pmCloth);
   // a playmat lying on a lacquered tray, not a painted board: the cloth has rounded corners and a soft rolled rim (its bound edge curling
@@ -2480,7 +2480,8 @@ function label(s, m, x, instant) {
   const d = E.def(s, x); if (!(d.t === "A" || d.t === "T" || d.t === "C")) { const old = R.labels.get(m.i); if (old) { old.remove(); R.labels.delete(m.i); } return; }
   let el = R.labels.get(m.i); if (!el) { el = h("div", { class: "pwl" }); document.body.append(el); R.labels.set(m.i, el); }
   const p = E.power(s, x), b = d.pw || 0, was = el.dataset.v; el.dataset.v = p; el.textContent = p;
-  if (!instant && !reduce && was != null && +was !== p) { const dv = p - +was; popText(m.grp.position.clone().setY(0.9), (dv > 0 ? "+" : "−") + Math.abs(dv), dv > 0 ? "#5ef0a0" : "#ff4d55", 0.8); el._pk = { k: 1.8 }; gsap.to(el._pk, { k: 1, duration: 0.4, ease: "back.out(3)" }); } // a POWER change: the new number punches in el.className = "pwl" + (m.side === "opp" ? " opp" : "") + (p > b ? " up" : p < b ? " down" : "") + (x.a === false ? " sleep" : "");
+  if (!instant && !reduce && was != null && +was !== p) { const dv = p - +was; popText(m.grp.position.clone().setY(0.9), (dv > 0 ? "+" : "−") + Math.abs(dv), dv > 0 ? "#5ef0a0" : "#ff4d55", 0.8); el._pk = { k: 1.8 }; gsap.to(el._pk, { k: 1, duration: 0.4, ease: "back.out(3)" }); } // a POWER change: the new number punches in
+  el.className = "pwl" + (m.side === "opp" ? " opp" : "") + (p > b ? " up" : p < b ? " down" : "") + (x.a === false ? " sleep" : "");
 }
 function sync(s, V, drops, burned, instant) {
   const want = layout(s, V); let k = 0, hold = 0, nw = 0;
