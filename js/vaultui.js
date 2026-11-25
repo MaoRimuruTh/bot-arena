@@ -1,12 +1,12 @@
 // Settings for the owner's own things (vault.js): a picture for his half of the mat, a picture for his card sleeves and a
 // 3D figure. A picture is framed here (drag to move it, slide to zoom) and saved twice: in full for his own screen, and
 // smaller for opponents if he lets them see it. Shown only to the owner account.
-import { h, toast, openSheet } from "./util.js?v=20261125120034";
-import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, shownBlob, isOwner, vaultBlob, ShownArt, artShow, botSleeveReady, botSleeveBlob } from "./vault.js?v=20261125120034";
-import { matLines, sleeveFrame, veilPaint, MAT_ASPECT, FIG_FINISH, FIG_MOVES, figureViewer } from "./arena3d.js?v=20261125120034";
-import { pvFocus, pvHover, pvUnhover } from "./preview.js?v=20261125120034";
-import { setMeta, Data } from "./fb.js?v=20261125120034";
-import { CARDS, OwnArt, baseId } from "./cards.js?v=20261125120034";
+import { h, toast, openSheet } from "./util.js?v=20261125120432";
+import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, shownBlob, isOwner, vaultBlob, ShownArt, artShow, botSleeveReady, botSleeveBlob } from "./vault.js?v=20261125120432";
+import { matLines, sleeveFrame, veilPaint, MAT_ASPECT, FIG_FINISH, FIG_MOVES, figureViewer } from "./arena3d.js?v=20261125120432";
+import { pvFocus, pvHover, pvUnhover } from "./preview.js?v=20261125120432";
+import { setMeta, Data } from "./fb.js?v=20261125120432";
+import { CARDS, OwnArt, baseId } from "./cards.js?v=20261125120432";
 
 const MAT_A = MAT_ASPECT, SLEEVE_A = 1.5 / 2.04, STAND_A = 0.7; // a player's playmat on their side of the table (arena3d.js); a card
 const KIND = {
@@ -95,6 +95,27 @@ async function glbPainted(f) {
   } catch { return false; }
 }
 
+// what the site cannot read (refused before it is stored) and what reads badly (stored, with a note): from the file's JSON alone
+async function glbCheck(f) {
+  const bad = [], warn = [];
+  try { const n = new DataView(await f.slice(12, 16).arrayBuffer()).getUint32(0, true), j = JSON.parse(new TextDecoder().decode(await f.slice(20, 20 + n).arrayBuffer()));
+    const ext = new Set([...(j.extensionsRequired || []), ...(j.extensionsUsed || [])]), acc = j.accessors || [];
+    if (ext.has("KHR_draco_mesh_compression")) bad.push("ไฟล์บีบอัดแบบ Draco ซึ่งเว็บนี้อ่านไม่ได้ ตอน export ให้ปิด Compression");
+    if (ext.has("EXT_meshopt_compression")) bad.push("ไฟล์บีบอัดแบบ meshopt ซึ่งเว็บนี้ยังอ่านไม่ได้");
+    if (ext.has("KHR_texture_basisu")) bad.push("ภาพผิวเป็น KTX2 ซึ่งเว็บนี้อ่านไม่ได้ ให้ใช้ PNG หรือ JPEG");
+    let tris = 0, quant = false; const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+    for (const m of j.meshes || []) for (const p of m.primitives || []) {
+      if (p.mode != null && p.mode !== 4) continue; const pos = acc[(p.attributes || {}).POSITION]; if (!pos) continue;
+      tris += (p.indices != null && acc[p.indices] ? acc[p.indices].count : pos.count) / 3; if (pos.normalized) quant = true;
+      if (pos.min && pos.max) for (let i = 0; i < 3; i++) { lo[i] = Math.min(lo[i], pos.min[i]); hi[i] = Math.max(hi[i], pos.max[i]); } }
+    if (tris > 300000) warn.push(`${Math.round(tris / 1000)}k สามเหลี่ยม หนักไปสำหรับมือถือ (แนะนำราว 250k ตัวเต็ม, 20k ฉบับเบา)`);
+    if (quant) warn.push("ตำแหน่งจุดถูกย่อแบบ quantize ขนาดบนโต๊ะอาจเพี้ยน");
+    const turned = (j.nodes || []).some((o) => o.rotation || o.matrix);
+    if (!turned && isFinite(lo[1]) && hi[1] - lo[1] < 0.7 * (hi[2] - lo[2])) warn.push("ดูเหมือนตัวนอนอยู่ (Z-up) ตอน export ให้ติ๊ก +Y Up");
+  } catch {}
+  return { bad, warn };
+}
+
 // the figure up close: turn it, zoom in, play each of its moves; the copy opponents see can be looked at the same way
 function figSheet() {
   const it = Vault.m && Vault.m.fig; if (!it) return;
@@ -148,6 +169,8 @@ function rows() {
   const has = Vault.has("fig"), it = Vault.m && Vault.m.fig, shown = shownNow("fig"), fin = (it && it.finish) || "porcelain";
   const load = (show) => filePick(".glb,model/gltf-binary", async (f) => {
     if (!(await isGlb(f))) return toast("ต้องเป็นไฟล์ .glb", "bad");
+    const chk = await glbCheck(f); if (chk.bad.length) return toast("ใช้ไฟล์นี้ไม่ได้: " + chk.bad.join(" · "), "bad");
+    if (chk.warn.length) setTimeout(() => toast("ข้อควรรู้: " + chk.warn.join(" · ")), 2600); // after the saved note
     try { if (show) { await vaultShow("fig", f, { finish: fin }); toast("คู่แข่งจะเห็นรูปปั้นฉบับเบาแล้ว"); }
       else { const painted = await glbPainted(f), finish = painted ? "file" : has ? (fin === "file" ? "porcelain" : fin) : "porcelain"; // a painted model shows its own colours
         await vaultPut("fig", f, { finish, name: f.name.slice(0, 60) }); if (shown && finish !== fin) await setMeta({ show: { fig: { finish } } });
