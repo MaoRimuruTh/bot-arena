@@ -284,6 +284,10 @@ body.arena-on main{padding:0;max-width:none}
 .banner .band{padding:14px 0;width:100%;text-align:center;background:linear-gradient(90deg,transparent,rgba(16,10,8,.88) 20%,rgba(16,10,8,.88) 80%,transparent);border-top:1px solid var(--line);border-bottom:1px solid var(--line);opacity:0}
 .banner b{display:block;font:700 clamp(1.7rem,5vw,2.6rem) var(--f-display);letter-spacing:.25em;color:var(--gold-hi);text-shadow:0 0 24px rgba(216,168,74,.8)}
 .banner span{font-size:.95rem;color:#e3d6c0;letter-spacing:.08em}
+.banner.result .band{padding:22px 0 18px}
+.banner.result b{font-size:clamp(2.6rem,9vw,4.4rem);line-height:1.1}
+.banner.result span{font-size:1.05rem}
+.banner.result.lose b{color:#f1c9c4;text-shadow:0 0 22px rgba(160,30,40,.75)}
 .flash{position:fixed;inset:0;pointer-events:none;opacity:0;z-index:25}
 /* a die, coin or heal result when the 3D table is off */
 .flatfx{position:fixed;left:0;right:0;margin-inline:auto;width:max-content;max-width:86vw;top:38%;z-index:27;padding:10px 18px;font:700 1.05rem var(--f-display);color:var(--gold-hi);text-align:center;pointer-events:none}

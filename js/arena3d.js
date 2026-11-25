@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261125124817";
-import { E } from "./engine.js?v=20261125124817";
-import { h } from "./util.js?v=20261125124817";
-import { Sfx } from "./sfx.js?v=20261125124817";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261125125119";
+import { E } from "./engine.js?v=20261125125119";
+import { h } from "./util.js?v=20261125125119";
+import { Sfx } from "./sfx.js?v=20261125125119";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -2220,13 +2220,14 @@ function fxCut(s, ev, mine) {
   const k = Math.max(0.25, 1 / ((R && R.speed) || 1)); if (!reduce) gsap.fromTo(el, { opacity: 0, y: -8 }, { opacity: 1, y: 0, duration: 0.25 });
   gsap.to(el, { opacity: 0, duration: 0.4, delay: 2.6 * k + Math.min(2, String(ev.t || "").length / 60) * k, onComplete: () => el.remove() });
 }
-export function banner(t, s) {
+export function banner(t, s, o = {}) {
   let b = document.querySelector(".banner"); if (!b) { b = h("div", { class: "banner" }, h("div", { class: "band" }, h("b"), h("span"))); document.body.append(b); }
+  b.className = "banner" + (o.kind ? " result " + o.kind : ""); // the end of a game: a bigger title that stays a while (win gold, a loss quieter)
   b.querySelector("b").textContent = t; b.querySelector("span").textContent = s || ""; const band = b.querySelector(".band");
   gsap.killTweensOf(band); gsap.fromTo(band, { opacity: 0, scaleX: 0.4 }, { opacity: 1, scaleX: 1, duration: 0.35, ease: "power3.out" });
   const th = /[\u0E00-\u0E7F]/.test(t); /* Thai is not tracked out like a Latin name: it is set close, with only a little air */
   gsap.fromTo(b.querySelector("b"), { letterSpacing: th ? "0.2em" : "0.6em", opacity: 0 }, { letterSpacing: th ? "0.03em" : "0.25em", opacity: 1, duration: 0.5, ease: "power3.out" });
-  gsap.to(band, { opacity: 0, duration: 0.4, delay: 1.3 });
+  gsap.to(band, { opacity: 0, duration: 0.4, delay: o.hold || 1.3 });
 }
 export function flash(color, a = 0.45) { let f = document.querySelector(".flash"); if (!f) { f = h("div", { class: "flash" }); document.body.append(f); } f.style.background = color; gsap.fromTo(f, { opacity: a }, { opacity: 0, duration: 0.5, ease: "power2.out" }); }
 // camera shake from "trauma": each blow adds to it (up to a cap) and it drains away, so blows close together build up instead of cutting each other off;
@@ -2823,11 +2824,14 @@ async function animateEvent(ev, prev, s, V) {
   } else if (ev.k === "fx") { // a card's effect resolves: its picture, its name and what it did, for a moment over the table
     fxCut(s, ev, mineSide(ev.p)); await sleepMs(350);
   } else if (ev.k === "turn") {
+    if (R.camera && R.camera.zoom !== 1) { const c = R.camera; gsap.to(c, { zoom: 1, duration: 0.8, ease: "power2.inOut", onUpdate: () => c.updateProjectionMatrix() }); } // a new game after the lean-in of the last one
     mood(mineSide(ev.p)); avatarDo(ev.p, "hop"); Sfx.play("turn", { mine: mineSide(ev.p) }); if (mineSide(ev.p)) buzz(25); banner(mineSide(ev.p) && !R.watch ? "ตาของคุณ" : s.P[ev.p].name, `เทิร์น ${ev.t}`); await sleepMs(500);
   } else if (ev.k === "battle") {
     Sfx.play("battle"); banner("BATTLE PHASE", ""); gsap.fromTo(R.div.material, { opacity: 0.9 }, { opacity: 0, duration: 1.4, ease: "power2.out" });
   } else if (ev.k === "over") {
-    const won = R.watch ? ev.w != null : ev.w === V; Sfx.play(won ? "win" : "lose"); if (R.watch) banner(ev.w != null ? s.P[ev.w].name : "เสมอ", ev.w != null ? "ชนะ" : ""); else banner(won ? "ชนะ" : "แพ้", won ? "ยินดีด้วย" : "ลองใหม่อีกครั้ง"); for (const p of [0, 1]) avatarDo(p, ev.w === p ? "win" : "lose"); flash(won ? "rgba(255,210,120,.5)" : "rgba(80,0,10,.6)", 0.6);
+    const won = R.watch ? ev.w != null : ev.w === V; Sfx.play(won ? "win" : "lose"); if (R.watch) banner(ev.w != null ? s.P[ev.w].name : "เสมอ", ev.w != null ? "ชนะ" : ""); else banner(won ? "ชนะ" : "แพ้", won ? "ยินดีด้วย" : "ลองใหม่อีกครั้ง", { kind: won ? "win" : "lose", hold: 3 });
+    // the moment holds: the camera leans in on the table while the figures play their win and lose (back when the next game starts)
+    if (!reduce && R.camera && R.camera.isPerspectiveCamera) { const c = R.camera; gsap.to(c, { zoom: won ? 1.12 : 1.06, duration: 1.6, ease: "power2.out", onUpdate: () => c.updateProjectionMatrix() }); } for (const p of [0, 1]) avatarDo(p, ev.w === p ? "win" : "lose"); flash(won ? "rgba(255,210,120,.5)" : "rgba(80,0,10,.6)", 0.6);
     if (!reduce && won && !R.watch && R.winfx !== "gold") winFx(R.winfx);
     else if (!reduce) leafRain(won);
   }
