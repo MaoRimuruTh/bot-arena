@@ -1,7 +1,7 @@
 // The site in English or Japanese: the pages are written in Thai, and a watcher swaps each piece of Thai text it knows
 // (whole text nodes, and placeholder / title / aria-label) for the chosen language as it appears. Anything not in the
 // lists below stays Thai, and the official card data (names, abilities) always does. Chosen per browser in Settings.
-import { isOwnerNow } from "./persona.js?v=20261125125341";
+import { isOwnerNow } from "./persona.js?v=20261125125553";
 
 export const LANGS = [["th", "ไทย"], ["en", "English"], ["ja", "日本語"]];
 export const lang = () => { try { const v = localStorage.getItem("bot.lang"); return v === "en" || v === "ja" ? v : "th"; } catch { return "th"; } };

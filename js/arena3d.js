@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261125125341";
-import { E } from "./engine.js?v=20261125125341";
-import { h } from "./util.js?v=20261125125341";
-import { Sfx } from "./sfx.js?v=20261125125341";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261125125553";
+import { E } from "./engine.js?v=20261125125553";
+import { h } from "./util.js?v=20261125125553";
+import { Sfx } from "./sfx.js?v=20261125125553";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -86,7 +86,7 @@ function mount(container, opts = {}) {
   R.redL = new THREE.PointLight(0xff4a3a, 0.55, 16, 2); R.redL.position.set(0, 4.2, -4.4); scene.add(R.redL);
 
   // the play mat: black lacquer with gold-leaf line-work (ลายรดน้ำ), stepped corners (ย่อมุม) round every zone
-  const small = innerWidth < 760; R.small = small; R.Q = Q; R.watch = !!opts.watch; /* a friend looking on: no "your turn", and the winner gets the banner */ R.matKey = [small || Q === "low", { near: MATS[opts.mat] || MATS.black, far: MATS[opts.farMat] || MATS[opts.mat] || MATS.black }]; R.zones = tallScreen(R.preview ? document.documentElement : container) ? ZONES.tall : ZONES.wide; const mt = matTextures(...R.matKey, R.zones);
+  const small = innerWidth < 760; R.small = small; R.oppUp = oppUpright(); R.Q = Q; R.watch = !!opts.watch; /* a friend looking on: no "your turn", and the winner gets the banner */ R.matKey = [small || Q === "low", { near: MATS[opts.mat] || MATS.black, far: MATS[opts.farMat] || MATS[opts.mat] || MATS.black }]; R.zones = tallScreen(R.preview ? document.documentElement : container) ? ZONES.tall : ZONES.wide; const mt = matTextures(...R.matKey, R.zones);
   R.matMat = new THREE.MeshStandardMaterial({ map: mt.base, emissiveMap: mt.glow, emissive: new THREE.Color(mt.emis), emissiveIntensity: Q === "high" ? 0.2 : 0.5, roughness: Q === "high" ? 1 : 0.8, roughnessMap: Q === "high" ? mt.rough : null, metalness: 0 }); R.matGlow = mt.glow; // (below high nothing reflects in the mat: a constant roughness, one texture fewer)
   clothMat(R.matMat, mt, Q); // a fine weave and a soft sheen: the mat is cloth, not a sheet of plastic
   pmClothHook(R.matMat, mt.pmCloth);
@@ -242,8 +242,8 @@ function mount(container, opts = {}) {
     camera.position.set(R.camBase.x + Math.sin(t * 0.15) * 0.35 + R.off.x, R.camBase.y + R.off.y, R.camBase.z + Math.cos(t * 0.12) * 0.2); camera.lookAt(R.look);
     const cr = R.canvas.getBoundingClientRect(); // the labels below read the layout once a frame and move by transform: no layout per label
     if (R.side) for (const o of R.side.piles.values()) { if (!o.grp.visible && !o.n) { o.el.style.display = "none"; continue; } o.el.style.display = ""; const lz = (R.zones && R.zones.side && R.zones.side.piles.lz) || 0.62; const sp = toScreen(o.grp.position.clone().add(new THREE.Vector3(0, 0.2, (o.mine ? lz : -lz))), cr); o.el.style.transform = `translate(${sp.x}px,${sp.y}px) translate(-50%,-50%)`; }
-    for (const [i, el] of R.labels) { const m = R.meshes.get(i); if (!m) continue; const s = toScreen(m.grp.position.clone().add(new THREE.Vector3(-0.55 * m.scale, 0.1, (m.side === "me" ? 0.85 : -0.85) * m.scale)), cr); el.style.transform = `translate(${s.x}px,${s.y}px) translate(-50%,-50%)` + (el._pk && el._pk.k !== 1 ? ` scale(${el._pk.k})` : ""); }
-    if (R.links) for (const [i, el] of R.links) { const m = R.meshes.get(i); if (!m) continue; const sc = m.scale || 1; const q = toScreen(m.grp.position.clone().add(new THREE.Vector3(0.45 * sc, 0.1, (m.side === "me" ? -0.88 : 0.88) * sc)), cr); el.style.transform = `translate(${q.x}px,${q.y}px) translate(-50%,-50%)`; }
+    for (const [i, el] of R.labels) { const m = R.meshes.get(i); if (!m) continue; const s = toScreen(m.grp.position.clone().add(new THREE.Vector3(-0.55 * m.scale, 0.1, (m.side === "me" || R.oppUp ? 0.85 : -0.85) * m.scale)), cr); el.style.transform = `translate(${s.x}px,${s.y}px) translate(-50%,-50%)` + (el._pk && el._pk.k !== 1 ? ` scale(${el._pk.k})` : ""); }
+    if (R.links) for (const [i, el] of R.links) { const m = R.meshes.get(i); if (!m) continue; const sc = m.scale || 1; const q = toScreen(m.grp.position.clone().add(new THREE.Vector3(0.45 * sc, 0.1, (m.side === "me" || R.oppUp ? -0.88 : 0.88) * sc)), cr); el.style.transform = `translate(${q.x}px,${q.y}px) translate(-50%,-50%)`; }
     if (R.preview) pvPin(camera);
     if (R.composer) R.composer.render(); else renderer.render(scene, camera);
     if (R.autoQ) watchFps(R.autoQ);
@@ -2495,11 +2495,15 @@ function placeShadow(m) {
   m.shadow.scale.set(k * Math.max(0.12, Math.abs(Math.cos(r.z))), 1, k * Math.max(0.12, Math.abs(Math.cos(r.x))));
   m.shadow.material.opacity = m.shOp * Math.max(0.15, 1 - hgt * 0.3);
 }
+const KW_MARK = [["โล่มนุษย์", "โล่"], ["ลูกฮึด", "ฮึด"], ["เตะไข่", "ไข่"], ["แทงหลัง", "แทง"], ["สามัคคี", "สามัคคี"]];
 function label(s, m, x, instant) {
   if (R.preview) return;
   const d = E.def(s, x); if (!(d.t === "A" || d.t === "T" || d.t === "C")) { const old = R.labels.get(m.i); if (old) { old.remove(); R.labels.delete(m.i); } return; }
   let el = R.labels.get(m.i); if (!el) { el = h("div", { class: "pwl" }); document.body.append(el); R.labels.set(m.i, el); }
-  const p = E.power(s, x), b = d.pw || 0, was = el.dataset.v; el.dataset.v = p; el.textContent = p;
+  const p = E.power(s, x), b = d.pw || 0, was = el.dataset.v; el.dataset.v = p;
+  // the keywords that change a fight, as small marks beside the POWER (the full word on hover)
+  const kws = d.t === "A" ? KW_MARK.filter(([k]) => E.kw(s, x, k)) : [], key = p + "|" + kws.map(([k]) => k).join();
+  if (el._key !== key) { el._key = key; el.replaceChildren(h("b", null, String(p)), ...kws.map(([k, t]) => h("i", { class: "kwm", title: k }, t))); }
   if (!instant && !reduce && was != null && +was !== p) { const dv = p - +was; popText(m.grp.position.clone().setY(0.9), (dv > 0 ? "+" : "−") + Math.abs(dv), dv > 0 ? "#5ef0a0" : "#ff4d55", 0.8); el._pk = { k: 1.8 }; gsap.to(el._pk, { k: 1, duration: 0.4, ease: "back.out(3)" }); } // a POWER change: the new number punches in
   el.className = "pwl" + (m.side === "opp" ? " opp" : "") + (p > b ? " up" : p < b ? " down" : "") + (x.a === false ? " sleep" : "");
 }
@@ -2513,7 +2517,7 @@ function sync(s, V, drops, burned, instant) {
     let m = R.meshes.get(i); const fresh = !m;
     if (fresh) { m = makeMesh(s, L); R.meshes.set(i, m); }
     m.side = L.side; m.zone = L.zone; m.scale = L.scale; const was = fresh || !m.want ? null : m.want.rotY;
-    m.want = { pos: L.pos, rotY: (L.side === "opp" && !oppUpright() ? Math.PI : 0) + (L.x.a === false && (L.zone === "av" || (L.zone === "mg" && L.x.on == null)) ? -Math.PI / 2 : 0), scale: L.scale };
+    m.want = { pos: L.pos, rotY: (L.side === "opp" && !R.oppUp ? Math.PI : 0) + (L.x.a === false && (L.zone === "av" || (L.zone === "mg" && L.x.on == null)) ? -Math.PI / 2 : 0), scale: L.scale };
     if (fresh) {
       const co = E.def(s, L.x).co, cHex = co ? colorHex(co) : L.side === "me" ? 0xffc35a : 0xff4a52;
       if (reduce || instant) settle(m, 0.05 * k++); else if (drops.has(i)) summonIn(m, L, co, cHex); else placeIn(m, L);
