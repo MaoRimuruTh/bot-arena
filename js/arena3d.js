@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261125114620";
-import { E } from "./engine.js?v=20261125114620";
-import { h } from "./util.js?v=20261125114620";
-import { Sfx } from "./sfx.js?v=20261125114620";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261125115328";
+import { E } from "./engine.js?v=20261125115328";
+import { h } from "./util.js?v=20261125115328";
+import { Sfx } from "./sfx.js?v=20261125115328";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -110,7 +110,7 @@ function mount(container, opts = {}) {
   R.motes = points(Q === "low" ? 12 : small ? 34 : 80, 0xffd27a, 0.1, FX.star_06, 9);
   R.lifeT = new THREE.Mesh(new THREE.OctahedronGeometry(0.55), new THREE.MeshStandardMaterial({ color: 0xff7a80, emissive: 0xff2a3a, emissiveIntensity: 1.6, roughness: 0.15 })); R.lifeT.position.set(0, 1, MZ - 1.15); R.lifeT.visible = false; /* just above the centre band: never under the opponent's bar at the top of the screen */ scene.add(R.lifeT);
   R.lifeHalo = sprite(FX.light_02, 0xff4a52, 3.2, R.lifeT.position, 0.5); R.lifeHalo.visible = false;
-  FX.dot = dotTexture(); R.beamTex = beamTexture(); R.backTex = backTexture(); R.rimTex = haloTexture(18, 5); R.shadowTex = haloTexture(24, 0); R.sigilTexs = {}; R.sig = ["lotus", "lotus"];
+  FX.dot = dotTexture(); R.beamTex = beamTexture(); R.backTex = backTexture(); R.rimTex = haloTexture(18, 5); R.shadowTex = haloTexture(24, 0); R.blobTex = blobTexture(); R.sigilTexs = {}; R.sig = ["lotus", "lotus"];
   R.geo = cardGeometry(); R.capMat = new THREE.MeshBasicMaterial({ visible: false });
   R.edgeMat = new THREE.MeshStandardMaterial({ color: 0x9c958a, roughness: 0.7, metalness: 0 }); // the card stock's cut edge: a thin light line when a card tips or flies
   R.backMat = glossBack(new THREE.MeshBasicMaterial({ map: R.backTex, color: 0xcccccc, toneMapped: false })); // a printed, laminated back: it catches the light like a card
@@ -320,7 +320,7 @@ const figSpot = (mine, tall, small) => { if (tall) return mine ? { x: -1.4, z: M
 function syncAvatars(s, V) {
   R.avatars = R.avatars || [null, null];
   for (const p of [0, 1]) {
-    const f = s.P[p] && s.P[p].av3 === "ph" ? phStand(s.P[p].ph) : s.P[p] && s.P[p].av3 === "own" && custom.fig ? custom.fig(s.P[p]) : s.P[p] && s.P[p].av3 === "stand" && custom.stand ? custom.stand(s.P[p]) : null; // the owner's own figure or picture standee
+    const f = s.P[p] && s.P[p].av3 === "ph" ? phStand(s.P[p].ph) : s.P[p] && s.P[p].av3 === "own" && custom.fig ? custom.fig(s.P[p], R.small || R.Q === "low") : s.P[p] && s.P[p].av3 === "stand" && custom.stand ? custom.stand(s.P[p]) : null; // the owner's own figure or picture standee
     const key = f ? f.key + ":" + f.finish : (s.P[p] && AVATARS[s.P[p].av3]) ? s.P[p].av3 : ""; const cur = R.avatars[p];
     if (cur && cur.key === key) { if (cur.grp) placeAvatar(cur, p === V); continue; } // placed again each time: a turned phone moves the figures with its table
     if (cur && cur.grp) R.scene.remove(cur.grp);
@@ -342,6 +342,10 @@ function buildAvatar(slot, g, mine) {
   // layers: grp places it, bob breathes for a model without an idle clip, spin takes the moves made in code, the model plays its own clips
   const spin = new THREE.Group(), bob = new THREE.Group(), grp = new THREE.Group(); spin.add(model); bob.add(spin); grp.add(bob);
   if (slot.own) { const b = figureBase(); b.scale.setScalar(R.small ? 0.82 : 1); grp.add(b); model.position.y += 0.07 * (R.small ? 0.82 : 1); } // the owner's figure stands on a lacquer base
+  // without the shadow map (mid and low quality) a soft dark pool under the feet keeps a figure standing on the mat, not floating over it
+  if (R.Q !== "high") { const r = Math.max(size.x, size.z) * k * 0.78 + (slot.own ? 0.16 : 0.1);
+    const blob = new THREE.Mesh(new THREE.PlaneGeometry(r * 2, r * 2), new THREE.MeshBasicMaterial({ map: R.blobTex, transparent: true, depthWrite: false }));
+    blob.rotation.x = -Math.PI / 2; blob.position.y = 0.006; blob.renderOrder = -1; grp.add(blob); }
   // its clips: idle (looping), hit / win / lose, and emote moves named emo_<emote> (each played once)
   const mixer = new THREE.AnimationMixer(model), acts = {};
   for (const c of g.animations || []) { const n = c.name.toLowerCase(); if (/^emo_\w+$/.test(n)) { acts[n] = mixer.clipAction(c); continue; } for (const w of ["idle", "hit", "win", "lose"]) if (n.includes(w) && !acts[w]) acts[w] = mixer.clipAction(c); }
@@ -490,6 +494,11 @@ export function figureViewer(box, url, finish) {
   const key = new THREE.DirectionalLight(0xffe4c4, 1.1); key.position.set(2.2, 3.4, 2.8); scene.add(key);
   const rim = new THREE.DirectionalLight(0x9ccfff, 0.75); rim.position.set(-2.6, 2.2, -2.4); scene.add(rim); // a cool light from behind outlines the hair
   scene.add(figureBase());
+  // something to reflect: without it gold renders near black and porcelain has no highlights (the hall the table uses)
+  let env = null;
+  if (THREE.RGBELoader) new THREE.RGBELoader().setDataType(THREE.UnsignedByteType).load(`assets/env/hall.hdr?v=${ENV_V}`, (t) => {
+    if (!box.isConnected) return t.dispose(); const pm = new THREE.PMREMGenerator(renderer); env = pm.fromEquirectangular(t).texture; t.dispose(); pm.dispose(); scene.environment = env;
+  }, undefined, () => {});
   const v = { az: 0.45, el: 0.16, dist: 4.6, look: 0.74, to: { dist: 4.6, look: 0.74 }, acts: {}, mixer: null, top: 1.5, bubble: null };
   const fit = () => { const w = box.clientWidth || 300, hh = box.clientHeight || 360; renderer.setSize(w, hh, false); cam.aspect = w / hh; cam.updateProjectionMatrix(); };
   fit(); const ro = window.ResizeObserver ? new ResizeObserver(fit) : null; if (ro) ro.observe(box);
@@ -543,7 +552,7 @@ export function figureViewer(box, url, finish) {
   function stop() {
     if (ro) ro.disconnect();
     scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); const ms = o.material ? [].concat(o.material) : []; for (const m of ms) { if (m.map && ![...bubbleTex.values()].includes(m.map)) m.map.dispose(); m.dispose(); } });
-    renderer.dispose();
+    if (env) env.dispose(); renderer.dispose();
   }
   return {
     ready, moves: () => Object.keys(FIG_MOVES).filter((k) => v.acts[k]),
@@ -2135,6 +2144,11 @@ function ripple(pos, color, scale, delay = 0) {
   m.rotation.x = -Math.PI / 2; m.position.set(pos.x, 0.065, pos.z); m.scale.setScalar(0.3); m.visible = !delay; R.scene.add(m);
   gsap.to(m.scale, { x: scale, y: scale, z: scale, duration: 0.9, delay, ease: "power2.out", onStart: () => { m.visible = true; } });
   gsap.to(m.material, { opacity: 0, duration: 0.9, delay, ease: "power1.in", onComplete: () => { R && R.scene.remove(m); m.geometry.dispose(); m.material.dispose(); } });
+}
+function blobTexture() {
+  const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d"), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, "rgba(0,0,0,.85)"); gr.addColorStop(0.5, "rgba(0,0,0,.5)"); gr.addColorStop(1, "rgba(0,0,0,0)");
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c);
 }
 function dotTexture() {
   const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d"), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);

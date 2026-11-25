@@ -5,8 +5,8 @@
 // The figure can be shown too, as a lighter copy (fewer polygons: fine on the table, poor for printing). Shown copies are
 // stored scrambled, so browsing the database shows no picture or model file; that keeps out casual copying, not a determined
 // expert, since whatever a browser draws has to reach it.
-import { db, F, Me, Data, setMeta } from "./fb.js?v=20261125114620";
-import { OwnArt, CARDS, baseId, lifeArtMap } from "./cards.js?v=20261125114620";
+import { db, F, Me, Data, setMeta } from "./fb.js?v=20261125115328";
+import { OwnArt, CARDS, baseId, lifeArtMap } from "./cards.js?v=20261125115328";
 
 const CHUNK = 700 * 1024, MAX = 6 * 1024 * 1024;
 const ref = (id) => F.doc(db, "users", Me.uid, "private", id);
@@ -165,12 +165,14 @@ export function customStand(P) {
   return stands.get(key);
 }
 // the figure: the full model on the owner's screen, the lighter copy he shows on anyone else's
+// (and on his own phone or on low quality too, when he shows one: the full file can be 10x the triangles of a built-in)
 const figs = new Map();
-export function customFig(P) {
+export function customFig(P, lite) {
   if (!P || P.av3 !== "own" || !P.uid) return null;
   let key, get, finish;
-  if (P.uid === Me.uid && Vault.has("fig")) { const it = Vault.m.fig; key = "fig:" + it.v; get = () => vaultBlob("fig"); finish = it.finish; }
-  else { const sh = showOf("fig", P.uid); if (!sh) return null; key = "figS:" + sh.v; get = showBlob(sh); finish = sh.finish; }
+  const mine = P.uid === Me.uid && Vault.has("fig"), sh0 = showOf("fig", P.uid);
+  if (mine && !(lite && sh0)) { const it = Vault.m.fig; key = "fig:" + it.v; get = () => vaultBlob("fig"); finish = it.finish; }
+  else { const sh = sh0; if (!sh) return null; key = "figS:" + sh.v; get = showBlob(sh); finish = mine ? Vault.m.fig.finish : sh.finish; }
   if (!figs.has(key)) figs.set(key, { key, h: 1.4, url: get().then((b) => (b ? URL.createObjectURL(b) : null)) });
   const f = figs.get(key); f.finish = finish || ""; return f; // no finish chosen: the file's own colours, or porcelain for an unpainted model
 }
