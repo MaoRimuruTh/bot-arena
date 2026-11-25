@@ -1,11 +1,11 @@
-import { h, openSheet, fmtDate, busy } from "../util.js?v=20261125130429";
-import { Data, Me } from "../fb.js?v=20261125130429";
-import { Views, avatarEl } from "../ui.js?v=20261125130429";
-import { ladder, ladderNow, ladderFresh, tierOf, tierBadge, TIERS, PLACEMENT } from "../ladder.js?v=20261125130429";
-import { stars } from "../quests.js?v=20261125130429";
-import { weeklyStars } from "../weekly.js?v=20261125130429";
-import { hasReplay, openReplay, coachGame, shareReplay } from "./play.js?v=20261125130429";
-import { ACH, progress, rewardName } from "../achieve.js?v=20261125130429";
+import { h, openSheet, fmtDate, busy } from "../util.js?v=20261125131048";
+import { Data, Me } from "../fb.js?v=20261125131048";
+import { Views, avatarEl } from "../ui.js?v=20261125131048";
+import { ladder, ladderNow, ladderFresh, tierOf, tierBadge, TIERS, PLACEMENT } from "../ladder.js?v=20261125131048";
+import { stars } from "../quests.js?v=20261125131048";
+import { weeklyStars } from "../weekly.js?v=20261125131048";
+import { hasReplay, openReplay, coachGame, shareReplay } from "./play.js?v=20261125131048";
+import { ACH, progress, rewardName } from "../achieve.js?v=20261125131048";
 
 const MODE_TH = { bot: "บอท", friend: "เพื่อน", solo: "สองฝั่ง", goldfish: "ซ้อมมือเดียว" };
 const RULE_TH = { hand6: "มือเปิดอิ่ม", life4: "ศึกชีวิตสั้น", draw1: "สายน้ำไหลหลาก", cheap: "ตลาดนัดลดราคา" }; // weekly special rules (js/weekly.js)
