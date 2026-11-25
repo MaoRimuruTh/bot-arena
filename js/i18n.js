@@ -93,6 +93,35 @@ const WORDS = [
   ["มีเวอร์ชันใหม่", "A new version is out", "新しいバージョンがあります"], ["โหลดเวอร์ชันใหม่", "Load the new version", "新バージョンを読み込む"], ["ไว้ก่อน", "Later", "あとで"], ["รีโหลดแล้วเล่นต่อ", "Reload and continue", "再読み込みして続ける"],
   ["ตกลง เริ่มใหม่", "OK, restart", "OK、やり直す"], ["ไม่ล่ะ", "No thanks", "やめておく"], ["เหมือนเดิม", "Same as before", "前と同じ"], ["ไม่เล่นต่อ", "Stop here", "ここでやめる"], ["เพื่อนเข้าห้องแล้ว", "Your friend joined", "フレンドが参加しました"],
   ["ยินดีต้อนรับสู่สนามดวล", "Welcome to the arena", "対戦へようこそ"], ["ตัวช่วยระหว่างเล่น", "Help while you play", "プレイ中のヘルプ"], ["ชี้หรือแตะการ์ดเพื่อดูรายละเอียดเต็ม", "Point at or tap a card to see it in full", "カードを指すかタップすると詳細を表示"],
+  // decks, the card library, the lab, unlocks
+  ["จัดเด็คก่อนซื้อจริง ลองเล่น แล้วดูว่าต้องซื้อการ์ดอะไรเพิ่ม", "Build a deck before you buy, play it, then see which cards you still need", "買う前にデッキを組んで試し、足りないカードを確認"],
+  ["♥ จัดเด็คจากการ์ดที่ชอบ", "♥ Build from favourite cards", "♥ お気に入りから組む"], ["ให้ชิเอลจัดรอบการ์ดเอซ", "Let Ciel build around an ace", "エースを軸にシエルが構築"], ["นำเข้าเด็ค", "Import deck", "デッキを読み込む"], ["สร้างเด็คใหม่", "New deck", "新しいデッキ"],
+  ["ยังไม่มีเด็คของคุณ เริ่มจากเลือกการ์ดเอซให้ชิเอลจัด หรือคัดลอก Starter Deck ด้านล่างไปแก้ต่อ", "No decks of yours yet. Pick an ace for Ciel to build around, or copy a Starter Deck below and edit it", "まだデッキがありません。エースを選んでシエルに組ませるか、下のスターターデッキをコピーして編集しましょう"],
+  ["✦ เด็คแนะนำจากชิเอล", "✦ Ciel's recommended decks", "✦ シエルのおすすめデッキ"], ["เด็คธีมที่ชิเอลจัดให้ริมุรุ เปิดดูแผนการเล่น ลงสนามได้เลย หรือคัดลอกไปแก้ต่อ", "Theme decks Ciel built for Rimuru: read the game plan, play them, or copy one to edit", "シエルがリムルのために組んだテーマデッキ。プランを読む・対戦・コピーして編集"],
+  ["✦ ชิเอลแนะนำ", "✦ Ciel's pick", "✦ シエルのおすすめ"], ["พร้อมเล่น", "Ready to play", "使用可能"], ["ผิดกติกา", "Not legal", "ルール違反"], ["ทางการ", "Official", "公式"], ["แข่งจริงไม่ได้", "Not tournament legal", "公式大会では使用不可"],
+  ["จัดตามจำนวนในกล่องจริงจากรายการการ์ดทางการ", "Counts as in the real box, from the official card list", "公式カードリストどおりの実物の枚数"], ["คัดสรรเด็ค กล่องพิเศษ", "Kudsan Deck special boxes", "特別ボックス「คัดสรรเด็ค」"], ["คัดสรรเด็ค", "Kudsan Deck", "คัดสรรเด็ค"],
+  ["เด็คกล่องพิเศษทางการ กล่องที่เล่นแรงกว่า Starter Deck มากจะล็อคไว้ เปิดได้ด้วยการชนะตามเงื่อนไขเท่านั้น ไม่มีการซื้อปลดล็อค", "Official special box decks. The ones far stronger than the Starter Decks are locked and open only by winning as shown; nothing can be bought", "公式の特別ボックスデッキ。スターターより大幅に強いものはロックされ、条件どおり勝つことでのみ解放されます（購入はありません）"],
+  ["ล็อคอยู่", "Locked", "ロック中"],
+  ["ข้อมูลและภาพโหลดสดจากเว็บทางการ bottcg.com · ภาพ © PASULOL / LION HOUSE", "Data and pictures load live from the official bottcg.com · art © PASULOL / LION HOUSE", "データと画像は公式 bottcg.com から直接読み込み · 画像 © PASULOL / LION HOUSE"],
+  ["ทุกประเภท", "All types", "すべての種類"], ["ทุกสี", "All colours", "すべての色"], ["สีแดง", "Red", "赤"], ["สีฟ้า", "Blue", "青"], ["สีเขียว", "Green", "緑"], ["สีม่วง", "Purple", "紫"], ["ไร้สี", "Colourless", "無色"],
+  ["ทุก Cost", "Any Cost", "すべてのコスト"], ["ทุก Symbol", "Any Symbol", "すべてのシンボル"], ["ทุกชุด", "All sets", "すべてのセット"], ["ทุกความหายาก", "All rarities", "すべてのレアリティ"], ["รวมภาพพิเศษ", "Include alt art", "特別イラストを含む"],
+  ["✦ เฉพาะภาพพิเศษ", "✦ Alt art only", "✦ 特別イラストのみ"], ["♥ ที่ชอบ", "♥ Favourites", "♥ お気に入り"], ["เฉพาะที่มี", "Owned only", "所持のみ"], ["ค้นชื่อ ข้อความ รหัส หรือ Symbol", "Search name, text, code or Symbol", "名前・テキスト・番号・シンボルで検索"],
+  ["ค้นหา", "Search", "検索"], ["ประเภท", "Type", "種類"], ["สี", "Colour", "色"], ["ชุด", "Set", "セット"], ["ความหายาก", "Rarity", "レアリティ"],
+  ["กะปอม", "Lizard · กะปอม", "トカゲ · กะปอม"], ["คน", "Human · คน", "人間 · คน"], ["จอมเวทย์", "Mage · จอมเวทย์", "魔法使い · จอมเวทย์"], ["ไซเบอร์", "Cyber · ไซเบอร์", "サイバー · ไซเบอร์"], ["ต้นไม้", "Tree · ต้นไม้", "樹木 · ต้นไม้"],
+  ["ต่างชาติ", "Foreigner · ต่างชาติ", "外国人 · ต่างชาติ"], ["ทหาร", "Soldier · ทหาร", "兵士 · ทหาร"], ["เทพ", "God · เทพ", "神 · เทพ"], ["ปลา", "Fish · ปลา", "魚 · ปลา"], ["เปรต", "Preta · เปรต", "餓鬼 · เปรต"], ["ผี", "Ghost · ผี", "幽霊 · ผี"],
+  ["มังกร", "Dragon · มังกร", "竜 · มังกร"], ["แมลง", "Insect · แมลง", "虫 · แมลง"], ["ยักษ์", "Giant · ยักษ์", "夜叉 · ยักษ์"], ["ฤษี", "Hermit · ฤษี", "仙人 · ฤษี"], ["สัตว์", "Animal · สัตว์", "動物 · สัตว์"], ["สัตว์วิเศษ", "Mythical beast · สัตว์วิเศษ", "幻獣 · สัตว์วิเศษ"],
+  ["สิ่งก่อสร้าง", "Structure · สิ่งก่อสร้าง", "建造物 · สิ่งก่อสร้าง"], ["หุ่นยนต์", "Robot · หุ่นยนต์", "ロボット · หุ่นยนต์"], ["เอเลี่ยน", "Alien · เอเลี่ยน", "エイリアン · เอเลี่ยน"],
+  ["ลองมือเปิด ดูโอกาสจั่ว และจำลองเกมก่อนลงสนามจริง", "Try opening hands, see draw odds and simulate games before you play", "初手を試し、ドロー確率を見て、実戦前に対戦をシミュレート"], ["สุ่มใหม่", "Draw again", "引き直す"],
+  ["บอทจะเปลี่ยนมือนี้", "The bot would mulligan this", "ボットはこれをマリガンします"], ["ตารางพบกันและคู่มือเปลี่ยนมือ", "Matchups and mulligan guide", "相性表とマリガンガイド"], ["ตารางพบกัน", "Matchups", "相性表"], ["คู่มือเปลี่ยนมือของเด็คนี้", "This deck's mulligan guide", "このデッキのマリガンガイド"],
+  ["เด็คไหนชนะเด็คไหน (แยกเล่นก่อน/หลัง) และมือเปิดแบบไหนควรเก็บหรือเปลี่ยน จากบอทเล่นกันเองหลายพันเกม", "Which deck beats which (going first / second) and which opening hands to keep or swap, from thousands of bot games", "どのデッキがどれに勝つか（先攻/後攻別）と、残すべき初手・替えるべき初手。ボット同士の数千戦より"],
+  ["โอกาสได้การ์ด (เล่นก่อน ไม่นับเปลี่ยนมือ)", "Chance to draw (going first, no mulligan)", "ドロー確率（先攻・マリガンなし）"], ["ภายในเทิร์น 3", "By turn 3", "3 ターン目まで"], ["มือเปิด", "Opening hand", "初手"],
+  ["จำลองบอทชนบอท", "Bot vs bot simulation", "ボット同士のシミュレーション"], ["ชน", "vs", "対"], ["หุ่นซ้อม (ไม่เล่นอะไรเลย)", "Practice dummy (does nothing)", "練習人形（何もしない）"], ["บอทปกติ (เร็ว)", "Normal bot (fast)", "ふつうのボット（速い）"],
+  ["บอทมือโปร (ช้ากว่า เล่นเก่งกว่า)", "Pro bot (slower, stronger)", "プロボット（遅いが強い）"], ["เริ่มจำลอง", "Run simulation", "シミュレーション開始"], ["เด็คที่ทดสอบ", "Deck tested", "テストするデッキ"], ["เด็คคู่แข่ง", "Opponent deck", "相手のデッキ"],
+  ["จำนวนเกม", "Games", "試合数"], ["บอทที่เล่นทั้งสองฝั่ง", "Bot for both sides", "両側のボット"],
+  ["ของทุกชิ้นในหน้านี้ได้จากการเล่นเท่านั้น ไม่มีการซื้อหรือเติมเงิน", "Everything on this page is earned by playing only: nothing is sold", "このページのものはすべてプレイでのみ入手できます（課金・購入なし）"], ["ใกล้สำเร็จที่สุด", "Closest to done", "達成間近"],
+  ["ทั้งหมด", "All", "すべて"], ["ยังล็อค", "Locked", "未解放"], ["ได้แล้ว", "Unlocked", "解放済み"], ["ยังไม่สำเร็จ", "Not yet", "未達成"], ["ปลดล็อคแล้ว", "Unlocked", "解放済み"], ["แสดง", "Show", "表示"], ["เด็คกล่องพิเศษ", "Special box decks", "特別ボックスデッキ"],
+  ["ซ้อมมือเดียวแล้วชนะภายในเทิร์นที่ 5 ของเกม", "Win solo practice by turn 5", "一人回しで 5 ターン目までに勝つ"], ["ชนะโดยที่ LIFE ของเราไม่ถูกหงายเลยสักใบ", "Win without any of your LIFE turned up", "ライフを 1 枚も表にされずに勝つ"],
+  ["ชนะด้วย Starter Deck ต่างกันครบ 7 เด็ค", "Win with 7 different Starter Decks", "7 種類のスターターデッキで勝つ"], ["ไต่ด่านผ่านครบทุกด่าน", "Clear every Gauntlet stage", "連戦モードを全クリア"],
   // history and ranks
   ["ประวัติการดวล", "Match history", "対戦履歴"], ["ทุกเกมที่จบจะบันทึกอัตโนมัติ ชิเอลใช้ข้อมูลนี้วิเคราะห์เด็ค", "Every finished game is saved; Ciel uses them to study your decks", "終わった対戦は自動で保存され、シエルがデッキ分析に使います"],
   ["ยังไม่มีเกมที่จบ เกมแรกของคุณจะมาอยู่ตรงนี้พร้อมรีเพลย์", "No finished games yet. Your first one will appear here with a replay", "まだ終わった対戦はありません。最初の対戦がリプレイ付きでここに並びます"],
@@ -171,6 +200,17 @@ const PATTERNS = [
   [/^(\S{1,24}) ใช้ (.+)$/, (m, t) => `${t(m[1])} played ${m[2]}`, (m, t) => `${t(m[1])}が${m[2]}を使用`], [/^บอท · (.+)$/, (m) => `Bot · ${m[1]}`, (m) => `ボット · ${m[1]}`],
   [/^(\S+) เปลี่ยนมือ (\d+) ใบ$/, (m, t) => `${t(m[1])} mulligans ${m[2]}`, (m, t) => `${t(m[1])}が ${m[2]} 枚マリガン`], [/^(\S+) ทอยเต๋าได้ (\d+)$/, (m, t) => `${t(m[1])} rolls ${m[2]}`, (m, t) => `${t(m[1])}の出目は ${m[2]}`],
   ["เปลี่ยนมือ (ทำได้ครั้งเดียว)", "Mulligan (once only)", "マリガン（1 回のみ）"], ["มือ", "Hand", "手札"],
+  [/^(.+) \(ชิเอลจัด\)$/, (m) => `${m[1]} (by Ciel)`, (m) => `${m[1]}（シエル構築）`], [/^(.+) \(ทางการ\)$/, (m) => `${m[1]} (official)`, (m) => `${m[1]}（公式）`],
+  [/^([\d,]+) ใบ$/, (m) => `${m[1]} cards`, (m) => `${m[1]} 枚`], [/^แสดงเพิ่ม (\d+) ใบ$/, (m) => `Show ${m[1]} more`, (m) => `さらに ${m[1]} 枚表示`], [/^อีก (\d+)$/, (m) => `${m[1]} to go`, (m) => `あと ${m[1]}`],
+  [/^จาก (\d+) ชิ้น$/, (m) => `of ${m[1]}`, (m) => `/ ${m[1]} 個`], [/^(.+) · ได้แล้ว (\d+)\/(\d+)$/, (m, t) => `${t(m[1])} · ${m[2]}/${m[3]} unlocked`, (m, t) => `${t(m[1])} · ${m[2]}/${m[3]} 解放`],
+  [/^(.+) · ยังไม่สำเร็จ$/, (m) => `${m[1]} · not yet`, (m) => `${m[1]} · 未達成`], [/^GEM รวม (\d+)$/, (m) => `GEM total ${m[1]}`, (m) => `GEM 合計 ${m[1]}`], [/^ทุกเด็คตัวอย่าง \((\d+) เด็ค\)$/, (m) => `Every sample deck (${m[1]})`, (m) => `全サンプルデッキ（${m[1]}）`],
+  [/^สุ่มมือเปิด (\d+) ใบ$/, (m) => `Draw an opening hand of ${m[1]}`, (m) => `初手 ${m[1]} 枚を引く`],
+  [/^ชนะบอทหรือเพื่อน (\d+) เกม$/, (m) => `Win ${m[1]} game${m[1] === "1" ? "" : "s"} against the bot or a friend`, (m) => `ボットかフレンドに ${m[1]} 勝`], [/^ชนะบอทมือโปร (\d+) เกม$/, (m) => `Win ${m[1]} against the Pro bot`, (m) => `プロボットに ${m[1]} 勝`],
+  [/^ดวลกับเพื่อนครบ (\d+) เกม$/, (m) => `Play ${m[1]} friend games`, (m) => `フレンドと ${m[1]} 戦`], [/^สะสมดาวจากภารกิจประจำวัน (\d+) ดวง$/, (m) => `Collect ${m[1]} daily-quest stars`, (m) => `デイリーミッションの星を ${m[1]} 個集める`],
+  [/^ไขโจทย์ปริศนาสำเร็จ (\d+) ข้อ$/, (m) => `Solve ${m[1]} puzzles`, (m) => `パズルを ${m[1]} 問解く`], [/^ชนะบอทหรือเพื่อนติดกัน (\d+) เกม$/, (m) => `Win ${m[1]} in a row`, (m) => `${m[1]} 連勝`], [/^ไต่ด่านผ่าน (\d+) ด่าน$/, (m) => `Clear ${m[1]} Gauntlet stages`, (m) => `連戦モードを ${m[1]} 面クリア`],
+  [/^ชนะด้วยเด็คที่มี Symbol (.+) 30 ใบขึ้นไป$/, (m, t) => `Win with a deck of 30+ ${t(m[1])} cards`, (m, t) => `${t(m[1])}のカード 30 枚以上のデッキで勝つ`],
+  [/^ชนะบอทหรือเพื่อนด้วยเด็คที่มีการ์ด Symbol (.+) อย่างน้อย 30 ใบ$/, (m, t) => `Win with a deck holding at least 30 ${t(m[1])} cards`, (m, t) => `${t(m[1])}のカードを 30 枚以上入れたデッキで勝つ`],
+  [/^([^:]{1,30}): ((?:ชนะ|ดวล|สะสม|ไข|ซ้อม|ไต่).+)$/, (m, t) => `${m[1]}: ${t(m[2])}`, (m, t) => `${m[1]}：${t(m[2])}`],
   [/^🔒 (.+)$/, (m, t) => `🔒 ${t(m[1])}`, (m, t) => `🔒 ${t(m[1])}`], [/^(.+) · ตั้งค่า$/, (m) => `${m[1]} · Settings`, (m) => `${m[1]} · 設定`],
 ];
 
@@ -187,7 +227,7 @@ export function tr(s) {
 }
 // keep the spaces round a text node's words
 const trNode = (v) => { const m = /^(\s*)([\s\S]*?)(\s*)$/.exec(v); const t = tr(m[2]); return t === m[2] ? v : m[1] + t + m[3]; };
-const SKIP = "script,style,textarea,input,select,option,[contenteditable],.noi18n,pre,code,.fx,.kwgloss"; // .fx: card text (its keywords open the glossary by their Thai word)
+const SKIP = "script,style,textarea,input,[contenteditable],.noi18n,pre,code,.fx,.kwgloss"; // .fx: card text (its keywords open the glossary by their Thai word)
 const ATTRS = ["placeholder", "title", "aria-label"];
 function attrs(el) { for (const a of ATTRS) { const v = el.getAttribute && el.getAttribute(a); if (v && THAI.test(v)) { const t = AMAP.get(v) || tr(v); if (t !== v) el.setAttribute(a, t); } } }
 function walk(node) {
