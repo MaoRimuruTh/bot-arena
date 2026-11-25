@@ -1,9 +1,11 @@
 // The words on the cards and what they mean: a glossary written in our own words from the official Rule Book 3.2 (the page it
 // comes from is noted on each entry), linked to the official FAQ, which is read live from the CDN like faq.js does.
 // Tapping (or long-pressing) a keyword in any card text opens its entry; hovering shows the short meaning.
-import { h, openSheet } from "./util.js?v=20261125125940";
-import { loadFaq } from "./faq.js?v=20261125125940";
-import { CARD_SOURCE } from "./config.js?v=20261125125940";
+import { h, openSheet } from "./util.js?v=20261125130429";
+import { loadFaq } from "./faq.js?v=20261125130429";
+import { CARD_SOURCE } from "./config.js?v=20261125130429";
+import { lang } from "./i18n.js?v=20261125130429";
+import { GLOSS_TR } from "./gloss_tr.js?v=20261125130429";
 
 export const RULEBOOK_URL = "https://bottcg.com/rule";
 // group: what kind of word it is · s: one line · l: the longer explanation · pg: the Rule Book page · al: other spellings
@@ -120,11 +122,17 @@ export function marked(text, q) {
   if (last < s.length) out.push(s.slice(last)); return out;
 }
 // one entry as a block (in the page and in the sheet)
+// an entry in the reader's language: [name, short, long] (Thai: the keyword itself, as printed on the cards)
+export const glossText = (e) => { const t = lang() !== "th" && GLOSS_TR[e.k] && GLOSS_TR[e.k][lang()]; return t ? { n: t[0], s: t[1], l: t[2] } : { n: "", s: e.s, l: e.l }; };
+// what a search looks through: the Thai words and, in English or Japanese, the translation too
+export const glossHay = (e) => { const t = glossText(e); return e.k + " " + (e.al || []).join(" ") + " " + e.s + " " + e.l + (t.n ? " " + t.n + " " + t.s + " " + t.l : ""); };
+// the keyword as printed (it stays Thai: it is what the cards say), with its name in the reader's language beside it
+export const glossName = (e) => { const t = glossText(e); return t.n && t.n !== e.k ? [h("span", { class: "noi18n" }, e.k), h("span", { class: "gl-tr" }, " · " + t.n)] : [e.k]; };
 export function glossEntry(e, { onFaq } = {}) {
   const faqN = h("span", { class: "tiny muted" });
   faqSearch(e.k, 200).then((r) => { faqN.textContent = r.length ? `FAQ ที่พูดถึงคำนี้ ${r.length >= 200 ? "200+" : r.length} ข้อ` : "ยังไม่มี FAQ ที่พูดถึงคำนี้"; }).catch(() => { faqN.textContent = ""; });
   return h("div", { class: "gl-entry" },
-    h("p", { class: "gl-s" }, e.s), h("p", { class: "gl-l small" }, e.l),
+    h("p", { class: "gl-s" }, glossText(e).s), h("p", { class: "gl-l small" }, glossText(e).l),
     h("div", { class: "gl-meta row" }, h("span", { class: "tiny muted" }, e.pg ? `อ้างอิง Rule Book 3.2 หน้า ${e.pg}` : "สรุปจากข้อความบนการ์ดและ FAQ"),
       onFaq ? h("button", { class: "btn sm", onclick: () => onFaq(e.k) }, "ดู FAQ ที่เกี่ยวข้อง") : null, faqN));
 }
@@ -139,8 +147,8 @@ export function openGloss(word) {
 export function openGlossSheet() {
   openSheet(() => {
     const list = h("div", { class: "stack", style: "gap:10px" }); const inp = h("input", { type: "search", placeholder: "ค้นคำ เช่น จุติ ธรณีสูบ React", "aria-label": "ค้นหาคำศัพท์", class: "gl-search" });
-    const fill = () => { const q = norm(inp.value); const es = GLOSS.filter((e) => !q || norm(e.k + " " + (e.al || []).join(" ") + " " + e.s + " " + e.l).includes(q));
-      list.replaceChildren(...(es.length ? es.map((e) => h("details", { class: "gl-item" }, h("summary", null, h("b", null, e.k), h("span", { class: "small muted" }, " · " + e.s)), glossEntry(e))) : [h("div", { class: "muted small" }, "ไม่พบคำนี้")])); };
+    const fill = () => { const q = norm(inp.value); const es = GLOSS.filter((e) => !q || norm(glossHay(e)).includes(q));
+      list.replaceChildren(...(es.length ? es.map((e) => h("details", { class: "gl-item" }, h("summary", null, h("b", null, ...glossName(e)), h("span", { class: "small muted" }, " · " + glossText(e).s)), glossEntry(e))) : [h("div", { class: "muted small" }, "ไม่พบคำนี้")])); };
     inp.addEventListener("input", fill); fill(); setTimeout(() => inp.focus({ preventScroll: true }), 50);
     return [inp, list, h("a", { class: "tiny", href: RULEBOOK_URL, target: "_blank", rel: "noopener noreferrer" }, "Rule Book ฉบับทางการ ↗")];
   }, { title: "คำศัพท์บนการ์ด", sub: "แตะคำในข้อความการ์ดเพื่อเปิดคำอธิบายได้ทุกที่" });

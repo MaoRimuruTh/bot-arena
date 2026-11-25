@@ -1,7 +1,7 @@
 // The site in English or Japanese: the pages are written in Thai, and a watcher swaps each piece of Thai text it knows
 // (whole text nodes, and placeholder / title / aria-label) for the chosen language as it appears. Anything not in the
 // lists below stays Thai, and the official card data (names, abilities) always does. Chosen per browser in Settings.
-import { isOwnerNow } from "./persona.js?v=20261125125940";
+import { isOwnerNow } from "./persona.js?v=20261125130429";
 
 export const LANGS = [["th", "ไทย"], ["en", "English"], ["ja", "日本語"]];
 export const lang = () => { try { const v = localStorage.getItem("bot.lang"); return v === "en" || v === "ja" ? v : "th"; } catch { return "th"; } };
@@ -164,6 +164,20 @@ const WORDS = [
   ["เมนู ☰ มี นรกคู่แข่ง เปิดดูการ์ดที่ลงนรกของบอท", "The ☰ menu has Foe hell: the cards in the bot's hell", "☰ メニューの「相手地獄」でボットの地獄のカードを見られます"],
   ["ปุ่ม นรกคู่แข่ง เปิดดูการ์ดที่ลงนรกของบอท", "The Foe hell button shows the cards in the bot's hell", "「相手地獄」ボタンでボットの地獄のカードを見られます"],
   ["เปลี่ยน", "Swap", "交換"], ["เริ่มเร็ว: ข้ามการเสี่ยงทาย สุ่มว่าใครเริ่มก่อน", "Quick start: skip the toss, pick who starts at random", "クイックスタート：先攻決めを省いてランダムに決める"],
+  // the rules page and the glossary sheet (the glossary entries themselves: gloss_tr.js)
+  ["กฎและคำศัพท์", "Rules and terms", "ルールと用語"], ["ประเภทความสามารถ", "Ability types", "能力の種類"], ["คีย์เวิร์ดบนการ์ด", "Card keywords", "カードのキーワード"],
+  ["คำสั่งในข้อความการ์ด", "Card text actions", "カードテキストの指示"], ["ประเภทการ์ดและสัญลักษณ์", "Card types and marks", "カードの種類とマーク"], ["โซนบนสนาม", "Zones on the field", "場のゾーン"],
+  ["การเล่นและการต่อสู้", "Play and battle", "プレイとバトル"], ["หมวดคำศัพท์", "Term group", "用語の分類"], ["ค้นหาคำศัพท์", "Search terms", "用語を検索"], ["คำศัพท์บนการ์ด", "Card terms", "カードの用語"],
+  ["ค้นหาคำศัพท์และ FAQ", "Search terms and the FAQ", "用語とFAQを検索"], ["ค้นคำ เช่น จุติ ธรณีสูบ React", "Search, e.g. จุติ, ธรณีสูบ, React", "検索 例：จุติ ธรณีสูบ React"],
+  ["ค้นคำศัพท์หรือ FAQ เช่น จุติ, สอดแนม, ชื่อการ์ด", "Search a term or the FAQ, e.g. จุติ, สอดแนม, a card name", "用語やFAQを検索 例：จุติ、สอดแนม、カード名"],
+  ["Rule Book ฉบับเต็ม ↗", "Full Rule Book ↗", "ルールブック全文 ↗"], ["Rule Book ฉบับทางการ ↗", "Official Rule Book ↗", "公式ルールブック ↗"], ["คำตอบจาก FAQ ทางการ", "Answers from the official FAQ (in Thai)", "公式FAQの回答（タイ語）"],
+  ["ดู FAQ ที่เกี่ยวข้อง", "Related FAQ", "関連するFAQ"], ["ยังไม่มี FAQ ที่พูดถึงคำนี้", "No FAQ mentions this term yet", "この用語に触れたFAQはまだありません"], ["สรุปจากข้อความบนการ์ดและ FAQ", "Summed up from card text and the FAQ", "カードテキストとFAQからの要約"],
+  ["ถาม", "Q", "問"], ["ตอบ", "A", "答"], ["ไม่พบคำนี้", "Term not found", "用語が見つかりません"], ["ไม่พบคำนี้ในคำศัพท์", "This word is not in the glossary", "この語は用語集にありません"], ["ดูคำศัพท์ทั้งหมด", "All terms", "用語一覧"],
+  ["โหลด FAQ ไม่ได้", "Could not load the FAQ", "FAQを読み込めません"], ["กำลังค้นใน FAQ…", "Searching the FAQ…", "FAQを検索中…"], ["ที่มา: คำถามที่พบบ่อย bottcg.com ↗", "Source: the FAQ on bottcg.com ↗", "出典：bottcg.com のFAQ ↗"],
+  ["แตะคำในข้อความการ์ดเพื่อเปิดคำอธิบายได้ทุกที่", "Tap a word in card text anywhere to open its explanation", "カードテキストの語をタップするとどこでも説明を開けます"],
+  ["พิมพ์อย่างน้อย 2 ตัวอักษรเพื่อค้นใน FAQ ทางการทั้งหมด (ชื่อการ์ด คำถาม หรือคำตอบ)", "Type at least 2 characters to search the whole official FAQ (card name, question or answer)", "2文字以上入力すると公式FAQ全体（カード名・質問・回答）を検索します"],
+  ["แตะคำที่เป็นตัวหนาในข้อความการ์ด (ในคลังการ์ดหรือในเกม) เพื่อเปิดคำอธิบายของคำนั้นได้ทันที", "Tap a bold word in card text (in the library or in a game) to open its explanation", "カードテキストの太字の語（ライブラリやゲーム内）をタップすると、その説明が開きます"],
+  ["คำอธิบายเขียนใหม่จาก Rule Book 3.2 ส่วนคำถามคำตอบมาจาก FAQ ทางการ โหลดสดจาก bottcg.com ทุกครั้ง", "Explanations rewritten from Rule Book 3.2; questions and answers come from the official FAQ, loaded live from bottcg.com (in Thai)", "説明はルールブック3.2から書き直したもの。質問と回答は公式FAQで、毎回 bottcg.com から読み込みます（タイ語）"],
 ];
 // texts with a number or a name in them: [pattern, English, Japanese] (a function gets the match and tr for the names)
 const PATTERNS = [
@@ -227,6 +241,13 @@ const PATTERNS = [
   [/^ชนะบอทหรือเพื่อนด้วยเด็คที่มีการ์ด Symbol (.+) อย่างน้อย 30 ใบ$/, (m, t) => `Win with a deck holding at least 30 ${t(m[1])} cards`, (m, t) => `${t(m[1])}のカードを 30 枚以上入れたデッキで勝つ`],
   [/^([^:]{1,30}): ((?:ชนะ|ดวล|สะสม|ไข|ซ้อม|ไต่).+)$/, (m, t) => `${m[1]}: ${t(m[2])}`, (m, t) => `${m[1]}：${t(m[2])}`],
   [/^🔒 (.+)$/, (m, t) => `🔒 ${t(m[1])}`, (m, t) => `🔒 ${t(m[1])}`], [/^(.+) · ตั้งค่า$/, (m) => `${m[1]} · Settings`, (m) => `${m[1]} · 設定`],
+  // the rules page
+  [/^FAQ ที่พูดถึงคำนี้ (\d+\+?) ข้อ$/, (m) => `${m[1]} FAQ answers mention this term`, (m) => `この用語に触れたFAQ ${m[1]} 件`],
+  [/^อ้างอิง Rule Book 3\.2 หน้า (\d+)$/, (m) => `Rule Book 3.2, page ${m[1]}`, (m) => `ルールブック3.2 ${m[1]}ページ`],
+  [/^พบ (\d+\+?) คำตอบ จากการ์ด (\d+) ใบ$/, (m) => `${m[1]} answers on ${m[2]} cards`, (m) => `${m[2]}枚のカードに${m[1]}件の回答`],
+  [/^แสดงเพิ่ม \(เหลือ (\d+) ใบ\)$/, (m) => `Show more (${m[1]} left)`, (m) => `さらに表示（残り${m[1]}枚）`],
+  [/^และอีก (\d+) ข้อ \(เปิดการ์ดเพื่อดูทั้งหมด\)$/, (m) => `and ${m[1]} more (open the card to see them all)`, (m) => `ほか${m[1]}件（カードを開くとすべて表示）`],
+  [/^ไม่พบ "(.+)" ใน FAQ$/, (m) => `"${m[1]}" is not in the FAQ`, (m) => `FAQに「${m[1]}」はありません`],
 ];
 
 // the same Thai word reads differently as a button's name: ปิด is "Off" on a switch but "Close" on the ✕ button

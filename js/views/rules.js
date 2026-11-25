@@ -1,10 +1,10 @@
 // กฎและคำศัพท์: what the words on the cards mean (written in our own words from the official Rule Book 3.2), and a search over
 // every official FAQ answer, read live from the CDN like the card sheet does (nothing of it is stored here). #rules/k/<word>
 // opens one word; #rules/q/<text> runs a search, so a word in any card text can link straight to its rulings.
-import { h, busy } from "../util.js?v=20261125125940";
-import { Views, showCard } from "../ui.js?v=20261125125940";
-import { CARDS, artImg, isBase } from "../cards.js?v=20261125125940";
-import { GLOSS, GROUPS, glossEntry, faqSearch, marked, RULEBOOK_URL, FAQ_PAGE } from "../glossary.js?v=20261125125940";
+import { h, busy } from "../util.js?v=20261125130429";
+import { Views, showCard } from "../ui.js?v=20261125130429";
+import { CARDS, artImg, isBase } from "../cards.js?v=20261125130429";
+import { GLOSS, GROUPS, glossEntry, glossText, glossHay, glossName, faqSearch, marked, RULEBOOK_URL, FAQ_PAGE } from "../glossary.js?v=20261125130429";
 
 let group = "all", query = "", shown = 30;
 const norm = (t) => String(t || "").replace(/\s+/g, " ").trim().toLowerCase();
@@ -12,11 +12,11 @@ const cardOf = (name) => { const list = (CARDS.byName && CARDS.byName.get(name))
 function glossList(root, focus) {
   const seg = h("div", { class: "seg gl-seg", role: "group", "aria-label": "หมวดคำศัพท์" }, [["all", "ทั้งหมด"], ...GROUPS].map(([k, t]) => h("button", { "aria-pressed": String(group === k), onclick: () => { group = k; Views.rules.render(root); } }, t)));
   const q = norm(query);
-  const es = GLOSS.filter((e) => (group === "all" || e.g === group) && (!q || norm(e.k + " " + (e.al || []).join(" ") + " " + e.s + " " + e.l).includes(q)));
+  const es = GLOSS.filter((e) => (group === "all" || e.g === group) && (!q || norm(glossHay(e)).includes(q)));
   const blocks = GROUPS.map(([g, title]) => { const list = es.filter((e) => e.g === g); if (!list.length) return null;
     return h("section", { class: "gl-group" }, h("h2", null, title), h("div", { class: "gl-grid" }, list.map((e) => {
       const d = h("details", { class: "gl-item panel" + (focus && e.k === focus ? " on" : ""), id: "gl-" + encodeURIComponent(e.k), open: focus === e.k || (q && list.length <= 4) ? true : null },
-        h("summary", null, h("b", null, e.k), h("span", { class: "small muted" }, e.s)), glossEntry(e, { onFaq: (k) => { location.hash = "#rules/q/" + encodeURIComponent(k); } }));
+        h("summary", null, h("b", null, ...glossName(e)), h("span", { class: "small muted" }, glossText(e).s)), glossEntry(e, { onFaq: (k) => { location.hash = "#rules/q/" + encodeURIComponent(k); } }));
       return d; }))); }).filter(Boolean);
   return [seg, ...(blocks.length ? blocks : [h("div", { class: "muted small" }, "ไม่พบคำนี้ในคำศัพท์")])];
 }
