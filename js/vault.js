@@ -5,8 +5,8 @@
 // The figure can be shown too, as a lighter copy (fewer polygons: fine on the table, poor for printing). Shown copies are
 // stored scrambled, so browsing the database shows no picture or model file; that keeps out casual copying, not a determined
 // expert, since whatever a browser draws has to reach it.
-import { db, F, Me, Data, setMeta } from "./fb.js?v=20261125101106";
-import { OwnArt, CARDS, baseId, lifeArtMap } from "./cards.js?v=20261125101106";
+import { db, F, Me, Data, setMeta } from "./fb.js?v=20261125102334";
+import { OwnArt, CARDS, baseId, lifeArtMap } from "./cards.js?v=20261125102334";
 
 const CHUNK = 700 * 1024, MAX = 6 * 1024 * 1024;
 const ref = (id) => F.doc(db, "users", Me.uid, "private", id);
@@ -142,7 +142,13 @@ export function customMat(P) {
   if (P.uid && P.uid === Me.uid && Vault.has("mat")) { const it = Vault.m.mat; return bitmap("mat:" + it.v + ":" + (it.veil ?? ""), () => vaultBlob("mat"), matObj(it)); }
   const sh = showOf("mat", P.uid); return sh ? bitmap("matS:" + sh.v, showBlob(sh), matObj(sh)) : null;
 }
+// the official Battle of Talingchan sleeve: one picture the owner puts in the shared settings document (never in the site's
+// public files), for every approved member to use once they have earned it by playing (achieve.js)
+const botSleeveOf = () => { const sh = Data.meta && Data.meta.show && Data.meta.show.sleeveBot; return sh && sh.img ? sh : null; };
+export const botSleeveReady = () => !!botSleeveOf();
+export const botSleeveBlob = () => { const sh = botSleeveOf(); return sh ? showBlob(sh)() : Promise.resolve(null); };
 export function customSleeve(P) {
+  if (P && P.sleeve === "bot") { const sh = botSleeveOf(); return sh ? bitmap("slB:" + sh.v, showBlob(sh), () => ({ img: null, sleeve: true })) : null; }
   if (!P || P.sleeve !== "own") return null;
   if (P.uid && P.uid === Me.uid && Vault.has("sleeve")) { const it = Vault.m.sleeve; return bitmap("sl:" + it.v, () => vaultBlob("sleeve"), () => ({ img: null, sleeve: true })); }
   const sh = showOf("sleeve", P.uid); return sh ? bitmap("slS:" + sh.v, showBlob(sh), () => ({ img: null, sleeve: true })) : null;

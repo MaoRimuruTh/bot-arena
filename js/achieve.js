@@ -1,13 +1,13 @@
 // Achievements: earned only by playing (nothing here can be bought), each one unlocking something for the table:
 // a 3D figure to stand by your side, a colour of lacquer for the mat, the circle that opens when you summon, or one of the
 // official box decks (คัดสรรเด็ค) that plays stronger than the Starter Decks. Worked out from your own match history.
-import { Data } from "./fb.js?v=20261125101106";
-import { lsGet } from "./util.js?v=20261125101106";
-import { stars } from "./quests.js?v=20261125101106";
-import { AVATARS, MATS, SIGILS, SCENES, WINFX } from "./arena3d.js?v=20261125101106";
-import { BOX_LISTS, themeCounts, officialStarters } from "./boxdecks.js?v=20261125101106";
-import { Vault } from "./vault.js?v=20261125101106";
-import { isOwnerNow } from "./persona.js?v=20261125101106";
+import { Data } from "./fb.js?v=20261125102334";
+import { lsGet } from "./util.js?v=20261125102334";
+import { stars } from "./quests.js?v=20261125102334";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX } from "./arena3d.js?v=20261125102334";
+import { BOX_LISTS, themeCounts, officialStarters } from "./boxdecks.js?v=20261125102334";
+import { Vault, botSleeveReady } from "./vault.js?v=20261125102334";
+import { isOwnerNow } from "./persona.js?v=20261125102334";
 
 const real = (ms) => ms.filter((m) => m.mode !== "goldfish");
 const wins = (ms) => real(ms).filter((m) => m.result === "win").length;
@@ -22,6 +22,7 @@ const boxAch = (id, name, sy, deck) => ({ id, name, how: `ชนะบอทห�
 // each: what it is called, how to earn it, a test (or progress [have, need]), and what it unlocks
 export const ACH = [
   { id: "win1", name: "ชัยชนะแรก", how: "ชนะบอทหรือเพื่อน 1 เกม", prog: (ms) => [wins(ms), 1], gives: { av: "naga" } },
+  { id: "win5", name: "ลูกหลานตลิ่งชัน", how: "ชนะบอทหรือเพื่อน 5 เกม", prog: (ms) => [wins(ms), 5], gives: { sleeve: "bot" } },
   { id: "fast", name: "สายฟ้าแลบ", how: "ซ้อมมือเดียวแล้วชนะภายในเทิร์นที่ 5 ของเกม", test: (ms) => ms.some((m) => m.mode === "goldfish" && m.result === "win" && m.turns <= 5), gives: { mat: "navy" } },
   { id: "win10", name: "นักสู้แห่งโต๊ะสัก", how: "ชนะบอทหรือเพื่อน 10 เกม", prog: (ms) => [wins(ms), 10], gives: { mat: "red" } },
   { id: "pro", name: "ปราบมือโปร", how: "ชนะบอทมือโปร 1 เกม", test: (ms) => ms.some((m) => ["hard", "deep"].includes(m.brain) && m.result === "win"), gives: { mat: "jade" } }, // โปร+ counts too
@@ -70,7 +71,7 @@ export const sceneOpen = (k) => !!SCENES[k] && (k !== "sakura" || unlocked("mat"
 export const sigilOpen = (k) => !!SIGILS[k] && unlocked("sig", k) && (!SIGILS[k].owner || isOwnerNow()); // the owner's own summon circle is his alone
 export const myWinFx = () => { const k = pick("bot.winfx"); return WINFX[k] && unlocked("win", k) ? k : "gold"; };
 export const myScene = () => { const k = pick("bot.scene"), s0 = sceneOpen(k) ? k : !k && pick("bot.mat") === "sakura" && sceneOpen("sakura") ? "sakura" : "hall"; return s0 === "hall" && myMat() === "pro" ? "studio" : s0; }; // the graphite mat never sits in the teak hall: it gets its studio
-export const mySleeve = () => (pick("bot.sleeve") === "own" && Vault.has("sleeve") ? "own" : "");
+export const mySleeve = () => { const k = pick("bot.sleeve"); return k === "own" && Vault.has("sleeve") ? "own" : k === "bot" && botSleeveReady() && unlocked("sleeve", "bot") ? "bot" : ""; };
 export const mySigil = () => { const k = pick("bot.sig"); return sigilOpen(k) ? k : "lotus"; };
 const boxName = (id) => { const k = String(id).replace(/^box-/, "").toUpperCase(); return BOX_LISTS[k] ? `${k} ${BOX_LISTS[k].name}` : id; };
-export const rewardName = (g) => (g.av ? "อวตาร " + AVATARS[g.av].name : g.mat ? "ผ้าปู" + MATS[g.mat].name : g.sig ? "วงอัญเชิญ" + SIGILS[g.sig].name : g.deck ? "เด็คกล่องพิเศษ " + boxName(g.deck) : g.win ? "ฉากชัยชนะ" + WINFX[g.win].name : "");
+export const rewardName = (g) => (g.av ? "อวตาร " + AVATARS[g.av].name : g.mat ? "ผ้าปู" + MATS[g.mat].name : g.sig ? "วงอัญเชิญ" + SIGILS[g.sig].name : g.deck ? "เด็คกล่องพิเศษ " + boxName(g.deck) : g.win ? "ฉากชัยชนะ" + WINFX[g.win].name : g.sleeve ? "หลังการ์ด Battle of Talingchan" : "");

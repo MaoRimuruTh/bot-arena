@@ -3,13 +3,13 @@
 // look can be seen, and where it sits, before a game. Pointing at a choice (or reaching it with the keyboard) shows it for
 // a moment; choosing it keeps it. Without WebGL, on "แบบเรียบ 2D" or "ประหยัดเครื่อง", or while a game table is open, a flat
 // map of the same table marks the spot instead. Nothing here is saved or sent anywhere: it only draws.
-import { h, toast } from "./util.js?v=20261125101106";
-import { Arena, TablePreview, tableMap, MATS, gfxSetting } from "./arena3d.js?v=20261125101106";
-import { myFigure, myMat, myScene, mySleeve, mySigil, myWinFx } from "./achieve.js?v=20261125101106";
-import { Vault, onVault } from "./vault.js?v=20261125101106";
-import { CARDS, isBase } from "./cards.js?v=20261125101106";
-import { E } from "./engine.js?v=20261125101106";
-import { Me } from "./fb.js?v=20261125101106";
+import { h, toast } from "./util.js?v=20261125102334";
+import { Arena, TablePreview, tableMap, MATS, gfxSetting } from "./arena3d.js?v=20261125102334";
+import { myFigure, myMat, myScene, mySleeve, mySigil, myWinFx } from "./achieve.js?v=20261125102334";
+import { Vault, onVault } from "./vault.js?v=20261125102334";
+import { CARDS, isBase } from "./cards.js?v=20261125102334";
+import { E } from "./engine.js?v=20261125102334";
+import { Me } from "./fb.js?v=20261125102334";
 
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const tallNow = () => innerWidth / innerHeight < 0.9; // the table an upright phone gets (arena3d.js ZONES.tall)
@@ -114,7 +114,7 @@ export function tablePreview() {
     const r = (x, z, w, d, a = "") => `<rect x="${(x - w / 2).toFixed(2)}" y="${(z - d / 2).toFixed(2)}" width="${w.toFixed(2)}" height="${d.toFixed(2)}" rx="0.08" ${a}/>`;
     const tx = (x, z, t, a = "") => `<text x="${x.toFixed(2)}" y="${z.toFixed(2)}" ${a}>${t}</text>`;
     const mat = vault && vault.kind === "mat" ? (vault.has ? "own" : "ph") : L.mat, sleeve = vault && vault.kind === "sleeve" ? "own" : L.sleeve;
-    const back = sleeve === "own" ? 'fill="#4a4954" stroke="#f0e8d6" stroke-dasharray=".12 .08"' : 'fill="#6a1a14" stroke="#d8a84a"';
+    const back = sleeve === "own" ? 'fill="#4a4954" stroke="#f0e8d6" stroke-dasharray=".12 .08"' : sleeve === "bot" ? 'fill="#141414" stroke="#f2f2f2"' : 'fill="#6a1a14" stroke="#d8a84a"';
     const zone = 'fill="none" stroke="#d8a84a" stroke-opacity=".75" stroke-width=".05"', fig = vault && (vault.kind === "stand" || vault.kind === "fig") ? vault.kind : L.av3 ? "av3" : "";
     let s = `<rect x="${-M.MW / 2}" y="${M.MZ - M.MD / 2}" width="${M.MW}" height="${M.MD / 2}" fill="${lac(botMatOf(L.mat))}" opacity=".45"/>`;
     s += `<rect x="${-M.MW / 2}" y="${M.MZ}" width="${M.MW}" height="${M.MD / 2}" fill="${lac(mat, "#120b09")}" stroke="#d8a84a" stroke-width=".06"/>`;

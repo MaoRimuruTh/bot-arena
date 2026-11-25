@@ -1,17 +1,19 @@
 // Settings for the owner's own things (vault.js): a picture for his half of the mat, a picture for his card sleeves and a
 // 3D figure. A picture is framed here (drag to move it, slide to zoom) and saved twice: in full for his own screen, and
 // smaller for opponents if he lets them see it. Shown only to the owner account.
-import { h, toast, openSheet } from "./util.js?v=20261125101106";
-import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, shownBlob, isOwner, vaultBlob, ShownArt, artShow } from "./vault.js?v=20261125101106";
-import { matLines, sleeveFrame, veilPaint, MAT_ASPECT, FIG_FINISH, FIG_MOVES, figureViewer } from "./arena3d.js?v=20261125101106";
-import { pvFocus, pvHover, pvUnhover } from "./preview.js?v=20261125101106";
-import { setMeta, Data } from "./fb.js?v=20261125101106";
-import { CARDS, OwnArt, baseId } from "./cards.js?v=20261125101106";
+import { h, toast, openSheet } from "./util.js?v=20261125102334";
+import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, shownBlob, isOwner, vaultBlob, ShownArt, artShow, botSleeveReady, botSleeveBlob } from "./vault.js?v=20261125102334";
+import { matLines, sleeveFrame, veilPaint, MAT_ASPECT, FIG_FINISH, FIG_MOVES, figureViewer } from "./arena3d.js?v=20261125102334";
+import { pvFocus, pvHover, pvUnhover } from "./preview.js?v=20261125102334";
+import { setMeta, Data } from "./fb.js?v=20261125102334";
+import { CARDS, OwnArt, baseId } from "./cards.js?v=20261125102334";
 
 const MAT_A = MAT_ASPECT, SLEEVE_A = 1.5 / 2.04, STAND_A = 0.7; // a player's playmat on their side of the table (arena3d.js); a card
 const KIND = {
   mat: { a: MAT_A, full: 2048, show: 1280, title: "จัดภาพผ้าปู", pick: "bot.mat", label: "ผ้าปูของฉัน", hint: "ภาพนี้เป็นฝั่งของมาสเตอร์บนโต๊ะ เส้นทองคือกรอบโซนที่จะวาดทับ" },
   sleeve: { a: SLEEVE_A, full: 600, show: 360, title: "จัดภาพหลังการ์ด", pick: "bot.sleeve", label: "หลังการ์ดของฉัน", hint: "ภาพนี้จะอยู่หลังการ์ดทุกใบของมาสเตอร์ ทั้ง Deck และ LIFE ที่คว่ำอยู่" },
+  // the official Battle of Talingchan sleeve, for every member who earns it: saved only as the shared copy
+  sleeveBot: { a: SLEEVE_A, full: 600, show: 600, title: "จัดภาพหลังการ์ด Battle of Talingchan", label: "หลังการ์ด Battle of Talingchan", hint: "ภาพนี้เป็นหลังการ์ดที่เพื่อนทุกคนในกลุ่มปลดล็อคได้เมื่อชนะ 5 เกม (เก็บในฐานข้อมูลของกลุ่ม ไม่ขึ้นไฟล์สาธารณะของเว็บ)", shared: true },
   stand: { a: STAND_A, full: 720, show: 420, title: "จัดภาพตั้งโต๊ะ", pick: "bot.av3", pickV: "stand", label: "ภาพตั้งโต๊ะของฉัน", hint: "ภาพนี้พิมพ์ลงแผ่นตั้งบนฐาน ยืนข้างโต๊ะฝั่งของมาสเตอร์ (แทนรูปปั้น 3 มิติ)" },
 };
 const loadImage = async (file) => { try { return await createImageBitmap(file); } catch { const u = URL.createObjectURL(file), im = new Image(); im.src = u; await im.decode(); return im; } };
@@ -34,7 +36,7 @@ function editor(kind, img) {
   const lines = kind === "mat" ? matLines() : null;
   const draw = () => { g.clearRect(0, 0, W, H); drawCrop(g, W, H, img, st);
     if (lines) { veilPaint(g, 0, 0, W, H, "#0d0b12", st.veil); g.globalCompositeOperation = "screen"; g.drawImage(lines, 0, 0, W, H); g.globalCompositeOperation = "source-over"; }
-    if (kind === "sleeve") sleeveFrame(g, W, H); }; // (the sleeve's edge and gloss are the table's, not part of the saved picture)
+    if (K.a === SLEEVE_A) sleeveFrame(g, W, H); }; // (the sleeve's edge and gloss are the table's, not part of the saved picture)
   // (the standee's white border and base are the table's too)
   // one finger (or the mouse) drags the picture; two fingers pinch to zoom; the mouse wheel zooms too (the slider follows)
   let drag = null, pinch = null; const pts = new Map();
@@ -51,13 +53,14 @@ function editor(kind, img) {
   cv.addEventListener("wheel", (e) => { e.preventDefault(); setZ(st.z * Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
   const zoom = h("input", { type: "range", min: "1", max: "3", step: "0.01", value: "1", "aria-label": "ซูม", oninput: (e) => { st.z = +e.target.value; draw(); } });
   const veil = kind === "mat" ? h("input", { type: "range", min: "0", max: "0.7", step: "0.01", value: String(st.veil), "aria-label": "ความมืดของภาพ", oninput: (e) => { st.veil = +e.target.value; draw(); } }) : null;
-  const show = h("input", { type: "checkbox", checked: kind === "mat" || shownNow(kind) });
+  const show = K.shared ? null : h("input", { type: "checkbox", checked: kind === "mat" || shownNow(kind) });
   draw();
   openSheet((api) => [h("div", { class: "small muted" }, K.hint), cv, h("div", { class: "tiny muted" }, "ลากภาพเพื่อเลื่อน บีบสองนิ้ว เลื่อนลูกกลิ้ง หรือเลื่อนแถบเพื่อซูม"),
     h("label", { class: "vrow" }, h("span", null, "ซูม"), zoom), veil ? h("label", { class: "vrow" }, h("span", null, "ความมืดของภาพ"), veil) : null,
-    h("label", { class: "vcheck" }, show, h("span", null, "ให้คู่แข่งเห็นภาพนี้บนโต๊ะของเขา (ได้แค่ฉบับย่อ ไม่มีทางโหลดไฟล์)")),
+    show ? h("label", { class: "vcheck" }, show, h("span", null, "ให้คู่แข่งเห็นภาพนี้บนโต๊ะของเขา (ได้แค่ฉบับย่อ ไม่มีทางโหลดไฟล์)")) : null,
     h("div", { class: "row" }, h("button", { class: "btn gold", onclick: async (e) => { const b = e.currentTarget; b.disabled = true; b.textContent = "กำลังบันทึก…";
-      try { const full = await render(kind, img, st, K.full, 0.9), small = show.checked ? await render(kind, img, st, K.show, 0.82) : null;
+      try { if (K.shared) { await vaultShow(kind, await render(kind, img, st, K.show, 0.86)); toast(`บันทึก${K.label}แล้ว เพื่อนที่ชนะครบ 5 เกมเลือกใช้ได้ในตั้งค่า`); api.close(); return; }
+        const full = await render(kind, img, st, K.full, 0.9), small = show.checked ? await render(kind, img, st, K.show, 0.82) : null;
         await vaultPut(kind, full, kind === "mat" ? { veil: st.veil } : {}); await vaultShow(kind, small, kind === "mat" ? { veil: st.veil } : {});
         try { localStorage.setItem(K.pick, K.pickV || "own"); } catch {} toast(`บันทึก${K.label}แล้ว ใช้ตั้งแต่เกมถัดไป`); api.close(); }
       catch (er) { console.warn(er); toast("บันทึกไม่สำเร็จ: " + (er.message || er), "bad"); b.disabled = false; b.textContent = "บันทึก"; } } }, "บันทึก"),
@@ -133,6 +136,14 @@ function rows() {
           has && shown ? h("button", { class: "btn sm", onclick: () => vaultShow(kind, null).then(() => toast("ซ่อนจากคู่แข่งแล้ว")).catch(() => toast("ทำไม่สำเร็จ", "bad")) }, "ซ่อนจากคู่แข่ง") : null,
           has ? h("button", { class: "btn sm danger", onclick: () => vaultDrop(kind).then(() => toast("ลบแล้ว")).catch(() => toast("ลบไม่สำเร็จ", "bad")) }, "ลบ") : null))));
   }
+  // the official Battle of Talingchan sleeve for every member (unlocked by playing, achieve.js): only the shared copy
+  { const has = botSleeveReady(), pick = filePick("image/*", async (f) => { try { editor("sleeveBot", await loadImage(f)); } catch { toast("เปิดรูปนี้ไม่ได้", "bad"); } });
+    const tc = h("canvas", { class: "vthumb sleeve", width: 66, height: Math.round(66 / SLEEVE_A) });
+    if (has) botSleeveBlob().then((b) => b && createImageBitmap(b)).then((bm) => { if (!bm) return; const g = tc.getContext("2d"); g.drawImage(bm, 0, 0, tc.width, tc.height); sleeveFrame(g, tc.width, tc.height); }).catch(() => {});
+    out.push(h("div", { class: "vitem" }, has ? tc : h("div", { class: "vthumb empty sleeve" }, "ยังไม่มีภาพ"),
+      h("div", { class: "stack", style: "gap:6px;min-width:0" }, h("b", null, "หลังการ์ด Battle of Talingchan (ให้ทุกคน)"), h("span", { class: "tiny muted" }, has ? "เพื่อนที่ได้รับอนุมัติปลดล็อคได้เมื่อชนะบอทหรือเพื่อน 5 เกม แล้วเลือกได้ในตั้งค่าหลังการ์ด" : "ยังไม่ได้ตั้ง ตั้งแล้วเพื่อนทุกคนปลดล็อคได้จากการเล่น"),
+        h("div", { class: "row wrap" }, pick, h("button", { class: "btn sm gold", onclick: () => pick.click() }, has ? "เปลี่ยนรูป" : "เลือกรูป"),
+          has ? h("button", { class: "btn sm danger", onclick: () => vaultShow("sleeveBot", null).then(() => toast("เอาหลังการ์ดทางการออกแล้ว")).catch(() => toast("ทำไม่สำเร็จ", "bad")) }, "เอาออก") : null)))); }
   // the figure: the full model for his own screen, and (optional) a lighter one for opponents
   const has = Vault.has("fig"), it = Vault.m && Vault.m.fig, shown = shownNow("fig"), fin = (it && it.finish) || "porcelain";
   const load = (show) => filePick(".glb,model/gltf-binary", async (f) => {

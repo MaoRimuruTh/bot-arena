@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261125101106";
-import { E } from "./engine.js?v=20261125101106";
-import { h } from "./util.js?v=20261125101106";
-import { Sfx } from "./sfx.js?v=20261125101106";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261125102334";
+import { E } from "./engine.js?v=20261125102334";
+import { h } from "./util.js?v=20261125102334";
+import { Sfx } from "./sfx.js?v=20261125102334";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -2379,7 +2379,7 @@ const sleeveFin = () => { if (R && R.preview && R.pv.fin != null) return R.pv.fi
 function sleeveMat(img) { const m = new THREE.MeshBasicMaterial({ map: sleeveTexture(img), color: 0xdedede, toneMapped: false }); m.userData.keep = true; m.userData.u = { uGloss: { value: sleeveFin() }, uCam: camUni() }; m.onBeforeCompile = SLEEVE_HOOK; return m; }
 // a player's card sleeve: their own picture (vault.js) once it has loaded, otherwise the Thai-pattern back
 function backFor(s, p) {
-  const P = s && s.P && s.P[p], o = P && P.sleeve === "ph" ? phSleeve() : P && P.sleeve === "own" && custom.sleeve ? custom.sleeve(P) : null;
+  const P = s && s.P && s.P[p], o = P && P.sleeve === "ph" ? phSleeve() : P && (P.sleeve === "own" || P.sleeve === "bot") && custom.sleeve ? custom.sleeve(P) : null; // "bot": the official Battle of Talingchan sleeve (vault.js)
   if (!o || !o.img) return backLook(lookOf(s, p)); // no picture of their own: the back that goes with their look
   if (!o.mat) o.mat = sleeveMat(o.img); // (lit by its own plastic highlight: SLEEVE_HOOK)
   o.mat.userData.u.uGloss.value = sleeveFin(); // (glossy or matt can change in Settings)
