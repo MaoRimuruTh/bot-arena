@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261125104653";
-import { E } from "./engine.js?v=20261125104653";
-import { h } from "./util.js?v=20261125104653";
-import { Sfx } from "./sfx.js?v=20261125104653";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261125114620";
+import { E } from "./engine.js?v=20261125114620";
+import { h } from "./util.js?v=20261125114620";
+import { Sfx } from "./sfx.js?v=20261125114620";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -2861,10 +2861,21 @@ async function millFx(s, ev, V) {
   }));
 }
 // without WebGL there is no table to throw a die on: the result still shows, as a note in the middle of the screen
-let flatLast = 0, flatView = null;
+let flatLast = 0, flatView = null, flatT = 0, flatCrit = "";
+// the flat (2D) table has no animations to hang its sounds on: each event plays the same sound as on the 3D table, and a
+// burst of events (a board wipe) is spread 120 ms apart instead of landing in one blare
+const flatSfx = (name, o) => { const now = performance.now(); flatT = Math.max(flatT, now); const wait = flatT - now; flatT += 120; if (wait > 2400) return; setTimeout(() => Sfx.play(name, o), wait); };
+function flatSound(s, e, V) {
+  const k = e.k;
+  if (k === "roll") flatSfx(e.sides === 2 ? "coin" : "dice"); else if (k === "heal") flatSfx("heal"); else if (k === "mill") flatSfx("fly"); else if (k === "clash") flatSfx("clash"); else if (k === "destroy") flatSfx("destroy");
+  else if (k === "cast") { const L = E.locate(s, e.i), d = L && s.cards[L.x.c]; flatSfx(e.st === "L" ? "land" : "cast", { color: d && d.co }); }
+  else if (k === "life") { flatSfx("life"); if (s.P[e.p] && E.critical(s.P[e.p]) && flatCrit !== e.p + ":" + s.turn) { flatCrit = e.p + ":" + s.turn; flatSfx("crit"); } }
+  else if (k === "turn") flatSfx("turn", { mine: e.p === V }); else if (k === "battle") flatSfx("battle"); else if (k === "over") flatSfx(e.w === V ? "win" : "lose");
+}
 function flatEvents(s, V, opts) {
   if (opts.reset || flatView !== V) { flatLast = s.evc || 0; flatView = V; return; }
   for (const e of (s.ev || []).filter((x) => x.id > flatLast)) {
+    flatSound(s, e, V);
     if (e.k === "roll") flatNote(`${e.sides === 2 ? "ทอยเหรียญ" : "ทอยลูกเต๋า"}${e.why ? " (" + e.why + ")" : ""}: ${e.sides === 2 ? (e.r === 1 ? "ออกหัว" : "ออกก้อย") : "ได้ " + (e.r2 != null ? `${e.r} และ ${e.r2}` : e.r)}`);
     else if (e.k === "heal") flatNote(`${e.p === V ? "LIFE เรา" : "LIFE " + ((s.P[e.p] || {}).name || "ฝ่ายตรงข้าม")} +1`);
     else if (e.k === "mill") flatNote(`${e.p === V ? "เรา" : (s.P[e.p] || {}).name || "ฝ่ายตรงข้าม"} ธรณีสูบ ${(e.ids || []).length} ใบ: ${(e.cs || []).map((c) => (s.cards[c] || {}).n).filter(Boolean).slice(0, 6).join(", ")}`);

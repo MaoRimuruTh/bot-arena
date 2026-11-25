@@ -1,7 +1,7 @@
 // Sound effects synthesized with Web Audio — no audio files to download or license.
 // Everything goes through one chain: effects bus (with a glue compressor and a small room) and the
 // music bus (which dips under big hits) meet in a limiter, so stacked sounds never clip.
-import { lsGet, lsSet } from "./util.js?v=20261125104653";
+import { lsGet, lsSet } from "./util.js?v=20261125114620";
 
 let ctx = null, master = null, out = null, duckG = null, noiseBuf = null, room = null; // master is the effects bus
 let pv = 1, gk = 1; // this sound's small random pitch (so repeats don't sound like a machine) and its level trim
@@ -34,7 +34,9 @@ function duck(depth = 0.55, hold = 0.18, rel = 0.7) {
   g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(depth, t + 0.03); g.setValueAtTime(depth, t + 0.03 + hold); g.linearRampToValueAtTime(1, t + 0.03 + hold + rel);
 }
 // browsers only allow sound after the player interacts
-addEventListener("pointerdown", () => { if (state.on && init() && ctx.state === "suspended") ctx.resume(); }, { passive: true });
+// (a finger's pointerdown does not count as a gesture yet: its pointerup and touchend do, so all of them try)
+const wake = () => { if (state.on && init() && ctx.state === "suspended") ctx.resume().catch(() => {}); };
+for (const ev of ["pointerdown", "pointerup", "touchend", "keydown"]) addEventListener(ev, wake, { passive: true });
 // a hidden tab makes no sound and spends no battery; it wakes when it is shown again
 document.addEventListener("visibilitychange", () => { if (!ctx) return; if (document.hidden) { if (ctx.state === "running") ctx.suspend(); } else if (ctx.state === "suspended") ctx.resume(); });
 // a soft tick for buttons anywhere in the app
@@ -89,14 +91,16 @@ const SOUNDS = {
   clash(t) { noise(t, 0.1, { vol: 0.5, from: 6000, to: 900, type: "highpass" }); tone(95, t, 0.35, { vol: 0.55, slide: 0.45 }); noise(t + 0.02, 0.3, { vol: 0.25, from: 800, to: 100 }); [1, 2.4, 3.9].forEach((r, k) => tone(1450 * r, t, 0.3 - k * 0.07, { type: "triangle", vol: 0.04 / (k + 1), slide: 0.92 })); },
   // breaking: shards scattering down in pitch, and a dull thud under them
   destroy(t) { noise(t, 0.45, { vol: 0.3, from: 3000, to: 120 }); tone(150, t, 0.35, { type: "sawtooth", vol: 0.08, slide: 0.3 }); for (let k = 0; k < 9; k++) noise(t + 0.02 + k * 0.03 + Math.random() * 0.02, 0.05, { vol: 0.09 - k * 0.006, from: 6500 - k * 450, to: 3000 - k * 200, type: "bandpass", q: 6 }); },
-  life(t) { tone(55, t, 0.9, { vol: 0.6, slide: 0.6 }); noise(t, 0.6, { vol: 0.3, from: 600, to: 60 }); tone(N(63), t + 0.05, 0.6, { type: "sawtooth", vol: 0.04, slide: 0.5 }); for (let k = 0; k < 5; k++) noise(t + 0.03 + k * 0.025, 0.04, { vol: 0.06, from: 7000 - k * 600, to: 4000, type: "bandpass", q: 5 }); },
+  // (each low thump also carries a mid "crack" and a click: a phone speaker plays nothing under ~300 Hz)
+  life(t) { tone(55, t, 0.9, { vol: 0.6, slide: 0.6 }); tone(N(69), t, 0.5, { type: "sawtooth", vol: 0.2, slide: 0.75 }); tone(N(64), t + 0.02, 0.55, { type: "triangle", vol: 0.32, slide: 0.75 }); noise(t, 0.4, { vol: 0.5, from: 900, to: 450, type: "bandpass", q: 1.4 }); noise(t, 0.6, { vol: 0.3, from: 600, to: 60 }); tone(N(63), t + 0.05, 0.6, { type: "sawtooth", vol: 0.04, slide: 0.5 }); for (let k = 0; k < 5; k++) noise(t + 0.03 + k * 0.025, 0.04, { vol: 0.06, from: 7000 - k * 600, to: 4000, type: "bandpass", q: 5 }); },
   // a new turn: a clear two-note chime, up for us and down for them
   turn(t, o = {}) { const [a, b] = o.mine ? [81, 88] : [74, 69]; fm(N(a), t, 1.2, { vol: 0.09, ratio: 2, index: 0.9 }); fm(N(b), t + 0.11, 1.4, { vol: 0.08, ratio: 2, index: 0.9 }); tone(N(b - 12), t + 0.11, 0.9, { vol: 0.04 }); },
   battle(t) { [[50, 57], [52, 59], [53, 60]].forEach(([x, y], k) => { tone(N(x), t + k * 0.1, 0.4, { type: "sawtooth", vol: 0.05 }); tone(N(y), t + k * 0.1, 0.4, { type: "sawtooth", vol: 0.04 }); }); tone(70, t + 0.2, 0.6, { vol: 0.35, slide: 0.5 }); noise(t, 0.35, { vol: 0.1, from: 200, to: 1600, type: "bandpass" }); },
   win(t) { [74, 78, 81, 86].forEach((m, k) => fm(N(m), t + k * 0.08, 1.4, { vol: 0.07, ratio: 3.5 })); noise(t, 1.2, { vol: 0.04, from: 6000, to: 10000, type: "highpass", attack: 0.4 }); },
   lose(t) { [69, 65, 62].forEach((m, k) => fm(N(m), t + k * 0.22, 1.2, { vol: 0.07, ratio: 1.41, index: 1.4 })); tone(N(38), t + 0.6, 1.5, { vol: 0.28 }); },
   // someone is one LIFE from losing: a deep gong and a heartbeat
-  crit(t) { tone(N(38), t, 2.6, { vol: 0.32, attack: 0.01 }); tone(N(38) * 2.01, t, 1.2, { vol: 0.07 }); tone(N(38) * 2.94, t, 0.6, { vol: 0.04 }); tone(55, t + 0.55, 0.25, { vol: 0.42, slide: 0.7 }); tone(52, t + 0.77, 0.3, { vol: 0.3, slide: 0.7 }); },
+  crit(t) { fm(N(62), t, 1.8, { vol: 0.18, ratio: 1.41, index: 1.6 }); fm(N(74), t, 1.2, { vol: 0.08, ratio: 1.41, index: 1.2 }); [0.55, 0.77].forEach((d, k) => { tone(360 - k * 40, t + d, 0.16, { type: "triangle", vol: 0.3, slide: 0.6 }); noise(t + d, 0.05, { vol: 0.25, from: 2500, to: 900, type: "bandpass", q: 1.5 }); });
+    tone(N(38), t, 2.6, { vol: 0.32, attack: 0.01 }); tone(N(38) * 2.01, t, 1.2, { vol: 0.07 }); tone(N(38) * 2.94, t, 0.6, { vol: 0.04 }); tone(55, t + 0.55, 0.25, { vol: 0.42, slide: 0.7 }); tone(52, t + 0.77, 0.3, { vol: 0.3, slide: 0.7 }); },
   draw(t) { noise(t, 0.12, { vol: 0.1, from: 2500, to: 6000, type: "bandpass", q: 2, attack: 0.04 }); },
   // a die rattling to a stop on the lacquer: knocks closer and closer together, each a little softer
   dice(t) { [0, 0.11, 0.2, 0.27, 0.32, 0.36].forEach((d, k) => { noise(t + d, 0.045, { vol: 0.26 - k * 0.03, from: 3400 - k * 180, to: 900, type: "bandpass", q: 3.2 }); tone(150 - k * 6, t + d, 0.07, { vol: 0.1 - k * 0.012, slide: 0.7 }); }); },

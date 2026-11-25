@@ -2,9 +2,9 @@
 // ensemble: seven equal steps to the octave with a five-note scale on top, a gong-circle skeleton
 // melody, ranat runs that land on it every beat, a bamboo flute, ching-chap cymbals and drums.
 // Nothing is sampled or downloaded, so there is nothing to license.
-import { lsGet, lsSet } from "./util.js?v=20261125104653";
-import { audio } from "./sfx.js?v=20261125104653";
-import { fantasy, FMOODS } from "./score.js?v=20261125104653";
+import { lsGet, lsSet } from "./util.js?v=20261125114620";
+import { audio } from "./sfx.js?v=20261125114620";
+import { fantasy, FMOODS } from "./score.js?v=20261125114620";
 
 const ROOT = 293.66; // the scale's home note
 const SCALES = [[0, 1, 2, 4, 5], [0, 1, 3, 4, 5], [0, 2, 3, 4, 6]]; // five of the seven steps
@@ -202,7 +202,9 @@ function begin() {
   clearInterval(timer); timer = setInterval(tick, 50);
 }
 // browsers only allow sound after the player interacts: the first tap anywhere starts the music
-addEventListener("pointerdown", () => { const a = ac(); if (!a) return; if (a.ctx.state === "suspended" && st.on) a.ctx.resume(); if (!unlocked) { unlocked = true; setTimeout(begin, 60); } }, { passive: true });
+// (a finger's pointerdown is not a gesture yet on phones: its pointerup / touchend are, so each of them tries)
+const wakeMusic = () => { const a = ac(); if (!a) return; if (a.ctx.state === "suspended" && st.on) a.ctx.resume().catch(() => {}); if (!unlocked) { unlocked = true; setTimeout(begin, 60); } };
+for (const ev of ["pointerdown", "pointerup", "touchend", "keydown"]) addEventListener(ev, wakeMusic, { passive: true });
 
 export const MUSIC_STYLES = { fantasy: "แฟนตาซี", piphat: "ปี่พาทย์" };
 export const Music = {
