@@ -1,7 +1,7 @@
 // Sound effects synthesized with Web Audio — no audio files to download or license.
 // Everything goes through one chain: effects bus (with a glue compressor and a small room) and the
 // music bus (which dips under big hits) meet in a limiter, so stacked sounds never clip.
-import { lsGet, lsSet } from "./util.js?v=20261125121400";
+import { lsGet, lsSet } from "./util.js?v=20261125121540";
 
 let ctx = null, master = null, out = null, duckG = null, noiseBuf = null, room = null; // master is the effects bus
 let pv = 1, gk = 1; // this sound's small random pitch (so repeats don't sound like a machine) and its level trim
@@ -115,6 +115,7 @@ const SOUNDS = {
 // level trims, measured offline (AUDIO.md): key moments near -19 LUFS momentary, small ones lower, the UI tick near -40
 const TRIM = { ui: 6, click: 4, fly: 3, draw: 3.5, destroy: 2.5, declare: 1.8, clink: 1.6, dice: 1.3, land: 0.6, crit: 0.7, battle: 0.6, lose: 0.7 };
 const DUCK = { summon: 0.6, clash: 0.5, life: 0.45, crit: 0.4, destroy: 0.65, win: 0.5, lose: 0.5, battle: 0.7 };
+const recent = new Map(); // name -> when its last copies started (ctx time)
 export const Sfx = {
   get on() { return state.on; },
   get vol() { return state.vol; },
@@ -122,7 +123,11 @@ export const Sfx = {
   setVolume(v) { state.vol = v; lsSet("bot.volume", v); if (master) master.gain.value = v; },
   play(name, o) {
     if (!state.on || !SOUNDS[name] || !init() || ctx.state !== "running") return;
-    pv = name === "ui" || name === "click" ? 1 : 1 + (Math.random() - 0.5) * 0.05; gk = TRIM[name] || 1;
+    // one sound fired many times at once (a mill, a wipe, a fast replay) stacks into a roar: a repeat within 50 ms is
+    // skipped, at most 3 copies in 0.35 s, and each later copy is quieter (1/√n)
+    const now = ctx.currentTime, r = (recent.get(name) || []).filter((t) => now - t < 0.35);
+    if (r.length && now - r[r.length - 1] < 0.05 || r.length >= 3) return; r.push(now); recent.set(name, r);
+    pv = name === "ui" || name === "click" ? 1 : 1 + (Math.random() - 0.5) * 0.05; gk = (TRIM[name] || 1) / Math.sqrt(r.length);
     try { SOUNDS[name](ctx.currentTime + 0.01, o || {}); if (DUCK[name]) duck(DUCK[name]); } catch (e) { /* audio is optional */ }
   },
 };
