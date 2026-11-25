@@ -1,7 +1,7 @@
 // Friends' ladder: a rating for everyone who has finished a friend game, worked out in the browser from the finished
 // games every approved member can read (each keeps a small result summary). Elo from 1000, oldest game first.
-import { finishedGames } from "./fb.js?v=20261125124627";
-import { h } from "./util.js?v=20261125124627";
+import { finishedGames } from "./fb.js?v=20261125124817";
+import { h } from "./util.js?v=20261125124817";
 
 const START = 1000, K = 24;
 // one finished game as { w, seats, names, at, id }, from its summary or, for games from before summaries, its final state
