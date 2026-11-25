@@ -1,11 +1,11 @@
-import { h, openSheet, fmtDate, busy } from "../util.js?v=20261125092734";
-import { Data, Me } from "../fb.js?v=20261125092734";
-import { Views, avatarEl } from "../ui.js?v=20261125092734";
-import { ladder, ladderNow, ladderFresh } from "../ladder.js?v=20261125092734";
-import { stars } from "../quests.js?v=20261125092734";
-import { weeklyStars } from "../weekly.js?v=20261125092734";
-import { hasReplay, openReplay, coachGame, shareReplay } from "./play.js?v=20261125092734";
-import { ACH, progress, rewardName } from "../achieve.js?v=20261125092734";
+import { h, openSheet, fmtDate, busy } from "../util.js?v=20261125101106";
+import { Data, Me } from "../fb.js?v=20261125101106";
+import { Views, avatarEl } from "../ui.js?v=20261125101106";
+import { ladder, ladderNow, ladderFresh, tierOf, TIERS, PLACEMENT } from "../ladder.js?v=20261125101106";
+import { stars } from "../quests.js?v=20261125101106";
+import { weeklyStars } from "../weekly.js?v=20261125101106";
+import { hasReplay, openReplay, coachGame, shareReplay } from "./play.js?v=20261125101106";
+import { ACH, progress, rewardName } from "../achieve.js?v=20261125101106";
 
 const MODE_TH = { bot: "บอท", friend: "เพื่อน", solo: "สองฝั่ง", goldfish: "ซ้อมมือเดียว" };
 const RULE_TH = { hand6: "มือเปิดอิ่ม", life4: "ศึกชีวิตสั้น", draw1: "สายน้ำไหลหลาก", cheap: "ตลาดนัดลดราคา" }; // weekly special rules (js/weekly.js)
@@ -60,15 +60,28 @@ function achPanel(all) { // the summary of the unlocks page (#unlocks): how many
   return h("a", { class: "panel stack achlink", href: "#unlocks" }, h("div", { class: "row", style: "justify-content:space-between" }, h("div", { class: "eyebrow" }, "ปลดล็อค"), h("span", { class: "chip gold" }, `${n}/${rows.length}`)),
     h("div", { class: "trk", "aria-hidden": "true" }, h("i", { style: `width:${Math.round((n / rows.length) * 100)}%` })), h("span", { class: "small" }, "ดูของที่ยังล็อค วิธีปลดล็อค และความคืบหน้า"));
 }
+// a rank tier as a small shield in its colour with its name (the name only as a tooltip when `bare`)
+export function tierBadge(t, big) { return h("span", { class: "tier" + (big ? " big" : ""), style: `--tc:${t.c}`, title: t.name }, h("i"), big ? null : h("span", { class: "tiern" }, t.name)); }
+// your own tier: the shield, the points and how far to the next tier (or how many games until you are placed)
+function myRank(p) {
+  const t = tierOf(p);
+  const line = !p ? `ดวลกับเพื่อนให้จบ ${PLACEMENT} เกมเพื่อจัดแรงก์` : t.k === "new" ? `เล่นอีก ${t.left} เกมเพื่อจัดแรงก์ (ตอนนี้ ${p.r} แต้ม)` : t.next ? `${p.r} แต้ม · อีก ${t.need} แต้มถึง${t.next.name}` : `${p.r} แต้ม · ขั้นสูงสุดแล้ว`;
+  return h("div", { class: "rankme", style: `--tc:${t.c}` }, tierBadge(t, true),
+    h("div", { class: "stack", style: "gap:4px;min-width:0" }, h("div", null, h("b", { class: "tiername" }, "แรงก์ของคุณ: " + t.name)), h("div", { class: "tiny muted" }, line),
+      h("div", { class: "rankbar", role: "progressbar", "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": Math.round(t.prog * 100) }, h("i", { style: `width:${Math.round(t.prog * 100)}%` })),
+      h("div", { class: "tiers" }, TIERS.map((x) => h("span", { class: "tier tierlite" + (x.k === t.k ? " on" : ""), style: `--tc:${x.c}`, title: `${x.name}${x.min > -Infinity ? ` ตั้งแต่ ${x.min} แต้ม` : ""}` }, h("i"), h("span", { class: "tiern" }, x.name))))));
+}
 // friends' ladder: everyone's finished friend games, rated; plus how you have done against each friend
 function ladderPanel() {
   const L = ladderNow(); const again = () => ladder().then(() => { if (/^#history/.test(location.hash)) Views.history.refresh(document.getElementById("view")); }).catch(() => {});
   if (!ladderFresh()) again(); // shows what it has meanwhile
   if (!L || !L.table.length) return null;
   const mine = L.table.filter((p) => p.uid !== Me.uid).map((p) => ({ p, v: L.vs(Me.uid, p.uid) })).filter((x) => x.v);
+  const me = L.table.find((p) => p.uid === Me.uid);
   return h("div", { class: "panel stack" }, h("div", { class: "row", style: "justify-content:space-between" }, h("div", { class: "eyebrow" }, "อันดับในกลุ่มเพื่อน"), h("span", { class: "chip" }, `${L.games} เกม`)),
+    myRank(me),
     h("ol", { class: "ladder" }, L.table.slice(0, 12).map((p, k) => h("li", { class: p.uid === Me.uid ? "you" : "" }, h("span", { class: "num rk" }, k + 1), avatarEl(L.avatars[p.uid], p.name, "sm"),
-      h("b", { class: "nm" }, p.name + (p.uid === Me.uid ? " (คุณ)" : "")), h("span", { class: "num pts", title: "แต้มอันดับ" }, p.r), h("span", { class: "tiny muted num" }, `ชนะ ${p.w} แพ้ ${p.l}${p.d ? ` เสมอ ${p.d}` : ""}`)))),
+      h("b", { class: "nm" }, p.name + (p.uid === Me.uid ? " (คุณ)" : "")), h("span", { class: "num pts", title: "แต้มอันดับ" }, tierBadge(tierOf(p)), " ", p.r), h("span", { class: "tiny muted num" }, `ชนะ ${p.w} แพ้ ${p.l}${p.d ? ` เสมอ ${p.d}` : ""}`)))),
     mine.length ? h("div", { class: "stack", style: "gap:4px" }, h("div", { class: "tiny muted" }, "คุณกับเพื่อนแต่ละคน"), mine.map(({ p, v }) => h("div", { class: "row small", style: "justify-content:space-between" }, h("span", null, p.name), h("span", { class: "num" }, `ชนะ ${v.w} · แพ้ ${v.l}${v.d ? ` · เสมอ ${v.d}` : ""}`)))) : null,
-    h("div", { class: "tiny muted" }, "คิดจากเกมดวลกับเพื่อนที่จบแล้วของทุกคน เริ่มที่ 1000 แต้ม ชนะคนที่แต้มสูงกว่าจะได้แต้มมากกว่า"));
+    h("div", { class: "tiny muted" }, `คิดจากเกมดวลกับเพื่อนที่จบแล้วของทุกคน เริ่มที่ 1000 แต้ม ชนะคนที่แต้มสูงกว่าจะได้แต้มมากกว่า · ${PLACEMENT} เกมแรกเป็นเกมจัดแรงก์`));
 }

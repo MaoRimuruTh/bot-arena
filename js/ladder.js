@@ -1,6 +1,6 @@
 // Friends' ladder: a rating for everyone who has finished a friend game, worked out in the browser from the finished
 // games every approved member can read (each keeps a small result summary). Elo from 1000, oldest game first.
-import { finishedGames } from "./fb.js?v=20261125092734";
+import { finishedGames } from "./fb.js?v=20261125101106";
 
 const START = 1000, K = 24;
 // one finished game as { w, seats, names, at, id }, from its summary or, for games from before summaries, its final state
@@ -24,6 +24,16 @@ export function rank(games) {
   }
   const table = Object.values(P).sort((x, y) => y.r - x.r || y.w - x.w).map((p) => ({ ...p, r: Math.round(p.r) }));
   return { table, games: list.length, list, vs: (me, them) => vs[me + ">" + them] || null, newest };
+}
+// rank tiers over the ladder's points: the first 5 rated games place a player, then the points say the tier
+// (each tier 75 points wide from 950; ราชันย์ from 1250 has no ceiling)
+export const PLACEMENT = 5;
+export const TIERS = [{ k: "bronze", name: "สัมฤทธิ์", min: -Infinity, c: "#c88a52" }, { k: "silver", name: "เงิน", min: 950, c: "#c3ccd6" }, { k: "gold", name: "ทอง", min: 1025, c: "#e8bb48" },
+  { k: "plat", name: "แพลทินัม", min: 1100, c: "#70d6c8" }, { k: "diamond", name: "เพชร", min: 1175, c: "#8eb0ff" }, { k: "master", name: "ราชันย์", min: 1250, c: "#d985ff" }];
+export function tierOf(p) {
+  if (!p || p.n < PLACEMENT) return { k: "new", name: "รอจัดแรงก์", c: "#9a8f7c", left: PLACEMENT - (p ? p.n : 0), prog: (p ? p.n : 0) / PLACEMENT, next: null, need: 0 };
+  let i = TIERS.length - 1; while (i > 0 && p.r < TIERS[i].min) i--; const t = TIERS[i], nx = TIERS[i + 1] || null, lo = i ? t.min : 875;
+  return { ...t, i, next: nx, need: nx ? nx.min - p.r : 0, prog: nx ? Math.max(0, Math.min(1, (p.r - lo) / (nx.min - lo))) : 1 };
 }
 // cached for a minute, so moving between pages does not read every finished game again
 let cache = null, at = 0, pending = null;

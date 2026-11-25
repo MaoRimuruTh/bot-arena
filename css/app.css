@@ -681,7 +681,20 @@ table.t th{white-space:nowrap}
 .ladder li.you{background:rgba(201,154,46,.12);outline:1px solid rgba(201,154,46,.35)}
 .ladder .rk{color:var(--muted,#b9a98f);text-align:right}
 .ladder .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ladder .pts{font-weight:700}
+.ladder .pts{font-weight:700;display:inline-flex;align-items:center;gap:2px}
+/* rank tiers (ladder.js): a small shield in the tier's colour */
+.tier{display:inline-flex;align-items:center;gap:5px;color:var(--tc);font-weight:700;white-space:nowrap}
+.tier i{flex:none;width:12px;height:14px;background:linear-gradient(160deg,rgba(255,255,255,.75) 0,var(--tc) 42%,rgba(0,0,0,.45) 100%);clip-path:polygon(50% 0,100% 18%,100% 62%,50% 100%,0 62%,0 18%)}
+.tier.big i{width:34px;height:40px}
+.ladder .pts .tiern{display:none}
+.rankme{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);outline:1px solid color-mix(in srgb,var(--tc) 35%,transparent)}
+.rankme .tiername{color:var(--tc)}
+.rankbar{height:6px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
+.rankbar>i{display:block;height:100%;border-radius:inherit;background:var(--tc)}
+.tiers{display:flex;flex-wrap:wrap;gap:4px 10px}
+.tier.tierlite{font-size:.7rem;font-weight:600;opacity:.45}
+.tier.tierlite i{width:9px;height:11px}
+.tier.tierlite.on{opacity:1}
 /* daily quests on the set-up page */
 .quests .qrow{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid var(--line)}
 .quests .qrow .grow{min-width:0}
