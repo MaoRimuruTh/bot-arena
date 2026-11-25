@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261125125553";
-import { E } from "./engine.js?v=20261125125553";
-import { h } from "./util.js?v=20261125125553";
-import { Sfx } from "./sfx.js?v=20261125125553";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261125125940";
+import { E } from "./engine.js?v=20261125125940";
+import { h } from "./util.js?v=20261125125940";
+import { Sfx } from "./sfx.js?v=20261125125940";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -2520,7 +2520,7 @@ function sync(s, V, drops, burned, instant) {
     m.want = { pos: L.pos, rotY: (L.side === "opp" && !R.oppUp ? Math.PI : 0) + (L.x.a === false && (L.zone === "av" || (L.zone === "mg" && L.x.on == null)) ? -Math.PI / 2 : 0), scale: L.scale };
     if (fresh) {
       const co = E.def(s, L.x).co, cHex = co ? colorHex(co) : L.side === "me" ? 0xffc35a : 0xff4a52;
-      if (reduce || instant) settle(m, 0.05 * k++); else if (drops.has(i)) summonIn(m, L, co, cHex); else placeIn(m, L);
+      if (reduce || instant) settle(m, 0.05 * k++); else if (drops.has(i)) summonIn(m, L, co, cHex, bigSummon(s, L.x)); else placeIn(m, L);
     } else if (!m.busy) { if (was != null && L.x.a !== false && Math.abs(was - m.want.rotY) > 1 && !reduce && !instant) wake(m, hold + 0.08 * nw++); else home(m, 0.4, hold); }
     label(s, m, L.x, instant);
   }
@@ -2581,25 +2581,31 @@ function castFly(s, ev, d, to) {
     .to(u.uBurn, { value: 1, duration: 0.6, ease: "power1.in" }, 0.42).to(g.position, { y: 2.2, duration: 0.6, ease: "power1.in" }, 0.42));
 }
 // summoned: the card rises from its owner's hand, turns over above its slot as a summoning circle opens beneath, then slams down
-function summonIn(m, L, co, cHex) {
+// an ace arrives as an event: Cost 6 and up, or a rare print (SR and above)
+const bigSummon = (s, x) => { const d = E.def(s, x), c = d.im != null ? card(d.im) : null; return (d.c || 0) >= 6 || !!(c && FOIL[c.r] >= 0.3); };
+function summonIn(m, L, co, cHex, big) {
   const mine = L.side === "me", P = L.pos, s = L.scale, g = m.grp, hy = mine ? 3 : 2.1, hz = P.z + (mine ? 1.5 : 1.9); // the hover point stays in view from either seat
   const h0 = mine && handStart(m.i); if (h0) g.position.copy(h0); else g.position.set(P.x * 0.45, 1.4, mine ? 6.6 : -7.8); g.rotation.set(Math.PI / 2 - 0.3, 0, Math.PI); g.scale.setScalar(s * 0.8); // from the spot in the hand it was played from
   m.busy = true; m.shOp = 0; m.glow.material.opacity = 0;
   const azure = R.sig[L.p] === "azure", aHex = azure ? 0x0a4ad8 : cHex, ring = sigil(P, aHex, s, R.sig[L.p]); Sfx.play("rise"); trail(m, aHex, 0.95);
+  const H = big ? 0.55 : 0, k = big ? 1.55 : 1.3; // big: it holds face up, larger, before it comes down
+  if (big) Sfx.play("battle");
   gsap.timeline({ onComplete: () => done(m) })
     .to(g.position, { x: P.x, z: hz, duration: 0.5, ease: "power2.out" }, 0).to(g.position, { y: hy + 0.5, duration: 0.3, ease: "sine.out" }, 0).to(g.position, { y: hy, duration: 0.2, ease: "sine.inOut" }, 0.3) /* an arc, not a straight line */
     .to(g.rotation, { x: Math.PI / 2 - 0.12, z: 0, duration: 0.55, ease: "power2.inOut" }, 0.02)
-    .to(g.scale, { x: s * 1.3, y: s * 1.3, z: s * 1.3, duration: 0.5, ease: "power2.out" }, 0)
+    .to(g.scale, { x: s * k, y: s * k, z: s * k, duration: 0.5, ease: "power2.out" }, 0)
     .add(() => R && sweep(m, 0.55, 0.55), 0.34) // a soft sheen: at 1.2 the band washed the art out on the one frame the player looks at it
     .to(m, { shOp: 0.6, duration: 0.5 }, 0.3)
-    .to(g.position, { y: hy + 0.14, duration: 0.24, ease: "sine.inOut" }, 0.5)
-    .to(g.position, { x: P.x, y: P.y, z: P.z, duration: 0.22, ease: "power4.in" }, 0.76)
-    .to(g.rotation, { x: 0, y: m.want.rotY, duration: 0.22, ease: "power3.in" }, 0.76)
-    .to(g.scale, { x: s, y: s, z: s, duration: 0.22, ease: "power3.in" }, 0.76) // (VP2) it keeps its shape as it falls: no rubber stretch and squash
+    .to(g.position, { y: hy + 0.14, duration: 0.24 + H, ease: "sine.inOut" }, 0.5)
+    .add(() => { if (R && big) sweep(m, 0.5, 0.6); }, 0.6)
+    .to(g.position, { x: P.x, y: P.y, z: P.z, duration: 0.22, ease: "power4.in" }, 0.76 + H)
+    .to(g.rotation, { x: 0, y: m.want.rotY, duration: 0.22, ease: "power3.in" }, 0.76 + H)
+    .to(g.scale, { x: s, y: s, z: s, duration: 0.22, ease: "power3.in" }, 0.76 + H) // (VP2) it keeps its shape as it falls: no rubber stretch and squash
     .add(() => { if (R && azure) azureFx(P, s); }, 0.06)
-    .add(() => { if (!R) return; landFx(P, s, co, aHex); ringOut(ring, s); Sfx.play("summon", { color: co }); m.glow.material.opacity = 1; }, 0.98)
-    .to(g.position, { y: P.y + 0.035, duration: 0.07, ease: "power2.out" }, 0.98) // the weight of the slam: one small settle, not a rubber bounce
-    .to(g.position, { y: P.y, duration: 0.2, ease: "power2.inOut" }, 1.05);
+    .add(() => { if (!R) return; landFx(P, s, co, aHex); ringOut(ring, s); Sfx.play("summon", { color: co }); m.glow.material.opacity = 1;
+      if (big) { landFx(P, s * 1.6, co, aHex); shake(0.35, 0.45); } }, 0.98 + H) // an ace lands twice as wide and the table shakes
+    .to(g.position, { y: P.y + 0.035, duration: 0.07, ease: "power2.out" }, 0.98 + H) // the weight of the slam: one small settle, not a rubber bounce
+    .to(g.position, { y: P.y, duration: 0.2, ease: "power2.inOut" }, 1.05 + H);
 }
 // cards that arrive any other way (Magic, Constructs, Land, tokens) are laid down from the owner's side
 function placeIn(m, L) {
@@ -2955,7 +2961,7 @@ function update(s, V, opts = {}) {
     for (const e of evs) if (e.k !== "summon") { try { await animateEvent(e, null, s, V); } catch (err) { console.warn(err); } }
     try { sync(s, V, drops, burned, !!opts.reset); } catch (err) { console.warn(err); } // a drawing problem must never stall the queue the bot waits on
     try { syncSide(s, V); } catch (err) { console.warn(err); }
-    if (drops.size) await sleepMs(reduce ? 200 : 1150); else if (burned.size) await sleepMs(reduce ? 100 : 600);
+    if (drops.size) await sleepMs(reduce ? 200 : [...drops].some((i) => { const L = E.locate(s, i); return L && bigSummon(s, L.x); }) ? 1700 : 1150); else if (burned.size) await sleepMs(reduce ? 100 : 600);
   }).catch((err) => console.warn(err));
   return R.queue;
 }
