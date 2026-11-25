@@ -1,7 +1,7 @@
 // The site in English or Japanese: the pages are written in Thai, and a watcher swaps each piece of Thai text it knows
 // (whole text nodes, and placeholder / title / aria-label) for the chosen language as it appears. Anything not in the
 // lists below stays Thai, and the official card data (names, abilities) always does. Chosen per browser in Settings.
-import { isOwnerNow } from "./persona.js?v=20261125122902";
+import { isOwnerNow } from "./persona.js?v=20261125123422";
 
 export const LANGS = [["th", "ไทย"], ["en", "English"], ["ja", "日本語"]];
 export const lang = () => { try { const v = localStorage.getItem("bot.lang"); return v === "en" || v === "ja" ? v : "th"; } catch { return "th"; } };
@@ -163,6 +163,7 @@ const WORDS = [
   ["แตะปุ่ม ⤢ ที่มุมการ์ด หรือกดค้างที่การ์ด เพื่อดูรายละเอียดเต็ม", "Tap ⤢ on a card's corner, or press and hold the card, to see it in full", "カードの角の ⤢ をタップするか長押しすると詳細を表示"],
   ["เมนู ☰ มี นรกคู่แข่ง เปิดดูการ์ดที่ลงนรกของบอท", "The ☰ menu has Foe hell: the cards in the bot's hell", "☰ メニューの「相手地獄」でボットの地獄のカードを見られます"],
   ["ปุ่ม นรกคู่แข่ง เปิดดูการ์ดที่ลงนรกของบอท", "The Foe hell button shows the cards in the bot's hell", "「相手地獄」ボタンでボットの地獄のカードを見られます"],
+  ["เปลี่ยน", "Swap", "交換"], ["เริ่มเร็ว: ข้ามการเสี่ยงทาย สุ่มว่าใครเริ่มก่อน", "Quick start: skip the toss, pick who starts at random", "クイックスタート：先攻決めを省いてランダムに決める"],
 ];
 // texts with a number or a name in them: [pattern, English, Japanese] (a function gets the match and tr for the names)
 const PATTERNS = [
@@ -171,7 +172,8 @@ const PATTERNS = [
   [/^ชนะด้วยเด็คนี้ ปลดล็อค (.+)$/, (m) => `Win with this deck to unlock ${m[1]}`, (m) => `このデッキで勝つと ${m[1]} を解放`],
   [/^★ (\d+) ดาว$/, (m) => `★ ${m[1]} stars`, (m) => `★ ${m[1]}`], [/^เอซ: (.+)$/, (m) => `Ace: ${m[1]}`, (m) => `エース：${m[1]}`],
   [/^(.+) · เอซ: (.+)$/, (m) => `${m[1]} · Ace: ${m[2]}`, (m) => `${m[1]} · エース：${m[2]}`], [/^พบ (.+) · บอท$/, (m) => `vs ${m[1]} · Bot`, (m) => `相手：${m[1]} · ボット`],
-  [/^อีก (\d+) ดาว ได้(.+) · ภารกิจใหม่ทุกเที่ยงคืน ทุกคนได้ภารกิจเดียวกัน$/, (m) => `${m[1]} more stars for ${m[2]} · new quests every midnight, the same for everyone`, (m) => `あと ${m[1]} 個で「${m[2]}」 · 毎日 0 時に全員共通の新ミッション`],
+  [/^อีก (\d+) ดาว ได้(.+) · ภารกิจใหม่ทุกเที่ยงคืน ทุกคนได้ภารกิจเดียวกัน( · เปลี่ยนได้วันละ 1 ภารกิจ)?$/, (m) => `${m[1]} more stars for ${m[2]} · new quests every midnight, the same for everyone${m[3] ? " · one swap a day" : ""}`, (m) => `あと ${m[1]} 個で「${m[2]}」 · 毎日 0 時に全員共通の新ミッション${m[3] ? " · 1 日 1 回交換可" : ""}`],
+  [/^ภารกิจใหม่ทุกเที่ยงคืน ทุกคนได้ภารกิจเดียวกัน( · เปลี่ยนได้วันละ 1 ภารกิจ)?$/, (m) => `New quests every midnight, the same for everyone${m[1] ? " · one swap a day" : ""}`, (m) => `毎日 0 時に全員共通の新ミッション${m[1] ? " · 1 日 1 回交換可" : ""}`],
   [/^LIFE เหลือ (\d+) จาก (\d+) · ดู LIFE ที่หงายแล้ว$/, (m) => `${m[1]} of ${m[2]} LIFE left · see face-up LIFE`, (m) => `ライフ残り ${m[1]}/${m[2]} · 表向きのライフを見る`],
   [/^มือ (\d+) ใบ$/, (m) => `${m[1]} cards in hand`, (m) => `手札 ${m[1]} 枚`], [/^(\d+) เกม$/, (m) => `${m[1]} games`, (m) => `${m[1]} 戦`],
   [/^ชนะ (\d+) แพ้ (\d+)(?: เสมอ (\d+))?$/, (m) => `W ${m[1]} L ${m[2]}${m[3] ? ` D ${m[3]}` : ""}`, (m) => `${m[1]}勝 ${m[2]}敗${m[3] ? ` ${m[3]}分` : ""}`],
