@@ -1,12 +1,12 @@
 // Settings for the owner's own things (vault.js): a picture for his half of the mat, a picture for his card sleeves and a
 // 3D figure. A picture is framed here (drag to move it, slide to zoom) and saved twice: in full for his own screen, and
 // smaller for opponents if he lets them see it. Shown only to the owner account.
-import { h, toast, openSheet } from "./util.js?v=20261125103239";
-import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, shownBlob, isOwner, vaultBlob, ShownArt, artShow, botSleeveReady, botSleeveBlob } from "./vault.js?v=20261125103239";
-import { matLines, sleeveFrame, veilPaint, MAT_ASPECT, FIG_FINISH, FIG_MOVES, figureViewer } from "./arena3d.js?v=20261125103239";
-import { pvFocus, pvHover, pvUnhover } from "./preview.js?v=20261125103239";
-import { setMeta, Data } from "./fb.js?v=20261125103239";
-import { CARDS, OwnArt, baseId } from "./cards.js?v=20261125103239";
+import { h, toast, openSheet } from "./util.js?v=20261125104019";
+import { Vault, onVault, vaultPut, vaultDrop, vaultMeta, vaultShow, shownNow, shownBlob, isOwner, vaultBlob, ShownArt, artShow, botSleeveReady, botSleeveBlob } from "./vault.js?v=20261125104019";
+import { matLines, sleeveFrame, veilPaint, MAT_ASPECT, FIG_FINISH, FIG_MOVES, figureViewer } from "./arena3d.js?v=20261125104019";
+import { pvFocus, pvHover, pvUnhover } from "./preview.js?v=20261125104019";
+import { setMeta, Data } from "./fb.js?v=20261125104019";
+import { CARDS, OwnArt, baseId } from "./cards.js?v=20261125104019";
 
 const MAT_A = MAT_ASPECT, SLEEVE_A = 1.5 / 2.04, STAND_A = 0.7; // a player's playmat on their side of the table (arena3d.js); a card
 const KIND = {
