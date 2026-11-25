@@ -356,6 +356,8 @@ body.arena-on main{padding:0;max-width:none}
 .prompt .opts .btn{justify-content:flex-start;white-space:normal;height:auto;min-height:36px;padding:6px 12px;text-align:left}
 .setup{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px}
 @media (max-width:860px){.setup{grid-template-columns:minmax(0,1fr)}}
+.welcome{display:flex;align-items:center;justify-content:space-between;gap:12px 18px;flex-wrap:wrap;padding:14px 18px;margin-bottom:16px;border-color:rgba(216,168,74,.45)}
+.welcome b{font:700 1.05rem var(--f-display)}
 /* the deck shelf: each deck a dark box with a gold edge and its ace card behind the front window; the picked box stands forward */
 .shelf{display:flex;flex-direction:column;gap:8px;margin:-6px 0 14px;min-width:0}
 .shelfgrp{display:flex;flex-direction:column;gap:2px;min-width:0}

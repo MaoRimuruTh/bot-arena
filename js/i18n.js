@@ -1,7 +1,7 @@
 // The site in English or Japanese: the pages are written in Thai, and a watcher swaps each piece of Thai text it knows
 // (whole text nodes, and placeholder / title / aria-label) for the chosen language as it appears. Anything not in the
 // lists below stays Thai, and the official card data (names, abilities) always does. Chosen per browser in Settings.
-import { isOwnerNow } from "./persona.js?v=20261125121540";
+import { isOwnerNow } from "./persona.js?v=20261125122734";
 
 export const LANGS = [["th", "ไทย"], ["en", "English"], ["ja", "日本語"]];
 export const lang = () => { try { const v = localStorage.getItem("bot.lang"); return v === "en" || v === "ja" ? v : "th"; } catch { return "th"; } };
@@ -152,6 +152,17 @@ const WORDS = [
   ["โมเดลจัดเด็ค/อ่านการ์ด", "Model for deck building / card reading", "デッキ構築・カード読み取りのモデル"], ["ยังไม่มีภาพ", "No picture yet", "画像なし"], ["เลือกรูป", "Choose picture", "画像を選ぶ"], ["เปลี่ยนรูป", "Change picture", "画像を変更"],
   ["ดูบนโต๊ะ", "See on the table", "盤面で見る"], ["สนามดวล 3 มิติ", "3D arena", "3D 対戦盤"], ["ดูบนโต๊ะเต็มจอ", "See the table full screen", "盤面を全画面で見る"], ["มุมที่ดู", "Viewpoint", "視点"],
   ["กำลังตรวจสิทธิ์…", "Checking access…", "権限を確認中…"], ["กำลังโหลด…", "Loading…", "読み込み中…"], ["เข้าสู่ระบบด้วย Google", "Sign in with Google", "Google でログイン"], ["ลองใหม่", "Try again", "再試行"],
+  // first run and the tutorial
+  ["ข้าม", "Skip", "スキップ"], ["เพิ่งเริ่มเล่น Battle of Talingchan? บทสอนเล่นพาเล่นจริงหนึ่งเกมกับบอทมือใหม่ ใช้เวลาราว 5 นาที", "New to Battle of Talingchan? The tutorial walks you through one real game against the beginner bot. It takes about 5 minutes.", "Battle of Talingchan は初めて？ チュートリアルでは初心者ボットと実際に 1 ゲーム遊びます。約 5 分です。"],
+  ["Draw → Main → Battle → End ดูเฟสปัจจุบันได้ที่แถบล่าง", "Draw → Main → Battle → End. The current phase is shown in the bottom bar", "Draw → Main → Battle → End。現在のフェイズは下のバーに表示"],
+  ["Draw → Main → Battle → End ดูเฟสปัจจุบันได้ที่แถบด้านขวา", "Draw → Main → Battle → End. The current phase is shown in the right panel", "Draw → Main → Battle → End。現在のフェイズは右のパネルに表示"],
+  ["ลงการ์ดใน Main Phase เสร็จแล้ว กด ไป Battle ที่แถบล่าง", "When you are done in the Main Phase, tap Go to Battle in the bottom bar", "メインフェイズが終わったら下のバーの「バトルへ」をタップ"],
+  ["ลงการ์ดใน Main Phase เสร็จแล้ว กด ไป Battle Phase", "When you are done in the Main Phase, press Go to Battle Phase", "メインフェイズが終わったら「バトルフェイズへ」を押す"],
+  ["เมนู ☰ มี ชิเอลแนะนำ บอกท่าที่น่าเล่นในตานี้", "The ☰ menu has Ciel's hint: a good move for this turn", "☰ メニューの「シエルのヒント」でこのターンのおすすめが分かります"],
+  ["ปุ่ม แนะนำ ให้ชิเอลบอกท่าที่น่าเล่นในตานี้", "The Hint button asks Ciel for a good move this turn", "「ヒント」ボタンでシエルがこのターンのおすすめを教えます"],
+  ["แตะปุ่ม ⤢ ที่มุมการ์ด หรือกดค้างที่การ์ด เพื่อดูรายละเอียดเต็ม", "Tap ⤢ on a card's corner, or press and hold the card, to see it in full", "カードの角の ⤢ をタップするか長押しすると詳細を表示"],
+  ["เมนู ☰ มี นรกคู่แข่ง เปิดดูการ์ดที่ลงนรกของบอท", "The ☰ menu has Foe hell: the cards in the bot's hell", "☰ メニューの「相手地獄」でボットの地獄のカードを見られます"],
+  ["ปุ่ม นรกคู่แข่ง เปิดดูการ์ดที่ลงนรกของบอท", "The Foe hell button shows the cards in the bot's hell", "「相手地獄」ボタンでボットの地獄のカードを見られます"],
 ];
 // texts with a number or a name in them: [pattern, English, Japanese] (a function gets the match and tr for the names)
 const PATTERNS = [
