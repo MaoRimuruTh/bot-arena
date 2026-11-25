@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261125121113";
-import { E } from "./engine.js?v=20261125121113";
-import { h } from "./util.js?v=20261125121113";
-import { Sfx } from "./sfx.js?v=20261125121113";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261125121400";
+import { E } from "./engine.js?v=20261125121400";
+import { h } from "./util.js?v=20261125121400";
+import { Sfx } from "./sfx.js?v=20261125121400";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -207,7 +207,11 @@ function mount(container, opts = {}) {
   canvas.addEventListener("pointermove", (e) => { if (!down) return; if (!down.moved && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 14) down.moved = true; if (down.moved && R.onDrag) R.onDrag("move", down.p, e); });
   canvas.addEventListener("pointerup", (e) => { const d = down; down = null; if (!d || !d.moved) return; R.noClick = performance.now(); if (R.onDrag) R.onDrag("drop", d.p, e, pick(e)); });
   canvas.addEventListener("pointercancel", () => { down = null; if (R.onDrag) R.onDrag("cancel"); });
-  canvas.addEventListener("click", (e) => { if (R.noClick && performance.now() - R.noClick < 600) { R.noClick = 0; return; } const p = pick(e); if (R.onClick) R.onClick(p); }); // null: the empty table (closes what is open)
+  canvas.addEventListener("click", (e) => { if (R.noClick && performance.now() - R.noClick < 600) { R.noClick = 0; return; } const p = pick(e);
+    if (p == null) { const f = figAt(); if (f != null) return pokeFigure(f); } // a figure is a toy to touch while waiting, not a place on the table
+    if (R.onClick) R.onClick(p); }); // null: the empty table (closes what is open)
+  // which figure the last pick's ray passes through: its box only (a full figure can be 250k triangles)
+  const fbox = new THREE.Box3(); const figAt = () => { for (const p of [0, 1]) { const a = R.avatars && R.avatars[p]; if (a && a.grp && !a.loading && ray.ray.intersectsBox(fbox.setFromObject(a.grp))) return p; } return null; };
   }
   const clock = new THREE.Clock();
   // "ประหยัดเครื่อง" in Settings: the table is drawn 30 times a second instead of 60 (half the work for the phone's GPU)
@@ -373,6 +377,18 @@ function avatarDo(p, what) {
   if (what === "hit") gsap.timeline().to(s.scale, { x: 1.16, y: 0.8, z: 1.16, duration: 0.07 }).to(s.scale, { x: 0.95, y: 1.08, z: 0.95, duration: 0.14 }).to(s.scale, { x: 1, y: 1, z: 1, duration: 0.22 }).fromTo(s.rotation, { x: -0.3 }, { x: 0, duration: 0.5, ease: "elastic.out(1, 0.35)" }, 0);
   if (what === "win") gsap.timeline().to(s.position, { y: 0.32, duration: 0.18, ease: "power2.out" }).to(s.position, { y: 0, duration: 0.18, ease: "power2.in" }).to(s.position, { y: 0.2, duration: 0.16, ease: "power2.out" }).to(s.position, { y: 0, duration: 0.16, ease: "power2.in" }).to(s.rotation, { y: Math.PI * 2, duration: 0.5, ease: "power2.inOut" }, 0).set(s.rotation, { y: 0 });
   if (what === "lose") gsap.timeline().to(s.scale, { y: 0.88, x: 1.04, z: 1.04, duration: 0.6, ease: "power2.out" }).to(s.rotation, { x: 0.22, duration: 0.6, ease: "power2.out" }, 0);
+}
+// touched: your own figure plays one of its moves (an emote's move without the bubble, so nothing is said) or hops;
+// the opponent's rocks on its feet, as a statue does when it is hit, but with no red flush (nothing was hit)
+function pokeFigure(p) {
+  const a = R.avatars && R.avatars[p]; if (!a || a.loading || a.mood || (a.poked && performance.now() - a.poked < 700)) return; a.poked = performance.now();
+  Sfx.play("ui"); if (reduce) return;
+  const emos = Object.keys(a.acts).filter((w) => w.startsWith("emo_")), s = a.spin;
+  if (a.mine && emos.length && !a.mood) { const act = a.acts[emos[Math.floor(Math.random() * emos.length)]];
+    for (const w of onceActs(a.acts)) if (a.acts[w] !== act && a.acts[w].isScheduled()) a.acts[w].fadeOut(0.15);
+    if (a.acts.idle) a.acts.idle.fadeOut(0.15); act.reset().setEffectiveWeight(1).fadeIn(0.15).play(); return; }
+  if (a.mine) return avatarDo(p, "hop");
+  gsap.killTweensOf(s.rotation); gsap.timeline().to(s.rotation, { z: 0.1, duration: 0.06 }).to(s.rotation, { z: -0.07, duration: 0.09 }).to(s.rotation, { z: 0, duration: 0.5, ease: "elastic.out(1, 0.3)" });
 }
 // a red flush over the whole figure when it is hit
 function flashAvatar(a) {
