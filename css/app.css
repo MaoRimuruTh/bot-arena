@@ -1318,3 +1318,5 @@ kbd{font:600 .8rem/1.6 var(--f-mono,ui-monospace,monospace);padding:2px 8px;bord
 .gstep.xcx .gcard::after{content:"✕";position:absolute;inset:0;display:grid;place-items:center;font:900 2.2rem var(--f-display);color:#ff6b6b;text-shadow:0 2px 6px #000;pointer-events:none}
 .gcard{position:relative}
 .xcnote{color:#efe6d6;line-height:1.45}
+/* Japanese (i18n.js): Noto Sans JP after the Thai faces, for the kana and kanji they do not have */
+html.lang-ja{--f-display:"Chakra Petch","Noto Sans JP","IBM Plex Sans Thai",system-ui,sans-serif;--f-body:"Noto Sans JP","IBM Plex Sans Thai",system-ui,sans-serif;--f-mono:"Chakra Petch","Noto Sans JP",system-ui,sans-serif}

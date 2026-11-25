@@ -1,26 +1,28 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261125102334";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261125102334";
-import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn, foilSetting } from "./arena3d.js?v=20261125102334";
-import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261125102334";
-import { Vault, startVault, botSleeveReady } from "./vault.js?v=20261125102334";
-import { tablePreview, pvHover, pvUnhover, pvPick, pvClose } from "./preview.js?v=20261125102334";
-import { vaultSection } from "./vaultui.js?v=20261125102334";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261125102334";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261125102334";
-import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261125102334";
-import { Sfx } from "./sfx.js?v=20261125102334";
-import { Music, MUSIC_STYLES } from "./music.js?v=20261125102334";
-import { Views, avatarEl } from "./ui.js?v=20261125102334";
-import { Ciel } from "./ai.js?v=20261125102334";
-import "./views/library.js?v=20261125102334";
-import "./views/decks.js?v=20261125102334";
-import "./views/lab.js?v=20261125102334";
-import "./views/rules.js?v=20261125102334";
-import "./views/unlocks.js?v=20261125102334";
-import "./views/history.js?v=20261125102334";
-import { openReport } from "./views/ask.js?v=20261125102334";
-import "./views/play.js?v=20261125102334";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261125103239";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261125103239";
+import { LANGS, lang, setLang, startI18n } from "./i18n.js?v=20261125103239";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn, foilSetting } from "./arena3d.js?v=20261125103239";
+import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261125103239";
+import { Vault, startVault, botSleeveReady } from "./vault.js?v=20261125103239";
+import { tablePreview, pvHover, pvUnhover, pvPick, pvClose } from "./preview.js?v=20261125103239";
+import { vaultSection } from "./vaultui.js?v=20261125103239";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261125103239";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261125103239";
+import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261125103239";
+import { Sfx } from "./sfx.js?v=20261125103239";
+import { Music, MUSIC_STYLES } from "./music.js?v=20261125103239";
+import { Views, avatarEl } from "./ui.js?v=20261125103239";
+import { Ciel } from "./ai.js?v=20261125103239";
+import "./views/library.js?v=20261125103239";
+import "./views/decks.js?v=20261125103239";
+import "./views/lab.js?v=20261125103239";
+import "./views/rules.js?v=20261125103239";
+import "./views/unlocks.js?v=20261125103239";
+import "./views/history.js?v=20261125103239";
+import { openReport } from "./views/ask.js?v=20261125103239";
+import "./views/play.js?v=20261125103239";
 
+startI18n(); // English / Japanese pages: start translating before anything is drawn
 const root = $("#view");
 // text size for the whole app (everything is sized in rem), kept per browser; Hearthstone and LoR offer the same for small screens
 const textSize = () => { const v = +lsGet("bot.fs", 1); return [1, 1.12, 1.25].includes(v) ? v : 1; };
@@ -193,6 +195,11 @@ function shrinkImage(file) {
     img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("อ่านรูปไม่ได้")); }; img.src = url;
   });
 }
+// the language of the pages (i18n.js): Thai, English or Japanese; the page reloads in it. Card names and abilities stay Thai
+function langField() { const cur = lang();
+  return h("div", { class: "segfield noi18n" }, h("div", { class: "seglabel", "aria-hidden": "true" }, "ภาษา · Language · 言語"), h("div", { class: "seg wrap", role: "group", "aria-label": "Language" },
+    LANGS.map(([k, t]) => h("button", { "aria-pressed": cur === k ? "true" : "false", onclick: () => { if (k === cur) return; setLang(k); location.reload(); } }, t))),
+    cur === "th" ? null : h("div", { class: "tiny muted" }, cur === "en" ? "Menus and buttons are being translated step by step; card names and abilities stay in Thai (the official card data)." : "メニューとボタンは順次翻訳中です。カード名と能力は公式データのためタイ語のままです。")); }
 function profileSection() {
   const st = { nick: (Me.profile && Me.profile.nick) || "", avatar: (Me.profile && Me.profile.avatar) || "" };
   const prev = h("div"); const drawPrev = () => prev.replaceChildren(avatarEl(st.avatar || (Me.profile && Me.profile.photo), st.nick || (Me.profile && Me.profile.name), "lg"));
@@ -212,7 +219,7 @@ function profileSection() {
       h("div", { class: "row" }, file, h("button", { class: "btn sm", onclick: () => file.click() }, "อัปโหลดรูป"), h("button", { class: "btn sm", onclick: cardPicker }, "เลือกจากภาพการ์ด"), h("button", { class: "btn sm", onclick: () => { st.avatar = ""; drawPrev(); } }, "ใช้รูปจาก Google")),
       h("div", null, h("button", { class: "btn gold sm", onclick: async (e) => { const b = e.currentTarget; b.disabled = true;
         try { await saveProfile({ nick: st.nick.trim().slice(0, 24), avatar: st.avatar }); toast("บันทึกโปรไฟล์แล้ว"); } catch (er) { console.warn(er); toast("บันทึกโปรไฟล์ไม่สำเร็จ", "bad"); } b.disabled = false; } }, "บันทึกโปรไฟล์")))),
-    pickBox];
+    pickBox, langField()];
 }
 
 // ---------- router ----------

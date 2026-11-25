@@ -1,0 +1,130 @@
+// The site in English or Japanese: the pages are written in Thai, and a watcher swaps each piece of Thai text it knows
+// (whole text nodes, and placeholder / title / aria-label) for the chosen language as it appears. Anything not in the
+// lists below stays Thai, and the official card data (names, abilities) always does. Chosen per browser in Settings.
+export const LANGS = [["th", "ไทย"], ["en", "English"], ["ja", "日本語"]];
+export const lang = () => { try { const v = localStorage.getItem("bot.lang"); return v === "en" || v === "ja" ? v : "th"; } catch { return "th"; } };
+export const setLang = (v) => { try { if (v === "th") localStorage.removeItem("bot.lang"); else localStorage.setItem("bot.lang", v); } catch {} };
+
+// [Thai, English, Japanese]
+const WORDS = [
+  // header
+  ["สนาม", "Arena", "対戦"], ["เด็ค", "Decks", "デッキ"], ["คลังการ์ด", "Cards", "カード一覧"], ["ห้องทดลอง", "Lab", "ラボ"], ["ประวัติ", "History", "履歴"],
+  ["ปลดล็อค", "Unlocks", "解放"], ["กฎ", "Rules", "ルール"], ["ถามชิเอล", "Ask Ciel", "シエルに質問"], ["เมนูหลัก", "Main menu", "メインメニュー"],
+  ["เว็บนี้ต้องเปิด JavaScript", "This site needs JavaScript", "このサイトには JavaScript が必要です"],
+  // the arena page
+  ["สนามดวล", "Arena", "対戦"], ["เล่นตาม Rule Book 3.2 · ความสามารถของการ์ดทำงานให้อัตโนมัติ", "Played by Rule Book 3.2 · card abilities run by themselves", "ルールブック 3.2 準拠 · カードの能力は自動で処理されます"],
+  ["เด็คของคุณ", "Your deck", "あなたのデッキ"], ["ดูเด็ค", "View deck", "デッキを見る"], ["ชิเอลจัดให้", "Built by Ciel", "シエル構築"], ["เด็คกล่อง", "Box decks", "ボックスデッキ"],
+  ["Starter Deck ทางการ", "Official Starter Decks", "公式スターターデッキ"], ["เลือกเด็คของคุณ", "Choose your deck", "デッキを選ぶ"], ["เลือกเด็คของอีกฝั่ง", "Choose the other side's deck", "相手のデッキを選ぶ"],
+  ["ภารกิจวันนี้", "Today's quests", "今日のミッション"], ["ชนะเกมที่เราได้เล่นทีหลัง", "Win a game where you go second", "後攻で勝つ"], ["ดวลกับเพื่อนจนจบ 1 เกม", "Finish 1 game against a friend", "フレンドと 1 ゲーム最後まで対戦"],
+  ["ไขโจทย์ปริศนาสำเร็จ 1 ข้อ", "Solve 1 puzzle", "パズルを 1 問解く"],
+  ["ดวลกับบอท", "Play the bot", "ボット対戦"], ["ซ้อมมือกับชิเอล", "Practise against Ciel", "シエルと練習"], ["ดวลกับเพื่อน", "Play a friend", "フレンド対戦"], ["ออนไลน์ผ่านห้อง", "Online, through a room", "ルームでオンライン"],
+  ["เล่นสองฝั่ง", "Play both sides", "両側を操作"], ["ทดลองคอมโบเอง", "Try combos yourself", "自分でコンボを試す"], ["สนามซ้อม", "Sandbox", "練習盤面"], ["จัดสนามเองแล้วลองเล่น", "Set up a board and play it", "盤面を作って試す"],
+  ["ซ้อมมือเดียว", "Solo practice", "一人回し"], ["วัดว่าเด็คชนะเร็วแค่ไหน", "How fast does the deck win?", "デッキの勝つ速さを測る"], ["โจทย์ปริศนา", "Puzzles", "詰めパズル"], ["หาทางชนะในเทิร์นเดียว", "Find the win in one turn", "1 ターンで勝つ道を探す"],
+  ["กติกาสัปดาห์", "Weekly rule", "今週のルール"], ["มือเปิดอิ่ม", "Full opening hand", "初手充実"], ["ไต่ด่าน", "Gauntlet", "連戦モード"], ["เอาชนะเด็คทางการทีละด่าน", "Beat the official decks one by one", "公式デッキを順に倒す"],
+  ["สอนเล่น", "Tutorial", "チュートリアル"], ["เรียนกติกาทีละขั้น", "Learn the rules step by step", "ルールを一歩ずつ学ぶ"], ["เด็คของบอท", "Bot's deck", "ボットのデッキ"], ["สุ่ม", "Random", "ランダム"],
+  ["สุ่ม Starter", "Random Starter", "ランダム スターター"], ["สุ่มจาก Starter Deck", "Random Starter Deck", "スターターデッキからランダム"], ["สมองบอท", "Bot level", "ボットの強さ"], ["ง่าย", "Easy", "やさしい"], ["ปกติ", "Normal", "ふつう"],
+  ["เก่ง", "Strong", "つよい"], ["โปร+", "Pro+", "プロ+"], ["ชิเอล", "Ciel", "シエル"], ["เริ่มดวล", "Start", "対戦開始"], ["เล่นต่อ", "Continue", "続きから"],
+  ["บอทระดับปกติ คิดล่วงหน้าหนึ่งจังหวะ ข้ามเอฟเฟกต์ข้อความของตัวเอง", "Normal bot: looks one move ahead and skips its own text effects", "ふつうのボット：一手先を読み、自分のテキスト効果は使いません"],
+  ["สร้างห้อง", "Create room", "ルーム作成"], ["ห้องที่รออยู่", "Open rooms", "待機中のルーム"], ["กำลังเล่นอยู่", "Playing now", "対戦中"], ["ตอนนี้ยังไม่มีใครเล่นอยู่", "Nobody is playing right now", "今は誰も対戦していません"],
+  ["บอท", "Bot", "ボット"],
+  // the table
+  ["เทิร์น", "Turn", "ターン"], ["ตาของคุณ", "Your turn", "あなたの番"], ["ตาคู่แข่ง", "Their turn", "相手の番"], ["แนะนำ", "Hint", "ヒント"], ["เมนู", "Menu", "メニュー"], ["นรกคู่แข่ง", "Foe hell", "相手地獄"],
+  ["เสียง", "Sound", "サウンド"], ["แคป", "Snap", "撮影"], ["นรก", "Hell", "地獄"], ["มิติมืด", "Dark zone", "暗黒次元"], ["← ออก", "← Leave", "← 退出"],
+  ["เสี่ยงทายว่าใครได้เลือกเริ่มก่อนหรือทีหลัง", "Toss to see who chooses to go first or second", "先攻・後攻を選ぶ権利を決めます"],
+  ["ก่อนเริ่มเกม: เลือกทอยเต๋าหรือโยนเหรียญ ผู้ชนะได้เลือกว่าจะเริ่มก่อนหรือทีหลัง", "Before the game: roll a die or toss a coin; the winner chooses to go first or second", "開始前：サイコロかコインを選び、勝った方が先攻・後攻を選びます"],
+  ["ใครได้เลือกเริ่มก่อน?", "Who chooses who goes first?", "先攻・後攻を選ぶのは？"],
+  ["เลือกวิธีเสี่ยงทาย ผู้ชนะได้เลือกว่าจะเริ่มก่อนหรือทีหลัง · ถ้าเลือกไม่ตรงกัน ระบบสุ่มหนึ่งในสองวิธีให้", "Pick how to toss; the winner chooses first or second · if you pick differently, one of the two is drawn at random", "方法を選んでください。勝った方が先攻・後攻を選びます · 選択が違う場合はどちらかを抽選します"],
+  ["ทอยเต๋า", "Roll a die", "サイコロ"], ["ทอยคนละลูก แต้มมากกว่าได้เลือก", "One die each; the higher roll chooses", "1 個ずつ振り、大きい方が選びます"], ["โยนเหรียญ", "Toss a coin", "コイントス"],
+  ["เหรียญสองหน้าเป็นรูปของทั้งสองฝ่าย หน้าใครออก คนนั้นได้เลือก", "Each face shows one player; whoever comes up chooses", "表裏に両者の絵。出た方が選びます"],
+  ["หมุนมือถือเป็นแนวตั้ง", "Turn your phone upright", "スマホを縦にしてください"], ["สนามบนมือถือจัดไว้สำหรับแนวตั้ง การ์ดจะใหญ่และกดง่ายกว่า", "The phone table is laid out upright: cards are bigger and easier to tap", "スマホの盤面は縦向き用です。カードが大きく押しやすくなります"],
+  ["เล่นแนวนอนต่อ", "Keep playing sideways", "横向きのまま続ける"], ["หมุนมือถือ", "Rotate phone", "スマホを回転"],
+  ["ดู LIFE ที่หงายแล้ว", "See face-up LIFE", "表向きのライフを見る"], ["สถานะเทิร์น", "Turn status", "ターンの状況"], ["เฟสของเทิร์น", "Turn phases", "ターンのフェイズ"], ["ส่งอีโมต", "Send an emote", "エモートを送る"],
+  ["ชิเอลแนะนำ", "Ciel's hint", "シエルのヒント"], ["เมนูเกม: กองการ์ด ย้อนตา แจ้งปัญหา ยอมแพ้", "Game menu: piles, take back, report, concede", "ゲームメニュー：カードの山・待った・報告・投了"],
+  ["ดูนรกของคู่แข่ง", "See their hell", "相手の地獄を見る"], ["ถามชิเอลเกี่ยวกับตานี้", "Ask Ciel about this turn", "この番についてシエルに質問"], ["เสียงเอฟเฟกต์และเพลง", "Sound effects and music", "効果音と音楽"],
+  ["แคปภาพโต๊ะ (ไม่ติดไพ่บนมือ)", "Capture the table (hand hidden)", "盤面を撮影（手札は写りません）"], ["บันทึกเกม", "Game log", "ゲームログ"], ["การ์ดบนมือ", "Cards in hand", "手札"],
+  ["ยอมแพ้", "Concede", "投了"], ["ย้อนตา", "Take back", "待った"], ["แจ้งปัญหา", "Report a problem", "問題を報告"], ["จบเทิร์น", "End turn", "ターン終了"], ["เข้าสู่ Battle Phase", "Go to Battle Phase", "バトルフェイズへ"],
+  ["ใช้เลย", "Use it", "使う"], ["ไม่ใช้", "Don't use", "使わない"], ["ไม่ตอบโต้", "No response", "対応しない"], ["ตกลง", "OK", "OK"], ["เริ่มก่อน", "Go first", "先攻"], ["เริ่มทีหลัง", "Go second", "後攻"],
+  ["เก็บมือเดิม", "Keep hand", "手札をキープ"], ["เปลี่ยนมือ", "Mulligan", "マリガン"], ["ชนะ!", "Victory!", "勝利！"], ["แพ้", "Defeat", "敗北"], ["เล่นอีกครั้ง", "Play again", "もう一度"],
+  // history and ranks
+  ["ประวัติการดวล", "Match history", "対戦履歴"], ["ทุกเกมที่จบจะบันทึกอัตโนมัติ ชิเอลใช้ข้อมูลนี้วิเคราะห์เด็ค", "Every finished game is saved; Ciel uses them to study your decks", "終わった対戦は自動で保存され、シエルがデッキ分析に使います"],
+  ["ยังไม่มีเกมที่จบ เกมแรกของคุณจะมาอยู่ตรงนี้พร้อมรีเพลย์", "No finished games yet. Your first one will appear here with a replay", "まだ終わった対戦はありません。最初の対戦がリプレイ付きでここに並びます"],
+  ["ไปสนามดวล", "Go to the arena", "対戦へ"], ["ดูของที่ยังล็อค วิธีปลดล็อค และความคืบหน้า", "See what is locked, how to unlock it and your progress", "未解放のもの・解放方法・進み具合を見る"],
+  ["อันดับในกลุ่มเพื่อน", "Friends' ladder", "フレンドランキング"], ["คุณกับเพื่อนแต่ละคน", "You against each friend", "各フレンドとの対戦成績"], ["อัตราชนะแยกเด็ค", "Win rate by deck", "デッキ別勝率"],
+  ["สัมฤทธิ์", "Bronze", "ブロンズ"], ["เงิน", "Silver", "シルバー"], ["ทอง", "Gold", "ゴールド"], ["แพลทินัม", "Platinum", "プラチナ"], ["เพชร", "Diamond", "ダイヤモンド"], ["ราชันย์", "Monarch", "王者"], ["รอจัดแรงก์", "Unranked", "ランク未確定"],
+  ["แต้มอันดับ", "Ladder points", "ランキングポイント"],
+  // settings
+  ["ตั้งค่า", "Settings", "設定"], ["โปรไฟล์", "Profile", "プロフィール"], ["ชื่อที่แสดง", "Display name", "表示名"], ["อัปโหลดรูป", "Upload a picture", "画像をアップロード"],
+  ["เลือกจากภาพการ์ด", "Pick from card art", "カード画像から選ぶ"], ["ใช้รูปจาก Google", "Use my Google picture", "Google の画像を使う"], ["บันทึกโปรไฟล์", "Save profile", "プロフィールを保存"],
+  ["ภาษา", "Language", "言語"], ["อวตาร 3 มิติ สนาม ผ้าปูโต๊ะ และวงอัญเชิญ", "3D figure, scene, playmat and summon circle", "3D フィギュア・シーン・プレイマット・召喚陣"],
+  ["⛶ เต็มจอ", "⛶ Full screen", "⛶ 全画面"], ["ทั้งฝั่ง", "Whole side", "自分側全体"], ["ผ้าปู", "Playmat", "プレイマット"], ["หลังการ์ด", "Card sleeve", "スリーブ"], ["อวตาร", "Figure", "フィギュア"], ["รอบโต๊ะ", "Around the table", "周りの景色"],
+  ["▶ อัญเชิญ", "▶ Summon", "▶ 召喚"], ["▶ ฉากชนะ", "▶ Victory", "▶ 勝利演出"], ["ดูแบบ 3 มิติ", "View in 3D", "3D で見る"], ["หน้าตาเว็บ (ธีม)", "Site look (theme)", "サイトの見た目（テーマ）"],
+  ["ทองบนรัก", "Gold on lacquer", "漆に金"], ["กระจกดารา", "Star glass", "星のガラス"], ["กราไฟต์", "Graphite", "グラファイト"], ["ไม่มี", "None", "なし"], ["อวตาร 3 มิติ", "3D figure", "3D フィギュア"],
+  ["สนาม (ฉากรอบโต๊ะ)", "Scene (around the table)", "シーン（盤の周り）"], ["ผ้าปูโต๊ะ (playmat)", "Playmat", "プレイマット"], ["วงอัญเชิญ", "Summon circle", "召喚陣"], ["ฉากเมื่อชนะ", "Victory effect", "勝利演出"],
+  ["ลายไทย", "Thai pattern", "タイ文様"], ["หลังการ์ดของฉัน", "My sleeve", "マイスリーブ"], ["ผ้าปูของฉัน", "My playmat", "マイプレイマット"], ["รูปปั้นของฉัน", "My figure", "マイフィギュア"], ["ภาพตั้งโต๊ะของฉัน", "My standee", "マイスタンド"],
+  ["ภาพและความเร็ว", "Graphics and speed", "画質と速度"], ["คุณภาพภาพ", "Graphics quality", "画質"], ["สวยสุด", "Best", "最高"], ["ประหยัดเครื่อง", "Light", "軽量"], ["แบบเรียบ 2D", "Flat 2D", "シンプル 2D"],
+  ["ประกายการ์ดหายาก", "Rare card shine", "レアカードの輝き"], ["เปิด", "On", "オン"], ["ความเร็วแอนิเมชัน", "Animation speed", "アニメーション速度"], ["เร็ว", "Fast", "速い"], ["เร็วมาก", "Very fast", "とても速い"],
+  ["ขนาดตัวหนังสือ", "Text size", "文字サイズ"], ["ใหญ่", "Large", "大"], ["ใหญ่มาก", "Very large", "特大"], ["สั่นเมื่อโดนตี LIFE และถึงตาเรา", "Vibrate when your LIFE is hit and when your turn starts", "ライフへの攻撃と自分の番で振動"],
+  ["สั่น", "Vibrate", "振動する"], ["ไม่สั่น", "No vibration", "振動しない"], ["เสียงและเพลง", "Sound and music", "サウンドと音楽"], ["เสียงเอฟเฟกต์", "Sound effects", "効果音"], ["เพลงประกอบ", "Music", "BGM"],
+  ["แนวเพลงในสนาม", "Music in the arena", "対戦中の BGM"], ["แฟนตาซี", "Fantasy", "ファンタジー"], ["ปี่พาทย์", "Thai piphat", "タイ古典音楽"], ["เปิดเพลงเบาๆ ที่หน้าเมนูด้วย", "Soft music on the menus too", "メニューでも小さく BGM を流す"],
+  ["ผู้ช่วยในเกม", "In-game help", "ゲーム内アシスト"], ["ถามย้ำก่อนใช้การ์ดและก่อนโจมตี (ใช้จริงไหม / ตีจริงไหม) กันกดพลาด", "Ask again before playing a card or attacking, so a mis-tap does nothing", "カード使用・攻撃の前に確認する（誤タップ防止）"],
+  ["บอกคำแนะนำจากคู่มือเปลี่ยนมือตอนเริ่มเกม", "Show the mulligan guide's tip at the start", "開始時にマリガンガイドの助言を表示"], ["การแจ้งเตือน", "Notifications", "通知"], ["เจอปัญหา?", "Something wrong?", "問題がありますか？"],
+  ["ปิด", "Off", "オフ"], ["บันทึก", "Save", "保存"], ["ยกเลิก", "Cancel", "キャンセル"], ["ลบ", "Delete", "削除"], ["ออกจากระบบ", "Sign out", "ログアウト"], ["แหล่งข้อมูลการ์ด", "Card data source", "カードデータの取得元"],
+  ["ผู้เล่นในสนาม (เจ้าของเท่านั้น)", "Players (owner only)", "プレイヤー（オーナーのみ）"], ["อนุมัติแล้ว", "Approved", "承認済み"], ["ระงับ", "Suspend", "停止"], ["ชิเอล (Claude API)", "Ciel (Claude API)", "シエル（Claude API）"],
+  ["โมเดลจัดเด็ค/อ่านการ์ด", "Model for deck building / card reading", "デッキ構築・カード読み取りのモデル"], ["ยังไม่มีภาพ", "No picture yet", "画像なし"], ["เลือกรูป", "Choose picture", "画像を選ぶ"], ["เปลี่ยนรูป", "Change picture", "画像を変更"],
+  ["ดูบนโต๊ะ", "See on the table", "盤面で見る"], ["สนามดวล 3 มิติ", "3D arena", "3D 対戦盤"], ["ดูบนโต๊ะเต็มจอ", "See the table full screen", "盤面を全画面で見る"], ["มุมที่ดู", "Viewpoint", "視点"],
+  ["กำลังตรวจสิทธิ์…", "Checking access…", "権限を確認中…"], ["กำลังโหลด…", "Loading…", "読み込み中…"], ["เข้าสู่ระบบด้วย Google", "Sign in with Google", "Google でログイン"], ["ลองใหม่", "Try again", "再試行"],
+];
+// texts with a number or a name in them: [pattern, English, Japanese] (a function gets the match and tr for the names)
+const PATTERNS = [
+  [/^นรก (\d+)$/, (m) => `Hell ${m[1]}`, (m) => `地獄 ${m[1]}`], [/^มิติมืด (\d+)$/, (m) => `Dark ${m[1]}`, (m) => `暗黒 ${m[1]}`],
+  [/^(.+): กำลังเลือก…$/, (m, t) => `${t(m[1])}: choosing…`, (m, t) => `${t(m[1])}：選択中…`], [/^(.+): รอ$/, (m, t) => `${t(m[1])}: waiting`, (m, t) => `${t(m[1])}：待機`],
+  [/^ชนะด้วยเด็คนี้ ปลดล็อค (.+)$/, (m) => `Win with this deck to unlock ${m[1]}`, (m) => `このデッキで勝つと ${m[1]} を解放`],
+  [/^★ (\d+) ดาว$/, (m) => `★ ${m[1]} stars`, (m) => `★ ${m[1]}`], [/^เอซ: (.+)$/, (m) => `Ace: ${m[1]}`, (m) => `エース：${m[1]}`],
+  [/^(.+) · เอซ: (.+)$/, (m) => `${m[1]} · Ace: ${m[2]}`, (m) => `${m[1]} · エース：${m[2]}`], [/^พบ (.+) · บอท$/, (m) => `vs ${m[1]} · Bot`, (m) => `相手：${m[1]} · ボット`],
+  [/^อีก (\d+) ดาว ได้(.+) · ภารกิจใหม่ทุกเที่ยงคืน ทุกคนได้ภารกิจเดียวกัน$/, (m) => `${m[1]} more stars for ${m[2]} · new quests every midnight, the same for everyone`, (m) => `あと ${m[1]} 個で「${m[2]}」 · 毎日 0 時に全員共通の新ミッション`],
+  [/^LIFE เหลือ (\d+) จาก (\d+) · ดู LIFE ที่หงายแล้ว$/, (m) => `${m[1]} of ${m[2]} LIFE left · see face-up LIFE`, (m) => `ライフ残り ${m[1]}/${m[2]} · 表向きのライフを見る`],
+  [/^มือ (\d+) ใบ$/, (m) => `${m[1]} cards in hand`, (m) => `手札 ${m[1]} 枚`], [/^(\d+) เกม$/, (m) => `${m[1]} games`, (m) => `${m[1]} 戦`],
+  [/^ชนะ (\d+) แพ้ (\d+)(?: เสมอ (\d+))?$/, (m) => `W ${m[1]} L ${m[2]}${m[3] ? ` D ${m[3]}` : ""}`, (m) => `${m[1]}勝 ${m[2]}敗${m[3] ? ` ${m[3]}分` : ""}`],
+  [/^ชนะ (\d+) · แพ้ (\d+)(?: · เสมอ (\d+))?$/, (m) => `W ${m[1]} · L ${m[2]}${m[3] ? ` · D ${m[3]}` : ""}`, (m) => `${m[1]}勝 · ${m[2]}敗${m[3] ? ` · ${m[3]}分` : ""}`],
+  [/^(.+) \(คุณ\)$/, (m) => `${m[1]} (you)`, (m) => `${m[1]}（あなた）`], [/^แรงก์ของคุณ: (.+)$/, (m, t) => `Your rank: ${t(m[1])}`, (m, t) => `あなたのランク：${t(m[1])}`],
+  [/^(\d+) แต้ม · อีก (\d+) แต้มถึง(.+)$/, (m, t) => `${m[1]} pts · ${m[2]} to ${t(m[3])}`, (m, t) => `${m[1]} pt · ${t(m[3])}まであと ${m[2]}`],
+  [/^(\d+) แต้ม · ขั้นสูงสุดแล้ว$/, (m) => `${m[1]} pts · top tier`, (m) => `${m[1]} pt · 最高ランク`], [/^เล่นอีก (\d+) เกมเพื่อจัดแรงก์ \(ตอนนี้ (\d+) แต้ม\)$/, (m) => `${m[1]} more games to be placed (now ${m[2]} pts)`, (m) => `あと ${m[1]} 戦でランク確定（現在 ${m[2]} pt）`],
+  [/^ดวลกับเพื่อนให้จบ (\d+) เกมเพื่อจัดแรงก์$/, (m) => `Finish ${m[1]} friend games to be placed`, (m) => `フレンド対戦を ${m[1]} 戦終えるとランク確定`],
+  [/^แรงก์: (.+) · อันดับในกลุ่มเพื่อน: ที่ (\d+) จาก (\d+) · (\d+) แต้ม \(ดูทั้งหมดในหน้าประวัติ\)$/, (m, t) => `Rank: ${t(m[1])} · friends' ladder: #${m[2]} of ${m[3]} · ${m[4]} pts (all in History)`, (m, t) => `ランク：${t(m[1])} · フレンド内 ${m[3]} 人中 ${m[2]} 位 · ${m[4]} pt（全体は履歴で）`],
+  [/^(.+) ตั้งแต่ (\d+) แต้ม$/, (m, t) => `${t(m[1])} from ${m[2]} pts`, (m, t) => `${t(m[1])}：${m[2]} pt から`],
+  [/^คิดจากเกมดวลกับเพื่อนที่จบแล้วของทุกคน เริ่มที่ 1000 แต้ม ชนะคนที่แต้มสูงกว่าจะได้แต้มมากกว่า · (\d+) เกมแรกเป็นเกมจัดแรงก์$/, (m) => `From everyone's finished friend games; everyone starts at 1000 and beating a higher-rated player earns more · the first ${m[1]} games place you`, (m) => `全員の終わったフレンド対戦から計算。初期値 1000、格上に勝つほど多く上がります · 最初の ${m[1]} 戦はランク判定戦`],
+  [/^วิธีปลดล็อคที่เหลืออีก (\d+) อย่าง \(ได้จากการเล่นเท่านั้น\)$/, (m) => `How to unlock the other ${m[1]} (by playing only)`, (m) => `残り ${m[1]} 個の解放方法（プレイでのみ入手）`],
+  [/^🔒 (.+)$/, (m, t) => `🔒 ${t(m[1])}`, (m, t) => `🔒 ${t(m[1])}`], [/^(.+) · ตั้งค่า$/, (m) => `${m[1]} · Settings`, (m) => `${m[1]} · 設定`],
+];
+
+// the same Thai word reads differently as a button's name: ปิด is "Off" on a switch but "Close" on the ✕ button
+const ATTR_WORDS = [["ปิด", "Close", "閉じる"]];
+const L = lang(), K = L === "en" ? 1 : 2, MAP = new Map(WORDS.map((w) => [w[0], w[K]])), AMAP = new Map(ATTR_WORDS.map((w) => [w[0], w[K]]));
+const THAI = /[฀-๿]/;
+// one piece of text in the chosen language (unchanged when nothing matches)
+export function tr(s) {
+  if (L === "th" || !s || !THAI.test(s)) return s;
+  const hit = MAP.get(s); if (hit) return hit;
+  for (const p of PATTERNS) { const m = p[0].exec(s); if (m) return p[K](m, tr); }
+  return s;
+}
+// keep the spaces round a text node's words
+const trNode = (v) => { const m = /^(\s*)([\s\S]*?)(\s*)$/.exec(v); const t = tr(m[2]); return t === m[2] ? v : m[1] + t + m[3]; };
+const SKIP = "script,style,textarea,input,select,option,[contenteditable],.noi18n,pre,code,.fx,.kwgloss"; // .fx: card text (its keywords open the glossary by their Thai word)
+const ATTRS = ["placeholder", "title", "aria-label"];
+function attrs(el) { for (const a of ATTRS) { const v = el.getAttribute && el.getAttribute(a); if (v && THAI.test(v)) { const t = AMAP.get(v) || tr(v); if (t !== v) el.setAttribute(a, t); } } }
+function walk(node) {
+  if (node.nodeType === 3) { const p = node.parentElement; if (p && !p.closest(SKIP) && THAI.test(node.nodeValue)) { const t = trNode(node.nodeValue); if (t !== node.nodeValue) node.nodeValue = t; } return; }
+  if (node.nodeType !== 1 || node.closest(SKIP)) return;
+  attrs(node); for (const el of node.querySelectorAll("[placeholder],[title],[aria-label]")) attrs(el);
+  const w = document.createTreeWalker(node, NodeFilter.SHOW_TEXT); let n; const list = []; while ((n = w.nextNode())) list.push(n); for (const x of list) walk(x);
+}
+// start the watcher (nothing to do for Thai)
+export function startI18n() {
+  if (L === "th") return;
+  document.documentElement.lang = L;
+  if (L === "ja") { const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap"; document.head.append(l); document.documentElement.classList.add("lang-ja"); }
+  walk(document.body);
+  new MutationObserver((ms) => { for (const m of ms) { if (m.type === "childList") m.addedNodes.forEach(walk); else if (m.type === "characterData") walk(m.target); else if (m.type === "attributes") attrs(m.target); } })
+    .observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ATTRS });
+}
