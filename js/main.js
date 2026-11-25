@@ -1,26 +1,26 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261125125119";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261125125119";
-import { LANGS, lang, setLang, startI18n } from "./i18n.js?v=20261125125119";
-import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn, foilSetting } from "./arena3d.js?v=20261125125119";
-import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261125125119";
-import { Vault, startVault, botSleeveReady } from "./vault.js?v=20261125125119";
-import { tablePreview, pvHover, pvUnhover, pvPick, pvClose } from "./preview.js?v=20261125125119";
-import { vaultSection } from "./vaultui.js?v=20261125125119";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261125125119";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261125125119";
-import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261125125119";
-import { Sfx } from "./sfx.js?v=20261125125119";
-import { Music, MUSIC_STYLES } from "./music.js?v=20261125125119";
-import { Views, avatarEl } from "./ui.js?v=20261125125119";
-import { Ciel } from "./ai.js?v=20261125125119";
-import "./views/library.js?v=20261125125119";
-import "./views/decks.js?v=20261125125119";
-import "./views/lab.js?v=20261125125119";
-import "./views/rules.js?v=20261125125119";
-import "./views/unlocks.js?v=20261125125119";
-import "./views/history.js?v=20261125125119";
-import { openReport } from "./views/ask.js?v=20261125125119";
-import "./views/play.js?v=20261125125119";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261125125341";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261125125341";
+import { LANGS, lang, setLang, startI18n } from "./i18n.js?v=20261125125341";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn, foilSetting, oppUpright } from "./arena3d.js?v=20261125125341";
+import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261125125341";
+import { Vault, startVault, botSleeveReady } from "./vault.js?v=20261125125341";
+import { tablePreview, pvHover, pvUnhover, pvPick, pvClose } from "./preview.js?v=20261125125341";
+import { vaultSection } from "./vaultui.js?v=20261125125341";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261125125341";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261125125341";
+import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261125125341";
+import { Sfx } from "./sfx.js?v=20261125125341";
+import { Music, MUSIC_STYLES } from "./music.js?v=20261125125341";
+import { Views, avatarEl } from "./ui.js?v=20261125125341";
+import { Ciel } from "./ai.js?v=20261125125341";
+import "./views/library.js?v=20261125125341";
+import "./views/decks.js?v=20261125125341";
+import "./views/lab.js?v=20261125125341";
+import "./views/rules.js?v=20261125125341";
+import "./views/unlocks.js?v=20261125125341";
+import "./views/history.js?v=20261125125341";
+import { openReport } from "./views/ask.js?v=20261125125341";
+import "./views/play.js?v=20261125125341";
 
 startI18n(); // English / Japanese pages: start translating before anything is drawn
 const root = $("#view");
@@ -117,6 +117,7 @@ function gfxSection() {
     seg("คุณภาพภาพ", gfxSetting(), [["auto", "อัตโนมัติ"], ["high", "สวยสุด"], ["low", "ประหยัดเครื่อง"], ["flat", "แบบเรียบ 2D"]], "bot.gfx", (t) => `ภาพ: ${t} มีผลตอนเปิดสนามครั้งถัดไป`),
     seg("ประกายการ์ดหายาก", foilSetting(), [["auto", "อัตโนมัติ"], ["1", "เปิด"], ["0", "ปิด"]], "bot.foil", (t) => `ประกายการ์ดหายาก: ${t}${t === "อัตโนมัติ" ? " (เปิดเฉพาะภาพสวยสุดบนคอมพิวเตอร์)" : ""} มีผลตอนเปิดสนามครั้งถัดไป`),
     seg("ความเร็วแอนิเมชัน", animSetting(), [[1, "ปกติ"], [1.6, "เร็ว"], [2.5, "เร็วมาก"]], "bot.anim", (t) => `แอนิเมชัน: ${t} มีผลตอนเปิดสนามครั้งถัดไป`),
+    seg("การ์ดฝั่งคู่แข่ง", oppUpright() ? "1" : "0", [["1", "หันหัวขึ้น อ่านง่าย"], ["0", "หันเข้าหาเจ้าของ เหมือนโต๊ะจริง"]], "bot.oppUp", (t) => `การ์ดฝั่งคู่แข่ง: ${t} มีผลตอนเปิดสนามครั้งถัดไป`),
     seg("ขนาดตัวหนังสือ", textSize(), [[1, "ปกติ"], [1.12, "ใหญ่"], [1.25, "ใหญ่มาก"]], "bot.fs", (t) => { applyTextSize(); return `ตัวหนังสือ: ${t}`; }),
     // phones that can buzz (Android): a short buzz when our LIFE is hit and when our turn begins
     "vibrate" in navigator ? seg("สั่นเมื่อโดนตี LIFE และถึงตาเรา", buzzOn() ? "1" : "0", [["1", "สั่น"], ["0", "ไม่สั่น"]], "bot.buzz", (t) => (t === "สั่น" ? "มือถือจะสั่นเมื่อโดนตี LIFE และถึงตาเรา" : "ปิดการสั่นแล้ว")) : null];

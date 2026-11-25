@@ -1,8 +1,8 @@
 // 3D duel arena (three.js r128 + GSAP) on a black-lacquer play mat drawn in code. Kenney particle textures are CC0.
-import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261125125119";
-import { E } from "./engine.js?v=20261125125119";
-import { h } from "./util.js?v=20261125125119";
-import { Sfx } from "./sfx.js?v=20261125125119";
+import { card, resolveArt, colorHex, corsUrl, artImg, skinOf, ownArt } from "./cards.js?v=20261125125341";
+import { E } from "./engine.js?v=20261125125341";
+import { h } from "./util.js?v=20261125125341";
+import { Sfx } from "./sfx.js?v=20261125125341";
 const THREE = window.THREE, gsap = window.gsap;
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -41,6 +41,9 @@ export const Arena = {
 };
 
 // how much the 3D table draws, from Settings: "high" everywhere, "low" for weak phones, "auto" by screen size
+// the other side's cards face the viewer (readable art and text, as digital card games do) unless the player wants them
+// turned toward their owner as across a real table: Settings → การ์ดฝั่งคู่แข่ง
+export const oppUpright = () => { try { return localStorage.getItem("bot.oppUp") !== "0"; } catch { return true; } };
 export const gfxSetting = () => { try { return localStorage.getItem("bot.gfx") || "auto"; } catch { return "auto"; } };
 export const animSetting = () => { try { return +(localStorage.getItem("bot.anim") || 1) || 1; } catch { return 1; } };
 // a short buzz on phones that have one (Android; iPhones have none for web pages): our LIFE is hit, our turn begins
@@ -2510,7 +2513,7 @@ function sync(s, V, drops, burned, instant) {
     let m = R.meshes.get(i); const fresh = !m;
     if (fresh) { m = makeMesh(s, L); R.meshes.set(i, m); }
     m.side = L.side; m.zone = L.zone; m.scale = L.scale; const was = fresh || !m.want ? null : m.want.rotY;
-    m.want = { pos: L.pos, rotY: (L.side === "opp" ? Math.PI : 0) + (L.x.a === false && (L.zone === "av" || (L.zone === "mg" && L.x.on == null)) ? -Math.PI / 2 : 0), scale: L.scale };
+    m.want = { pos: L.pos, rotY: (L.side === "opp" && !oppUpright() ? Math.PI : 0) + (L.x.a === false && (L.zone === "av" || (L.zone === "mg" && L.x.on == null)) ? -Math.PI / 2 : 0), scale: L.scale };
     if (fresh) {
       const co = E.def(s, L.x).co, cHex = co ? colorHex(co) : L.side === "me" ? 0xffc35a : 0xff4a52;
       if (reduce || instant) settle(m, 0.05 * k++); else if (drops.has(i)) summonIn(m, L, co, cHex); else placeIn(m, L);
