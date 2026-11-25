@@ -1,6 +1,7 @@
 // Friends' ladder: a rating for everyone who has finished a friend game, worked out in the browser from the finished
 // games every approved member can read (each keeps a small result summary). Elo from 1000, oldest game first.
-import { finishedGames } from "./fb.js?v=20261125124344";
+import { finishedGames } from "./fb.js?v=20261125124627";
+import { h } from "./util.js?v=20261125124627";
 
 const START = 1000, K = 24;
 // one finished game as { w, seats, names, at, id }, from its summary or, for games from before summaries, its final state
@@ -51,4 +52,24 @@ function avatarsOf(games, newest) {
   const byId = Object.fromEntries(games.map((g) => [g.id, g])); const out = {};
   for (const [uid, id] of Object.entries(newest)) { try { const st = JSON.parse(byId[id].state); const p = st.P.find((x) => x.uid === uid); if (p && p.ava) out[uid] = p.ava; } catch { /* no picture */ } }
   return out;
+}
+// a rank tier as a small shield in its colour with its name (the name only as a tooltip when `big`)
+export function tierBadge(t, big) { return h("span", { class: "tier" + (big ? " big" : ""), style: `--tc:${t.c}`, title: t.name }, h("i"), big ? null : h("span", { class: "tiern" }, t.name)); }
+// one player's tier as the ladder stands (null when the ladder has not been read yet in this visit)
+export const tierFor = (uid) => { const L = cache; if (!L || !uid) return null; return tierOf(L.table.find((p) => p.uid === uid) || null); };
+// what one finished friend game did to a player's standing: the ladder without it and with it. The game's result reaches
+// the database a moment after the last move, so this asks again a few times before it gives up (null)
+export async function ladderDelta(uid, gameId, tries = 5) {
+  for (let k = 0; k < tries; k++) {
+    const games = await finishedGames();
+    const order = rank(games).list.map((o) => o.id), k0 = order.indexOf(gameId);
+    if (k0 >= 0) { // the standing just before this game and just after it, in the order the ladder counts games
+      const upTo = (n) => { const ids = new Set(order.slice(0, n)); return rank(games.filter((g) => ids.has(g.id))).table.find((p) => p.uid === uid) || null; };
+      const a = upTo(k0), b = upTo(k0 + 1);
+      cache = null; at = 0; // the next read takes this game in
+      return { before: a, after: b, t0: tierOf(a), t1: tierOf(b), delta: b ? b.r - (a ? a.r : START) : 0 };
+    }
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+  return null;
 }

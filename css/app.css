@@ -688,6 +688,7 @@ table.t th{white-space:nowrap}
 /* rank tiers (ladder.js): a small shield in the tier's colour */
 .tier{display:inline-flex;align-items:center;gap:5px;color:var(--tc);font-weight:700;white-space:nowrap}
 .tier i{flex:none;width:12px;height:14px;background:linear-gradient(160deg,rgba(255,255,255,.75) 0,var(--tc) 42%,rgba(0,0,0,.45) 100%);clip-path:polygon(50% 0,100% 18%,100% 62%,50% 100%,0 62%,0 18%)}
+.rankdelta{display:flex;align-items:center;gap:6px;flex-wrap:wrap} .rankdelta.up{color:#8ee3b2;font-weight:700} .rankdelta.down{color:#ffb0b2}
 .tier.big i{width:34px;height:40px}
 .ladder .pts .tiern{display:none}
 .rankme{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);outline:1px solid color-mix(in srgb,var(--tc) 35%,transparent)}

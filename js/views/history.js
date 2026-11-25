@@ -1,11 +1,11 @@
-import { h, openSheet, fmtDate, busy } from "../util.js?v=20261125124344";
-import { Data, Me } from "../fb.js?v=20261125124344";
-import { Views, avatarEl } from "../ui.js?v=20261125124344";
-import { ladder, ladderNow, ladderFresh, tierOf, TIERS, PLACEMENT } from "../ladder.js?v=20261125124344";
-import { stars } from "../quests.js?v=20261125124344";
-import { weeklyStars } from "../weekly.js?v=20261125124344";
-import { hasReplay, openReplay, coachGame, shareReplay } from "./play.js?v=20261125124344";
-import { ACH, progress, rewardName } from "../achieve.js?v=20261125124344";
+import { h, openSheet, fmtDate, busy } from "../util.js?v=20261125124627";
+import { Data, Me } from "../fb.js?v=20261125124627";
+import { Views, avatarEl } from "../ui.js?v=20261125124627";
+import { ladder, ladderNow, ladderFresh, tierOf, tierBadge, TIERS, PLACEMENT } from "../ladder.js?v=20261125124627";
+import { stars } from "../quests.js?v=20261125124627";
+import { weeklyStars } from "../weekly.js?v=20261125124627";
+import { hasReplay, openReplay, coachGame, shareReplay } from "./play.js?v=20261125124627";
+import { ACH, progress, rewardName } from "../achieve.js?v=20261125124627";
 
 const MODE_TH = { bot: "บอท", friend: "เพื่อน", solo: "สองฝั่ง", goldfish: "ซ้อมมือเดียว" };
 const RULE_TH = { hand6: "มือเปิดอิ่ม", life4: "ศึกชีวิตสั้น", draw1: "สายน้ำไหลหลาก", cheap: "ตลาดนัดลดราคา" }; // weekly special rules (js/weekly.js)
@@ -60,8 +60,7 @@ function achPanel(all) { // the summary of the unlocks page (#unlocks): how many
   return h("a", { class: "panel stack achlink", href: "#unlocks" }, h("div", { class: "row", style: "justify-content:space-between" }, h("div", { class: "eyebrow" }, "ปลดล็อค"), h("span", { class: "chip gold" }, `${n}/${rows.length}`)),
     h("div", { class: "trk", "aria-hidden": "true" }, h("i", { style: `width:${Math.round((n / rows.length) * 100)}%` })), h("span", { class: "small" }, "ดูของที่ยังล็อค วิธีปลดล็อค และความคืบหน้า"));
 }
-// a rank tier as a small shield in its colour with its name (the name only as a tooltip when `bare`)
-export function tierBadge(t, big) { return h("span", { class: "tier" + (big ? " big" : ""), style: `--tc:${t.c}`, title: t.name }, h("i"), big ? null : h("span", { class: "tiern" }, t.name)); }
+export { tierBadge }; // (lives in ladder.js now, beside the tiers)
 // your own tier: the shield, the points and how far to the next tier (or how many games until you are placed)
 function myRank(p) {
   const t = tierOf(p);
