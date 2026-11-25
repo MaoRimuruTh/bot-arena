@@ -1,6 +1,8 @@
 // The site in English or Japanese: the pages are written in Thai, and a watcher swaps each piece of Thai text it knows
 // (whole text nodes, and placeholder / title / aria-label) for the chosen language as it appears. Anything not in the
 // lists below stays Thai, and the official card data (names, abilities) always does. Chosen per browser in Settings.
+import { isOwnerNow } from "./persona.js?v=20261125120034";
+
 export const LANGS = [["th", "ไทย"], ["en", "English"], ["ja", "日本語"]];
 export const lang = () => { try { const v = localStorage.getItem("bot.lang"); return v === "en" || v === "ja" ? v : "th"; } catch { return "th"; } };
 export const setLang = (v) => { try { if (v === "th") localStorage.removeItem("bot.lang"); else localStorage.setItem("bot.lang", v); } catch {} };
@@ -221,10 +223,18 @@ const THAI = /[฀-๿]/;
 // one piece of text in the chosen language (unchanged when nothing matches)
 export function tr(s) {
   if (L === "th" || !s || !THAI.test(s)) return s;
+  const t = look(s); if (t !== s || isOwnerNow() || !s.includes("ผู้ช่วย")) return anon(t);
+  // another account's page already reads ผู้ช่วย where the owner's reads ชิเอล: the same entry, then the nameless helper
+  const u = look(s.replace(/ผู้ช่วย/g, "ชิเอล")); return u.includes("ชิเอล") ? s : anon(u);
+}
+function look(s) {
   const hit = MAP.get(s); if (hit) return hit;
   for (const p of PATTERNS) { if (typeof p[0] === "string") { if (p[0] === s) return p[K]; continue; } const m = p[0].exec(s); if (m) return p[K](m, tr); }
   return s;
 }
+// Ciel is the owner's alone (persona.js): in English and Japanese every other account gets the nameless helper too
+const ANON = L === "en" ? [[/\bCiel's\b/g, "the assistant's"], [/\bCiel\b/g, "the assistant"], [/^([^A-Za-z]*)the a/, "$1The a"]] : [[/シエル/g, "アシスタント"]];
+function anon(t) { if (isOwnerNow() || !/Ciel|シエル/.test(t)) return t; for (const [a, b] of ANON) t = t.replace(a, b); return t; }
 // keep the spaces round a text node's words
 const trNode = (v) => { const m = /^(\s*)([\s\S]*?)(\s*)$/.exec(v); const t = tr(m[2]); return t === m[2] ? v : m[1] + t + m[3]; };
 const SKIP = "script,style,textarea,input,[contenteditable],.noi18n,pre,code,.fx,.kwgloss"; // .fx: card text (its keywords open the glossary by their Thai word)

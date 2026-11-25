@@ -1,14 +1,14 @@
 // ปลดล็อค: everything the table can open up, and how. Only what play earns is here (nothing is bought, nothing is the owner's
 // own): each card says what it opens, what to do for it, and how far along you are. Grouped by what it opens; a filter keeps
 // the list short on a phone; the three nearest to done are pulled to the top.
-import { h, busy } from "../util.js?v=20261125115328";
-import { Data } from "../fb.js?v=20261125115328";
-import { Views } from "../ui.js?v=20261125115328";
-import { MATS } from "../arena3d.js?v=20261125115328";
-import { ACH, progress, rewardName } from "../achieve.js?v=20261125115328";
+import { h, busy } from "../util.js?v=20261125120034";
+import { Data } from "../fb.js?v=20261125120034";
+import { Views } from "../ui.js?v=20261125120034";
+import { MATS } from "../arena3d.js?v=20261125120034";
+import { ACH, progress, rewardName } from "../achieve.js?v=20261125120034";
 
 const KINDS = [["av", "อวตาร 3 มิติ", "ยืนข้างแถบกลางสนามฝั่งคุณ"], ["mat", "ผ้าปูโต๊ะ", "ผ้าปูฝั่งคุณ คู่แข่งก็เห็น"], ["sig", "วงอัญเชิญ", "วงที่เปิดใต้การ์ดตอนเราอัญเชิญ"],
-  ["win", "ฉากเมื่อชนะ", "สิ่งที่ลอยเต็มจอตอนเราชนะ"], ["deck", "เด็คกล่องพิเศษ", "เด็คกล่องที่เก่งกว่า Starter Deck"]];
+  ["win", "ฉากเมื่อชนะ", "สิ่งที่ลอยเต็มจอตอนเราชนะ"], ["deck", "เด็คกล่องพิเศษ", "เด็คกล่องที่เก่งกว่า Starter Deck"], ["sleeve", "หลังการ์ด", "ลายหลังการ์ดฝั่งคุณ คู่แข่งก็เห็น"]];
 const kindOf = (g) => KINDS.find(([k]) => g && g[k] != null);
 const FILTERS = [["all", "ทั้งหมด"], ["locked", "ยังล็อค"], ["done", "ได้แล้ว"]];
 let filter = "all";
@@ -19,7 +19,7 @@ const left = (p) => (p.need > 1 ? `อีก ${p.need - p.have}` : "ยังไ
 function card({ a, p }) {
   const pct = Math.round((p.have / p.need) * 100);
   return h("article", { class: "unl" + (p.done ? " done" : "") },
-    h("div", { class: "unl-top" }, swatch(a.gives), h("div", { class: "unl-what" }, h("b", null, rewardName(a.gives).replace(/^(อวตาร |ผ้าปู|วงอัญเชิญ|ฉากชัยชนะ|เด็คกล่องพิเศษ )/, "")), h("span", { class: "tiny muted" }, a.name)),
+    h("div", { class: "unl-top" }, swatch(a.gives), h("div", { class: "unl-what" }, h("b", null, rewardName(a.gives).replace(/^(อวตาร |ผ้าปู|วงอัญเชิญ|ฉากชัยชนะ|เด็คกล่องพิเศษ |หลังการ์ด )/, "")), h("span", { class: "tiny muted" }, a.name)),
       h("span", { class: "chip " + (p.done ? "good" : "lockchip") }, p.done ? "ได้แล้ว" : "ล็อคอยู่")),
     h("div", { class: "unl-how small" }, a.how),
     p.done ? h("div", { class: "tiny muted" }, "เลือกใช้ได้ที่ ตั้งค่า (กดชื่อของคุณมุมขวาบน)")

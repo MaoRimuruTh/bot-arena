@@ -1,26 +1,26 @@
-import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261125115328";
-import { applyPersona, isOwnerNow } from "./persona.js?v=20261125115328";
-import { LANGS, lang, setLang, startI18n } from "./i18n.js?v=20261125115328";
-import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn, foilSetting } from "./arena3d.js?v=20261125115328";
-import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261125115328";
-import { Vault, startVault, botSleeveReady } from "./vault.js?v=20261125115328";
-import { tablePreview, pvHover, pvUnhover, pvPick, pvClose } from "./preview.js?v=20261125115328";
-import { vaultSection } from "./vaultui.js?v=20261125115328";
-import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261125115328";
-import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261125115328";
-import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261125115328";
-import { Sfx } from "./sfx.js?v=20261125115328";
-import { Music, MUSIC_STYLES } from "./music.js?v=20261125115328";
-import { Views, avatarEl } from "./ui.js?v=20261125115328";
-import { Ciel } from "./ai.js?v=20261125115328";
-import "./views/library.js?v=20261125115328";
-import "./views/decks.js?v=20261125115328";
-import "./views/lab.js?v=20261125115328";
-import "./views/rules.js?v=20261125115328";
-import "./views/unlocks.js?v=20261125115328";
-import "./views/history.js?v=20261125115328";
-import { openReport } from "./views/ask.js?v=20261125115328";
-import "./views/play.js?v=20261125115328";
+import { $, h, toast, openSheet, lsGet, lsSet, lsDel, busy, fmtDate } from "./util.js?v=20261125120034";
+import { applyPersona, isOwnerNow } from "./persona.js?v=20261125120034";
+import { LANGS, lang, setLang, startI18n } from "./i18n.js?v=20261125120034";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX, gfxSetting, animSetting, buzzOn, foilSetting } from "./arena3d.js?v=20261125120034";
+import { myFigure, myMat, myScene, sceneOpen, sigilOpen, mySleeve, mySigil, myWinFx, unlocked, needFor } from "./achieve.js?v=20261125120034";
+import { Vault, startVault, botSleeveReady } from "./vault.js?v=20261125120034";
+import { tablePreview, pvHover, pvUnhover, pvPick, pvClose } from "./preview.js?v=20261125120034";
+import { vaultSection } from "./vaultui.js?v=20261125120034";
+import { notifySupported, notifyOn, notifyBlocked, setNotify } from "./notify.js?v=20261125120034";
+import { signIn, signOut, onUser, ensureProfile, watchMe, Me, Data, startData, setUserStatus, setMeta, myName, myAvatar, saveProfile } from "./fb.js?v=20261125120034";
+import { loadCards, CARDS, isBase, SkinCtx, setGameSkins } from "./cards.js?v=20261125120034";
+import { Sfx } from "./sfx.js?v=20261125120034";
+import { Music, MUSIC_STYLES } from "./music.js?v=20261125120034";
+import { Views, avatarEl } from "./ui.js?v=20261125120034";
+import { Ciel } from "./ai.js?v=20261125120034";
+import "./views/library.js?v=20261125120034";
+import "./views/decks.js?v=20261125120034";
+import "./views/lab.js?v=20261125120034";
+import "./views/rules.js?v=20261125120034";
+import "./views/unlocks.js?v=20261125120034";
+import "./views/history.js?v=20261125120034";
+import { openReport } from "./views/ask.js?v=20261125120034";
+import "./views/play.js?v=20261125120034";
 
 startI18n(); // English / Japanese pages: start translating before anything is drawn
 const root = $("#view");
@@ -245,19 +245,19 @@ Data.listeners.add(() => {
 
 // ---------- auto update: check for a newer deploy every 2 minutes ----------
 const APP_V = (import.meta.url.match(/\?v=(\w+)/) || [])[1];
-async function checkUpdate() {
+async function checkUpdate(now) {
   if (!APP_V) return;
   try {
     const r = await fetch("version.json?t=" + Date.now(), { cache: "no-store" }); if (!r.ok) return; const { v } = await r.json();
     if (!v || v === APP_V) return;
     const busyNow = document.body.classList.contains("arena-on") || /^#decks\/./.test(location.hash) /* a deck page: its +/− edits save a moment later */ || document.querySelector(".scrim");
-    if (!busyNow) return location.reload();
+    if (!busyNow && (now || document.hidden || /^#?(play)?(\/|$)/.test(location.hash))) return location.reload(); // the lobby reloads at once (friends must match versions); a page being read keeps its place: the banner asks, and the next page change loads it
     if (!document.querySelector(".upd")) document.body.append(h("div", { class: "upd glass", role: "status" }, h("span", null, "มีเวอร์ชันใหม่ของเว็บ"), h("button", { class: "btn gold sm", onclick: () => location.reload() }, "โหลดเลย"), h("button", { class: "btn sm", onclick: (e) => e.currentTarget.parentElement.remove() }, "ไว้ก่อน")));
   } catch {}
 }
-setInterval(checkUpdate, 30000); addEventListener("visibilitychange", () => { if (!document.hidden) checkUpdate(); });
-addEventListener("hashchange", () => checkUpdate()); /* every page change (menus, lobby, before a game starts) checks for a newer deploy and reloads if nothing is in progress */
-addEventListener("focus", () => checkUpdate());
+setInterval(() => checkUpdate(false), 30000); addEventListener("visibilitychange", () => { if (!document.hidden) checkUpdate(true); });
+addEventListener("hashchange", () => checkUpdate(true)); /* every page change (menus, lobby, before a game starts) checks for a newer deploy and reloads if nothing is in progress */
+addEventListener("focus", () => checkUpdate(false));
 
 // ---------- boot ----------
 let meUnsub = null, booted = false;

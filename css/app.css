@@ -921,6 +921,7 @@ html.ui-pro .feed{background:rgba(14,16,20,.6)}
 .unl-sw.av{border-radius:50%;background:radial-gradient(circle at 50% 36%,var(--gold-hi) 0 17%,transparent 18%),radial-gradient(ellipse 58% 36% at 50% 92%,var(--gold) 0 70%,transparent 72%),var(--panel-2)}
 .unl-sw.sig{border-radius:50%;background:radial-gradient(circle,var(--gold-hi) 0 9%,transparent 10% 30%,var(--gold) 31% 36%,transparent 37% 53%,var(--gold) 54% 59%,transparent 60%),var(--panel-2)}
 .unl-sw.win{background:radial-gradient(circle at 28% 30%,var(--gold-hi) 0 7%,transparent 8%),radial-gradient(circle at 70% 38%,var(--gold) 0 8%,transparent 9%),radial-gradient(circle at 44% 74%,var(--gold-hi) 0 6%,transparent 7%),radial-gradient(circle at 78% 78%,var(--gold) 0 5%,transparent 6%),var(--panel-2)}
+.unl-sw.sleeve{border-radius:4px;background:radial-gradient(circle,var(--gold-hi) 0 12%,transparent 13%),linear-gradient(var(--panel-2),var(--panel-2)) 5px 5px/calc(100% - 10px) calc(100% - 10px) no-repeat,linear-gradient(135deg,#8a1e1e,#3a0c0c)}
 .unl-sw.deck{background:linear-gradient(var(--gold),var(--gold)) 15px 8px/18px 24px no-repeat,linear-gradient(var(--line-2),var(--line-2)) 8px 11px/18px 24px no-repeat,var(--panel-2)}
 .achlink{text-decoration:none;color:inherit}
 .achlink:hover{border-color:var(--gold)}
@@ -1264,6 +1265,7 @@ kbd{font:600 .8rem/1.6 var(--f-mono,ui-monospace,monospace);padding:2px 8px;bord
    as the box for answering an attack does; both Avatar rows stay in view. One short line of text over a row of 44px buttons; a long list scrolls in it */
 @media (max-width:760px),(pointer:coarse) and (orientation:landscape) and (max-height:500px){
   body.arena-on .prompt.slim:not(.toss){bottom:calc(72px + env(safe-area-inset-bottom,0px));left:max(8px,env(safe-area-inset-left,0px));right:max(8px,env(safe-area-inset-right,0px));width:auto;max-width:none;max-height:min(40vh,224px);overflow:auto;overscroll-behavior:contain;z-index:6;padding:8px 10px;gap:6px 8px}
+  body.arena-on .handrow .hcard:focus-visible{z-index:auto} /* the phone hand is a row that never overlaps: a focused card must not rise over the attack prompt */
   body.arena-on .prompt.slim>b{flex:1 1 100%;font-size:.86rem;line-height:1.3;margin:0}
   body.arena-on .prompt.slim>.tiny{flex:1 1 100%;font-size:.72rem;line-height:1.3}
   body.arena-on .prompt.slim .btn.sm{min-height:44px;height:auto}

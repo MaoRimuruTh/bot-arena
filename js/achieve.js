@@ -1,13 +1,13 @@
 // Achievements: earned only by playing (nothing here can be bought), each one unlocking something for the table:
 // a 3D figure to stand by your side, a colour of lacquer for the mat, the circle that opens when you summon, or one of the
 // official box decks (คัดสรรเด็ค) that plays stronger than the Starter Decks. Worked out from your own match history.
-import { Data } from "./fb.js?v=20261125115328";
-import { lsGet } from "./util.js?v=20261125115328";
-import { stars } from "./quests.js?v=20261125115328";
-import { AVATARS, MATS, SIGILS, SCENES, WINFX } from "./arena3d.js?v=20261125115328";
-import { BOX_LISTS, themeCounts, officialStarters } from "./boxdecks.js?v=20261125115328";
-import { Vault, botSleeveReady } from "./vault.js?v=20261125115328";
-import { isOwnerNow } from "./persona.js?v=20261125115328";
+import { Data } from "./fb.js?v=20261125120034";
+import { lsGet } from "./util.js?v=20261125120034";
+import { stars } from "./quests.js?v=20261125120034";
+import { AVATARS, MATS, SIGILS, SCENES, WINFX } from "./arena3d.js?v=20261125120034";
+import { BOX_LISTS, themeCounts, officialStarters } from "./boxdecks.js?v=20261125120034";
+import { Vault, botSleeveReady } from "./vault.js?v=20261125120034";
+import { isOwnerNow } from "./persona.js?v=20261125120034";
 
 const real = (ms) => ms.filter((m) => m.mode !== "goldfish");
 const wins = (ms) => real(ms).filter((m) => m.result === "win").length;
